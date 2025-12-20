@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 function Home() {
   return (
-    <div>
+    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
       <h1>Welcome</h1>
       <nav>
         <ul>

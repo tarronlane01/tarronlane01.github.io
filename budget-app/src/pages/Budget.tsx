@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 function Budget() {
   return (
-    <div>
+    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
       <nav>
         <Link to="/">← Back to Home</Link>
       </nav>
