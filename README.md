@@ -32,7 +32,7 @@ npm run publish
 
 Added to `budget-app/package.json`:
 ```json
-"publish": "npm run build && cd .. && git add -A && git commit -m 'Build and publish' && git push"
+"publish": "npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m 'Build and publish') && git push"
 ```
 
 ## GitHub Pages SPA Routing
