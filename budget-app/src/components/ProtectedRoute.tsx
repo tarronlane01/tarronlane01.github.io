@@ -1,11 +1,11 @@
 import { useContext } from "react"
-import { Navigate, useLocation } from "react-router-dom"
+import { Navigate, Outlet, useLocation } from "react-router-dom"
 import UserContext from "../contexts/user_context"
 
 const ENABLE_AUTH_PROTECTION = true
 
 interface ProtectedRouteProps {
-    children: React.ReactNode
+    children?: React.ReactNode
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     const location = useLocation()
 
     if (!ENABLE_AUTH_PROTECTION) {
-        return <>{children}</>
+        return children ? <>{children}</> : <Outlet />
     }
 
     if (!user_context.is_auth_checked) {
@@ -26,5 +26,5 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         return <Navigate to="/account" state={{ from: location.pathname }} replace />
     }
 
-    return <>{children}</>
+    return children ? <>{children}</> : <Outlet />
 }

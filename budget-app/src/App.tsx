@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import SqlTest from './pages/SqlTest'
 import Budget from './pages/Budget'
 import Account from './pages/Account'
+import Accounts from './pages/Accounts'
 import ProtectedRoute from './components/ProtectedRoute'
 import type { type_user_context } from './types/type_user_context'
 
@@ -48,11 +49,12 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/account" element={<Account />} />
           <Route path="/sql-test" element={<SqlTest />} />
-          <Route path="/budget" element={
-            <ProtectedRoute>
-              <Budget />
-            </ProtectedRoute>
-          } />
+
+          {/* Protected budget routes */}
+          <Route path="/budget" element={<ProtectedRoute />}>
+            <Route index element={<Budget />} />
+            <Route path="accounts" element={<Accounts />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </UserContext.Provider>

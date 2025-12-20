@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "publish": "npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m 'Build and publish') && git push"
+    "publish": "f() { npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m \"${1:-Build and publish}\") && git push; }; f"
   },
   "dependencies": {
     "firebase": "^12.7.0",

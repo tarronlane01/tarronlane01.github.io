@@ -30,8 +30,9 @@ function Budget() {
 
   return (
     <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
-      <nav>
+      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link to="/">← Back to Home</Link>
+        <Link to="/budget/accounts">Manage Accounts →</Link>
       </nav>
       <h1>Budget</h1>
 
