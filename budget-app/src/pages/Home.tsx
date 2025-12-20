@@ -8,6 +8,7 @@ function Home() {
         <ul>
           <li><Link to="/sql-test">SQL Test</Link></li>
           <li><Link to="/budget">Budget</Link></li>
+          <li><Link to="/account">Account</Link></li>
         </ul>
       </nav>
     </div>

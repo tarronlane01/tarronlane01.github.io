@@ -11,6 +11,7 @@
     "publish": "npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m 'Build and publish') && git push"
   },
   "dependencies": {
+    "firebase": "^12.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0"
