@@ -19,7 +19,10 @@ import {
   itemTitle,
   sectionHeader,
   colors,
+  reorderButton,
+  reorderButtonGroup,
 } from '../../styles/shared'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 interface CategoryFormData {
   name: string
@@ -34,6 +37,7 @@ type DragType = 'category' | 'group' | null
 function Categories() {
   const { currentBudget, categories, setCategories, categoryGroups, setCategoryGroups } = useBudget()
   const [error, setError] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   // Category editing state
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
@@ -361,6 +365,73 @@ function Categories() {
     }
   }
 
+  // Move category up/down within its group
+  async function handleMoveCategory(categoryId: string, direction: 'up' | 'down') {
+    const category = categories.find(c => c.id === categoryId)
+    if (!category) return
+
+    const groupId = category.category_group_id || 'ungrouped'
+    const groupCategories = categories
+      .filter(c => (c.category_group_id || 'ungrouped') === groupId)
+      .sort((a, b) => a.sort_order - b.sort_order)
+
+    const currentIndex = groupCategories.findIndex(c => c.id === categoryId)
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+    if (targetIndex < 0 || targetIndex >= groupCategories.length) return
+
+    // Swap sort orders
+    const targetCategory = groupCategories[targetIndex]
+    const newCategories = categories.map(c => {
+      if (c.id === categoryId) {
+        return { ...c, sort_order: targetCategory.sort_order }
+      }
+      if (c.id === targetCategory.id) {
+        return { ...c, sort_order: category.sort_order }
+      }
+      return c
+    })
+
+    setCategories(newCategories)
+
+    if (!currentBudget) return
+    try {
+      await saveCategories(newCategories)
+    } catch (err) {
+      setCategories(categories)
+      setError(err instanceof Error ? err.message : 'Failed to move category')
+    }
+  }
+
+  // Move group up/down
+  async function handleMoveGroup(groupId: string, direction: 'up' | 'down') {
+    const sortedGroupsCopy = [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
+    const currentIndex = sortedGroupsCopy.findIndex(g => g.id === groupId)
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+    if (targetIndex < 0 || targetIndex >= sortedGroupsCopy.length) return
+
+    // Swap positions in array
+    const [movedGroup] = sortedGroupsCopy.splice(currentIndex, 1)
+    sortedGroupsCopy.splice(targetIndex, 0, movedGroup)
+
+    // Update sort orders
+    const updatedGroups = sortedGroupsCopy.map((group, index) => ({
+      ...group,
+      sort_order: index,
+    }))
+
+    setCategoryGroups(updatedGroups)
+
+    if (!currentBudget) return
+    try {
+      await saveCategoryGroups(updatedGroups)
+    } catch (err) {
+      setCategoryGroups(categoryGroups)
+      setError(err instanceof Error ? err.message : 'Failed to move group')
+    }
+  }
+
   // Organize categories by group
   const categoriesByGroup = categories.reduce((acc, category) => {
     const groupId = category.category_group_id || 'ungrouped'
@@ -382,7 +453,11 @@ function Categories() {
       <p style={pageSubtitle}>
         Organize your spending categories into groups.
         <br />
-        <span style={{ fontSize: '0.9rem' }}>Drag categories between groups, or drag group headers to reorder groups.</span>
+        <span style={{ fontSize: '0.9rem' }}>
+          {isMobile
+            ? 'Use ▲▼ buttons to reorder items, or drag to move between groups.'
+            : 'Drag categories between groups, or use ▲▼ buttons to reorder.'}
+        </span>
       </p>
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
@@ -408,7 +483,7 @@ function Categories() {
         )}
 
         {/* Render groups */}
-        {sortedGroups.map((group) => {
+        {sortedGroups.map((group, groupIndex) => {
           const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a.sort_order - b.sort_order)
           const isGroupDragging = dragType === 'group' && draggedId === group.id
           const isGroupDragOver = dragType === 'group' && dragOverId === group.id
@@ -418,6 +493,10 @@ function Categories() {
 
           // Check if we should show the drop indicator line above this group
           const showDropIndicator = dragType === 'group' && isGroupDragOver && draggedId !== group.id
+
+          // Group reorder state
+          const canMoveGroupUp = groupIndex > 0
+          const canMoveGroupDown = groupIndex < sortedGroups.length - 1
 
           return (
             <div key={group.id}>
@@ -504,21 +583,27 @@ function Categories() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: '0.75rem',
+                    marginBottom: isMobile ? '0.5rem' : '0.75rem',
                     paddingBottom: '0.5rem',
                     borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
+                    gap: '0.5rem',
+                    flexWrap: isMobile ? 'wrap' : 'nowrap',
                   }}>
-                    <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>
-                      {group.name}
-                      <span style={{ marginLeft: '0.25rem', opacity: 0.5, fontWeight: 400, fontSize: '0.9rem' }}>
+                    <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                      {!isMobile && <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {group.name}
+                      </span>
+                      <span style={{ opacity: 0.5, fontWeight: 400, fontSize: '0.9rem', flexShrink: 0 }}>
                         ({groupCategories.length})
                       </span>
                     </h3>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
-                        + Category
-                      </Button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
+                      {!isMobile && (
+                        <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                          + Category
+                        </Button>
+                      )}
                       <button
                         onClick={() => setEditingGroupId(group.id)}
                         style={{
@@ -547,8 +632,45 @@ function Categories() {
                       >
                         🗑️
                       </button>
+                      {/* Group reorder buttons - on right side after edit/delete */}
+                      <div style={reorderButtonGroup}>
+                        <button
+                          onClick={() => handleMoveGroup(group.id, 'up')}
+                          disabled={!canMoveGroupUp}
+                          style={{
+                            ...reorderButton,
+                            opacity: canMoveGroupUp ? 0.6 : 0.2,
+                            cursor: canMoveGroupUp ? 'pointer' : 'default',
+                          }}
+                          title="Move group up"
+                          aria-label="Move group up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => handleMoveGroup(group.id, 'down')}
+                          disabled={!canMoveGroupDown}
+                          style={{
+                            ...reorderButton,
+                            opacity: canMoveGroupDown ? 0.6 : 0.2,
+                            cursor: canMoveGroupDown ? 'pointer' : 'default',
+                          }}
+                          title="Move group down"
+                          aria-label="Move group down"
+                        >
+                          ▼
+                        </button>
+                      </div>
                     </div>
                   </div>
+                  {/* Mobile: Add category button on its own row */}
+                  {isMobile && (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                        + Category
+                      </Button>
+                    </div>
+                  )}
 
                   <div style={listContainer}>
                     {groupCategories.map((category) => (
@@ -572,6 +694,10 @@ function Categories() {
                           onDrop={(e) => handleCategoryDrop(e, category.id, group.id)}
                           onEdit={() => setEditingCategoryId(category.id)}
                           onDelete={() => handleDeleteCategory(category.id)}
+                          onMoveUp={() => handleMoveCategory(category.id, 'up')}
+                          onMoveDown={() => handleMoveCategory(category.id, 'down')}
+                          canMoveUp={groupCategories.findIndex(c => c.id === category.id) > 0}
+                          canMoveDown={groupCategories.findIndex(c => c.id === category.id) < groupCategories.length - 1}
                         >
                           <span style={itemTitle}>{category.name}</span>
                         </DraggableCard>
@@ -711,6 +837,10 @@ function Categories() {
                       onDrop={(e) => handleCategoryDrop(e, category.id, 'ungrouped')}
                       onEdit={() => setEditingCategoryId(category.id)}
                       onDelete={() => handleDeleteCategory(category.id)}
+                      onMoveUp={() => handleMoveCategory(category.id, 'up')}
+                      onMoveDown={() => handleMoveCategory(category.id, 'down')}
+                      canMoveUp={ungroupedCategories.findIndex(c => c.id === category.id) > 0}
+                      canMoveDown={ungroupedCategories.findIndex(c => c.id === category.id) < ungroupedCategories.length - 1}
                     >
                       <span style={itemTitle}>{category.name}</span>
                     </DraggableCard>

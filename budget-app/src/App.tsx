@@ -14,8 +14,10 @@ import Categories from './pages/budget/Categories'
 import Admin from './pages/budget/Admin'
 import AdminUsers from './pages/budget/AdminUsers'
 import AdminMigration from './pages/budget/AdminMigration'
+import AdminFeedback from './pages/budget/AdminFeedback'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
+import { FeedbackButton } from './components/ui'
 import type { type_user_context } from './types/type_user_context'
 
 const initial_user_context: type_user_context = {
@@ -68,10 +70,12 @@ function App() {
                   <Route path="categories" element={<Categories />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="migration" element={<AdminMigration />} />
+                  <Route path="feedback" element={<AdminFeedback />} />
                 </Route>
               </Route>
             </Route>
           </Routes>
+          <FeedbackButton />
         </BrowserRouter>
       </BudgetProvider>
     </UserContext.Provider>

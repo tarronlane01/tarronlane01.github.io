@@ -1,6 +1,18 @@
 import type { DragEvent, ReactNode } from 'react'
-import { card, dropIndicator, dragHandle, buttonGroup } from '../../styles/shared'
+import {
+  card,
+  cardMobile,
+  dropIndicator,
+  dragHandle,
+  buttonGroup,
+  buttonGroupMobile,
+  iconButton,
+  iconButtonDanger,
+  reorderButton,
+  reorderButtonGroup,
+} from '../../styles/shared'
 import { Button } from './Button'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 interface DraggableCardProps {
   children: ReactNode
@@ -13,6 +25,10 @@ interface DraggableCardProps {
   onDrop: (e: DragEvent) => void
   onEdit: () => void
   onDelete: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  canMoveUp?: boolean
+  canMoveDown?: boolean
 }
 
 export function DraggableCard({
@@ -26,7 +42,14 @@ export function DraggableCard({
   onDrop,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = true,
+  canMoveDown = true,
 }: DraggableCardProps) {
+  const isMobile = useIsMobile()
+  const showReorderButtons = onMoveUp || onMoveDown
+
   return (
     <div
       onDragOver={(e) => {
@@ -55,25 +78,88 @@ export function DraggableCard({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         style={{
-          ...card,
+          ...(isMobile ? cardMobile : card),
           cursor: 'grab',
           opacity: isDragging ? 0.5 : 1,
         }}
       >
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={dragHandle}>⋮⋮</span>
-          {children}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.75rem', minWidth: 0 }}>
+          {!isMobile && <span style={dragHandle}>⋮⋮</span>}
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {children}
+          </div>
         </div>
-        <div style={buttonGroup}>
-          <Button variant="secondary" onClick={onEdit}>
-            Edit
-          </Button>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
+        <div style={isMobile ? buttonGroupMobile : buttonGroup}>
+          {isMobile ? (
+            // Mobile: Icon buttons
+            <>
+              <button
+                onClick={onEdit}
+                style={iconButton}
+                title="Edit"
+                aria-label="Edit"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={onDelete}
+                style={iconButtonDanger}
+                title="Delete"
+                aria-label="Delete"
+              >
+                🗑️
+              </button>
+            </>
+          ) : (
+            // Desktop: Full text buttons
+            <>
+              <Button variant="secondary" onClick={onEdit}>
+                Edit
+              </Button>
+              <Button variant="danger" onClick={onDelete}>
+                Delete
+              </Button>
+            </>
+          )}
+          {/* Reorder buttons - on right side after edit/delete */}
+          {showReorderButtons && (
+            <div style={reorderButtonGroup}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMoveUp?.()
+                }}
+                disabled={!canMoveUp}
+                style={{
+                  ...reorderButton,
+                  opacity: canMoveUp ? 0.6 : 0.2,
+                  cursor: canMoveUp ? 'pointer' : 'default',
+                }}
+                title="Move up"
+                aria-label="Move up"
+              >
+                ▲
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMoveDown?.()
+                }}
+                disabled={!canMoveDown}
+                style={{
+                  ...reorderButton,
+                  opacity: canMoveDown ? 0.6 : 0.2,
+                  cursor: canMoveDown ? 'pointer' : 'default',
+                }}
+                title="Move down"
+                aria-label="Move down"
+              >
+                ▼
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
-

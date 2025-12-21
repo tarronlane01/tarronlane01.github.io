@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 
 function Admin() {
@@ -37,6 +37,7 @@ function Admin() {
   const isCategoriesPage = location.pathname.includes('/admin/categories')
   const isUsersPage = location.pathname.includes('/admin/users')
   const isMigrationPage = location.pathname.includes('/admin/migration')
+  const isFeedbackPage = location.pathname.includes('/admin/feedback')
   const isRootAdmin = location.pathname === '/budget/admin'
 
   return (
@@ -45,9 +46,7 @@ function Admin() {
         <Link to="/budget">← Back to Budget</Link>
       </nav>
 
-      <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{ fontSize: '1.5rem' }}>⚙️</span> Admin Settings
-      </h1>
+      <h1>Admin Settings</h1>
       <p style={{ opacity: 0.7, marginBottom: '0.5rem' }}>
         Manage your budget settings, users, and data migration.
       </p>
@@ -138,84 +137,25 @@ function Admin() {
         >
           🔄 Migration
         </Link>
+        <Link
+          to="/budget/admin/feedback"
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            color: 'inherit',
+            background: isFeedbackPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+            border: isFeedbackPage ? '1px solid #646cff' : '1px solid transparent',
+            fontWeight: isFeedbackPage ? 500 : 400,
+          }}
+        >
+          💬 Feedback
+        </Link>
       </div>
 
-      {/* Show dashboard or nested route */}
+      {/* Redirect to accounts by default, or show nested route */}
       {isRootAdmin ? (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1rem',
-        }}>
-          <Link
-            to="/budget/admin/accounts"
-            style={{
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              color: 'inherit',
-              display: 'block',
-            }}
-          >
-            <span style={{ fontSize: '2rem', marginBottom: '0.75rem', display: 'block' }}>🏦</span>
-            <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>Accounts</span>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-              Manage your bank accounts and balances
-            </p>
-          </Link>
-          <Link
-            to="/budget/admin/categories"
-            style={{
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              color: 'inherit',
-              display: 'block',
-            }}
-          >
-            <span style={{ fontSize: '2rem', marginBottom: '0.75rem', display: 'block' }}>🏷️</span>
-            <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>Categories & Groups</span>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-              Manage categories and organize them into groups
-            </p>
-          </Link>
-          <Link
-            to="/budget/admin/users"
-            style={{
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              color: 'inherit',
-              display: 'block',
-            }}
-          >
-            <span style={{ fontSize: '2rem', marginBottom: '0.75rem', display: 'block' }}>👥</span>
-            <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>Manage Users</span>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-              Invite or remove users from this budget
-            </p>
-          </Link>
-          <Link
-            to="/budget/admin/migration"
-            style={{
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              padding: '1.5rem',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              color: 'inherit',
-              display: 'block',
-            }}
-          >
-            <span style={{ fontSize: '2rem', marginBottom: '0.75rem', display: 'block' }}>🔄</span>
-            <span style={{ fontWeight: 500, fontSize: '1.1rem' }}>Data Migration</span>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-              Run data migrations for this budget
-            </p>
-          </Link>
-        </div>
+        <Navigate to="/budget/admin/accounts" replace />
       ) : (
         <Outlet />
       )}

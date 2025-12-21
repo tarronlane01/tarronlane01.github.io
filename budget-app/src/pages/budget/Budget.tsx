@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 import { PageContainer } from '../../components/ui'
-import { navBar, quickLinksGrid, quickLinkCard, colors } from '../../styles/shared'
+import { navBar, colors } from '../../styles/shared'
 
 function Budget() {
   const { currentBudget, isOwner } = useBudget()
@@ -55,21 +55,18 @@ function Budget() {
         </p>
       )}
 
-      <div style={quickLinksGrid}>
-        <Link to="/budget/admin/accounts" style={quickLinkCard}>
-          <span style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}>💳</span>
-          <span style={{ fontWeight: 500 }}>Accounts</span>
-          <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-            Manage your bank accounts and credit cards
-          </p>
-        </Link>
-        <Link to="/budget/admin/categories" style={quickLinkCard}>
-          <span style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}>🏷️</span>
-          <span style={{ fontWeight: 500 }}>Categories & Groups</span>
-          <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-            Organize spending with categories and groups
-          </p>
-        </Link>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '3rem',
+        borderRadius: '12px',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        border: '1px dashed color-mix(in srgb, currentColor 20%, transparent)',
+      }}>
+        <p style={{ margin: 0, opacity: 0.6, fontSize: '1.1rem' }}>
+          Content coming soon
+        </p>
       </div>
     </PageContainer>
   )

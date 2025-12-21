@@ -63,3 +63,23 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Mobile-friendly styles */
+@media (max-width: 640px) {
+  body {
+    min-width: 280px;
+  }
+
+  h1 {
+    font-size: 2em;
+  }
+
+  h2 {
+    font-size: 1.5em;
+  }
+
+  button {
+    padding: 0.5em 1em;
+    font-size: 0.9em;
+  }
+}

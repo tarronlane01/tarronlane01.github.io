@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
+import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, ReactNode } from 'react'
 import { formGroup, label as labelStyle, input as inputStyle, select as selectStyle, form as formStyle, buttonGroupForm } from '../../styles/shared'
 
 // Form wrapper
@@ -65,6 +65,28 @@ export function SelectInput({ children, ...props }: SelectInputProps) {
     <select style={selectStyle} {...props}>
       {children}
     </select>
+  )
+}
+
+// Textarea input
+interface TextAreaInputProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  minHeight?: string
+}
+
+export function TextAreaInput({ minHeight = '6rem', style, ...props }: TextAreaInputProps) {
+  return (
+    <textarea
+      style={{
+        ...inputStyle,
+        width: '100%',
+        minHeight,
+        resize: 'vertical',
+        fontFamily: 'inherit',
+        boxSizing: 'border-box',
+        ...style,
+      }}
+      {...props}
+    />
   )
 }
 

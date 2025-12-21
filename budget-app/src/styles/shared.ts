@@ -1,5 +1,12 @@
 import type { CSSProperties } from 'react'
 
+// Breakpoints
+export const BREAKPOINTS = {
+  mobile: 640,
+  tablet: 768,
+  desktop: 1024,
+}
+
 // Colors
 export const colors = {
   primary: '#646cff',
@@ -34,6 +41,13 @@ export const card: CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   gap: '1rem',
+}
+
+// Mobile-optimized card (smaller padding/height)
+export const cardMobile: CSSProperties = {
+  ...card,
+  padding: '0.6rem 0.875rem',
+  gap: '0.5rem',
 }
 
 export const statsCard: CSSProperties = {
@@ -128,6 +142,57 @@ export const buttonSmall: CSSProperties = {
 export const buttonGroup: CSSProperties = {
   display: 'flex',
   gap: '0.5rem',
+}
+
+// Mobile button group (stacks vertically on small screens)
+export const buttonGroupMobile: CSSProperties = {
+  display: 'flex',
+  gap: '0.25rem',
+}
+
+// Icon button for compact mobile actions
+export const iconButton: CSSProperties = {
+  background: 'transparent',
+  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+  padding: '0.35rem',
+  borderRadius: '6px',
+  cursor: 'pointer',
+  fontSize: '0.9rem',
+  lineHeight: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '2rem',
+  minHeight: '2rem',
+  transition: 'opacity 0.15s, border-color 0.15s',
+}
+
+export const iconButtonDanger: CSSProperties = {
+  ...iconButton,
+  borderColor: colors.errorBorder,
+  color: colors.error,
+}
+
+// Reorder buttons (up/down arrows)
+export const reorderButton: CSSProperties = {
+  background: 'transparent',
+  border: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
+  padding: '0.25rem 0.35rem',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  fontSize: '0.75rem',
+  lineHeight: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  opacity: 0.6,
+  transition: 'opacity 0.15s, background 0.15s',
+}
+
+export const reorderButtonGroup: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
 }
 
 export const buttonGroupForm: CSSProperties = {
