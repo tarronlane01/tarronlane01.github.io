@@ -28,6 +28,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = '28rem' }: 
       <div
         style={{
           background: '#1a1a1a',
+          color: 'rgba(255, 255, 255, 0.87)',
           borderRadius: '12px',
           padding: '1.5rem',
           width: '100%',

@@ -84,7 +84,7 @@ export function DraggableCard({
         }}
       >
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.75rem', minWidth: 0 }}>
-          {!isMobile && <span style={dragHandle}>⋮⋮</span>}
+          <span style={{ ...dragHandle, fontSize: isMobile ? '0.9rem' : undefined }}>⋮⋮</span>
           <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {children}
           </div>

@@ -9,6 +9,9 @@ interface MigrationStatus {
   ownerEmailInFirestore: string | null
   accountTypeMigrationNeeded: boolean
   accountsWithOldType: number
+  userDocsMigrationNeeded: boolean
+  usersToMigrate: number
+  acceptedUserIdsMigrationNeeded: boolean
   loading: boolean
 }
 
@@ -39,6 +42,9 @@ function AdminMigration() {
     ownerEmailInFirestore: null,
     accountTypeMigrationNeeded: false,
     accountsWithOldType: 0,
+    userDocsMigrationNeeded: false,
+    usersToMigrate: 0,
+    acceptedUserIdsMigrationNeeded: false,
     loading: true,
   })
 
@@ -50,6 +56,12 @@ function AdminMigration() {
 
   const [isMigratingAccountTypes, setIsMigratingAccountTypes] = useState(false)
   const [accountTypeMigrationResult, setAccountTypeMigrationResult] = useState<string | null>(null)
+
+  const [isMigratingUserDocs, setIsMigratingUserDocs] = useState(false)
+  const [userDocsMigrationResult, setUserDocsMigrationResult] = useState<string | null>(null)
+
+  const [isMigratingAcceptedUserIds, setIsMigratingAcceptedUserIds] = useState(false)
+  const [acceptedUserIdsMigrationResult, setAcceptedUserIdsMigrationResult] = useState<string | null>(null)
 
   const db = getFirestore(app)
   const current_user = firebase_auth_hook.get_current_firebase_user()
@@ -64,6 +76,9 @@ function AdminMigration() {
             ownerEmailInFirestore: null,
             accountTypeMigrationNeeded: false,
             accountsWithOldType: 0,
+            userDocsMigrationNeeded: false,
+            usersToMigrate: 0,
+            acceptedUserIdsMigrationNeeded: false,
             loading: false,
           })
         }
@@ -83,11 +98,35 @@ function AdminMigration() {
           const accounts = data.accounts || []
           const accountsWithOldType = accounts.filter((a: any) => a.account_type !== undefined)
 
+          // Check if user documents need to be created/updated with budget_ids
+          const userIds: string[] = data.user_ids || []
+          let usersNeedingMigration = 0
+
+          for (const userId of userIds) {
+            const userDocRef = doc(db, 'users', userId)
+            const userDoc = await getDoc(userDocRef)
+
+            if (!userDoc.exists()) {
+              usersNeedingMigration++
+            } else {
+              const userData = userDoc.data()
+              if (!userData.budget_ids?.includes(currentBudget.id)) {
+                usersNeedingMigration++
+              }
+            }
+          }
+
+          // Check if accepted_user_ids field exists
+          const acceptedUserIdsMigrationNeeded = data.accepted_user_ids === undefined
+
           setMigrationStatus({
             ownerIdInFirestore: data.owner_id || null,
             ownerEmailInFirestore: data.owner_email || null,
             accountTypeMigrationNeeded: accountsWithOldType.length > 0,
             accountsWithOldType: accountsWithOldType.length,
+            userDocsMigrationNeeded: usersNeedingMigration > 0,
+            usersToMigrate: usersNeedingMigration,
+            acceptedUserIdsMigrationNeeded,
             loading: false,
           })
         } else {
@@ -96,6 +135,9 @@ function AdminMigration() {
             ownerEmailInFirestore: null,
             accountTypeMigrationNeeded: false,
             accountsWithOldType: 0,
+            userDocsMigrationNeeded: false,
+            usersToMigrate: 0,
+            acceptedUserIdsMigrationNeeded: false,
             loading: false,
           })
         }
@@ -105,6 +147,9 @@ function AdminMigration() {
           ownerEmailInFirestore: null,
           accountTypeMigrationNeeded: false,
           accountsWithOldType: 0,
+          userDocsMigrationNeeded: false,
+          usersToMigrate: 0,
+          acceptedUserIdsMigrationNeeded: false,
           loading: false,
         })
       }
@@ -304,9 +349,135 @@ function AdminMigration() {
     }
   }
 
+  // Migration 4: Create/update user documents with budget_ids
+  async function migrateUserDocs() {
+    if (!currentBudget || !current_user) return
+
+    setIsMigratingUserDocs(true)
+    setUserDocsMigrationResult(null)
+
+    try {
+      const budgetDocRef = doc(db, 'budgets', currentBudget.id)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget document not found')
+      }
+
+      const data = budgetDoc.data()
+      const userIds: string[] = data.user_ids || []
+
+      let migratedCount = 0
+      let createdCount = 0
+
+      for (const userId of userIds) {
+        const userDocRef = doc(db, 'users', userId)
+        const userDoc = await getDoc(userDocRef)
+
+        if (!userDoc.exists()) {
+          // Create new user document
+          await setDoc(userDocRef, {
+            uid: userId,
+            email: null,
+            budget_ids: [currentBudget.id],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          createdCount++
+          migratedCount++
+        } else {
+          const userData = userDoc.data()
+          if (!userData.budget_ids?.includes(currentBudget.id)) {
+            // Update existing user document to include this budget
+            await setDoc(userDocRef, {
+              ...userData,
+              budget_ids: [...(userData.budget_ids || []), currentBudget.id],
+              updated_at: new Date().toISOString(),
+            })
+            migratedCount++
+          }
+        }
+      }
+
+      // Update local status
+      setMigrationStatus(prev => ({
+        ...prev,
+        userDocsMigrationNeeded: false,
+        usersToMigrate: 0,
+      }))
+
+      if (migratedCount === 0) {
+        setUserDocsMigrationResult('All user documents are already up to date')
+      } else {
+        setUserDocsMigrationResult(
+          `Successfully migrated ${migratedCount} user(s). ` +
+          `Created ${createdCount} new user document(s), updated ${migratedCount - createdCount} existing.`
+        )
+      }
+    } catch (err) {
+      setUserDocsMigrationResult(`Error: ${err instanceof Error ? err.message : 'Migration failed'}`)
+    } finally {
+      setIsMigratingUserDocs(false)
+    }
+  }
+
+  // Migration 5: Add accepted_user_ids field to budget
+  // For existing budgets, we assume all users in user_ids have already accepted (from old flow)
+  async function migrateAcceptedUserIds() {
+    if (!currentBudget || !current_user) return
+
+    setIsMigratingAcceptedUserIds(true)
+    setAcceptedUserIdsMigrationResult(null)
+
+    try {
+      const budgetDocRef = doc(db, 'budgets', currentBudget.id)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget document not found')
+      }
+
+      const data = budgetDoc.data()
+
+      if (data.accepted_user_ids !== undefined) {
+        setAcceptedUserIdsMigrationResult('accepted_user_ids field already exists')
+        setMigrationStatus(prev => ({
+          ...prev,
+          acceptedUserIdsMigrationNeeded: false,
+        }))
+        setIsMigratingAcceptedUserIds(false)
+        return
+      }
+
+      // For existing budgets, set accepted_user_ids to match user_ids
+      // (assume all existing users have already accepted from old flow)
+      const acceptedUserIds = data.user_ids || []
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        accepted_user_ids: acceptedUserIds,
+      })
+
+      setMigrationStatus(prev => ({
+        ...prev,
+        acceptedUserIdsMigrationNeeded: false,
+      }))
+
+      setAcceptedUserIdsMigrationResult(
+        `Successfully added accepted_user_ids field with ${acceptedUserIds.length} user(s) marked as accepted.`
+      )
+    } catch (err) {
+      setAcceptedUserIdsMigrationResult(`Error: ${err instanceof Error ? err.message : 'Migration failed'}`)
+    } finally {
+      setIsMigratingAcceptedUserIds(false)
+    }
+  }
+
   const hasOwnerId = !!migrationStatus.ownerIdInFirestore
   const hasOwnerEmail = !!migrationStatus.ownerEmailInFirestore
   const needsAccountTypeMigration = migrationStatus.accountTypeMigrationNeeded
+  const needsUserDocsMigration = migrationStatus.userDocsMigrationNeeded
+  const needsAcceptedUserIdsMigration = migrationStatus.acceptedUserIdsMigrationNeeded
 
   if (migrationStatus.loading) {
     return (
@@ -613,6 +784,196 @@ function AdminMigration() {
                   : '#4ade80',
               }}>
                 {accountTypeMigrationResult}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Migration 4: Migrate User Documents (budget access) */}
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+      }}>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            background: !needsUserDocsMigration ? 'rgba(34, 197, 94, 0.2)' : 'rgba(100, 108, 255, 0.2)',
+            color: !needsUserDocsMigration ? '#4ade80' : '#a5b4fc',
+            padding: '0.15rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}>
+            {!needsUserDocsMigration ? 'Complete' : 'Step 4'}
+          </span>
+          Migrate User Documents (Budget Access)
+        </h3>
+        <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
+          Creates user documents in the <code style={{ background: 'color-mix(in srgb, currentColor 10%, transparent)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>users</code> collection
+          and populates their <code style={{ background: 'color-mix(in srgb, currentColor 10%, transparent)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>budget_ids</code> array.
+          This is required for the new permission system where user documents are the source of truth for budget access.
+        </p>
+
+        {isMigratingUserDocs ? (
+          <div style={{
+            background: 'rgba(100, 108, 255, 0.1)',
+            border: '1px solid rgba(100, 108, 255, 0.3)',
+            color: '#a5b4fc',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            <Spinner /> Running migration...
+          </div>
+        ) : !needsUserDocsMigration ? (
+          <div style={{
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: '#4ade80',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+          }}>
+            ✅ All user documents are set up with budget access
+          </div>
+        ) : (
+          <>
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#fbbf24',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+            }}>
+              ⚠️ Found {migrationStatus.usersToMigrate} user(s) needing user document migration
+            </div>
+
+            <button
+              onClick={migrateUserDocs}
+              disabled={!current_user}
+              style={{
+                background: '#646cff',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                cursor: !current_user ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+                opacity: !current_user ? 0.7 : 1,
+              }}
+            >
+              Migrate User Documents
+            </button>
+
+            {userDocsMigrationResult && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                background: userDocsMigrationResult.startsWith('Error')
+                  ? 'rgba(220, 38, 38, 0.1)'
+                  : 'rgba(34, 197, 94, 0.1)',
+                border: userDocsMigrationResult.startsWith('Error')
+                  ? '1px solid rgba(220, 38, 38, 0.3)'
+                  : '1px solid rgba(34, 197, 94, 0.3)',
+                color: userDocsMigrationResult.startsWith('Error')
+                  ? '#f87171'
+                  : '#4ade80',
+              }}>
+                {userDocsMigrationResult}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Migration 5: Add accepted_user_ids field */}
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+      }}>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            background: !needsAcceptedUserIdsMigration ? 'rgba(34, 197, 94, 0.2)' : 'rgba(100, 108, 255, 0.2)',
+            color: !needsAcceptedUserIdsMigration ? '#4ade80' : '#a5b4fc',
+            padding: '0.15rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}>
+            {!needsAcceptedUserIdsMigration ? 'Complete' : 'Step 5'}
+          </span>
+          Add Accepted Users Tracking
+        </h3>
+        <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
+          Adds the <code style={{ background: 'color-mix(in srgb, currentColor 10%, transparent)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>accepted_user_ids</code> field
+          to track which invited users have accepted. For existing budgets, all current users are marked as accepted.
+        </p>
+
+        {isMigratingAcceptedUserIds ? (
+          <div style={{
+            background: 'rgba(100, 108, 255, 0.1)',
+            border: '1px solid rgba(100, 108, 255, 0.3)',
+            color: '#a5b4fc',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            <Spinner /> Running migration...
+          </div>
+        ) : !needsAcceptedUserIdsMigration ? (
+          <div style={{
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: '#4ade80',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+          }}>
+            ✅ Budget already has accepted_user_ids tracking
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={migrateAcceptedUserIds}
+              disabled={!current_user}
+              style={{
+                background: '#646cff',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                cursor: !current_user ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+                opacity: !current_user ? 0.7 : 1,
+              }}
+            >
+              Add Accepted Users Field
+            </button>
+
+            {acceptedUserIdsMigrationResult && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                background: acceptedUserIdsMigrationResult.startsWith('Error')
+                  ? 'rgba(220, 38, 38, 0.1)'
+                  : 'rgba(34, 197, 94, 0.1)',
+                border: acceptedUserIdsMigrationResult.startsWith('Error')
+                  ? '1px solid rgba(220, 38, 38, 0.3)'
+                  : '1px solid rgba(34, 197, 94, 0.3)',
+                color: acceptedUserIdsMigrationResult.startsWith('Error')
+                  ? '#f87171'
+                  : '#4ade80',
+              }}>
+                {acceptedUserIdsMigrationResult}
               </div>
             )}
           </>

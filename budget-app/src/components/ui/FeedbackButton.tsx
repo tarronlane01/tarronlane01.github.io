@@ -9,6 +9,8 @@ import { Modal } from './Modal'
 import { TextAreaInput } from './FormElements'
 import { FormButtonGroup } from './FormElements'
 
+type FeedbackType = 'critical_bug' | 'bug' | 'feature'
+
 interface FeedbackItem {
   id: string
   text: string
@@ -16,11 +18,19 @@ interface FeedbackItem {
   is_done: boolean
   completed_at: string | null
   sort_order: number
+  feedback_type?: FeedbackType
+}
+
+const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
+  critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
+  bug: { label: 'Bug', color: '#ffa502', bgColor: 'rgba(255, 165, 2, 0.15)' },
+  feature: { label: 'Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
 }
 
 export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,6 +62,7 @@ export function FeedbackButton() {
         is_done: false,
         completed_at: null,
         sort_order: Date.now(),
+        feedback_type: feedbackType,
       }
 
       const docSnap = await getDoc(feedbackDocRef)
@@ -63,6 +74,7 @@ export function FeedbackButton() {
       }
 
       setFeedbackText('')
+      setFeedbackType('bug')
       setSubmitSuccess(true)
       setTimeout(() => {
         setSubmitSuccess(false)
@@ -111,7 +123,7 @@ export function FeedbackButton() {
         💬
       </button>
 
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Send Feedback">
+      <Modal isOpen={isOpen} onClose={() => { setIsOpen(false); setFeedbackType('bug') }} title="Send Feedback">
         {submitSuccess ? (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: colors.success }}>
             <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>✓</span>
@@ -119,6 +131,33 @@ export function FeedbackButton() {
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+                const config = feedbackTypeConfig[type]
+                const isSelected = feedbackType === type
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFeedbackType(type)}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem 0.5rem',
+                      border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                      borderRadius: '0.5rem',
+                      background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                      color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+                      cursor: 'pointer',
+                      fontWeight: isSelected ? 600 : 400,
+                      fontSize: '0.8rem',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {config.label}
+                  </button>
+                )
+              })}
+            </div>
             <TextAreaInput
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
@@ -135,7 +174,7 @@ export function FeedbackButton() {
             )}
 
             <FormButtonGroup>
-              <Button type="button" variant="secondary" onClick={() => setIsOpen(false)}>
+              <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
                 Cancel
               </Button>
               <Button type="submit" isLoading={isSubmitting} disabled={!feedbackText.trim()}>

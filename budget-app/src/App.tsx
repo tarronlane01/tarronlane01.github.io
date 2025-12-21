@@ -15,6 +15,8 @@ import Admin from './pages/budget/Admin'
 import AdminUsers from './pages/budget/AdminUsers'
 import AdminMigration from './pages/budget/AdminMigration'
 import AdminFeedback from './pages/budget/AdminFeedback'
+import AdminTests from './pages/budget/AdminTests'
+import AdminMyBudgets from './pages/budget/AdminMyBudgets'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton } from './components/ui'
@@ -66,11 +68,13 @@ function App() {
 
                 {/* Admin routes */}
                 <Route path="admin" element={<Admin />}>
+                  <Route path="my-budgets" element={<AdminMyBudgets />} />
                   <Route path="accounts" element={<Accounts />} />
                   <Route path="categories" element={<Categories />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="migration" element={<AdminMigration />} />
                   <Route path="feedback" element={<AdminFeedback />} />
+                  <Route path="tests" element={<AdminTests />} />
                 </Route>
               </Route>
             </Route>

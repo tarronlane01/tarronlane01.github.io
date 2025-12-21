@@ -10,6 +10,7 @@ import {
   FormWrapper,
   FormField,
   TextInput,
+  SelectInput,
   FormButtonGroup,
   StatCard,
 } from '../../components/ui'
@@ -26,6 +27,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 
 interface CategoryFormData {
   name: string
+  category_group_id: string | null
 }
 
 interface GroupFormData {
@@ -102,6 +104,9 @@ function Categories() {
   async function handleCreateCategory(formData: CategoryFormData, forGroupId: string | null) {
     if (!currentBudget) return
 
+    // Use the group from the context (where form was opened from)
+    const effectiveGroupId = forGroupId === 'ungrouped' ? null : forGroupId
+
     const groupCategories = categories.filter(c =>
       (forGroupId === 'ungrouped' ? !c.category_group_id : c.category_group_id === forGroupId)
     )
@@ -112,7 +117,7 @@ function Categories() {
     const newCategory: Category = {
       id: `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: formData.name,
-      category_group_id: forGroupId === 'ungrouped' ? null : forGroupId,
+      category_group_id: effectiveGroupId,
       sort_order: maxSortOrder + 1,
     }
 
@@ -131,8 +136,33 @@ function Categories() {
   async function handleUpdateCategory(categoryId: string, formData: CategoryFormData) {
     if (!currentBudget) return
     try {
-      const newCategories = categories.map(category =>
-        category.id === categoryId ? { ...category, name: formData.name } : category
+      const category = categories.find(c => c.id === categoryId)
+      if (!category) return
+
+      const oldGroupId = category.category_group_id || 'ungrouped'
+      const newGroupId = formData.category_group_id
+
+      // If group changed, update sort_order for the new group
+      let newSortOrder = category.sort_order
+      if (oldGroupId !== (newGroupId || 'ungrouped')) {
+        const targetGroupCategories = categories.filter(c => {
+          const catGroupId = c.category_group_id || 'ungrouped'
+          return catGroupId === (newGroupId || 'ungrouped') && c.id !== categoryId
+        })
+        newSortOrder = targetGroupCategories.length > 0
+          ? Math.max(...targetGroupCategories.map(c => c.sort_order)) + 1
+          : 0
+      }
+
+      const newCategories = categories.map(cat =>
+        cat.id === categoryId
+          ? {
+              ...cat,
+              name: formData.name,
+              category_group_id: newGroupId,
+              sort_order: newSortOrder,
+            }
+          : cat
       )
       setCategories(newCategories)
       await saveCategories(newCategories)
@@ -677,10 +707,12 @@ function Categories() {
                       editingCategoryId === category.id ? (
                         <CategoryForm
                           key={category.id}
-                          initialData={{ name: category.name }}
+                          initialData={{ name: category.name, category_group_id: category.category_group_id }}
                           onSubmit={(data) => handleUpdateCategory(category.id, data)}
                           onCancel={() => setEditingCategoryId(null)}
                           submitLabel="Save"
+                          categoryGroups={categoryGroups}
+                          showGroupSelector={true}
                         />
                       ) : (
                         <DraggableCard
@@ -734,10 +766,11 @@ function Categories() {
 
                     {createForGroupId === group.id && (
                       <CategoryForm
-                        initialData={{ name: '' }}
+                        initialData={{ name: '', category_group_id: group.id }}
                         onSubmit={(data) => handleCreateCategory(data, group.id)}
                         onCancel={() => setCreateForGroupId(null)}
                         submitLabel="Create"
+                        categoryGroups={categoryGroups}
                       />
                     )}
                   </div>
@@ -820,10 +853,12 @@ function Categories() {
                   editingCategoryId === category.id ? (
                     <CategoryForm
                       key={category.id}
-                      initialData={{ name: category.name }}
+                      initialData={{ name: category.name, category_group_id: category.category_group_id }}
                       onSubmit={(data) => handleUpdateCategory(category.id, data)}
                       onCancel={() => setEditingCategoryId(null)}
                       submitLabel="Save"
+                      categoryGroups={categoryGroups}
+                      showGroupSelector={true}
                     />
                   ) : (
                     <DraggableCard
@@ -877,10 +912,11 @@ function Categories() {
 
                 {createForGroupId === 'ungrouped' && (
                   <CategoryForm
-                    initialData={{ name: '' }}
+                    initialData={{ name: '', category_group_id: null }}
                     onSubmit={(data) => handleCreateCategory(data, 'ungrouped')}
                     onCancel={() => setCreateForGroupId(null)}
                     submitLabel="Create"
+                    categoryGroups={categoryGroups}
                   />
                 )}
               </div>
@@ -920,10 +956,12 @@ interface CategoryFormProps {
   onSubmit: (data: CategoryFormData) => void
   onCancel: () => void
   submitLabel: string
+  categoryGroups?: CategoryGroup[]
+  showGroupSelector?: boolean
 }
 
-function CategoryForm({ initialData, onSubmit, onCancel, submitLabel }: CategoryFormProps) {
-  const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '' })
+function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGroups = [], showGroupSelector = false }: CategoryFormProps) {
+  const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '', category_group_id: null })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleSubmit(e: FormEvent) {
@@ -946,6 +984,23 @@ function CategoryForm({ initialData, onSubmit, onCancel, submitLabel }: Category
           autoFocus
         />
       </FormField>
+      {showGroupSelector && (
+        <FormField label="Category Group" htmlFor="category-group">
+          <SelectInput
+            id="category-group"
+            value={formData.category_group_id || 'ungrouped'}
+            onChange={(e) => setFormData({
+              ...formData,
+              category_group_id: e.target.value === 'ungrouped' ? null : e.target.value
+            })}
+          >
+            <option value="ungrouped">Uncategorized</option>
+            {categoryGroups.map(group => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
+          </SelectInput>
+        </FormField>
+      )}
       <FormButtonGroup>
         <Button type="submit" isLoading={isSubmitting}>{submitLabel}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

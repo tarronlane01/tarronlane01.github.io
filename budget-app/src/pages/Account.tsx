@@ -37,7 +37,7 @@ export default function Account() {
                     ? <p>Logging Out...</p>
                     : <>
                         <p>You are logged in as {user_context.username}</p>
-                        <button onClick={logout_action}>Logout</button>
+                        <button onClick={logout_action} style={{ marginTop: '1rem' }}>Logout</button>
                     </>
                 )
                 : <LoginForm />

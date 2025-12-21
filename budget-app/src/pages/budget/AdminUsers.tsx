@@ -2,9 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 
 function AdminUsers() {
-  const { currentBudget, currentUserId, updateBudgetUsers, refreshBudget } = useBudget()
+  const { currentBudget, currentUserId, budgetUserIds, acceptedUserIds, inviteUserToBudget, revokeUserFromBudget } = useBudget()
   const [newUserId, setNewUserId] = useState('')
-  const [isAdding, setIsAdding] = useState(false)
+  const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -12,67 +12,65 @@ function AdminUsers() {
     return <p>No budget found.</p>
   }
 
-  async function handleAddUser(e: FormEvent) {
+  async function handleInviteUser(e: FormEvent) {
     e.preventDefault()
     if (!newUserId.trim() || !currentBudget) return
 
-    setIsAdding(true)
+    setIsInviting(true)
     setError(null)
     setSuccess(null)
 
     try {
-      // Check if user already exists
-      if (currentBudget.user_ids.includes(newUserId.trim())) {
-        throw new Error('This user already has access to this budget')
-      }
-
-      const updatedUserIds = [...currentBudget.user_ids, newUserId.trim()]
-      await updateBudgetUsers(updatedUserIds)
-      await refreshBudget()
-
+      await inviteUserToBudget(newUserId.trim())
       setNewUserId('')
-      setSuccess('User added successfully!')
+      setSuccess('Invite sent! The user can now accept the invitation from their account.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add user')
+      setError(err instanceof Error ? err.message : 'Failed to invite user')
     } finally {
-      setIsAdding(false)
+      setIsInviting(false)
     }
   }
 
-  async function handleRemoveUser(userIdToRemove: string) {
+  async function handleRevokeUser(userIdToRevoke: string) {
     if (!currentBudget) return
 
-    if (userIdToRemove === currentBudget.owner_id) {
-      setError('Cannot remove the budget owner')
+    if (userIdToRevoke === currentBudget.owner_id) {
+      setError('Cannot revoke the budget owner')
       return
     }
 
-    if (userIdToRemove === currentUserId) {
-      setError('Cannot remove yourself from the budget')
+    if (userIdToRevoke === currentUserId) {
+      setError('Cannot revoke yourself from the budget')
       return
     }
 
-    if (!confirm(`Are you sure you want to remove this user from the budget?`)) return
+    const hasAccepted = acceptedUserIds.includes(userIdToRevoke)
+    const message = hasAccepted
+      ? 'Are you sure you want to revoke this user\'s access? They will lose access to this budget.'
+      : 'Are you sure you want to cancel this invitation?'
+
+    if (!confirm(message)) return
 
     setError(null)
     setSuccess(null)
 
     try {
-      const updatedUserIds = currentBudget.user_ids.filter(id => id !== userIdToRemove)
-      await updateBudgetUsers(updatedUserIds)
-      await refreshBudget()
-
-      setSuccess('User removed successfully!')
+      await revokeUserFromBudget(userIdToRevoke)
+      setSuccess(hasAccepted ? 'User access revoked.' : 'Invitation cancelled.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove user')
+      setError(err instanceof Error ? err.message : 'Failed to revoke user')
     }
   }
+
+  // Separate users into accepted and pending
+  const acceptedUsers = budgetUserIds.filter(id => acceptedUserIds.includes(id))
+  const pendingUsers = budgetUserIds.filter(id => !acceptedUserIds.includes(id))
 
   return (
     <div>
       <h2 style={{ marginTop: 0 }}>Budget Users</h2>
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-        Manage who has access to this budget. Add users by their Firebase User ID.
+        Invite users to access this budget. They must accept the invitation before they can access it.
       </p>
 
       {error && (
@@ -135,7 +133,7 @@ function AdminUsers() {
         </div>
       )}
 
-      {/* Current Users List */}
+      {/* Active Users (Accepted) */}
       <div style={{
         background: 'color-mix(in srgb, currentColor 5%, transparent)',
         padding: '1.25rem',
@@ -143,19 +141,113 @@ function AdminUsers() {
         marginBottom: '1.5rem',
       }}>
         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>
-          Current Users ({currentBudget.user_ids.length})
+          Active Users ({acceptedUsers.length})
         </h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {currentBudget.user_ids.map((userId) => {
-            const isOwner = userId === currentBudget.owner_id
-            const isCurrentUser = userId === currentUserId
+        {acceptedUsers.length === 0 ? (
+          <p style={{ opacity: 0.6, margin: 0 }}>No users have accepted invitations yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {acceptedUsers.map((userId) => {
+              const isOwner = userId === currentBudget.owner_id
+              const isCurrentUser = userId === currentUserId
 
-            return (
+              return (
+                <div
+                  key={userId}
+                  style={{
+                    background: 'color-mix(in srgb, currentColor 8%, transparent)',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <code style={{
+                        fontSize: '0.85rem',
+                        background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '4px',
+                        wordBreak: 'break-all',
+                      }}>
+                        {userId}
+                      </code>
+                      {isOwner && (
+                        <span style={{
+                          background: 'color-mix(in srgb, #646cff 20%, transparent)',
+                          color: '#a5b4fc',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                        }}>
+                          Owner
+                        </span>
+                      )}
+                      {isCurrentUser && (
+                        <span style={{
+                          background: 'color-mix(in srgb, #22c55e 20%, transparent)',
+                          color: '#4ade80',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                        }}>
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!isOwner && !isCurrentUser && (
+                    <button
+                      onClick={() => handleRevokeUser(userId)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(220, 38, 38, 0.4)',
+                        color: '#f87171',
+                        padding: '0.4rem 0.75rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Revoke Access
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Pending Invitations */}
+      {pendingUsers.length > 0 && (
+        <div style={{
+          background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          padding: '1.25rem',
+          borderRadius: '8px',
+          marginBottom: '1.5rem',
+        }}>
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>
+            Pending Invitations ({pendingUsers.length})
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {pendingUsers.map((userId) => (
               <div
                 key={userId}
                 style={{
-                  background: 'color-mix(in srgb, currentColor 8%, transparent)',
+                  background: 'color-mix(in srgb, #f59e0b 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)',
                   padding: '0.75rem 1rem',
                   borderRadius: '6px',
                   display: 'flex',
@@ -175,67 +267,51 @@ function AdminUsers() {
                     }}>
                       {userId}
                     </code>
-                    {isOwner && (
-                      <span style={{
-                        background: 'color-mix(in srgb, #646cff 20%, transparent)',
-                        color: '#a5b4fc',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        textTransform: 'uppercase',
-                        fontWeight: 600,
-                      }}>
-                        Owner
-                      </span>
-                    )}
-                    {isCurrentUser && (
-                      <span style={{
-                        background: 'color-mix(in srgb, #22c55e 20%, transparent)',
-                        color: '#4ade80',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        textTransform: 'uppercase',
-                        fontWeight: 600,
-                      }}>
-                        You
-                      </span>
-                    )}
+                    <span style={{
+                      background: 'color-mix(in srgb, #f59e0b 20%, transparent)',
+                      color: '#fbbf24',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                    }}>
+                      Pending
+                    </span>
                   </div>
                 </div>
 
-                {!isOwner && !isCurrentUser && (
-                  <button
-                    onClick={() => handleRemoveUser(userId)}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid rgba(220, 38, 38, 0.4)',
-                      color: '#f87171',
-                      padding: '0.4rem 0.75rem',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
+                <button
+                  onClick={() => handleRevokeUser(userId)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid color-mix(in srgb, currentColor 30%, transparent)',
+                    color: 'inherit',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    whiteSpace: 'nowrap',
+                    opacity: 0.8,
+                  }}
+                >
+                  Cancel Invite
+                </button>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Add User Form */}
+      {/* Invite User Form */}
       <div style={{
         background: 'color-mix(in srgb, currentColor 5%, transparent)',
         padding: '1.25rem',
         borderRadius: '8px',
       }}>
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>Add User</h3>
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>Invite User</h3>
 
-        <form onSubmit={handleAddUser} style={{ display: 'flex', gap: '0.75rem' }}>
+        <form onSubmit={handleInviteUser} style={{ display: 'flex', gap: '0.75rem' }}>
           <input
             type="text"
             value={newUserId}
@@ -253,31 +329,40 @@ function AdminUsers() {
           />
           <button
             type="submit"
-            disabled={isAdding || !newUserId.trim()}
+            disabled={isInviting || !newUserId.trim()}
             style={{
               background: '#646cff',
               color: 'white',
               border: 'none',
               padding: '0.6rem 1.25rem',
               borderRadius: '6px',
-              cursor: isAdding || !newUserId.trim() ? 'not-allowed' : 'pointer',
+              cursor: isInviting || !newUserId.trim() ? 'not-allowed' : 'pointer',
               fontWeight: 500,
-              opacity: isAdding || !newUserId.trim() ? 0.7 : 1,
+              opacity: isInviting || !newUserId.trim() ? 0.7 : 1,
               whiteSpace: 'nowrap',
             }}
           >
-            {isAdding ? 'Adding...' : 'Add User'}
+            {isInviting ? 'Inviting...' : 'Send Invite'}
           </button>
         </form>
 
         <p style={{ margin: '1rem 0 0 0', fontSize: '0.85rem', opacity: 0.6 }}>
-          💡 To get a user's Firebase ID, they need to log in and you can find it in the Firebase Console
-          under Authentication → Users, or they can share it from their account page.
+          💡 The invited user will need to accept the invitation from their Account page using this budget's ID:
         </p>
+        <code style={{
+          display: 'block',
+          marginTop: '0.5rem',
+          padding: '0.5rem 0.75rem',
+          background: 'color-mix(in srgb, currentColor 10%, transparent)',
+          borderRadius: '6px',
+          fontSize: '0.85rem',
+          wordBreak: 'break-all',
+        }}>
+          {currentBudget.id}
+        </code>
       </div>
     </div>
   )
 }
 
 export default AdminUsers
-

@@ -16,6 +16,7 @@ export const colors = {
   errorBorder: 'rgba(220, 38, 38, 0.3)',
   success: '#4ade80',
   danger: '#f87171',
+  warning: '#facc15',
 }
 
 // Layout styles

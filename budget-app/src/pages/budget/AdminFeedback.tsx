@@ -9,11 +9,13 @@ import {
   FormWrapper,
   TextAreaInput,
   FormButtonGroup,
-  Checkbox,
   CollapsibleSection,
   formatDate,
+  Modal,
 } from '../../components/ui'
 import { pageSubtitle, listContainer, card, dragHandle, dropIndicator, colors } from '../../styles/shared'
+
+type FeedbackType = 'critical_bug' | 'bug' | 'feature'
 
 interface FeedbackItem {
   id: string
@@ -22,6 +24,13 @@ interface FeedbackItem {
   is_done: boolean
   completed_at: string | null
   sort_order: number
+  feedback_type?: FeedbackType
+}
+
+const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
+  critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
+  bug: { label: 'Bug', color: '#ffa502', bgColor: 'rgba(255, 165, 2, 0.15)' },
+  feature: { label: 'Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
 }
 
 interface FeedbackDoc {
@@ -42,7 +51,10 @@ function AdminFeedback() {
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newFeedbackText, setNewFeedbackText] = useState('')
+  const [newFeedbackType, setNewFeedbackType] = useState<FeedbackType>('bug')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [confirmingItem, setConfirmingItem] = useState<FlattenedFeedbackItem | null>(null)
+  const [editingTypeItem, setEditingTypeItem] = useState<FlattenedFeedbackItem | null>(null)
 
   const userContext = useContext(UserContext)
   const db = getFirestore(app)
@@ -92,6 +104,7 @@ function AdminFeedback() {
         is_done: false,
         completed_at: null,
         sort_order: Date.now(),
+        feedback_type: newFeedbackType,
       }
 
       const docSnap = await getDoc(feedbackDocRef)
@@ -104,6 +117,7 @@ function AdminFeedback() {
 
       setAllFeedback((prev) => [...prev, { ...newFeedbackItem, user_email: userContext.username, doc_id: docId }])
       setNewFeedbackText('')
+      setNewFeedbackType('bug')
       setShowAddForm(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add feedback')
@@ -121,7 +135,7 @@ function AdminFeedback() {
         const docData = docSnap.data() as FeedbackDoc
         const updatedItems = docData.items.map((fi: FeedbackItem) =>
           fi.id === item.id
-            ? { id: item.id, text: item.text, created_at: item.created_at, is_done: item.is_done, completed_at: item.completed_at, sort_order: item.sort_order }
+            ? { id: item.id, text: item.text, created_at: item.created_at, is_done: item.is_done, completed_at: item.completed_at, sort_order: item.sort_order, feedback_type: item.feedback_type || 'bug' }
             : fi
         )
         await setDoc(docRef, { ...docData, items: updatedItems })
@@ -131,13 +145,38 @@ function AdminFeedback() {
     }
   }
 
-  async function toggleDone(item: FlattenedFeedbackItem) {
+  function handleToggleDone(item: FlattenedFeedbackItem) {
+    // If marking as complete, ask for confirmation first
+    if (!item.is_done) {
+      setConfirmingItem(item)
+    } else {
+      // If unchecking (marking as not complete), do it immediately
+      performToggleDone(item)
+    }
+  }
+
+  async function performToggleDone(item: FlattenedFeedbackItem) {
     const updatedItem = {
       ...item,
       is_done: !item.is_done,
       completed_at: !item.is_done ? new Date().toISOString() : null,
     }
     setAllFeedback((prev) => prev.map((fi) => (fi.id === item.id ? updatedItem : fi)))
+    await saveItemUpdate(updatedItem)
+  }
+
+  function confirmComplete() {
+    if (confirmingItem) {
+      performToggleDone(confirmingItem)
+      setConfirmingItem(null)
+    }
+  }
+
+  async function handleTypeChange(newType: FeedbackType) {
+    if (!editingTypeItem) return
+    const updatedItem = { ...editingTypeItem, feedback_type: newType }
+    setAllFeedback((prev) => prev.map((fi) => (fi.id === editingTypeItem.id ? updatedItem : fi)))
+    setEditingTypeItem(null)
     await saveItemUpdate(updatedItem)
   }
 
@@ -216,7 +255,8 @@ function AdminFeedback() {
             onDragLeave={handleDragLeave}
             onDragEnd={handleDragEnd}
             onDrop={(e) => handleDrop(e, item.id)}
-            onToggleDone={() => toggleDone(item)}
+            onToggleDone={() => handleToggleDone(item)}
+            onTypeClick={() => setEditingTypeItem(item)}
           />
         ))}
 
@@ -232,6 +272,33 @@ function AdminFeedback() {
 
       {showAddForm ? (
         <FormWrapper onSubmit={handleAddFeedback}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+              const config = feedbackTypeConfig[type]
+              const isSelected = newFeedbackType === type
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setNewFeedbackType(type)}
+                  style={{
+                    flex: 1,
+                    padding: '0.6rem 0.75rem',
+                    border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                    borderRadius: '0.5rem',
+                    background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                    color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer',
+                    fontWeight: isSelected ? 600 : 400,
+                    fontSize: '0.85rem',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {config.label}
+                </button>
+              )
+            })}
+          </div>
           <TextAreaInput
             value={newFeedbackText}
             onChange={(e) => setNewFeedbackText(e.target.value)}
@@ -243,7 +310,7 @@ function AdminFeedback() {
             <Button type="submit" isLoading={isSubmitting} disabled={!newFeedbackText.trim()}>
               Add Feedback
             </Button>
-            <Button type="button" variant="secondary" onClick={() => { setShowAddForm(false); setNewFeedbackText('') }}>
+            <Button type="button" variant="secondary" onClick={() => { setShowAddForm(false); setNewFeedbackText(''); setNewFeedbackType('bug') }}>
               Cancel
             </Button>
           </FormButtonGroup>
@@ -259,7 +326,21 @@ function AdminFeedback() {
           <div style={{ ...listContainer, marginTop: '0.5rem' }}>
             {completedItems.map((item) => (
               <div key={item.id} style={{ ...card, opacity: 0.6, flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
-                <Checkbox checked={item.is_done} onChange={() => toggleDone(item)}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={item.is_done}
+                    onChange={() => handleToggleDone(item)}
+                    style={{
+                      width: '1.25rem',
+                      height: '1.25rem',
+                      marginTop: '0.1rem',
+                      cursor: 'pointer',
+                      accentColor: colors.primary,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <FeedbackTypeBadge type={item.feedback_type} onClick={() => setEditingTypeItem(item)} />
                   <div style={{ flex: 1 }}>
                     <p style={{ margin: 0, lineHeight: 1.5, textDecoration: 'line-through' }}>{item.text}</p>
                     <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.8 }}>
@@ -271,12 +352,75 @@ function AdminFeedback() {
                       </p>
                     )}
                   </div>
-                </Checkbox>
+                </div>
               </div>
             ))}
           </div>
         </CollapsibleSection>
       )}
+
+      <Modal
+        isOpen={confirmingItem !== null}
+        onClose={() => setConfirmingItem(null)}
+        title="Mark as Complete"
+      >
+        <p style={{ margin: '0 0 1.5rem 0' }}>
+          Are you sure you want to mark this feedback item as complete?
+        </p>
+        {confirmingItem && (
+          <p style={{ margin: '0 0 1.5rem 0', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem', fontSize: '0.9rem' }}>
+            "{confirmingItem.text}"
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" onClick={() => setConfirmingItem(null)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={confirmComplete}>
+            Mark Complete
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={editingTypeItem !== null}
+        onClose={() => setEditingTypeItem(null)}
+        title="Change Feedback Type"
+      >
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', opacity: 0.8 }}>
+          Select a new type for this feedback:
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+            const config = feedbackTypeConfig[type]
+            const isSelected = editingTypeItem?.feedback_type === type || (!editingTypeItem?.feedback_type && type === 'bug')
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleTypeChange(type)}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem 0.5rem',
+                  border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                  borderRadius: '0.5rem',
+                  background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                  color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+                  cursor: 'pointer',
+                  fontWeight: isSelected ? 600 : 400,
+                  fontSize: '0.85rem',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {config.label}
+              </button>
+            )
+          })}
+        </div>
+        <Button variant="secondary" onClick={() => setEditingTypeItem(null)} style={{ width: '100%' }}>
+          Cancel
+        </Button>
+      </Modal>
     </div>
   )
 }
@@ -292,9 +436,40 @@ interface FeedbackCardProps {
   onDragEnd: () => void
   onDrop: (e: DragEvent) => void
   onToggleDone: () => void
+  onTypeClick: () => void
 }
 
-function FeedbackCard({ item, isDragging, isDragOver, onDragStart, onDragOver, onDragLeave, onDragEnd, onDrop, onToggleDone }: FeedbackCardProps) {
+function FeedbackTypeBadge({ type, onClick }: { type?: FeedbackType; onClick?: () => void }) {
+  const feedbackType = type || 'bug'
+  const config = feedbackTypeConfig[feedbackType]
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '0.25rem 0.5rem',
+        borderRadius: '0.25rem',
+        background: config.bgColor,
+        color: config.color,
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.025em',
+        flexShrink: 0,
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'opacity 0.15s, transform 0.15s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; e.currentTarget.style.transform = 'scale(1.05)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1)' }}
+      title="Click to change type"
+    >
+      {config.label}
+    </button>
+  )
+}
+
+function FeedbackCard({ item, isDragging, isDragOver, onDragStart, onDragOver, onDragLeave, onDragEnd, onDrop, onToggleDone, onTypeClick }: FeedbackCardProps) {
   return (
     <div
       onDragOver={(e) => { e.stopPropagation(); onDragOver(e) }}
@@ -311,14 +486,26 @@ function FeedbackCard({ item, isDragging, isDragOver, onDragStart, onDragOver, o
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
           <span style={{ ...dragHandle, marginTop: '0.25rem' }}>⋮⋮</span>
-          <Checkbox checked={item.is_done} onChange={onToggleDone}>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: 0, lineHeight: 1.5 }}>{item.text}</p>
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.6 }}>
-                {item.user_email} • {formatDate(item.created_at)}
-              </p>
-            </div>
-          </Checkbox>
+          <input
+            type="checkbox"
+            checked={item.is_done}
+            onChange={onToggleDone}
+            style={{
+              width: '1.25rem',
+              height: '1.25rem',
+              marginTop: '0.1rem',
+              cursor: 'pointer',
+              accentColor: colors.primary,
+              flexShrink: 0,
+            }}
+          />
+          <FeedbackTypeBadge type={item.feedback_type} onClick={onTypeClick} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.6 }}>
+              {item.user_email} • {formatDate(item.created_at)}
+            </p>
+          </div>
         </div>
       </div>
     </div>

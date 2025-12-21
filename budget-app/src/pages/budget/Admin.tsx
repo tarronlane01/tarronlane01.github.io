@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 
 function Admin() {
-  const { currentBudget, loading, isOwner } = useBudget()
+  const { currentBudget, loading, isOwner, isAdmin, isTest } = useBudget()
   const location = useLocation()
 
   if (loading) {
@@ -13,32 +13,44 @@ function Admin() {
     )
   }
 
-  if (!currentBudget) {
-    return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
-        <p>No budget found. Please log in.</p>
-      </div>
-    )
-  }
+  const isAccountsPage = location.pathname.includes('/admin/accounts')
+  const isCategoriesPage = location.pathname.includes('/admin/categories')
+  const isUsersPage = location.pathname.includes('/admin/users')
+  const isMigrationPage = location.pathname.includes('/admin/migration')
+  const isFeedbackPage = location.pathname.includes('/admin/feedback')
+  const isMyBudgetsPage = location.pathname.includes('/admin/my-budgets')
+  const isTestsPage = location.pathname.includes('/admin/tests')
+  const isRootAdmin = location.pathname === '/budget/admin'
 
-  if (!isOwner) {
+  // Owner-only pages (Users)
+  const isOwnerOnlyPage = isUsersPage
+  // Admin-only pages (Migration, Feedback)
+  const isAdminOnlyPage = isMigrationPage || isFeedbackPage
+  // Test-only pages
+  const isTestOnlyPage = isTestsPage
+
+  if ((!isOwner && isOwnerOnlyPage) || (!isAdmin && isAdminOnlyPage) || (!isTest && isTestOnlyPage)) {
     return (
       <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
         <nav style={{ marginBottom: '1.5rem' }}>
           <Link to="/budget">← Back to Budget</Link>
         </nav>
         <h1>Access Denied</h1>
-        <p style={{ opacity: 0.7 }}>Only the budget owner can access admin settings.</p>
+        <p style={{ opacity: 0.7 }}>
+          {isTestOnlyPage
+            ? 'Only test users can access this section.'
+            : isAdminOnlyPage
+              ? 'Only administrators can access this section.'
+              : 'Only the budget owner can access this section.'}
+        </p>
+        <p style={{ marginTop: '1rem' }}>
+          <Link to="/budget/admin/my-budgets" style={{ color: '#646cff' }}>
+            Go to My Budgets →
+          </Link>
+        </p>
       </div>
     )
   }
-
-  const isAccountsPage = location.pathname.includes('/admin/accounts')
-  const isCategoriesPage = location.pathname.includes('/admin/categories')
-  const isUsersPage = location.pathname.includes('/admin/users')
-  const isMigrationPage = location.pathname.includes('/admin/migration')
-  const isFeedbackPage = location.pathname.includes('/admin/feedback')
-  const isRootAdmin = location.pathname === '/budget/admin'
 
   return (
     <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
@@ -46,31 +58,36 @@ function Admin() {
         <Link to="/budget">← Back to Budget</Link>
       </nav>
 
-      <h1>Admin Settings</h1>
+      <h1>{isOwner ? 'Admin Settings' : 'Budget Settings'}</h1>
       <p style={{ opacity: 0.7, marginBottom: '0.5rem' }}>
-        Manage your budget settings, users, and data migration.
+        {isOwner
+          ? 'Manage your budget settings, users, and data migration.'
+          : 'Manage your budgets, accounts, and categories.'}
       </p>
-<div style={{
-        opacity: 0.6,
-        marginBottom: '1.5rem',
-        fontSize: '0.9rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.25rem',
-      }}>
-        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>📋</span>
-          <span>Budget Name: <strong style={{ opacity: 1 }}>{currentBudget.name}</strong></span>
-        </p>
-        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>🆔</span>
-          <span>Budget ID: <code style={{ opacity: 1, background: 'color-mix(in srgb, currentColor 10%, transparent)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>{currentBudget.id}</code></span>
-        </p>
-        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>👤</span>
-          <span>Budget Owner: <strong style={{ opacity: 1 }}>{currentBudget.owner_email || currentBudget.owner_id}</strong></span>
-        </p>
-      </div>
+
+      {currentBudget && (
+        <div style={{
+          opacity: 0.6,
+          marginBottom: '1.5rem',
+          fontSize: '0.9rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.25rem',
+        }}>
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>📋</span>
+            <span>Budget Name: <strong style={{ opacity: 1 }}>{currentBudget.name}</strong></span>
+          </p>
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>🆔</span>
+            <span>Budget ID: <code style={{ opacity: 1, background: 'color-mix(in srgb, currentColor 10%, transparent)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>{currentBudget.id}</code></span>
+          </p>
+          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>👤</span>
+            <span>Budget Owner: <strong style={{ opacity: 1 }}>{currentBudget.owner_email || currentBudget.owner_id}</strong></span>
+          </p>
+        </div>
+      )}
 
       {/* Admin Navigation */}
       <div style={{
@@ -81,6 +98,23 @@ function Admin() {
         paddingBottom: '1rem',
         flexWrap: 'wrap',
       }}>
+        {/* My Budgets - available to everyone */}
+        <Link
+          to="/budget/admin/my-budgets"
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            color: 'inherit',
+            background: isMyBudgetsPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+            border: isMyBudgetsPage ? '1px solid #646cff' : '1px solid transparent',
+            fontWeight: isMyBudgetsPage ? 500 : 400,
+          }}
+        >
+          📂 My Budgets
+        </Link>
+
+        {/* Accounts & Categories - available to everyone on the budget */}
         <Link
           to="/budget/admin/accounts"
           style={{
@@ -109,53 +143,81 @@ function Admin() {
         >
           🏷️ Categories
         </Link>
-        <Link
-          to="/budget/admin/users"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isUsersPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isUsersPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isUsersPage ? 500 : 400,
-          }}
-        >
-          👥 Users
-        </Link>
-        <Link
-          to="/budget/admin/migration"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isMigrationPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isMigrationPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isMigrationPage ? 500 : 400,
-          }}
-        >
-          🔄 Migration
-        </Link>
-        <Link
-          to="/budget/admin/feedback"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isFeedbackPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isFeedbackPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isFeedbackPage ? 500 : 400,
-          }}
-        >
-          💬 Feedback
-        </Link>
+
+        {/* Owner-only tabs */}
+        {isOwner && (
+          <Link
+            to="/budget/admin/users"
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              color: 'inherit',
+              background: isUsersPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+              border: isUsersPage ? '1px solid #646cff' : '1px solid transparent',
+              fontWeight: isUsersPage ? 500 : 400,
+            }}
+          >
+            👥 Users
+          </Link>
+        )}
+
+        {/* Admin-only tabs */}
+        {isAdmin && (
+          <>
+            <Link
+              to="/budget/admin/migration"
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                color: 'inherit',
+                background: isMigrationPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+                border: isMigrationPage ? '1px solid #646cff' : '1px solid transparent',
+                fontWeight: isMigrationPage ? 500 : 400,
+              }}
+            >
+              🔄 Migration
+            </Link>
+            <Link
+              to="/budget/admin/feedback"
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                color: 'inherit',
+                background: isFeedbackPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+                border: isFeedbackPage ? '1px solid #646cff' : '1px solid transparent',
+                fontWeight: isFeedbackPage ? 500 : 400,
+              }}
+            >
+              💬 Feedback
+            </Link>
+          </>
+        )}
+
+        {/* Test-only tabs */}
+        {isTest && (
+          <Link
+            to="/budget/admin/tests"
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              color: 'inherit',
+              background: isTestsPage ? 'color-mix(in srgb, #ff6b6b 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
+              border: isTestsPage ? '1px solid #ff6b6b' : '1px solid transparent',
+              fontWeight: isTestsPage ? 500 : 400,
+            }}
+          >
+            🧪 Tests
+          </Link>
+        )}
       </div>
 
-      {/* Redirect to accounts by default, or show nested route */}
+      {/* Redirect to my-budgets by default (for everyone), or show nested route */}
       {isRootAdmin ? (
-        <Navigate to="/budget/admin/accounts" replace />
+        <Navigate to="/budget/admin/my-budgets" replace />
       ) : (
         <Outlet />
       )}

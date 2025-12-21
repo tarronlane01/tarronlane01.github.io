@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is an admin (via permission_flags.is_admin on their user doc)
+    function isAdmin() {
+      return request.auth != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permission_flags.is_admin == true;
+    }
+
+    // User documents
+    match /users/{userId} {
+      // Users can read their own document, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      // Users can create their own document, but cannot set permission_flags
+      // Admins can create any user document, but also cannot set permission_flags (only via Firebase Console)
+      allow create: if request.auth != null
+                    && !hasPermissionFlags()
+                    && (
+                      isAdmin() ||
+                      (request.auth.uid == userId && request.resource.data.uid == userId)
+                    );
+
+      // Users can update their own document, admins can update any
+      // NOBODY can change permission_flags via Firestore (only via Firebase Console)
+      allow update: if request.auth != null
+                    && !isPermissionFlagsChanging()
+                    && (
+                      // Admin can update anything else
+                      isAdmin() ||
+                      // Regular user can update their own doc
+                      (request.auth.uid == userId && validateBudgetIdsUpdate())
+                    );
+
+      // Users can delete their own document, admins can delete any
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      // Check if permission_flags is being set on create
+      function hasPermissionFlags() {
+        return 'permission_flags' in request.resource.data;
+      }
+
+      // Prevent anyone from changing permission_flags via Firestore
+      // This includes is_admin, is_test, and any other flags
+      // We check each flag individually because map comparison can be unreliable
+      function isPermissionFlagsChanging() {
+        // Get old and new values for each flag (default to null if not set)
+        let oldIsAdmin = resource.data.get('permission_flags', {}).get('is_admin', null);
+        let newIsAdmin = request.resource.data.get('permission_flags', {}).get('is_admin', null);
+
+        let oldIsTest = resource.data.get('permission_flags', {}).get('is_test', null);
+        let newIsTest = request.resource.data.get('permission_flags', {}).get('is_test', null);
+
+        // Block if ANY permission flag is changing
+        return oldIsAdmin != newIsAdmin || oldIsTest != newIsTest;
+      }
+
+      // Helper function to validate budget_ids changes
+      // If adding a new budget_id, user must be in that budget's user_ids (invited)
+      function validateBudgetIdsUpdate() {
+        let oldBudgetIds = resource.data.budget_ids;
+        let newBudgetIds = request.resource.data.budget_ids;
+
+        // Get budgets being added (in new but not in old)
+        let addedBudgets = newBudgetIds.removeAll(oldBudgetIds);
+
+        // If no budgets being added, allow (could be removing or other field changes)
+        // If budgets are being added, each must have this user in its user_ids
+        return addedBudgets.size() == 0 || allBudgetsHaveUserInvited(addedBudgets);
+      }
+
+      // Check if user is invited to all the budgets being added
+      function allBudgetsHaveUserInvited(budgetIds) {
+        // For single budget addition (most common case)
+        return budgetIds.size() == 1
+               && exists(/databases/$(database)/documents/budgets/$(budgetIds[0]))
+               && request.auth.uid in get(/databases/$(database)/documents/budgets/$(budgetIds[0])).data.user_ids;
+      }
+    }
+
+    // Budget documents
+    match /budgets/{budgetId} {
+      // Helper function to check if user has access via their user document
+      function userHasBudgetAccess() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Helper to check if user is invited (in budget's user_ids) - for accepting invites
+      function userIsInvited() {
+        return request.auth.uid in resource.data.user_ids;
+      }
+
+      // Allow read if:
+      // - User is admin, OR
+      // - User has full access (budget in their budget_ids), OR
+      // - User is invited (in budget's user_ids) - so they can see invite details
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccess() || userIsInvited());
+
+      // Allow create if user is authenticated and sets themselves as owner (or is admin)
+      allow create: if request.auth != null && (
+                      isAdmin() ||
+                      (request.auth.uid == request.resource.data.owner_id
+                       && request.auth.uid in request.resource.data.user_ids)
+                    );
+
+      // Allow update if user has full access (or is admin)
+      allow update: if request.auth != null && (isAdmin() || userHasBudgetAccess());
+
+      // Allow delete only by owner (and owner must have access) or admin
+      allow delete: if request.auth != null && (
+                      isAdmin() ||
+                      (userHasBudgetAccess() && request.auth.uid == resource.data.owner_id)
+                    );
+    }
+
+    // Feedback collection
+    match /feedback/{docId} {
+      // All authenticated users can read all feedback (admins too)
+      allow read: if request.auth != null;
+
+      // Users can only create/update docs where user_email matches their auth email
+      // Admins can create/update any
+      allow create, update: if request.auth != null && (
+                              isAdmin() ||
+                              request.resource.data.user_email == request.auth.token.email
+                            );
+
+      // Only admins can delete feedback
+      allow delete: if isAdmin();
+    }
+  }
+}
