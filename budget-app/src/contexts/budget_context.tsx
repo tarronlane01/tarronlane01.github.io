@@ -4,13 +4,20 @@ import app from '../firebase'
 import useFirebaseAuth from '../hooks/useFirebaseAuth'
 
 // Data types
-export type AccountType = 'checking' | 'savings' | 'credit_card'
+export type ExpectedBalanceType = 'positive' | 'negative' | 'any'
+
+export interface AccountGroup {
+  id: string
+  name: string
+  sort_order: number
+  expected_balance?: ExpectedBalanceType // 'positive' = warn if negative, 'negative' = warn if positive (e.g. credit cards), 'any' = no warnings
+}
 
 export interface FinancialAccount {
   id: string
   nickname: string
   balance: number
-  account_type: AccountType
+  account_group_id: string | null
   sort_order: number
 }
 
@@ -45,6 +52,7 @@ interface BudgetContextType {
 
   // Budget data
   accounts: FinancialAccount[]
+  accountGroups: AccountGroup[]
   categories: Category[]
   categoryGroups: CategoryGroup[]
 
@@ -55,6 +63,7 @@ interface BudgetContextType {
 
   // Data update methods
   setAccounts: (accounts: FinancialAccount[]) => void
+  setAccountGroups: (accountGroups: AccountGroup[]) => void
   setCategories: (categories: Category[]) => void
   setCategoryGroups: (categoryGroups: CategoryGroup[]) => void
   saveBudgetData: () => Promise<void>
@@ -68,12 +77,14 @@ const BudgetContext = createContext<BudgetContextType>({
   currentUserId: null,
   isInitialized: false,
   accounts: [],
+  accountGroups: [],
   categories: [],
   categoryGroups: [],
   ensureBudgetLoaded: async () => {},
   refreshBudget: async () => {},
   updateBudgetUsers: async () => {},
   setAccounts: () => {},
+  setAccountGroups: () => {},
   setCategories: () => {},
   setCategoryGroups: () => {},
   saveBudgetData: async () => {},
@@ -89,6 +100,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
   // Budget data state
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
+  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([])
 
@@ -99,6 +111,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     if (!current_user) {
       setCurrentBudget(null)
       setAccounts([])
+      setAccountGroups([])
       setCategories([])
       setCategoryGroups([])
       setLoading(false)
@@ -133,6 +146,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           owner_id: newBudget.owner_id,
           owner_email: newBudget.owner_email,
           accounts: [],
+          account_groups: [],
           categories: [],
           category_groups: [],
           created_at: new Date().toISOString(),
@@ -140,6 +154,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
         setCurrentBudget(newBudget)
         setAccounts([])
+        setAccountGroups([])
         setCategories([])
         setCategoryGroups([])
       } else {
@@ -160,11 +175,21 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           id: account.id,
           nickname: account.nickname,
           balance: account.balance,
-          account_type: account.account_type,
+          account_group_id: account.account_group_id ?? null,
           sort_order: account.sort_order ?? 0,
         }))
         loadedAccounts.sort((a, b) => a.sort_order - b.sort_order)
         setAccounts(loadedAccounts)
+
+        // Load account groups
+        const loadedAccountGroups: AccountGroup[] = (data.account_groups || []).map((group: any) => ({
+          id: group.id,
+          name: group.name,
+          sort_order: group.sort_order ?? 0,
+          expected_balance: group.expected_balance ?? 'positive',
+        }))
+        loadedAccountGroups.sort((a, b) => a.sort_order - b.sort_order)
+        setAccountGroups(loadedAccountGroups)
 
         // Load categories
         const loadedCategories: Category[] = (data.categories || []).map((category: any) => ({
@@ -244,6 +269,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         await setDoc(budgetDocRef, {
           ...data,
           accounts,
+          account_groups: accountGroups,
           categories,
           category_groups: categoryGroups,
         })
@@ -264,12 +290,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       currentUserId: current_user?.uid || null,
       isInitialized,
       accounts,
+      accountGroups,
       categories,
       categoryGroups,
       ensureBudgetLoaded,
       refreshBudget: loadOrCreateBudget,
       updateBudgetUsers,
       setAccounts,
+      setAccountGroups,
       setCategories,
       setCategoryGroups,
       saveBudgetData,

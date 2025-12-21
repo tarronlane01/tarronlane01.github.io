@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import app from '../../firebase'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useBudget } from '../../contexts/budget_context'
+import { useBudget, type AccountGroup, type FinancialAccount } from '../../contexts/budget_context'
 
 interface MigrationStatus {
   ownerIdInFirestore: string | null
   ownerEmailInFirestore: string | null
+  accountTypeMigrationNeeded: boolean
+  accountsWithOldType: number
   loading: boolean
 }
 
@@ -35,6 +37,8 @@ function AdminMigration() {
   const [migrationStatus, setMigrationStatus] = useState<MigrationStatus>({
     ownerIdInFirestore: null,
     ownerEmailInFirestore: null,
+    accountTypeMigrationNeeded: false,
+    accountsWithOldType: 0,
     loading: true,
   })
 
@@ -44,6 +48,9 @@ function AdminMigration() {
   const [isMigratingOwnerEmail, setIsMigratingOwnerEmail] = useState(false)
   const [ownerEmailMigrationResult, setOwnerEmailMigrationResult] = useState<string | null>(null)
 
+  const [isMigratingAccountTypes, setIsMigratingAccountTypes] = useState(false)
+  const [accountTypeMigrationResult, setAccountTypeMigrationResult] = useState<string | null>(null)
+
   const db = getFirestore(app)
   const current_user = firebase_auth_hook.get_current_firebase_user()
 
@@ -52,7 +59,13 @@ function AdminMigration() {
     async function checkFirestoreFields() {
       if (!currentBudget || hasCheckedRef.current) {
         if (!currentBudget) {
-          setMigrationStatus({ ownerIdInFirestore: null, ownerEmailInFirestore: null, loading: false })
+          setMigrationStatus({
+            ownerIdInFirestore: null,
+            ownerEmailInFirestore: null,
+            accountTypeMigrationNeeded: false,
+            accountsWithOldType: 0,
+            loading: false,
+          })
         }
         return
       }
@@ -65,16 +78,35 @@ function AdminMigration() {
 
         if (budgetDoc.exists()) {
           const data = budgetDoc.data()
+
+          // Check if any accounts have the old account_type field
+          const accounts = data.accounts || []
+          const accountsWithOldType = accounts.filter((a: any) => a.account_type !== undefined)
+
           setMigrationStatus({
             ownerIdInFirestore: data.owner_id || null,
             ownerEmailInFirestore: data.owner_email || null,
+            accountTypeMigrationNeeded: accountsWithOldType.length > 0,
+            accountsWithOldType: accountsWithOldType.length,
             loading: false,
           })
         } else {
-          setMigrationStatus({ ownerIdInFirestore: null, ownerEmailInFirestore: null, loading: false })
+          setMigrationStatus({
+            ownerIdInFirestore: null,
+            ownerEmailInFirestore: null,
+            accountTypeMigrationNeeded: false,
+            accountsWithOldType: 0,
+            loading: false,
+          })
         }
       } catch {
-        setMigrationStatus({ ownerIdInFirestore: null, ownerEmailInFirestore: null, loading: false })
+        setMigrationStatus({
+          ownerIdInFirestore: null,
+          ownerEmailInFirestore: null,
+          accountTypeMigrationNeeded: false,
+          accountsWithOldType: 0,
+          loading: false,
+        })
       }
     }
 
@@ -168,8 +200,113 @@ function AdminMigration() {
     }
   }
 
+  // Migration 3: Migrate account_type to account_group_id
+  async function migrateAccountTypes() {
+    if (!currentBudget || !current_user) return
+
+    setIsMigratingAccountTypes(true)
+    setAccountTypeMigrationResult(null)
+
+    try {
+      const budgetDocRef = doc(db, 'budgets', currentBudget.id)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget document not found')
+      }
+
+      const data = budgetDoc.data()
+      const accounts = data.accounts || []
+      const existingGroups: AccountGroup[] = data.account_groups || []
+
+      // Check if any accounts have the old account_type field
+      const accountsWithOldType = accounts.filter((a: any) => a.account_type !== undefined)
+
+      if (accountsWithOldType.length === 0) {
+        setAccountTypeMigrationResult('No accounts need migration - already using new format')
+        setMigrationStatus(prev => ({ ...prev, accountTypeMigrationNeeded: false, accountsWithOldType: 0 }))
+        setIsMigratingAccountTypes(false)
+        return
+      }
+
+      // Map old account types to display names and expected balance
+      const accountTypeConfig: Record<string, { name: string; expected_balance: 'positive' | 'negative' }> = {
+        checking: { name: 'Checking', expected_balance: 'positive' },
+        savings: { name: 'Savings', expected_balance: 'positive' },
+        credit_card: { name: 'Credit Card', expected_balance: 'negative' },
+      }
+
+      // Find unique account types that need groups created
+      const uniqueOldTypes = [...new Set(accountsWithOldType.map((a: any) => a.account_type))] as string[]
+
+      // Create a mapping from old type to new group ID
+      const typeToGroupId: Record<string, string> = {}
+      const newGroups: AccountGroup[] = [...existingGroups]
+      let nextSortOrder = existingGroups.length > 0
+        ? Math.max(...existingGroups.map(g => g.sort_order)) + 1
+        : 0
+
+      for (const oldType of uniqueOldTypes) {
+        // Check if a group with this name already exists
+        const config = accountTypeConfig[oldType] || { name: oldType, expected_balance: 'positive' as const }
+        const existingGroup = newGroups.find(g => g.name.toLowerCase() === config.name.toLowerCase())
+
+        if (existingGroup) {
+          typeToGroupId[oldType] = existingGroup.id
+        } else {
+          // Create a new group
+          const newGroup: AccountGroup = {
+            id: `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: config.name,
+            sort_order: nextSortOrder++,
+            expected_balance: config.expected_balance,
+          }
+          newGroups.push(newGroup)
+          typeToGroupId[oldType] = newGroup.id
+        }
+      }
+
+      // Update accounts: add account_group_id and remove account_type
+      const migratedAccounts: FinancialAccount[] = accounts.map((account: any) => {
+        if (account.account_type !== undefined) {
+          const { account_type, ...rest } = account
+          return {
+            ...rest,
+            account_group_id: typeToGroupId[account_type] || null,
+          }
+        }
+        return account
+      })
+
+      // Save to Firestore
+      await setDoc(budgetDocRef, {
+        ...data,
+        accounts: migratedAccounts,
+        account_groups: newGroups,
+      })
+
+      // Update local status
+      setMigrationStatus(prev => ({
+        ...prev,
+        accountTypeMigrationNeeded: false,
+        accountsWithOldType: 0,
+      }))
+
+      const groupsCreated = newGroups.length - existingGroups.length
+      setAccountTypeMigrationResult(
+        `Successfully migrated ${accountsWithOldType.length} account(s). ` +
+        `Created ${groupsCreated} new account type(s): ${uniqueOldTypes.map(t => accountTypeConfig[t]?.name || t).join(', ')}`
+      )
+    } catch (err) {
+      setAccountTypeMigrationResult(`Error: ${err instanceof Error ? err.message : 'Migration failed'}`)
+    } finally {
+      setIsMigratingAccountTypes(false)
+    }
+  }
+
   const hasOwnerId = !!migrationStatus.ownerIdInFirestore
   const hasOwnerEmail = !!migrationStatus.ownerEmailInFirestore
+  const needsAccountTypeMigration = migrationStatus.accountTypeMigrationNeeded
 
   if (migrationStatus.loading) {
     return (
@@ -376,6 +513,106 @@ function AdminMigration() {
                   : '#4ade80',
               }}>
                 {ownerEmailMigrationResult}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Migration 3: Migrate Account Types to Account Groups */}
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        marginTop: '1.5rem',
+      }}>
+        <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            background: !needsAccountTypeMigration ? 'rgba(34, 197, 94, 0.2)' : 'rgba(100, 108, 255, 0.2)',
+            color: !needsAccountTypeMigration ? '#4ade80' : '#a5b4fc',
+            padding: '0.15rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}>
+            {!needsAccountTypeMigration ? 'Complete' : 'Step 3'}
+          </span>
+          Migrate Account Types to Groups
+        </h3>
+        <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
+          Converts the old fixed account types (Checking, Savings, Credit Card) to customizable account groups.
+          This creates account groups for each existing type and updates your accounts to reference them.
+        </p>
+
+        {isMigratingAccountTypes ? (
+          <div style={{
+            background: 'rgba(100, 108, 255, 0.1)',
+            border: '1px solid rgba(100, 108, 255, 0.3)',
+            color: '#a5b4fc',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            <Spinner /> Running migration...
+          </div>
+        ) : !needsAccountTypeMigration ? (
+          <div style={{
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: '#4ade80',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+          }}>
+            ✅ All accounts are using the new group format
+          </div>
+        ) : (
+          <>
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#fbbf24',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              marginBottom: '1rem',
+            }}>
+              ⚠️ Found {migrationStatus.accountsWithOldType} account(s) using the old format
+            </div>
+
+            <button
+              onClick={migrateAccountTypes}
+              disabled={!current_user}
+              style={{
+                background: '#646cff',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                cursor: !current_user ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+                opacity: !current_user ? 0.7 : 1,
+              }}
+            >
+              Migrate Account Types
+            </button>
+
+            {accountTypeMigrationResult && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                background: accountTypeMigrationResult.startsWith('Error')
+                  ? 'rgba(220, 38, 38, 0.1)'
+                  : 'rgba(34, 197, 94, 0.1)',
+                border: accountTypeMigrationResult.startsWith('Error')
+                  ? '1px solid rgba(220, 38, 38, 0.3)'
+                  : '1px solid rgba(34, 197, 94, 0.3)',
+                color: accountTypeMigrationResult.startsWith('Error')
+                  ? '#f87171'
+                  : '#4ade80',
+              }}>
+                {accountTypeMigrationResult}
               </div>
             )}
           </>

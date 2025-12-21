@@ -743,9 +743,9 @@ function Categories() {
                   </div>
 
                   {/* Bottom add category button */}
-                  {!createForGroupId && groupCategories.length > 0 && (
+                  {createForGroupId !== group.id && (
                     <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-                      <Button variant="small" onClick={() => setCreateForGroupId(group.id)}>
+                      <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                         + Add Category
                       </Button>
                     </div>
@@ -886,9 +886,9 @@ function Categories() {
               </div>
 
               {/* Bottom add category button for ungrouped */}
-              {!createForGroupId && ungroupedCategories.length > 0 && (
+              {createForGroupId !== 'ungrouped' && (
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-                  <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')}>
+                  <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
                     + Add Category
                   </Button>
                 </div>
