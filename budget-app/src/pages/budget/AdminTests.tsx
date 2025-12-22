@@ -41,6 +41,12 @@ function AdminTests() {
         expectedToFail: true,
       },
       {
+        name: 'Read unauthorized budget month',
+        status: 'pending',
+        message: '',
+        expectedToFail: true,
+      },
+      {
         name: 'Toggle is_admin in own permission_flags',
         status: 'pending',
         message: '',
@@ -80,7 +86,18 @@ function AdminTests() {
       return 'Was able to read user document (unexpected)'
     }, true)
 
-    // Test 3: Try to toggle is_admin in own permission_flags
+    // Test 3: Try to read a month document for an unauthorized budget
+    await runTest('Read unauthorized budget month', async () => {
+      // Use a fake budget ID that the user shouldn't have access to
+      // Month document IDs follow the format: {budgetId}_{year}_{month}
+      const fakeBudgetId = 'unauthorized_budget_test_12345'
+      const fakeMonthId = `${fakeBudgetId}_2024_01`
+      const monthRef = doc(db, 'months', fakeMonthId)
+      await getDoc(monthRef)
+      return 'Was able to read month document for unauthorized budget (unexpected)'
+    }, true)
+
+    // Test 4: Try to toggle is_admin in own permission_flags
     await runTest('Toggle is_admin in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       const userRef = doc(db, 'users', currentUserId)
@@ -94,7 +111,7 @@ function AdminTests() {
       return `Was able to change is_admin from ${currentIsAdmin} to ${!currentIsAdmin} (SECURITY ISSUE!)`
     }, true)
 
-    // Test 4: Try to toggle is_test in own permission_flags
+    // Test 5: Try to toggle is_test in own permission_flags
     await runTest('Toggle is_test in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       const userRef = doc(db, 'users', currentUserId)
@@ -108,7 +125,7 @@ function AdminTests() {
       return `Was able to change is_test from ${currentIsTest} to ${!currentIsTest} (SECURITY ISSUE!)`
     }, true)
 
-    // Test 5: Read own user document (should succeed)
+    // Test 6: Read own user document (should succeed)
     await runTest('Read own user document', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       const userRef = doc(db, 'users', currentUserId)
@@ -185,6 +202,15 @@ function AdminTests() {
           const userRef = doc(db, 'users', fakeUserId)
           await getDoc(userRef)
           return 'Was able to read user document (unexpected)'
+        }, true)
+        break
+      case 'Read unauthorized budget month':
+        await runTest(name, async () => {
+          const fakeBudgetId = 'unauthorized_budget_test_12345'
+          const fakeMonthId = `${fakeBudgetId}_2024_01`
+          const monthRef = doc(db, 'months', fakeMonthId)
+          await getDoc(monthRef)
+          return 'Was able to read month document for unauthorized budget (unexpected)'
         }, true)
         break
       case 'Toggle is_admin in own permission_flags':
@@ -284,6 +310,15 @@ function AdminTests() {
           expectedBehavior="Should be blocked by Firestore rules"
           result={testResults.find(t => t.name === "Read another user's document")}
           onRun={() => runSingleTest("Read another user's document")}
+          disabled={isRunning}
+        />
+
+        <TestButton
+          name="Read unauthorized budget month"
+          description="Try to read a month document for a budget you don't have access to"
+          expectedBehavior="Should be blocked - months inherit budget access"
+          result={testResults.find(t => t.name === 'Read unauthorized budget month')}
+          onRun={() => runSingleTest('Read unauthorized budget month')}
           disabled={isRunning}
         />
 

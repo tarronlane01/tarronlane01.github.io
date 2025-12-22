@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type DragEvent } from 'react'
+import { useState, useEffect, type FormEvent, type DragEvent } from 'react'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import app from '../../firebase'
 import { useBudget, type FinancialAccount, type AccountGroup, type ExpectedBalanceType } from '../../contexts/budget_context'
@@ -7,13 +7,12 @@ import {
   Button,
   DraggableCard,
   DropZone,
-  StatCard,
-  StatItem,
   FormWrapper,
   FormField,
   TextInput,
   SelectInput,
   FormButtonGroup,
+  Checkbox,
   formatCurrency,
   getBalanceColor,
 } from '../../components/ui'
@@ -31,11 +30,19 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 interface AccountFormData {
   nickname: string
   account_group_id: string | null
+  is_income_account?: boolean
+  is_income_default?: boolean
+  is_outgo_account?: boolean
+  is_outgo_default?: boolean
+  on_budget?: boolean
+  is_active?: boolean
 }
 
 interface GroupFormData {
   name: string
   expected_balance: ExpectedBalanceType
+  on_budget?: boolean
+  is_active?: boolean
 }
 
 type DragType = 'account' | 'group' | null
@@ -61,9 +68,28 @@ function getBalanceWarning(balance: number, expectedBalance?: ExpectedBalanceTyp
 }
 
 function Accounts() {
-  const { currentBudget, accounts, setAccounts, accountGroups, setAccountGroups } = useBudget()
+  const {
+    currentBudget,
+    accounts,
+    setAccounts,
+    accountGroups,
+    setAccountGroups,
+    checkBalanceMismatch,
+    reconcileBalances,
+    balanceMismatch,
+  } = useBudget()
   const [error, setError] = useState<string | null>(null)
+  const [isReconciling, setIsReconciling] = useState(false)
+  const [isCheckingMismatch, setIsCheckingMismatch] = useState(false)
   const isMobile = useIsMobile()
+
+  // Check for balance mismatches on load
+  useEffect(() => {
+    if (currentBudget && accounts.length > 0) {
+      setIsCheckingMismatch(true)
+      checkBalanceMismatch().finally(() => setIsCheckingMismatch(false))
+    }
+  }, [currentBudget?.id, accounts.length])
 
   // Account editing state
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
@@ -89,7 +115,25 @@ function Accounts() {
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        await setDoc(budgetDocRef, { ...data, accounts: newAccounts })
+        // Clean accounts - Firestore doesn't accept undefined values
+        const cleanedAccounts = newAccounts.map(acc => {
+          const cleaned: Record<string, any> = {
+            id: acc.id,
+            nickname: acc.nickname,
+            balance: acc.balance,
+            account_group_id: acc.account_group_id ?? null,
+            sort_order: acc.sort_order,
+          }
+          // Only include optional fields if they have a value
+          if (acc.is_income_account !== undefined) cleaned.is_income_account = acc.is_income_account
+          if (acc.is_income_default !== undefined) cleaned.is_income_default = acc.is_income_default
+          if (acc.is_outgo_account !== undefined) cleaned.is_outgo_account = acc.is_outgo_account
+          if (acc.is_outgo_default !== undefined) cleaned.is_outgo_default = acc.is_outgo_default
+          if (acc.on_budget !== undefined) cleaned.on_budget = acc.on_budget
+          if (acc.is_active !== undefined) cleaned.is_active = acc.is_active
+          return cleaned
+        })
+        await setDoc(budgetDocRef, { ...data, accounts: cleanedAccounts })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save accounts')
@@ -104,12 +148,19 @@ function Accounts() {
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
         // Ensure all groups have expected_balance defaulted to 'positive'
-        const cleanedGroups = newGroups.map(group => ({
-          id: group.id,
-          name: group.name,
-          sort_order: group.sort_order,
-          expected_balance: group.expected_balance || 'positive',
-        }))
+        // Include group-level override fields (on_budget, is_active) when defined
+        const cleanedGroups = newGroups.map(group => {
+          const cleanedGroup: AccountGroup = {
+            id: group.id,
+            name: group.name,
+            sort_order: group.sort_order,
+            expected_balance: group.expected_balance || 'positive',
+          }
+          // Only include override fields if they're explicitly set
+          if (group.on_budget !== undefined) cleanedGroup.on_budget = group.on_budget
+          if (group.is_active !== undefined) cleanedGroup.is_active = group.is_active
+          return cleanedGroup
+        })
         await setDoc(budgetDocRef, { ...data, account_groups: cleanedGroups })
       }
     } catch (err) {
@@ -132,7 +183,7 @@ function Accounts() {
   }
 
   // Account handlers
-  async function handleCreateAccount(formData: AccountFormData, forGroupId: string | null) {
+  function handleCreateAccount(formData: AccountFormData, forGroupId: string | null) {
     if (!currentBudget) return
 
     const groupAccounts = accounts.filter(a =>
@@ -140,137 +191,200 @@ function Accounts() {
     )
     const maxSortOrder = groupAccounts.length > 0
       ? Math.max(...groupAccounts.map(a => a.sort_order))
-        : -1
+      : -1
 
-      const newAccount: FinancialAccount = {
-        id: `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        nickname: formData.nickname,
-      balance: 0, // Balance will be calculated from transactions
+    const newAccount: FinancialAccount = {
+      id: `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      nickname: formData.nickname,
+      balance: 0,
       account_group_id: forGroupId === 'ungrouped' ? null : forGroupId,
-        sort_order: maxSortOrder + 1,
-      }
+      sort_order: maxSortOrder + 1,
+      is_income_account: formData.is_income_account,
+      is_income_default: formData.is_income_default,
+      is_outgo_account: formData.is_outgo_account,
+      is_outgo_default: formData.is_outgo_default,
+      on_budget: formData.on_budget !== false,
+      is_active: formData.is_active !== false,
+    }
 
-    const newAccounts = [...accounts, newAccount].sort((a, b) => a.sort_order - b.sort_order)
-      setAccounts(newAccounts)
+    // If this account is income default, remove default from other accounts
+    let newAccounts = [...accounts]
+    if (formData.is_income_default) {
+      newAccounts = newAccounts.map(a => ({ ...a, is_income_default: false }))
+    }
+    // If this account is outgo default, remove default from other accounts
+    if (formData.is_outgo_default) {
+      newAccounts = newAccounts.map(a => ({ ...a, is_outgo_default: false }))
+    }
+    newAccounts = [...newAccounts, newAccount].sort((a, b) => a.sort_order - b.sort_order)
+
+    // Optimistic update: update UI immediately, close form, save in background
+    setAccounts(newAccounts)
     setCreateForGroupId(null)
 
-    try {
-      await saveAccounts(newAccounts)
-    } catch (err) {
-      setAccounts(accounts)
-      setError(err instanceof Error ? err.message : 'Failed to create account')
-    }
+    // Save in background
+    saveAccounts(newAccounts).catch(err => {
+      console.error('[Accounts] Error creating account:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create account. Changes may not persist.')
+    })
   }
 
-  async function handleUpdateAccount(accountId: string, formData: AccountFormData) {
+  function handleUpdateAccount(accountId: string, formData: AccountFormData) {
     if (!currentBudget) return
-    try {
-      const account = accounts.find(a => a.id === accountId)
-      if (!account) return
 
-      const oldGroupId = account.account_group_id || 'ungrouped'
-      const newGroupId = formData.account_group_id
+    const account = accounts.find(a => a.id === accountId)
+    if (!account) return
 
-      // If group changed, update sort_order for the new group
-      let newSortOrder = account.sort_order
-      if (oldGroupId !== (newGroupId || 'ungrouped')) {
-        const targetGroupAccounts = accounts.filter(a => {
-          const accGroupId = a.account_group_id || 'ungrouped'
-          return accGroupId === (newGroupId || 'ungrouped') && a.id !== accountId
-        })
-        newSortOrder = targetGroupAccounts.length > 0
-          ? Math.max(...targetGroupAccounts.map(a => a.sort_order)) + 1
-          : 0
-      }
+    const oldGroupId = account.account_group_id || 'ungrouped'
+    const newGroupId = formData.account_group_id
 
-      const newAccounts = accounts.map(acc =>
-        acc.id === accountId
-          ? {
-              ...acc,
-              nickname: formData.nickname,
-              account_group_id: newGroupId,
-              sort_order: newSortOrder,
-            }
-          : acc
-      )
-      setAccounts(newAccounts)
-      await saveAccounts(newAccounts)
-      setEditingAccountId(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update account')
+    // If group changed, update sort_order for the new group
+    let newSortOrder = account.sort_order
+    if (oldGroupId !== (newGroupId || 'ungrouped')) {
+      const targetGroupAccounts = accounts.filter(a => {
+        const accGroupId = a.account_group_id || 'ungrouped'
+        return accGroupId === (newGroupId || 'ungrouped') && a.id !== accountId
+      })
+      newSortOrder = targetGroupAccounts.length > 0
+        ? Math.max(...targetGroupAccounts.map(a => a.sort_order)) + 1
+        : 0
     }
+
+    // If this account is being set as income default, remove default from others
+    let newAccounts = accounts
+    if (formData.is_income_default && !account.is_income_default) {
+      newAccounts = newAccounts.map(acc =>
+        acc.id !== accountId ? { ...acc, is_income_default: false } : acc
+      )
+    }
+    // If this account is being set as outgo default, remove default from others
+    if (formData.is_outgo_default && !account.is_outgo_default) {
+      newAccounts = newAccounts.map(acc =>
+        acc.id !== accountId ? { ...acc, is_outgo_default: false } : acc
+      )
+    }
+
+    newAccounts = newAccounts.map(acc =>
+      acc.id === accountId
+        ? {
+            ...acc,
+            nickname: formData.nickname,
+            account_group_id: newGroupId,
+            sort_order: newSortOrder,
+            is_income_account: formData.is_income_account,
+            is_income_default: formData.is_income_default,
+            is_outgo_account: formData.is_outgo_account,
+            is_outgo_default: formData.is_outgo_default,
+            on_budget: formData.on_budget !== false,
+            is_active: formData.is_active !== false,
+          }
+        : acc
+    )
+
+    // Optimistic update: update UI immediately, close form, save in background
+    setAccounts(newAccounts)
+    setEditingAccountId(null)
+
+    // Save in background
+    saveAccounts(newAccounts).catch(err => {
+      console.error('[Accounts] Error saving account:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save account. Changes may not persist.')
+    })
   }
 
-  async function handleDeleteAccount(accountId: string) {
+  function handleDeleteAccount(accountId: string) {
     if (!confirm('Are you sure you want to delete this account?')) return
     if (!currentBudget) return
-    try {
-      const newAccounts = accounts.filter(account => account.id !== accountId)
-      setAccounts(newAccounts)
-      await saveAccounts(newAccounts)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete account')
-    }
+
+    const newAccounts = accounts.filter(account => account.id !== accountId)
+
+    // Optimistic update: update UI immediately, save in background
+    setAccounts(newAccounts)
+
+    // Save in background
+    saveAccounts(newAccounts).catch(err => {
+      console.error('[Accounts] Error deleting account:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete account. Changes may not persist.')
+    })
   }
 
   // Group handlers
-  async function handleCreateGroup(formData: GroupFormData) {
+  function handleCreateGroup(formData: GroupFormData) {
     if (!currentBudget) return
-    try {
-      const maxSortOrder = accountGroups.length > 0
-        ? Math.max(...accountGroups.map(g => g.sort_order))
-        : -1
 
-      const newGroup: AccountGroup = {
-        id: `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: formData.name,
-        sort_order: maxSortOrder + 1,
-        expected_balance: formData.expected_balance,
-      }
+    const maxSortOrder = accountGroups.length > 0
+      ? Math.max(...accountGroups.map(g => g.sort_order))
+      : -1
 
-      const newGroups = [...accountGroups, newGroup]
-      setAccountGroups(newGroups)
-      await saveAccountGroups(newGroups)
-      setShowCreateGroupForm(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create account type')
+    const newGroup: AccountGroup = {
+      id: `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: formData.name,
+      sort_order: maxSortOrder + 1,
+      expected_balance: formData.expected_balance,
+      on_budget: formData.on_budget,
+      is_active: formData.is_active,
     }
+
+    const newGroups = [...accountGroups, newGroup]
+
+    // Optimistic update: update UI immediately, close form, save in background
+    setAccountGroups(newGroups)
+    setShowCreateGroupForm(false)
+
+    // Save in background
+    saveAccountGroups(newGroups).catch(err => {
+      console.error('[Accounts] Error creating group:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create account type. Changes may not persist.')
+    })
   }
 
-  async function handleUpdateGroup(groupId: string, formData: GroupFormData) {
+  function handleUpdateGroup(groupId: string, formData: GroupFormData) {
     if (!currentBudget) return
-    try {
-      const newGroups = accountGroups.map(group =>
-        group.id === groupId
-          ? { ...group, name: formData.name, expected_balance: formData.expected_balance }
-          : group
-      )
-      setAccountGroups(newGroups)
-      await saveAccountGroups(newGroups)
-      setEditingGroupId(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update account type')
-    }
+
+    const newGroups = accountGroups.map(group =>
+      group.id === groupId
+        ? {
+            ...group,
+            name: formData.name,
+            expected_balance: formData.expected_balance,
+            on_budget: formData.on_budget,
+            is_active: formData.is_active,
+          }
+        : group
+    )
+
+    // Optimistic update: update UI immediately, close form, save in background
+    setAccountGroups(newGroups)
+    setEditingGroupId(null)
+
+    // Save in background
+    saveAccountGroups(newGroups).catch(err => {
+      console.error('[Accounts] Error updating group:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update account type. Changes may not persist.')
+    })
   }
 
-  async function handleDeleteGroup(groupId: string) {
+  function handleDeleteGroup(groupId: string) {
     if (!confirm('Are you sure you want to delete this account type? Accounts in this type will move to Ungrouped.')) return
     if (!currentBudget) return
-    try {
-      // Move accounts from this group to ungrouped
-      const newAccounts = accounts.map(account =>
-        account.account_group_id === groupId
-          ? { ...account, account_group_id: null }
-          : account
-      )
-      const newGroups = accountGroups.filter(group => group.id !== groupId)
 
-      setAccounts(newAccounts)
-      setAccountGroups(newGroups)
-      await saveBoth(newAccounts, newGroups)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete account type')
-    }
+    // Move accounts from this group to ungrouped
+    const newAccounts = accounts.map(account =>
+      account.account_group_id === groupId
+        ? { ...account, account_group_id: null }
+        : account
+    )
+    const newGroups = accountGroups.filter(group => group.id !== groupId)
+
+    // Optimistic update: update UI immediately, save in background
+    setAccounts(newAccounts)
+    setAccountGroups(newGroups)
+
+    // Save in background
+    saveBoth(newAccounts, newGroups).catch(err => {
+      console.error('[Accounts] Error deleting group:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete account type. Changes may not persist.')
+    })
   }
 
   // Account drag handlers
@@ -505,24 +619,6 @@ function Accounts() {
   // Sort groups by sort_order
   const sortedGroups = [...accountGroups].sort((a, b) => a.sort_order - b.sort_order)
 
-  // Calculate totals
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
-
-  // Calculate balances by group
-  const groupBalances = sortedGroups.map(group => {
-    const groupAccounts = accountsByGroup[group.id] || []
-    return {
-      id: group.id,
-      name: group.name,
-      balance: groupAccounts.reduce((sum, acc) => sum + acc.balance, 0),
-      count: groupAccounts.length,
-    }
-  })
-
-  // Ungrouped balance
-  const ungroupedAccounts = accountsByGroup['ungrouped'] || []
-  const ungroupedBalance = ungroupedAccounts.reduce((sum, acc) => sum + acc.balance, 0)
-
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
   }
@@ -542,89 +638,126 @@ function Accounts() {
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Summary Stats */}
-      <StatCard style={{
-        borderLeft: `4px solid ${colors.primary}`,
-        background: `linear-gradient(135deg, color-mix(in srgb, ${colors.primary} 8%, transparent), color-mix(in srgb, currentColor 3%, transparent))`,
-        padding: '1.25rem 1.5rem',
-      }}>
-        <StatItem
-          label="Total Balance (All Accounts)"
-          value={formatCurrency(totalBalance)}
-          valueColor={getBalanceColor(totalBalance)}
-        />
-      </StatCard>
-
-      {/* Balances by Group */}
-      {(groupBalances.length > 0 || ungroupedAccounts.length > 0) && (
+      {/* Balance Reconciliation Warning */}
+      {balanceMismatch && Object.keys(balanceMismatch).length > 0 && (
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '0.75rem',
-          marginBottom: '1.5rem',
+          background: 'color-mix(in srgb, #f59e0b 15%, transparent)',
+          border: '1px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          gap: '1rem',
         }}>
-          {groupBalances.map(group => {
-            const accountGroup = accountGroups.find(g => g.id === group.id)
-            const warning = getBalanceWarning(group.balance, accountGroup?.expected_balance)
-            return (
-              <div
-                key={group.id}
-                style={{
-                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  borderLeft: `3px solid ${getBalanceColor(group.balance)}`,
-                }}
-              >
-                <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {group.name}
-                </p>
-                <p style={{
-                  margin: '0.25rem 0 0 0',
-                  fontSize: '1.25rem',
-                  fontWeight: 600,
-                  color: getBalanceColor(group.balance),
-                }}>
-                  {formatCurrency(group.balance)}
-                </p>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.5 }}>
-                  {group.count} account{group.count !== 1 ? 's' : ''}
-                </p>
-                {warning && (
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.7rem', color: '#fbbf24' }}>
-                    ⚠️ {warning}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-          {ungroupedAccounts.length > 0 && (
-            <div
-              style={{
-                background: 'color-mix(in srgb, currentColor 5%, transparent)',
-                padding: '1rem',
-                borderRadius: '8px',
-                borderLeft: `3px solid ${getBalanceColor(ungroupedBalance)}`,
-                opacity: 0.7,
-              }}
-            >
-              <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Ungrouped
-              </p>
-              <p style={{
-                margin: '0.25rem 0 0 0',
-                fontSize: '1.25rem',
-                fontWeight: 600,
-                color: getBalanceColor(ungroupedBalance),
-              }}>
-                {formatCurrency(ungroupedBalance)}
-              </p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.5 }}>
-                {ungroupedAccounts.length} account{ungroupedAccounts.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
-      </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontWeight: 600, color: '#f59e0b' }}>
+              ⚠️ Balance Mismatch Detected
+            </p>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.9 }}>
+              {Object.keys(balanceMismatch).length} account{Object.keys(balanceMismatch).length !== 1 ? 's have' : ' has'} balances that don't match the calculated totals from income history.
+            </p>
+            <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.25rem', fontSize: '0.8rem', opacity: 0.8 }}>
+              {Object.entries(balanceMismatch).slice(0, 3).map(([accId, { stored, calculated }]) => {
+                const acc = accounts.find(a => a.id === accId)
+                return (
+                  <li key={accId}>
+                    {acc?.nickname || 'Unknown'}: stored ${stored.toFixed(2)} vs calculated ${calculated.toFixed(2)}
+                  </li>
+                )
+              })}
+              {Object.keys(balanceMismatch).length > 3 && (
+                <li>...and {Object.keys(balanceMismatch).length - 3} more</li>
+              )}
+            </ul>
+          </div>
+          <button
+            onClick={async () => {
+              setIsReconciling(true)
+              try {
+                await reconcileBalances()
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to reconcile')
+              } finally {
+                setIsReconciling(false)
+              }
+            }}
+            disabled={isReconciling}
+            style={{
+              background: '#f59e0b',
+              color: '#000',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '0.5rem 1rem',
+              fontWeight: 600,
+              cursor: isReconciling ? 'not-allowed' : 'pointer',
+              opacity: isReconciling ? 0.7 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isReconciling ? '⏳ Reconciling...' : '🔄 Reconcile Now'}
+          </button>
+        </div>
+      )}
+
+      {/* Manual Reconcile Button (when no mismatch) */}
+      {!balanceMismatch && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          marginBottom: '1rem',
+          gap: '0.5rem',
+        }}>
+          <button
+            onClick={async () => {
+              setIsCheckingMismatch(true)
+              try {
+                await checkBalanceMismatch()
+              } finally {
+                setIsCheckingMismatch(false)
+              }
+            }}
+            disabled={isCheckingMismatch}
+            style={{
+              background: 'color-mix(in srgb, currentColor 10%, transparent)',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.85rem',
+              cursor: isCheckingMismatch ? 'not-allowed' : 'pointer',
+              opacity: isCheckingMismatch ? 0.6 : 1,
+            }}
+            title="Check if account balances match income history"
+          >
+            {isCheckingMismatch ? '⏳ Checking...' : '🔍 Check Balances'}
+          </button>
+          <button
+            onClick={async () => {
+              setIsReconciling(true)
+              try {
+                await reconcileBalances()
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to reconcile')
+              } finally {
+                setIsReconciling(false)
+              }
+            }}
+            disabled={isReconciling}
+            style={{
+              background: 'color-mix(in srgb, currentColor 10%, transparent)',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.85rem',
+              cursor: isReconciling ? 'not-allowed' : 'pointer',
+              opacity: isReconciling ? 0.6 : 1,
+            }}
+            title="Recalculate all account balances from income history"
+          >
+            {isReconciling ? '⏳ Reconciling...' : '🔄 Reconcile All'}
+          </button>
+        </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -725,7 +858,12 @@ function Accounts() {
               >
               {editingGroupId === group.id ? (
                 <GroupForm
-                  initialData={{ name: group.name, expected_balance: group.expected_balance || 'positive' }}
+                  initialData={{
+                    name: group.name,
+                    expected_balance: group.expected_balance || 'positive',
+                    on_budget: group.on_budget,
+                    is_active: group.is_active,
+                  }}
                   onSubmit={(data) => handleUpdateGroup(group.id, data)}
                   onCancel={() => setEditingGroupId(null)}
                   submitLabel="Save"
@@ -742,7 +880,7 @@ function Accounts() {
                     gap: '0.5rem',
                     flexWrap: isMobile ? 'wrap' : 'nowrap',
                   }}>
-                    <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                    <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
                       {!isMobile && <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>}
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {group.name}
@@ -759,6 +897,8 @@ function Accounts() {
                       }}>
                         {formatCurrency(groupTotal)}
                       </span>
+                      {/* Group-level override indicators */}
+                      <GroupOverrideFlags group={group} />
                     </h3>
                     <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
                       {!isMobile && (
@@ -842,12 +982,22 @@ function Accounts() {
               initialData={{
                 nickname: account.nickname,
                             account_group_id: account.account_group_id,
+                            is_income_account: account.is_income_account,
+                            is_income_default: account.is_income_default,
+                            is_outgo_account: account.is_outgo_account,
+                            is_outgo_default: account.is_outgo_default,
+                            on_budget: account.on_budget,
+                            is_active: account.is_active,
                           }}
                           onSubmit={(data) => handleUpdateAccount(account.id, data)}
                           onCancel={() => setEditingAccountId(null)}
                           submitLabel="Save"
                           accountGroups={accountGroups}
                           showGroupSelector={true}
+                          showIncomeSettings={true}
+                          currentGroupId={account.account_group_id}
+                          hasExistingIncomeDefault={accounts.some(a => a.is_income_default && a.id !== account.id)}
+                          hasExistingOutgoDefault={accounts.some(a => a.is_outgo_default && a.id !== account.id)}
             />
           ) : (
             <DraggableCard
@@ -867,7 +1017,10 @@ function Accounts() {
                           canMoveDown={groupAccounts.findIndex(a => a.id === account.id) < groupAccounts.length - 1}
             >
               <div>
-                  <span style={itemTitle}>{account.nickname}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={itemTitle}>{account.nickname}</span>
+                    <AccountFlags account={account} accountGroups={accountGroups} />
+                  </div>
                             <p style={{
                               margin: '0.25rem 0 0 0',
                               fontSize: '1.1rem',
@@ -919,6 +1072,8 @@ function Accounts() {
                         onCancel={() => setCreateForGroupId(null)}
                         submitLabel="Create"
                         accountGroups={accountGroups}
+                        showIncomeSettings={true}
+                        currentGroupId={group.id}
                       />
                     )}
                   </div>
@@ -1016,12 +1171,22 @@ function Accounts() {
                       initialData={{
                         nickname: account.nickname,
                         account_group_id: account.account_group_id,
+                        is_income_account: account.is_income_account,
+                        is_income_default: account.is_income_default,
+                        is_outgo_account: account.is_outgo_account,
+                        is_outgo_default: account.is_outgo_default,
+                        on_budget: account.on_budget,
+                        is_active: account.is_active,
                       }}
                       onSubmit={(data) => handleUpdateAccount(account.id, data)}
                       onCancel={() => setEditingAccountId(null)}
                       submitLabel="Save"
                       accountGroups={accountGroups}
                       showGroupSelector={true}
+                      showIncomeSettings={true}
+                      currentGroupId={null}
+                      hasExistingIncomeDefault={accounts.some(a => a.is_income_default && a.id !== account.id)}
+                      hasExistingOutgoDefault={accounts.some(a => a.is_outgo_default && a.id !== account.id)}
                     />
                   ) : (
                     <DraggableCard
@@ -1041,7 +1206,10 @@ function Accounts() {
                       canMoveDown={ungroupedAccounts.findIndex(a => a.id === account.id) < ungroupedAccounts.length - 1}
                     >
                       <div>
-                        <span style={itemTitle}>{account.nickname}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={itemTitle}>{account.nickname}</span>
+                          <AccountFlags account={account} accountGroups={accountGroups} />
+                        </div>
                 <p style={{
                           margin: '0.25rem 0 0 0',
                           fontSize: '1.1rem',
@@ -1090,6 +1258,8 @@ function Accounts() {
                     onCancel={() => setCreateForGroupId(null)}
                     submitLabel="Create"
                     accountGroups={accountGroups}
+                    showIncomeSettings={true}
+                    currentGroupId={null}
           />
         )}
       </div>
@@ -1131,15 +1301,51 @@ interface AccountFormProps {
   submitLabel: string
   accountGroups: AccountGroup[]
   showGroupSelector?: boolean
+  showIncomeSettings?: boolean
+  hasExistingIncomeDefault?: boolean
+  hasExistingOutgoDefault?: boolean
+  currentGroupId?: string | null // For checking group-level overrides
 }
 
-function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGroups, showGroupSelector = false }: AccountFormProps) {
-  const [formData, setFormData] = useState<AccountFormData>(initialData || { nickname: '', account_group_id: null })
+function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGroups, showGroupSelector = false, showIncomeSettings = false, hasExistingIncomeDefault = false, hasExistingOutgoDefault = false, currentGroupId }: AccountFormProps) {
+  const [formData, setFormData] = useState<AccountFormData>(initialData || {
+    nickname: '',
+    account_group_id: null,
+    is_income_account: false,
+    is_income_default: false,
+    is_outgo_account: false,
+    is_outgo_default: false,
+    on_budget: true,
+    is_active: true,
+  })
+
+  // Find the current group to check for overrides
+  const effectiveGroupId = formData.account_group_id || currentGroupId
+  const currentGroup = effectiveGroupId ? accountGroups.find(g => g.id === effectiveGroupId) : null
+  const groupOverridesActive = currentGroup?.is_active !== undefined
+  const groupOverridesBudget = currentGroup?.on_budget !== undefined
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!formData.nickname.trim()) return
     onSubmit(formData)
+  }
+
+  // If unchecking income account, also uncheck income default
+  function handleIncomeAccountChange(checked: boolean) {
+    setFormData({
+      ...formData,
+      is_income_account: checked,
+      is_income_default: checked ? formData.is_income_default : false,
+    })
+  }
+
+  function handleOutgoAccountChange(checked: boolean) {
+    setFormData({
+      ...formData,
+      is_outgo_account: checked,
+      is_outgo_default: checked ? formData.is_outgo_default : false,
+    })
   }
 
   return (
@@ -1171,6 +1377,113 @@ function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGrou
             ))}
           </SelectInput>
         </FormField>
+      )}
+      {showIncomeSettings && (
+        <div style={{
+          padding: '0.75rem',
+          background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+        }}>
+          {/* Account Status */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Account Status</p>
+
+            {/* Active checkbox - disabled if group overrides */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Checkbox
+                id="is-active"
+                checked={groupOverridesActive ? currentGroup!.is_active! : (formData.is_active !== false)}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                disabled={groupOverridesActive}
+              >
+                <span style={{ opacity: groupOverridesActive ? 0.5 : 1 }}>Active account</span>
+              </Checkbox>
+              {groupOverridesActive && (
+                <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
+                  Set by account type "{currentGroup!.name}"
+                </p>
+              )}
+            </div>
+
+            {/* On-budget checkbox - disabled if group overrides */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Checkbox
+                id="on-budget"
+                checked={groupOverridesBudget ? currentGroup!.on_budget! : (formData.on_budget !== false)}
+                onChange={(e) => setFormData({ ...formData, on_budget: e.target.checked })}
+                disabled={groupOverridesBudget}
+              >
+                <span style={{ opacity: groupOverridesBudget ? 0.5 : 1 }}>On budget (affects budget totals)</span>
+              </Checkbox>
+              {groupOverridesBudget && (
+                <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
+                  Set by account type "{currentGroup!.name}"
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Income Settings */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Income Settings</p>
+            <Checkbox
+              id="is-income-account"
+              checked={formData.is_income_account || false}
+              onChange={(e) => handleIncomeAccountChange(e.target.checked)}
+            >
+              Show in income deposit list
+            </Checkbox>
+            {formData.is_income_account && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginLeft: '2rem' }}>
+                <Checkbox
+                  id="is-income-default"
+                  checked={formData.is_income_default || false}
+                  onChange={(e) => setFormData({ ...formData, is_income_default: e.target.checked })}
+                  disabled={hasExistingIncomeDefault && !initialData?.is_income_default}
+                >
+                  Default account for new income
+                </Checkbox>
+                {hasExistingIncomeDefault && !initialData?.is_income_default && (
+                  <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>
+                    Another account is already set as default
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Expense Settings */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Expense Settings</p>
+            <Checkbox
+              id="is-outgo-account"
+              checked={formData.is_outgo_account || false}
+              onChange={(e) => handleOutgoAccountChange(e.target.checked)}
+            >
+              Show in expense account list
+            </Checkbox>
+            {formData.is_outgo_account && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginLeft: '2rem' }}>
+                <Checkbox
+                  id="is-outgo-default"
+                  checked={formData.is_outgo_default || false}
+                  onChange={(e) => setFormData({ ...formData, is_outgo_default: e.target.checked })}
+                  disabled={hasExistingOutgoDefault && !initialData?.is_outgo_default}
+                >
+                  Default account for new expenses
+                </Checkbox>
+                {hasExistingOutgoDefault && !initialData?.is_outgo_default && (
+                  <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>
+                    Another account is already set as default
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       <FormButtonGroup>
         <Button type="submit">{submitLabel}</Button>
@@ -1221,12 +1534,344 @@ function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: GroupFormPr
           <option value="any">Either (no warnings)</option>
         </SelectInput>
       </FormField>
+
+      {/* Group-level overrides */}
+      <div style={{
+        padding: '0.75rem',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        borderRadius: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.5rem',
+      }}>
+        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>
+          Group-Level Overrides <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>(applies to all accounts in this type)</span>
+        </p>
+        <ThreeStateCheckbox
+          label="Active status"
+          value={formData.is_active}
+          onChange={(val) => setFormData({ ...formData, is_active: val })}
+          trueLabel="All active"
+          falseLabel="All inactive"
+          undefinedLabel="Per account"
+        />
+        <ThreeStateCheckbox
+          label="Budget status"
+          value={formData.on_budget}
+          onChange={(val) => setFormData({ ...formData, on_budget: val })}
+          trueLabel="All on budget"
+          falseLabel="All off budget"
+          undefinedLabel="Per account"
+        />
+      </div>
+
       <FormButtonGroup>
         <Button type="submit">{submitLabel}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
       </FormButtonGroup>
     </FormWrapper>
   )
+}
+
+// Three-state toggle component for group-level overrides
+interface ThreeStateCheckboxProps {
+  label: string
+  value: boolean | undefined
+  onChange: (value: boolean | undefined) => void
+  trueLabel: string
+  falseLabel: string
+  undefinedLabel: string
+}
+
+function ThreeStateCheckbox({ label, value, onChange, trueLabel, falseLabel, undefinedLabel }: ThreeStateCheckboxProps) {
+  function cycle() {
+    if (value === undefined) onChange(true)
+    else if (value === true) onChange(false)
+    else onChange(undefined)
+  }
+
+  const displayLabel = value === true ? trueLabel : value === false ? falseLabel : undefinedLabel
+  const displayColor = value === true ? colors.success : value === false ? colors.warning : 'inherit'
+  const displayIcon = value === true ? '✓' : value === false ? '✗' : '○'
+
+  return (
+    <button
+      type="button"
+      onClick={cycle}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.5rem 0.75rem',
+        background: value !== undefined
+          ? `color-mix(in srgb, ${displayColor} 15%, transparent)`
+          : 'color-mix(in srgb, currentColor 8%, transparent)',
+        border: value !== undefined
+          ? `1px solid color-mix(in srgb, ${displayColor} 40%, transparent)`
+          : '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '0.85rem',
+        color: 'inherit',
+        textAlign: 'left',
+        width: '100%',
+      }}
+    >
+      <span style={{
+        width: '1.25rem',
+        height: '1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '4px',
+        background: value !== undefined ? displayColor : 'color-mix(in srgb, currentColor 20%, transparent)',
+        color: value !== undefined ? 'white' : 'inherit',
+        fontWeight: 600,
+        fontSize: '0.75rem',
+      }}>
+        {displayIcon}
+      </span>
+      <span style={{ flex: 1 }}>
+        <span style={{ opacity: 0.7 }}>{label}:</span>{' '}
+        <span style={{ fontWeight: 500, color: displayColor }}>{displayLabel}</span>
+      </span>
+      <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>click to cycle</span>
+    </button>
+  )
+}
+
+// Group override flags component - shows indicators when group has account-level overrides
+interface GroupOverrideFlagsProps {
+  group: AccountGroup
+}
+
+function GroupOverrideFlags({ group }: GroupOverrideFlagsProps) {
+  const flags: React.ReactNode[] = []
+
+  // Show inactive override
+  if (group.is_active === false) {
+    flags.push(
+      <span
+        key="inactive"
+        style={{
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          padding: '0.15rem 0.35rem',
+          borderRadius: '4px',
+          background: `color-mix(in srgb, ${colors.warning} 20%, transparent)`,
+          color: colors.warning,
+          whiteSpace: 'nowrap',
+        }}
+        title="All accounts in this type are inactive"
+      >
+        All Inactive
+      </span>
+    )
+  } else if (group.is_active === true) {
+    flags.push(
+      <span
+        key="active"
+        style={{
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          padding: '0.15rem 0.35rem',
+          borderRadius: '4px',
+          background: `color-mix(in srgb, ${colors.success} 20%, transparent)`,
+          color: colors.success,
+          whiteSpace: 'nowrap',
+        }}
+        title="All accounts in this type are active"
+      >
+        All Active
+      </span>
+    )
+  }
+
+  // Show off-budget override
+  if (group.on_budget === false) {
+    flags.push(
+      <span
+        key="off-budget"
+        style={{
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          padding: '0.15rem 0.35rem',
+          borderRadius: '4px',
+          background: `color-mix(in srgb, ${colors.warning} 20%, transparent)`,
+          color: colors.warning,
+          whiteSpace: 'nowrap',
+        }}
+        title="All accounts in this type are off budget"
+      >
+        All Off Budget
+      </span>
+    )
+  } else if (group.on_budget === true) {
+    flags.push(
+      <span
+        key="on-budget"
+        style={{
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          padding: '0.15rem 0.35rem',
+          borderRadius: '4px',
+          background: `color-mix(in srgb, ${colors.success} 20%, transparent)`,
+          color: colors.success,
+          whiteSpace: 'nowrap',
+        }}
+        title="All accounts in this type are on budget"
+      >
+        All On Budget
+      </span>
+    )
+  }
+
+  if (flags.length === 0) return null
+
+  return <>{flags}</>
+}
+
+// Account status badge component
+interface AccountBadgeProps {
+  icon: string
+  label: string
+  variant: 'success' | 'warning' | 'muted' | 'income' | 'expense'
+  title?: string
+}
+
+function AccountBadge({ icon, label, variant, title }: AccountBadgeProps) {
+  const variantStyles = {
+    success: {
+      background: `color-mix(in srgb, ${colors.success} 20%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${colors.success} 40%, transparent)`,
+      color: colors.success,
+      opacity: 1,
+    },
+    warning: {
+      background: `color-mix(in srgb, ${colors.warning} 15%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${colors.warning} 35%, transparent)`,
+      color: colors.warning,
+      opacity: 1,
+    },
+    muted: {
+      background: 'color-mix(in srgb, currentColor 12%, transparent)',
+      border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+      color: 'inherit',
+      opacity: 0.7,
+    },
+    income: {
+      background: `color-mix(in srgb, ${colors.success} 10%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${colors.success} 25%, transparent)`,
+      color: colors.success,
+      opacity: 0.7,
+    },
+    expense: {
+      background: `color-mix(in srgb, ${colors.warning} 10%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${colors.warning} 25%, transparent)`,
+      color: colors.warning,
+      opacity: 0.7,
+    },
+  }
+
+  const styles = variantStyles[variant]
+
+  return (
+    <span
+      title={title || label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        background: styles.background,
+        border: styles.border,
+        padding: '0.15rem 0.4rem',
+        borderRadius: '4px',
+        fontSize: '0.7rem',
+        fontWeight: 500,
+        textTransform: 'uppercase',
+        letterSpacing: '0.3px',
+        color: styles.color,
+        opacity: styles.opacity,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ fontSize: '0.75rem' }}>{icon}</span>
+      {label}
+    </span>
+  )
+}
+
+// Account flags component - shows all relevant flags for an account
+interface AccountFlagsProps {
+  account: FinancialAccount
+  accountGroups: AccountGroup[]
+}
+
+function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
+  const flags: React.ReactNode[] = []
+
+  // Find the account's group
+  const group = account.account_group_id
+    ? accountGroups.find(g => g.id === account.account_group_id)
+    : null
+
+  // Effective values (group overrides take precedence)
+  const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
+  const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
+
+  // Inactive flag (most important - show first)
+  if (!effectiveActive) {
+    const isFromGroup = group?.is_active !== undefined
+    flags.push(
+      <AccountBadge
+        key="inactive"
+        icon="⏸️"
+        label={isFromGroup ? "Inactive (type)" : "Inactive"}
+        variant="warning"
+        title={isFromGroup ? `Set by "${group!.name}" account type` : "Account is inactive/archived"}
+      />
+    )
+  }
+
+  // Off-budget flag
+  if (!effectiveOnBudget) {
+    const isFromGroup = group?.on_budget !== undefined
+    flags.push(
+      <AccountBadge
+        key="off-budget"
+        icon="📊"
+        label={isFromGroup ? "Off Budget (type)" : "Off Budget"}
+        variant="warning"
+        title={isFromGroup ? `Set by "${group!.name}" account type` : "Tracking only - not included in budget"}
+      />
+    )
+  }
+
+  // Income default flag (takes precedence over regular income flag)
+  if (account.is_income_default) {
+    flags.push(
+      <AccountBadge key="income-default" icon="💰" label="Income Default" variant="success" title="Default income deposit account" />
+    )
+  } else if (account.is_income_account) {
+    flags.push(
+      <AccountBadge key="income" icon="💰" label="Income" variant="income" title="Income deposit account" />
+    )
+  }
+
+  // Outgo default flag (takes precedence over regular outgo flag)
+  if (account.is_outgo_default) {
+    flags.push(
+      <AccountBadge key="outgo-default" icon="💸" label="Expense Default" variant="warning" title="Default expense account" />
+    )
+  } else if (account.is_outgo_account) {
+    flags.push(
+      <AccountBadge key="outgo" icon="💸" label="Expense" variant="expense" title="Expense account" />
+    )
+  }
+
+  if (flags.length === 0) return null
+
+  return <>{flags}</>
 }
 
 // Drop zone for adding account to end of group

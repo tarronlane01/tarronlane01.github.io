@@ -10,6 +10,8 @@ export {
   SelectInput,
   TextAreaInput,
   FormButtonGroup,
+  CurrencyInput,
+  PayeeAutocomplete,
 } from './FormElements'
 export { DraggableCard } from './DraggableCard'
 export { DropZone } from './DropZone'

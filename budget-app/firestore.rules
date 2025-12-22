@@ -132,5 +132,63 @@ service cloud.firestore {
       // Only admins can delete feedback
       allow delete: if isAdmin();
     }
+
+    // Months collection - stores monthly income/expense data per budget
+    // Document ID format: {budgetId}_{year}_{month} (e.g., budget_123_2024_01)
+    match /months/{monthId} {
+      // Helper function to check if user has access to the budget referenced in this month document
+      function userHasBudgetAccessForMonth() {
+        let budgetId = resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // For create, we need to check the incoming data since resource.data doesn't exist yet
+      function userHasBudgetAccessForNewMonth() {
+        let budgetId = request.resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Allow read if user has access to the budget or is admin
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForMonth());
+
+      // Allow create if user has access to the budget referenced in the new document
+      allow create: if request.auth != null && (isAdmin() || userHasBudgetAccessForNewMonth());
+
+      // Allow update if user has access to the budget (and budget_id cannot be changed)
+      allow update: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForMonth())
+                    && request.resource.data.budget_id == resource.data.budget_id;
+
+      // Allow delete if user has access to the budget or is admin
+      allow delete: if request.auth != null && (isAdmin() || userHasBudgetAccessForMonth());
+    }
+
+    // Payees collection - stores payee names per budget
+    // Document ID is the budget ID (one payees document per budget)
+    match /payees/{budgetId} {
+      // Helper function to check if user has access to this budget
+      function userHasBudgetAccessForPayees() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Allow read if user has access to the budget or is admin
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForPayees());
+
+      // Allow create if user has access to the budget and budget_id matches document ID
+      allow create: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForPayees())
+                    && request.resource.data.budget_id == budgetId;
+
+      // Allow update if user has access to the budget (and budget_id cannot be changed)
+      allow update: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForPayees())
+                    && request.resource.data.budget_id == resource.data.budget_id;
+
+      // Allow delete if user has access to the budget or is admin
+      allow delete: if request.auth != null && (isAdmin() || userHasBudgetAccessForPayees());
+    }
   }
 }
