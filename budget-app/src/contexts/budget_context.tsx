@@ -33,8 +33,8 @@ export interface UserDocument {
 // Data types
 export type ExpectedBalanceType = 'positive' | 'negative' | 'any'
 
+// AccountGroup stored in a map where the key is the group ID
 export interface AccountGroup {
-  id: string
   name: string
   sort_order: number
   expected_balance?: ExpectedBalanceType // 'positive' = warn if negative, 'negative' = warn if positive (e.g. credit cards), 'any' = no warnings
@@ -42,8 +42,11 @@ export interface AccountGroup {
   is_active?: boolean // If set, overrides account-level setting for all accounts in this group
 }
 
+// Map of account group ID to AccountGroup data
+export type AccountGroupsMap = Record<string, AccountGroup>
+
+// FinancialAccount stored in a map where the key is the account ID
 export interface FinancialAccount {
-  id: string
   nickname: string
   balance: number
   account_group_id: string | null
@@ -56,17 +59,24 @@ export interface FinancialAccount {
   is_active?: boolean // true = active (default), false = hidden/archived
 }
 
+// Map of account ID to FinancialAccount data
+export type AccountsMap = Record<string, FinancialAccount>
+
 export type DefaultAmountType = 'fixed' | 'percentage'
 
+// Category stored in a map where the key is the category ID
 export interface Category {
-  id: string
   name: string
   description?: string // Optional description of what this category is used for
   category_group_id: string | null
   sort_order: number
   default_monthly_amount?: number // Suggested allocation amount per month (dollars if fixed, percentage if percentage)
   default_monthly_type?: DefaultAmountType // 'fixed' = dollar amount, 'percentage' = % of previous month's income
+  balance: number // Cumulative allocated amount across all finalized months
 }
+
+// Map of category ID to Category data
+export type CategoriesMap = Record<string, Category>
 
 export interface CategoryGroup {
   id: string
@@ -151,9 +161,9 @@ interface BudgetContextType {
   isInitialized: boolean
 
   // Budget data
-  accounts: FinancialAccount[]
-  accountGroups: AccountGroup[]
-  categories: Category[]
+  accounts: AccountsMap
+  accountGroups: AccountGroupsMap
+  categories: CategoriesMap
   categoryGroups: CategoryGroup[]
 
   // Budget users - from budget's user_ids (invited) and accepted_user_ids
@@ -175,6 +185,7 @@ interface BudgetContextType {
   currentYear: number
   currentMonthNumber: number
   monthLoading: boolean
+  previousMonthIncome: number
 
   // Payees
   payees: string[]
@@ -207,9 +218,9 @@ interface BudgetContextType {
   renameBudget: (newName: string) => Promise<void>
 
   // Data update methods
-  setAccounts: (accounts: FinancialAccount[]) => void
-  setAccountGroups: (accountGroups: AccountGroup[]) => void
-  setCategories: (categories: Category[]) => void
+  setAccounts: (accounts: AccountsMap) => void
+  setAccountGroups: (accountGroups: AccountGroupsMap) => void
+  setCategories: (categories: CategoriesMap) => void
   setCategoryGroups: (categoryGroups: CategoryGroup[]) => void
   saveBudgetData: () => Promise<void>
 
@@ -249,9 +260,9 @@ const BudgetContext = createContext<BudgetContextType>({
   isTest: false,
   currentUserId: null,
   isInitialized: false,
-  accounts: [],
-  accountGroups: [],
-  categories: [],
+  accounts: {},
+  accountGroups: {},
+  categories: {},
   categoryGroups: [],
   budgetUserIds: [],
   acceptedUserIds: [],
@@ -263,6 +274,7 @@ const BudgetContext = createContext<BudgetContextType>({
   currentYear: new Date().getFullYear(),
   currentMonthNumber: new Date().getMonth() + 1,
   monthLoading: false,
+  previousMonthIncome: 0,
   payees: [],
   lastRefreshTime: null,
   cacheStats: null,
@@ -305,24 +317,24 @@ const BudgetContext = createContext<BudgetContextType>({
 })
 
 // Helper function to clean accounts for Firestore (removes undefined values)
-function cleanAccountsForFirestore(accounts: FinancialAccount[]): Record<string, any>[] {
-  return accounts.map(acc => {
-    const cleaned: Record<string, any> = {
-      id: acc.id,
+function cleanAccountsForFirestore(accounts: AccountsMap): AccountsMap {
+  const cleaned: AccountsMap = {}
+  Object.entries(accounts).forEach(([accId, acc]) => {
+    cleaned[accId] = {
       nickname: acc.nickname,
       balance: acc.balance,
       account_group_id: acc.account_group_id ?? null,
       sort_order: acc.sort_order,
     }
     // Only include optional fields if they have a value
-    if (acc.is_income_account !== undefined) cleaned.is_income_account = acc.is_income_account
-    if (acc.is_income_default !== undefined) cleaned.is_income_default = acc.is_income_default
-    if (acc.is_outgo_account !== undefined) cleaned.is_outgo_account = acc.is_outgo_account
-    if (acc.is_outgo_default !== undefined) cleaned.is_outgo_default = acc.is_outgo_default
-    if (acc.on_budget !== undefined) cleaned.on_budget = acc.on_budget
-    if (acc.is_active !== undefined) cleaned.is_active = acc.is_active
-    return cleaned
+    if (acc.is_income_account !== undefined) cleaned[accId].is_income_account = acc.is_income_account
+    if (acc.is_income_default !== undefined) cleaned[accId].is_income_default = acc.is_income_default
+    if (acc.is_outgo_account !== undefined) cleaned[accId].is_outgo_account = acc.is_outgo_account
+    if (acc.is_outgo_default !== undefined) cleaned[accId].is_outgo_default = acc.is_outgo_default
+    if (acc.on_budget !== undefined) cleaned[accId].on_budget = acc.on_budget
+    if (acc.is_active !== undefined) cleaned[accId].is_active = acc.is_active
   })
+  return cleaned
 }
 
 export function BudgetProvider({ children }: { children: ReactNode }) {
@@ -334,9 +346,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const loadedForUserRef = useRef<string | null>(null)
 
   // Budget data state
-  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
-  const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [accounts, setAccounts] = useState<AccountsMap>({})
+  const [accountGroups, setAccountGroups] = useState<AccountGroupsMap>({})
+  const [categories, setCategories] = useState<CategoriesMap>({})
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([])
 
   // Budget users - from budget document
@@ -355,6 +367,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
   const [monthLoading, setMonthLoading] = useState(false)
+  const [previousMonthIncome, setPreviousMonthIncome] = useState<number>(0)
 
   // Payees state
   const [payees, setPayees] = useState<string[]>([])
@@ -426,9 +439,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   async function loadOrCreateBudget() {
     if (!current_user) {
       setCurrentBudget(null)
-      setAccounts([])
-      setAccountGroups([])
-      setCategories([])
+      setAccounts({})
+      setAccountGroups({})
+      setCategories({})
       setCategoryGroups([])
       setBudgetUserIds([])
       setAcceptedUserIds([])
@@ -515,9 +528,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           // User has pending invites but no accepted budgets - don't create new budget
           // Let them choose to accept an invite or create new
           setCurrentBudget(null)
-          setAccounts([])
-          setAccountGroups([])
-          setCategories([])
+          setAccounts({})
+          setAccountGroups({})
+          setCategories({})
           setCategoryGroups([])
           setBudgetUserIds([])
           setAcceptedUserIds([])
@@ -526,9 +539,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           // No pending invites and no accepted budgets - need to create first budget
           // Don't auto-create, let user confirm and name their budget
           setCurrentBudget(null)
-          setAccounts([])
-          setAccountGroups([])
-          setCategories([])
+          setAccounts({})
+          setAccountGroups({})
+          setCategories({})
           setCategoryGroups([])
           setBudgetUserIds([])
           setAcceptedUserIds([])
@@ -587,46 +600,53 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setBudgetUserIds(data.user_ids || [])
     setAcceptedUserIds(data.accepted_user_ids || [])
 
-    // Load accounts
-    const loadedAccounts: FinancialAccount[] = (data.accounts || []).map((account: any) => ({
-      id: account.id,
-      nickname: account.nickname,
-      balance: account.balance,
-      account_group_id: account.account_group_id ?? null,
-      sort_order: account.sort_order ?? 0,
-      is_income_account: account.is_income_account,
-      is_income_default: account.is_income_default,
-      is_outgo_account: account.is_outgo_account,
-      is_outgo_default: account.is_outgo_default,
-      on_budget: account.on_budget,
-      is_active: account.is_active,
-    }))
-    loadedAccounts.sort((a, b) => a.sort_order - b.sort_order)
+    // Load accounts (stored as a map where key is account ID)
+    const loadedAccounts: AccountsMap = {}
+    const accountsData = data.accounts || {}
+    Object.entries(accountsData).forEach(([id, account]: [string, any]) => {
+      loadedAccounts[id] = {
+        nickname: account.nickname,
+        balance: account.balance,
+        account_group_id: account.account_group_id ?? null,
+        sort_order: account.sort_order ?? 0,
+        is_income_account: account.is_income_account,
+        is_income_default: account.is_income_default,
+        is_outgo_account: account.is_outgo_account,
+        is_outgo_default: account.is_outgo_default,
+        on_budget: account.on_budget,
+        is_active: account.is_active,
+      }
+    })
     setAccounts(loadedAccounts)
 
-    // Load account groups
-    const loadedAccountGroups: AccountGroup[] = (data.account_groups || []).map((group: any) => ({
-      id: group.id,
-      name: group.name,
-      sort_order: group.sort_order ?? 0,
-      expected_balance: group.expected_balance ?? 'positive',
-      on_budget: group.on_budget,
-      is_active: group.is_active,
-    }))
-    loadedAccountGroups.sort((a, b) => a.sort_order - b.sort_order)
+    // Load account groups (stored as a map where key is group ID)
+    const loadedAccountGroups: AccountGroupsMap = {}
+    const accountGroupsData = data.account_groups || {}
+    Object.entries(accountGroupsData).forEach(([id, group]: [string, any]) => {
+      loadedAccountGroups[id] = {
+        name: group.name,
+        sort_order: group.sort_order ?? 0,
+        expected_balance: group.expected_balance ?? 'positive',
+        on_budget: group.on_budget,
+        is_active: group.is_active,
+      }
+    })
     setAccountGroups(loadedAccountGroups)
 
-    // Load categories
-    const loadedCategories: Category[] = (data.categories || []).map((category: any) => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      category_group_id: category.category_group_id ?? null,
-      sort_order: category.sort_order ?? 0,
-      default_monthly_amount: category.default_monthly_amount,
-      default_monthly_type: category.default_monthly_type,
-    }))
-    loadedCategories.sort((a, b) => a.sort_order - b.sort_order)
+    // Load categories (stored as a map where key is category ID)
+    const loadedCategories: CategoriesMap = {}
+    const categoriesData = data.categories || {}
+    Object.entries(categoriesData).forEach(([id, category]: [string, any]) => {
+      loadedCategories[id] = {
+        name: category.name,
+        description: category.description,
+        category_group_id: category.category_group_id ?? null,
+        sort_order: category.sort_order ?? 0,
+        default_monthly_amount: category.default_monthly_amount,
+        default_monthly_type: category.default_monthly_type,
+        balance: category.balance ?? 0,
+      }
+    })
     setCategories(loadedCategories)
 
     // Load category groups
@@ -957,9 +977,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         accepted_user_ids: newBudget.accepted_user_ids,
         owner_id: newBudget.owner_id,
         owner_email: newBudget.owner_email,
-        accounts: [],
-        account_groups: [],
-        categories: [],
+        accounts: {},
+        account_groups: {},
+        categories: {},
         category_groups: [],
         created_at: new Date().toISOString(),
       })
@@ -990,9 +1010,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       }
 
       setCurrentBudget(newBudget)
-      setAccounts([])
-      setAccountGroups([])
-      setCategories([])
+      setAccounts({})
+      setAccountGroups({})
+      setCategories({})
       setCategoryGroups([])
       setBudgetUserIds([current_user.uid])
       setAcceptedUserIds([current_user.uid])
@@ -1053,33 +1073,73 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     return `${budgetId}_${year}_${monthStr}`
   }
 
+  // Helper to fetch previous month's income (non-async version for use in loadMonth)
+  async function fetchPreviousMonthIncome(budgetId: string, year: number, month: number): Promise<number> {
+    // Calculate previous month
+    let prevYear = year
+    let prevMonth = month - 1
+    if (prevMonth < 1) {
+      prevMonth = 12
+      prevYear -= 1
+    }
+
+    try {
+      const monthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
+      const monthDocRef = doc(db, 'months', monthDocId)
+      const monthDoc = await getDoc(monthDocRef)
+
+      if (monthDoc.exists()) {
+        const data = monthDoc.data()
+        return data.total_income || 0
+      }
+      return 0
+    } catch (err) {
+      console.error('[BudgetContext] Error getting previous month income:', err)
+      return 0
+    }
+  }
+
   // Load or create a month document
   const loadMonth = useCallback(async (year: number, month: number, skipCache = false) => {
     if (!currentBudget || !current_user) return
 
     setMonthLoading(true)
-    setCurrentYear(year)
-    setCurrentMonthNumber(month)
 
     try {
       const cacheKey = CACHE_KEYS.MONTH(currentBudget.id, year, month)
+      const prevIncomeCacheKey = `prev_income_${currentBudget.id}_${year}_${month}`
 
       // Check cache first (unless force refresh or skipCache)
       if (!forceRefreshRef.current && !skipCache) {
         const cached = getFromCache<MonthDocument>(cacheKey)
-        if (cached) {
+        const cachedPrevIncome = getFromCache<number>(prevIncomeCacheKey)
+        if (cached && cachedPrevIncome !== null) {
           setIsUsingCache(true)
+          // Update all state together so UI updates in one render
+          setCurrentYear(year)
+          setCurrentMonthNumber(month)
           setCurrentMonth(cached)
+          setPreviousMonthIncome(cachedPrevIncome)
           setMonthLoading(false)
           return
         }
       }
 
-      // Use the shared getOrCreateMonthDoc to prevent race conditions
-      const monthData = await getOrCreateMonthDoc(currentBudget.id, year, month)
+      // Fetch both month data and previous month income in parallel
+      const [monthData, prevIncome] = await Promise.all([
+        getOrCreateMonthDoc(currentBudget.id, year, month),
+        fetchPreviousMonthIncome(currentBudget.id, year, month)
+      ])
+
       setIsUsingCache(false)
       saveToCache(cacheKey, monthData)
+      saveToCache(prevIncomeCacheKey, prevIncome)
+
+      // Update all state together so UI updates in one render
+      setCurrentYear(year)
+      setCurrentMonthNumber(month)
       setCurrentMonth(monthData)
+      setPreviousMonthIncome(prevIncome)
     } catch (err) {
       console.error('[BudgetContext] Error loading month:', err)
       throw new Error(err instanceof Error ? err.message : 'Failed to load month')
@@ -1321,16 +1381,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       if (budgetDoc.exists()) {
         const budgetData = budgetDoc.data()
-        const currentAccounts: FinancialAccount[] = budgetData.accounts || []
+        const currentAccounts: AccountsMap = budgetData.accounts || {}
 
-        const targetAccount = currentAccounts.find(a => a.id === accountId)
+        const targetAccount = currentAccounts[accountId]
 
         if (targetAccount) {
-          const updatedAccounts = currentAccounts.map(acc =>
-            acc.id === accountId
-              ? { ...acc, balance: acc.balance + amount }
-              : acc
-          )
+          const updatedAccounts: AccountsMap = {
+            ...currentAccounts,
+            [accountId]: { ...targetAccount, balance: targetAccount.balance + amount },
+          }
 
           const cleanedAccounts = cleanAccountsForFirestore(updatedAccounts)
 
@@ -1471,30 +1530,33 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
         if (budgetDoc.exists()) {
           const budgetData = budgetDoc.data()
-          let currentAccounts: FinancialAccount[] = budgetData.accounts || []
+          const currentAccounts: AccountsMap = { ...(budgetData.accounts || {}) }
 
           // If account changed, adjust both old and new accounts
           if (accountChanged) {
             // Remove from old account
-            currentAccounts = currentAccounts.map(acc =>
-              acc.id === oldIncome.account_id
-                ? { ...acc, balance: acc.balance - oldIncome.amount }
-                : acc
-            )
+            if (currentAccounts[oldIncome.account_id]) {
+              currentAccounts[oldIncome.account_id] = {
+                ...currentAccounts[oldIncome.account_id],
+                balance: currentAccounts[oldIncome.account_id].balance - oldIncome.amount,
+              }
+            }
             // Add to new account
-            currentAccounts = currentAccounts.map(acc =>
-              acc.id === accountId
-                ? { ...acc, balance: acc.balance + amount }
-                : acc
-            )
+            if (currentAccounts[accountId]) {
+              currentAccounts[accountId] = {
+                ...currentAccounts[accountId],
+                balance: currentAccounts[accountId].balance + amount,
+              }
+            }
           } else if (amountChanged) {
             // Same account, just adjust the difference
             const amountDiff = amount - oldIncome.amount
-            currentAccounts = currentAccounts.map(acc =>
-              acc.id === accountId
-                ? { ...acc, balance: acc.balance + amountDiff }
-                : acc
-            )
+            if (currentAccounts[accountId]) {
+              currentAccounts[accountId] = {
+                ...currentAccounts[accountId],
+                balance: currentAccounts[accountId].balance + amountDiff,
+              }
+            }
           }
 
           const cleanedAccounts = cleanAccountsForFirestore(currentAccounts)
@@ -1558,15 +1620,16 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       if (budgetDoc.exists()) {
         const budgetData = budgetDoc.data()
-        const currentAccounts: FinancialAccount[] = budgetData.accounts || []
+        const currentAccounts: AccountsMap = { ...(budgetData.accounts || {}) }
 
-        const updatedAccounts = currentAccounts.map(acc =>
-          acc.id === incomeToDelete.account_id
-            ? { ...acc, balance: acc.balance - incomeToDelete.amount }
-            : acc
-        )
+        if (currentAccounts[incomeToDelete.account_id]) {
+          currentAccounts[incomeToDelete.account_id] = {
+            ...currentAccounts[incomeToDelete.account_id],
+            balance: currentAccounts[incomeToDelete.account_id].balance - incomeToDelete.amount,
+          }
+        }
 
-        const cleanedAccounts = cleanAccountsForFirestore(updatedAccounts)
+        const cleanedAccounts = cleanAccountsForFirestore(currentAccounts)
         const updatedBudgetData = { ...budgetData, accounts: cleanedAccounts }
         await setDoc(budgetDocRef, updatedBudgetData)
 
@@ -1574,7 +1637,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         saveToCache(CACHE_KEYS.BUDGET(currentBudget.id), updatedBudgetData)
 
         // Update local state
-        setAccounts(updatedAccounts)
+        setAccounts(currentAccounts)
       }
     } catch (err) {
       console.error('[BudgetContext] Error deleting income:', err)
@@ -1668,8 +1731,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         throw new Error('Budget document not found')
       }
       const budgetData = budgetDoc.data()
-      const currentAccounts: FinancialAccount[] = budgetData.accounts || []
-      const accountIds = currentAccounts.map(a => a.id)
+      const currentAccounts: AccountsMap = budgetData.accounts || {}
+      const accountIds = Object.keys(currentAccounts)
 
       // 4. Calculate balances month by month
       let runningBalances: Record<string, number> = {}
@@ -1728,11 +1791,13 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       }
 
       // 5. Update account balances on budget doc to match latest month's end balances
-      const updatedAccounts = currentAccounts.map(acc => ({
-        ...acc,
-        balance: runningBalances[acc.id] || 0,
-      }))
-
+      const updatedAccounts: AccountsMap = {}
+      Object.entries(currentAccounts).forEach(([accId, acc]) => {
+        updatedAccounts[accId] = {
+          ...acc,
+          balance: runningBalances[accId] || 0,
+        }
+      })
 
       const cleanedAccounts = cleanAccountsForFirestore(updatedAccounts)
       await setDoc(budgetDocRef, { ...budgetData, accounts: cleanedAccounts })
@@ -1768,7 +1833,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       const calculatedBalances: Record<string, number> = {}
 
       // Initialize all current accounts to 0
-      accounts.forEach(acc => { calculatedBalances[acc.id] = 0 })
+      Object.keys(accounts).forEach(accId => { calculatedBalances[accId] = 0 })
 
       monthsSnapshot.forEach(doc => {
         const data = doc.data()
@@ -1782,14 +1847,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       // 3. Compare with stored balances
       const mismatches: Record<string, { stored: number; calculated: number }> = {}
 
-      for (const acc of accounts) {
+      Object.entries(accounts).forEach(([accId, acc]) => {
         const stored = acc.balance
-        const calculated = calculatedBalances[acc.id] || 0
+        const calculated = calculatedBalances[accId] || 0
         // Use a small epsilon for floating point comparison
         if (Math.abs(stored - calculated) > 0.001) {
-          mismatches[acc.id] = { stored, calculated }
+          mismatches[accId] = { stored, calculated }
         }
-      }
+      })
 
       const hasMismatches = Object.keys(mismatches).length > 0
 
@@ -1849,6 +1914,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       // Update cache
       saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+
+      // If this month is finalized, recalculate category balances
+      if (currentMonth.allocations_finalized) {
+        await recalculateAndSaveCategoryBalances()
+      }
     } catch (err) {
       console.error('[BudgetContext] Error saving allocations:', err)
       throw new Error(err instanceof Error ? err.message : 'Failed to save allocations')
@@ -1890,6 +1960,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       // Update cache
       saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+
+      // Recalculate category balances since we just finalized
+      await recalculateAndSaveCategoryBalances()
     } catch (err) {
       console.error('[BudgetContext] Error finalizing allocations:', err)
       throw new Error(err instanceof Error ? err.message : 'Failed to finalize allocations')
@@ -1931,17 +2004,30 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       // Update cache
       saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+
+      // Recalculate category balances since we just unfinalized
+      await recalculateAndSaveCategoryBalances()
     } catch (err) {
       console.error('[BudgetContext] Error unfinalizing allocations:', err)
       throw new Error(err instanceof Error ? err.message : 'Failed to unfinalize allocations')
     }
   }
 
-  // Get category balances from all finalized allocations across all months
+  // Get category balances from the categories map (balance is stored on each category)
   const getCategoryBalances = useCallback(async (): Promise<Record<string, number>> => {
     if (!currentBudget) {
       return {}
     }
+    const balances: Record<string, number> = {}
+    Object.entries(categories).forEach(([catId, cat]) => {
+      balances[catId] = cat.balance
+    })
+    return balances
+  }, [currentBudget?.id, categories])
+
+  // Recalculate category balances from all finalized months and save to categories map
+  async function recalculateAndSaveCategoryBalances() {
+    if (!currentBudget) return {}
 
     try {
       // Query all months for this budget
@@ -1953,13 +2039,10 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       // Sum up allocations from finalized months only
       const balances: Record<string, number> = {}
-
-      // Initialize all categories to 0
-      categories.forEach(cat => { balances[cat.id] = 0 })
+      Object.keys(categories).forEach(catId => { balances[catId] = 0 })
 
       monthsSnapshot.forEach(docSnap => {
         const data = docSnap.data()
-        // Only count finalized allocations
         if (data.allocations_finalized && data.allocations) {
           for (const alloc of data.allocations) {
             balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
@@ -1967,56 +2050,55 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         }
       })
 
+      // Update categories map with new balances
+      const updatedCategories: CategoriesMap = {}
+      Object.entries(categories).forEach(([catId, cat]) => {
+        updatedCategories[catId] = {
+          ...cat,
+          balance: balances[catId] ?? 0,
+        }
+      })
+
+      // Save to budget document
+      const budgetDocRef = doc(db, 'budgets', currentBudget.id)
+      await setDoc(budgetDocRef, { categories: updatedCategories }, { merge: true })
+
+      // Update local state
+      setCategories(updatedCategories)
+
+      // Update cache
+      const cacheKey = CACHE_KEYS.BUDGET(currentBudget.id)
+      const cached = getFromCache<any>(cacheKey)
+      if (cached) {
+        saveToCache(cacheKey, { ...cached, categories: updatedCategories })
+      }
+
       return balances
     } catch (err) {
-      console.error('[BudgetContext] Error getting category balances:', err)
+      console.error('[BudgetContext] Error recalculating category balances:', err)
       return {}
     }
-  }, [currentBudget?.id, categories])
+  }
 
   // Get total of all on-budget accounts
   function getOnBudgetTotal(): number {
-    return accounts
-      .filter(acc => {
-        const group = accountGroups.find(g => g.id === acc.account_group_id)
+    return Object.entries(accounts)
+      .filter(([_, acc]) => {
+        const group = acc.account_group_id ? accountGroups[acc.account_group_id] : undefined
         // Check effective on_budget (group override takes precedence)
         const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (acc.on_budget !== false)
         // Check effective is_active
         const effectiveActive = group?.is_active !== undefined ? group.is_active : (acc.is_active !== false)
         return effectiveOnBudget && effectiveActive
       })
-      .reduce((sum, acc) => sum + acc.balance, 0)
+      .reduce((sum, [_, acc]) => sum + acc.balance, 0)
   }
 
-  // Get the previous month's total income
+  // Get the previous month's total income (returns cached state value)
   const getPreviousMonthIncome = useCallback(async (): Promise<number> => {
-    if (!currentBudget) {
-      return 0
-    }
-
-    // Calculate previous month
-    let prevYear = currentYear
-    let prevMonth = currentMonthNumber - 1
-    if (prevMonth < 1) {
-      prevMonth = 12
-      prevYear -= 1
-    }
-
-    try {
-      const monthDocId = getMonthDocId(currentBudget.id, prevYear, prevMonth)
-      const monthDocRef = doc(db, 'months', monthDocId)
-      const monthDoc = await getDoc(monthDocRef)
-
-      if (monthDoc.exists()) {
-        const data = monthDoc.data()
-        return data.total_income || 0
-      }
-      return 0
-    } catch (err) {
-      console.error('[BudgetContext] Error getting previous month income:', err)
-      return 0
-    }
-  }, [currentBudget?.id, currentYear, currentMonthNumber])
+    // Return the already-fetched value from state (loaded with loadMonth)
+    return previousMonthIncome
+  }, [previousMonthIncome])
 
   const isOwner = !!(currentBudget && current_user && currentBudget.owner_id === current_user.uid)
   const hasPendingInvites = pendingInvites.length > 0
@@ -2091,6 +2173,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       currentYear,
       currentMonthNumber,
       monthLoading,
+      previousMonthIncome,
       payees,
       lastRefreshTime,
       cacheStats,

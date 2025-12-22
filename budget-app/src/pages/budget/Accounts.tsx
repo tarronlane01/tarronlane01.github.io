@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent, type DragEvent } from 'react'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import app from '../../firebase'
-import { useBudget, type FinancialAccount, type AccountGroup, type ExpectedBalanceType } from '../../contexts/budget_context'
+import { useBudget, type FinancialAccount, type AccountGroup, type AccountsMap, type AccountGroupsMap, type ExpectedBalanceType } from '../../contexts/budget_context'
 import {
   ErrorAlert,
   Button,
@@ -85,11 +85,11 @@ function Accounts() {
 
   // Check for balance mismatches on load
   useEffect(() => {
-    if (currentBudget && accounts.length > 0) {
+    if (currentBudget && Object.keys(accounts).length > 0) {
       setIsCheckingMismatch(true)
       checkBalanceMismatch().finally(() => setIsCheckingMismatch(false))
     }
-  }, [currentBudget?.id, accounts.length])
+  }, [currentBudget?.id, Object.keys(accounts).length])
 
   // Account editing state
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
@@ -107,75 +107,82 @@ function Accounts() {
 
   const db = getFirestore(app)
 
+  // Helper to clean accounts for Firestore (avoid undefined values)
+  function cleanAccountsForFirestore(accts: AccountsMap): AccountsMap {
+    const cleaned: AccountsMap = {}
+    Object.entries(accts).forEach(([accId, acc]) => {
+      cleaned[accId] = {
+        nickname: acc.nickname,
+        balance: acc.balance,
+        account_group_id: acc.account_group_id ?? null,
+        sort_order: acc.sort_order,
+      }
+      if (acc.is_income_account !== undefined) cleaned[accId].is_income_account = acc.is_income_account
+      if (acc.is_income_default !== undefined) cleaned[accId].is_income_default = acc.is_income_default
+      if (acc.is_outgo_account !== undefined) cleaned[accId].is_outgo_account = acc.is_outgo_account
+      if (acc.is_outgo_default !== undefined) cleaned[accId].is_outgo_default = acc.is_outgo_default
+      if (acc.on_budget !== undefined) cleaned[accId].on_budget = acc.on_budget
+      if (acc.is_active !== undefined) cleaned[accId].is_active = acc.is_active
+    })
+    return cleaned
+  }
+
+  // Helper to clean account groups for Firestore
+  function cleanAccountGroupsForFirestore(groups: AccountGroupsMap): AccountGroupsMap {
+    const cleaned: AccountGroupsMap = {}
+    Object.entries(groups).forEach(([groupId, group]) => {
+      cleaned[groupId] = {
+        name: group.name,
+        sort_order: group.sort_order,
+        expected_balance: group.expected_balance || 'positive',
+      }
+      if (group.on_budget !== undefined) cleaned[groupId].on_budget = group.on_budget
+      if (group.is_active !== undefined) cleaned[groupId].is_active = group.is_active
+    })
+    return cleaned
+  }
+
   // Save functions
-  async function saveAccounts(newAccounts: FinancialAccount[]) {
+  async function saveAccounts(newAccounts: AccountsMap) {
     if (!currentBudget) return
     try {
       const budgetDocRef = doc(db, 'budgets', currentBudget.id)
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        // Clean accounts - Firestore doesn't accept undefined values
-        const cleanedAccounts = newAccounts.map(acc => {
-          const cleaned: Record<string, any> = {
-            id: acc.id,
-            nickname: acc.nickname,
-            balance: acc.balance,
-            account_group_id: acc.account_group_id ?? null,
-            sort_order: acc.sort_order,
-          }
-          // Only include optional fields if they have a value
-          if (acc.is_income_account !== undefined) cleaned.is_income_account = acc.is_income_account
-          if (acc.is_income_default !== undefined) cleaned.is_income_default = acc.is_income_default
-          if (acc.is_outgo_account !== undefined) cleaned.is_outgo_account = acc.is_outgo_account
-          if (acc.is_outgo_default !== undefined) cleaned.is_outgo_default = acc.is_outgo_default
-          if (acc.on_budget !== undefined) cleaned.on_budget = acc.on_budget
-          if (acc.is_active !== undefined) cleaned.is_active = acc.is_active
-          return cleaned
-        })
-        await setDoc(budgetDocRef, { ...data, accounts: cleanedAccounts })
+        await setDoc(budgetDocRef, { ...data, accounts: cleanAccountsForFirestore(newAccounts) })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save accounts')
     }
   }
 
-  async function saveAccountGroups(newGroups: AccountGroup[]) {
+  async function saveAccountGroups(newGroups: AccountGroupsMap) {
     if (!currentBudget) return
     try {
       const budgetDocRef = doc(db, 'budgets', currentBudget.id)
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        // Ensure all groups have expected_balance defaulted to 'positive'
-        // Include group-level override fields (on_budget, is_active) when defined
-        const cleanedGroups = newGroups.map(group => {
-          const cleanedGroup: AccountGroup = {
-            id: group.id,
-            name: group.name,
-            sort_order: group.sort_order,
-            expected_balance: group.expected_balance || 'positive',
-          }
-          // Only include override fields if they're explicitly set
-          if (group.on_budget !== undefined) cleanedGroup.on_budget = group.on_budget
-          if (group.is_active !== undefined) cleanedGroup.is_active = group.is_active
-          return cleanedGroup
-        })
-        await setDoc(budgetDocRef, { ...data, account_groups: cleanedGroups })
+        await setDoc(budgetDocRef, { ...data, account_groups: cleanAccountGroupsForFirestore(newGroups) })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save account groups')
     }
   }
 
-  async function saveBoth(newAccounts: FinancialAccount[], newGroups: AccountGroup[]) {
+  async function saveBoth(newAccounts: AccountsMap, newGroups: AccountGroupsMap) {
     if (!currentBudget) return
     try {
       const budgetDocRef = doc(db, 'budgets', currentBudget.id)
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        await setDoc(budgetDocRef, { ...data, accounts: newAccounts, account_groups: newGroups })
+        await setDoc(budgetDocRef, {
+          ...data,
+          accounts: cleanAccountsForFirestore(newAccounts),
+          account_groups: cleanAccountGroupsForFirestore(newGroups),
+        })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save changes')
@@ -186,15 +193,15 @@ function Accounts() {
   function handleCreateAccount(formData: AccountFormData, forGroupId: string | null) {
     if (!currentBudget) return
 
-    const groupAccounts = accounts.filter(a =>
+    const groupAccounts = Object.values(accounts).filter(a =>
       (forGroupId === 'ungrouped' ? !a.account_group_id : a.account_group_id === forGroupId)
     )
     const maxSortOrder = groupAccounts.length > 0
       ? Math.max(...groupAccounts.map(a => a.sort_order))
       : -1
 
+    const newAccountId = `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newAccount: FinancialAccount = {
-      id: `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       nickname: formData.nickname,
       balance: 0,
       account_group_id: forGroupId === 'ungrouped' ? null : forGroupId,
@@ -208,15 +215,19 @@ function Accounts() {
     }
 
     // If this account is income default, remove default from other accounts
-    let newAccounts = [...accounts]
+    const newAccounts: AccountsMap = { ...accounts }
     if (formData.is_income_default) {
-      newAccounts = newAccounts.map(a => ({ ...a, is_income_default: false }))
+      Object.keys(newAccounts).forEach(accId => {
+        newAccounts[accId] = { ...newAccounts[accId], is_income_default: false }
+      })
     }
     // If this account is outgo default, remove default from other accounts
     if (formData.is_outgo_default) {
-      newAccounts = newAccounts.map(a => ({ ...a, is_outgo_default: false }))
+      Object.keys(newAccounts).forEach(accId => {
+        newAccounts[accId] = { ...newAccounts[accId], is_outgo_default: false }
+      })
     }
-    newAccounts = [...newAccounts, newAccount].sort((a, b) => a.sort_order - b.sort_order)
+    newAccounts[newAccountId] = newAccount
 
     // Optimistic update: update UI immediately, close form, save in background
     setAccounts(newAccounts)
@@ -232,7 +243,7 @@ function Accounts() {
   function handleUpdateAccount(accountId: string, formData: AccountFormData) {
     if (!currentBudget) return
 
-    const account = accounts.find(a => a.id === accountId)
+    const account = accounts[accountId]
     if (!account) return
 
     const oldGroupId = account.account_group_id || 'ungrouped'
@@ -241,45 +252,43 @@ function Accounts() {
     // If group changed, update sort_order for the new group
     let newSortOrder = account.sort_order
     if (oldGroupId !== (newGroupId || 'ungrouped')) {
-      const targetGroupAccounts = accounts.filter(a => {
+      const targetGroupAccounts = Object.values(accounts).filter(a => {
         const accGroupId = a.account_group_id || 'ungrouped'
-        return accGroupId === (newGroupId || 'ungrouped') && a.id !== accountId
+        return accGroupId === (newGroupId || 'ungrouped')
       })
       newSortOrder = targetGroupAccounts.length > 0
         ? Math.max(...targetGroupAccounts.map(a => a.sort_order)) + 1
         : 0
     }
 
-    // If this account is being set as income default, remove default from others
-    let newAccounts = accounts
-    if (formData.is_income_default && !account.is_income_default) {
-      newAccounts = newAccounts.map(acc =>
-        acc.id !== accountId ? { ...acc, is_income_default: false } : acc
-      )
-    }
-    // If this account is being set as outgo default, remove default from others
-    if (formData.is_outgo_default && !account.is_outgo_default) {
-      newAccounts = newAccounts.map(acc =>
-        acc.id !== accountId ? { ...acc, is_outgo_default: false } : acc
-      )
-    }
-
-    newAccounts = newAccounts.map(acc =>
-      acc.id === accountId
-        ? {
-            ...acc,
-            nickname: formData.nickname,
-            account_group_id: newGroupId,
-            sort_order: newSortOrder,
-            is_income_account: formData.is_income_account,
-            is_income_default: formData.is_income_default,
-            is_outgo_account: formData.is_outgo_account,
-            is_outgo_default: formData.is_outgo_default,
-            on_budget: formData.on_budget !== false,
-            is_active: formData.is_active !== false,
-          }
-        : acc
-    )
+    // Build new accounts map
+    const newAccounts: AccountsMap = {}
+    Object.entries(accounts).forEach(([accId, acc]) => {
+      if (accId === accountId) {
+        newAccounts[accId] = {
+          ...acc,
+          nickname: formData.nickname,
+          account_group_id: newGroupId,
+          sort_order: newSortOrder,
+          is_income_account: formData.is_income_account,
+          is_income_default: formData.is_income_default,
+          is_outgo_account: formData.is_outgo_account,
+          is_outgo_default: formData.is_outgo_default,
+          on_budget: formData.on_budget !== false,
+          is_active: formData.is_active !== false,
+        }
+      } else {
+        newAccounts[accId] = { ...acc }
+        // If this account is being set as income default, remove default from others
+        if (formData.is_income_default && !account.is_income_default) {
+          newAccounts[accId].is_income_default = false
+        }
+        // If this account is being set as outgo default, remove default from others
+        if (formData.is_outgo_default && !account.is_outgo_default) {
+          newAccounts[accId].is_outgo_default = false
+        }
+      }
+    })
 
     // Optimistic update: update UI immediately, close form, save in background
     setAccounts(newAccounts)
@@ -296,7 +305,7 @@ function Accounts() {
     if (!confirm('Are you sure you want to delete this account?')) return
     if (!currentBudget) return
 
-    const newAccounts = accounts.filter(account => account.id !== accountId)
+    const { [accountId]: _, ...newAccounts } = accounts
 
     // Optimistic update: update UI immediately, save in background
     setAccounts(newAccounts)
@@ -312,12 +321,11 @@ function Accounts() {
   function handleCreateGroup(formData: GroupFormData) {
     if (!currentBudget) return
 
-    const maxSortOrder = accountGroups.length > 0
-      ? Math.max(...accountGroups.map(g => g.sort_order))
-      : -1
+    const sortOrders = Object.values(accountGroups).map(g => g.sort_order)
+    const maxSortOrder = sortOrders.length > 0 ? Math.max(...sortOrders) : -1
 
+    const newGroupId = `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newGroup: AccountGroup = {
-      id: `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: formData.name,
       sort_order: maxSortOrder + 1,
       expected_balance: formData.expected_balance,
@@ -325,7 +333,7 @@ function Accounts() {
       is_active: formData.is_active,
     }
 
-    const newGroups = [...accountGroups, newGroup]
+    const newGroups: AccountGroupsMap = { ...accountGroups, [newGroupId]: newGroup }
 
     // Optimistic update: update UI immediately, close form, save in background
     setAccountGroups(newGroups)
@@ -341,17 +349,16 @@ function Accounts() {
   function handleUpdateGroup(groupId: string, formData: GroupFormData) {
     if (!currentBudget) return
 
-    const newGroups = accountGroups.map(group =>
-      group.id === groupId
-        ? {
-            ...group,
-            name: formData.name,
-            expected_balance: formData.expected_balance,
-            on_budget: formData.on_budget,
-            is_active: formData.is_active,
-          }
-        : group
-    )
+    const newGroups: AccountGroupsMap = {
+      ...accountGroups,
+      [groupId]: {
+        ...accountGroups[groupId],
+        name: formData.name,
+        expected_balance: formData.expected_balance,
+        on_budget: formData.on_budget,
+        is_active: formData.is_active,
+      },
+    }
 
     // Optimistic update: update UI immediately, close form, save in background
     setAccountGroups(newGroups)
@@ -369,12 +376,13 @@ function Accounts() {
     if (!currentBudget) return
 
     // Move accounts from this group to ungrouped
-    const newAccounts = accounts.map(account =>
-      account.account_group_id === groupId
+    const newAccounts: AccountsMap = {}
+    Object.entries(accounts).forEach(([accId, account]) => {
+      newAccounts[accId] = account.account_group_id === groupId
         ? { ...account, account_group_id: null }
         : account
-    )
-    const newGroups = accountGroups.filter(group => group.id !== groupId)
+    })
+    const { [groupId]: _, ...newGroups } = accountGroups
 
     // Optimistic update: update UI immediately, save in background
     setAccounts(newAccounts)
@@ -437,47 +445,50 @@ function Accounts() {
       return
     }
 
-    const draggedAccount = accounts.find(a => a.id === draggedId)
+    const draggedAccount = accounts[draggedId]
     if (!draggedAccount) return
 
     const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId
-    const targetGroupAccounts = accounts.filter(a => {
+    const targetGroupAccounts = Object.entries(accounts).filter(([, a]) => {
       const accGroupId = a.account_group_id || 'ungrouped'
       return accGroupId === targetGroupId
     })
 
-    let newAccounts = accounts.filter(a => a.id !== draggedId)
+    const newAccounts: AccountsMap = {}
+    Object.entries(accounts).forEach(([accId, a]) => {
+      if (accId !== draggedId) {
+        newAccounts[accId] = { ...a }
+      }
+    })
+
     let newSortOrder: number
 
-    if (targetId === '__group_end__' || targetGroupAccounts.length === 0 || !targetGroupAccounts.find(a => a.id === targetId)) {
+    if (targetId === '__group_end__' || targetGroupAccounts.length === 0 || !targetGroupAccounts.find(([accId]) => accId === targetId)) {
       const maxInGroup = targetGroupAccounts.length > 0
-        ? Math.max(...targetGroupAccounts.filter(a => a.id !== draggedId).map(a => a.sort_order))
+        ? Math.max(...targetGroupAccounts.filter(([accId]) => accId !== draggedId).map(([, a]) => a.sort_order))
         : -1
       newSortOrder = maxInGroup + 1
     } else {
-      const targetAccount = targetGroupAccounts.find(a => a.id === targetId)
-      if (targetAccount) {
+      const targetEntry = targetGroupAccounts.find(([accId]) => accId === targetId)
+      if (targetEntry) {
+        const [, targetAccount] = targetEntry
         newSortOrder = targetAccount.sort_order
-        newAccounts = newAccounts.map(a => {
+        Object.entries(newAccounts).forEach(([accId, a]) => {
           const accGroupId = a.account_group_id || 'ungrouped'
           if (accGroupId === targetGroupId && a.sort_order >= newSortOrder) {
-            return { ...a, sort_order: a.sort_order + 1 }
+            newAccounts[accId] = { ...a, sort_order: a.sort_order + 1 }
           }
-          return a
         })
       } else {
         newSortOrder = 0
       }
     }
 
-    const updatedDraggedAccount: FinancialAccount = {
+    newAccounts[draggedId] = {
       ...draggedAccount,
       account_group_id: newGroupId,
       sort_order: newSortOrder,
     }
-
-    newAccounts.push(updatedDraggedAccount)
-    newAccounts.sort((a, b) => a.sort_order - b.sort_order)
 
     setAccounts(newAccounts)
     handleDragEnd()
@@ -514,21 +525,24 @@ function Accounts() {
       return
     }
 
-    const draggedIndex = accountGroups.findIndex(g => g.id === draggedId)
-    const newGroups = [...accountGroups]
-    const [draggedItem] = newGroups.splice(draggedIndex, 1)
+    // Convert map to sorted array for reordering
+    const sortedGroupEntries = Object.entries(accountGroups)
+      .sort(([, a], [, b]) => a.sort_order - b.sort_order)
+    const draggedIndex = sortedGroupEntries.findIndex(([gId]) => gId === draggedId)
+    const newGroupEntries = [...sortedGroupEntries]
+    const [draggedItem] = newGroupEntries.splice(draggedIndex, 1)
 
     if (targetId === '__end__') {
-      newGroups.push(draggedItem)
+      newGroupEntries.push(draggedItem)
     } else {
-      const targetIndex = newGroups.findIndex(g => g.id === targetId)
-      newGroups.splice(targetIndex, 0, draggedItem)
+      const targetIndex = newGroupEntries.findIndex(([gId]) => gId === targetId)
+      newGroupEntries.splice(targetIndex, 0, draggedItem)
     }
 
-    const updatedGroups = newGroups.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }))
+    const updatedGroups: AccountGroupsMap = {}
+    newGroupEntries.forEach(([gId, group], index) => {
+      updatedGroups[gId] = { ...group, sort_order: index }
+    })
 
     setAccountGroups(updatedGroups)
     handleDragEnd()
@@ -543,29 +557,30 @@ function Accounts() {
 
   // Move account up/down within its group
   async function handleMoveAccount(accountId: string, direction: 'up' | 'down') {
-    const account = accounts.find(a => a.id === accountId)
+    const account = accounts[accountId]
     if (!account) return
 
     const groupId = account.account_group_id || 'ungrouped'
-    const groupAccounts = accounts
-      .filter(a => (a.account_group_id || 'ungrouped') === groupId)
-      .sort((a, b) => a.sort_order - b.sort_order)
+    const groupAccountEntries = Object.entries(accounts)
+      .filter(([, a]) => (a.account_group_id || 'ungrouped') === groupId)
+      .sort(([, a], [, b]) => a.sort_order - b.sort_order)
 
-    const currentIndex = groupAccounts.findIndex(a => a.id === accountId)
+    const currentIndex = groupAccountEntries.findIndex(([accId]) => accId === accountId)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-    if (targetIndex < 0 || targetIndex >= groupAccounts.length) return
+    if (targetIndex < 0 || targetIndex >= groupAccountEntries.length) return
 
     // Swap sort orders
-    const targetAccount = groupAccounts[targetIndex]
-    const newAccounts = accounts.map(a => {
-      if (a.id === accountId) {
-        return { ...a, sort_order: targetAccount.sort_order }
+    const [targetAccId, targetAccount] = groupAccountEntries[targetIndex]
+    const newAccounts: AccountsMap = {}
+    Object.entries(accounts).forEach(([accId, a]) => {
+      if (accId === accountId) {
+        newAccounts[accId] = { ...a, sort_order: targetAccount.sort_order }
+      } else if (accId === targetAccId) {
+        newAccounts[accId] = { ...a, sort_order: account.sort_order }
+      } else {
+        newAccounts[accId] = { ...a }
       }
-      if (a.id === targetAccount.id) {
-        return { ...a, sort_order: account.sort_order }
-      }
-      return a
     })
 
     setAccounts(newAccounts)
@@ -581,21 +596,22 @@ function Accounts() {
 
   // Move group up/down
   async function handleMoveGroup(groupId: string, direction: 'up' | 'down') {
-    const sortedGroupsCopy = [...accountGroups].sort((a, b) => a.sort_order - b.sort_order)
-    const currentIndex = sortedGroupsCopy.findIndex(g => g.id === groupId)
+    const sortedGroupEntries = Object.entries(accountGroups)
+      .sort(([, a], [, b]) => a.sort_order - b.sort_order)
+    const currentIndex = sortedGroupEntries.findIndex(([gId]) => gId === groupId)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-    if (targetIndex < 0 || targetIndex >= sortedGroupsCopy.length) return
+    if (targetIndex < 0 || targetIndex >= sortedGroupEntries.length) return
 
     // Swap positions in array
-    const [movedGroup] = sortedGroupsCopy.splice(currentIndex, 1)
-    sortedGroupsCopy.splice(targetIndex, 0, movedGroup)
+    const [movedEntry] = sortedGroupEntries.splice(currentIndex, 1)
+    sortedGroupEntries.splice(targetIndex, 0, movedEntry)
 
     // Update sort orders
-    const updatedGroups = sortedGroupsCopy.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }))
+    const updatedGroups: AccountGroupsMap = {}
+    sortedGroupEntries.forEach(([gId, group], index) => {
+      updatedGroups[gId] = { ...group, sort_order: index }
+    })
 
     setAccountGroups(updatedGroups)
 
@@ -608,16 +624,19 @@ function Accounts() {
     }
   }
 
-  // Organize accounts by group
-  const accountsByGroup = accounts.reduce((acc, account) => {
+  // Organize accounts by group (accounts with their IDs)
+  type AccountWithId = FinancialAccount & { id: string }
+  const accountsByGroup = Object.entries(accounts).reduce((acc, [accId, account]) => {
     const groupId = account.account_group_id || 'ungrouped'
     if (!acc[groupId]) acc[groupId] = []
-    acc[groupId].push(account)
+    acc[groupId].push({ ...account, id: accId })
     return acc
-  }, {} as Record<string, FinancialAccount[]>)
+  }, {} as Record<string, AccountWithId[]>)
 
-  // Sort groups by sort_order
-  const sortedGroups = [...accountGroups].sort((a, b) => a.sort_order - b.sort_order)
+  // Sort groups by sort_order (convert map to sorted array of entries with IDs)
+  const sortedGroups: GroupWithId[] = Object.entries(accountGroups)
+    .sort(([, a], [, b]) => a.sort_order - b.sort_order)
+    .map(([gId, group]) => ({ ...group, id: gId }))
 
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
@@ -660,7 +679,7 @@ function Accounts() {
             </p>
             <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.25rem', fontSize: '0.8rem', opacity: 0.8 }}>
               {Object.entries(balanceMismatch).slice(0, 3).map(([accId, { stored, calculated }]) => {
-                const acc = accounts.find(a => a.id === accId)
+                const acc = accounts[accId]
                 return (
                   <li key={accId}>
                     {acc?.nickname || 'Unknown'}: stored ${stored.toFixed(2)} vs calculated ${calculated.toFixed(2)}
@@ -761,7 +780,7 @@ function Accounts() {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-        {accounts.length === 0 && accountGroups.length === 0 && (
+        {Object.keys(accounts).length === 0 && Object.keys(accountGroups).length === 0 && (
           <p style={{ opacity: 0.7 }}>No accounts yet. Create an account type first, then add accounts!</p>
         )}
 
@@ -771,7 +790,7 @@ function Accounts() {
           const isGroupDragging = dragType === 'group' && draggedId === group.id
           const isGroupDragOver = dragType === 'group' && dragOverId === group.id
           const isAccountMovingHere = dragType === 'account' && dragOverGroupId === group.id
-          const draggedAccount = draggedId && dragType === 'account' ? accounts.find(a => a.id === draggedId) : null
+          const draggedAccount = draggedId && dragType === 'account' ? accounts[draggedId] : null
           const isMovingToDifferentGroup = draggedAccount && (draggedAccount.account_group_id || 'ungrouped') !== group.id
 
           // Check if we should show the drop indicator line above this group
@@ -992,12 +1011,12 @@ function Accounts() {
                           onSubmit={(data) => handleUpdateAccount(account.id, data)}
                           onCancel={() => setEditingAccountId(null)}
                           submitLabel="Save"
-                          accountGroups={accountGroups}
+                          accountGroups={sortedGroups}
                           showGroupSelector={true}
                           showIncomeSettings={true}
                           currentGroupId={account.account_group_id}
-                          hasExistingIncomeDefault={accounts.some(a => a.is_income_default && a.id !== account.id)}
-                          hasExistingOutgoDefault={accounts.some(a => a.is_outgo_default && a.id !== account.id)}
+                          hasExistingIncomeDefault={Object.entries(accounts).some(([accId, a]) => a.is_income_default && accId !== account.id)}
+                          hasExistingOutgoDefault={Object.entries(accounts).some(([accId, a]) => a.is_outgo_default && accId !== account.id)}
             />
           ) : (
             <DraggableCard
@@ -1019,7 +1038,7 @@ function Accounts() {
               <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span style={itemTitle}>{account.nickname}</span>
-                    <AccountFlags account={account} accountGroups={accountGroups} />
+                    <AccountFlags account={account} accountGroups={sortedGroups} />
                   </div>
                             <p style={{
                               margin: '0.25rem 0 0 0',
@@ -1071,7 +1090,7 @@ function Accounts() {
                         onSubmit={(data) => handleCreateAccount(data, group.id)}
                         onCancel={() => setCreateForGroupId(null)}
                         submitLabel="Create"
-                        accountGroups={accountGroups}
+                        accountGroups={sortedGroups}
                         showIncomeSettings={true}
                         currentGroupId={group.id}
                       />
@@ -1108,10 +1127,10 @@ function Accounts() {
         {(() => {
           const ungroupedAccounts = (accountsByGroup['ungrouped'] || []).sort((a, b) => a.sort_order - b.sort_order)
           const isAccountMovingHere = dragType === 'account' && dragOverGroupId === 'ungrouped'
-          const draggedAccount = draggedId && dragType === 'account' ? accounts.find(a => a.id === draggedId) : null
+          const draggedAccount = draggedId && dragType === 'account' ? accounts[draggedId] : null
           const isMovingToDifferentGroup = draggedAccount && draggedAccount.account_group_id !== null
 
-          if (ungroupedAccounts.length === 0 && !createForGroupId && accountGroups.length > 0 && dragType !== 'account') {
+          if (ungroupedAccounts.length === 0 && !createForGroupId && Object.keys(accountGroups).length > 0 && dragType !== 'account') {
             return null
           }
 
@@ -1181,12 +1200,12 @@ function Accounts() {
                       onSubmit={(data) => handleUpdateAccount(account.id, data)}
                       onCancel={() => setEditingAccountId(null)}
                       submitLabel="Save"
-                      accountGroups={accountGroups}
+                      accountGroups={sortedGroups}
                       showGroupSelector={true}
                       showIncomeSettings={true}
                       currentGroupId={null}
-                      hasExistingIncomeDefault={accounts.some(a => a.is_income_default && a.id !== account.id)}
-                      hasExistingOutgoDefault={accounts.some(a => a.is_outgo_default && a.id !== account.id)}
+                      hasExistingIncomeDefault={Object.entries(accounts).some(([accId, a]) => a.is_income_default && accId !== account.id)}
+                      hasExistingOutgoDefault={Object.entries(accounts).some(([accId, a]) => a.is_outgo_default && accId !== account.id)}
                     />
                   ) : (
                     <DraggableCard
@@ -1208,7 +1227,7 @@ function Accounts() {
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <span style={itemTitle}>{account.nickname}</span>
-                          <AccountFlags account={account} accountGroups={accountGroups} />
+                          <AccountFlags account={account} accountGroups={sortedGroups} />
                         </div>
                 <p style={{
                           margin: '0.25rem 0 0 0',
@@ -1257,7 +1276,7 @@ function Accounts() {
                     onSubmit={(data) => handleCreateAccount(data, 'ungrouped')}
                     onCancel={() => setCreateForGroupId(null)}
                     submitLabel="Create"
-                    accountGroups={accountGroups}
+                    accountGroups={sortedGroups}
                     showIncomeSettings={true}
                     currentGroupId={null}
           />
@@ -1293,13 +1312,16 @@ function Accounts() {
   )
 }
 
+// Type for account group with its ID (for passing to child components)
+type GroupWithId = AccountGroup & { id: string }
+
 // Account Form
 interface AccountFormProps {
   initialData?: AccountFormData
   onSubmit: (data: AccountFormData) => void
   onCancel: () => void
   submitLabel: string
-  accountGroups: AccountGroup[]
+  accountGroups: GroupWithId[]
   showGroupSelector?: boolean
   showIncomeSettings?: boolean
   hasExistingIncomeDefault?: boolean
@@ -1804,7 +1826,7 @@ function AccountBadge({ icon, label, variant, title }: AccountBadgeProps) {
 // Account flags component - shows all relevant flags for an account
 interface AccountFlagsProps {
   account: FinancialAccount
-  accountGroups: AccountGroup[]
+  accountGroups: GroupWithId[]
 }
 
 function AccountFlags({ account, accountGroups }: AccountFlagsProps) {

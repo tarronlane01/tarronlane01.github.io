@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useBudget } from '../contexts/budget_context'
 import { colors } from '../styles/shared'
@@ -17,6 +17,19 @@ export default function BudgetLayout() {
 
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showCacheInfo, setShowCacheInfo] = useState(false)
+  const cacheMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close cache menu when clicking outside
+  useEffect(() => {
+    if (!showCacheInfo) return
+    function handleClickOutside(e: MouseEvent) {
+      if (cacheMenuRef.current && !cacheMenuRef.current.contains(e.target as Node)) {
+        setShowCacheInfo(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showCacheInfo])
 
   useEffect(() => {
     ensureBudgetLoaded()
@@ -65,6 +78,7 @@ export default function BudgetLayout() {
     <>
       {/* Cache Status Bar - positioned to the left of the feedback button */}
       <div
+        ref={cacheMenuRef}
         style={{
           position: 'fixed',
           bottom: '1.5rem',

@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent, type DragEvent } from 'react'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import app from '../../firebase'
-import { useBudget, type Category, type CategoryGroup, type DefaultAmountType } from '../../contexts/budget_context'
+import { useBudget, type Category, type CategoryGroup, type DefaultAmountType, type CategoriesMap } from '../../contexts/budget_context'
 import {
   ErrorAlert,
   Button,
@@ -70,34 +70,35 @@ function Categories() {
 
   // Load category balances on mount
   useEffect(() => {
-    if (currentBudget && categories.length > 0) {
+    if (currentBudget && Object.keys(categories).length > 0) {
       setLoadingBalances(true)
       getCategoryBalances()
         .then(balances => setCategoryBalances(balances))
         .catch(err => console.warn('Failed to load category balances:', err))
         .finally(() => setLoadingBalances(false))
     }
-  }, [currentBudget?.id, categories.length, getCategoryBalances])
+  }, [currentBudget?.id, Object.keys(categories).length, getCategoryBalances])
 
   // Helper to clean categories for Firestore (avoid undefined values)
-  function cleanCategoriesForFirestore(cats: Category[]): Record<string, any>[] {
-    return cats.map(cat => {
-      const cleaned: Record<string, any> = {
-        id: cat.id,
+  function cleanCategoriesForFirestore(cats: CategoriesMap): CategoriesMap {
+    const cleaned: CategoriesMap = {}
+    Object.entries(cats).forEach(([catId, cat]) => {
+      cleaned[catId] = {
         name: cat.name,
         category_group_id: cat.category_group_id ?? null,
         sort_order: cat.sort_order,
+        balance: cat.balance ?? 0,
       }
       // Only include optional fields if they have a value
-      if (cat.description) cleaned.description = cat.description
-      if (cat.default_monthly_amount !== undefined) cleaned.default_monthly_amount = cat.default_monthly_amount
-      if (cat.default_monthly_type !== undefined) cleaned.default_monthly_type = cat.default_monthly_type
-      return cleaned
+      if (cat.description) cleaned[catId].description = cat.description
+      if (cat.default_monthly_amount !== undefined) cleaned[catId].default_monthly_amount = cat.default_monthly_amount
+      if (cat.default_monthly_type !== undefined) cleaned[catId].default_monthly_type = cat.default_monthly_type
     })
+    return cleaned
   }
 
   // Save functions
-  async function saveCategories(newCategories: Category[]) {
+  async function saveCategories(newCategories: CategoriesMap) {
     if (!currentBudget) return
     try {
       const budgetDocRef = doc(db, 'budgets', currentBudget.id)
@@ -125,7 +126,7 @@ function Categories() {
     }
   }
 
-  async function saveBoth(newCategories: Category[], newGroups: CategoryGroup[]) {
+  async function saveBoth(newCategories: CategoriesMap, newGroups: CategoryGroup[]) {
     if (!currentBudget) return
     try {
       const budgetDocRef = doc(db, 'budgets', currentBudget.id)
@@ -146,24 +147,25 @@ function Categories() {
     // Use the group from the context (where form was opened from)
     const effectiveGroupId = forGroupId === 'ungrouped' ? null : forGroupId
 
-    const groupCategories = categories.filter(c =>
+    const groupCategories = Object.values(categories).filter(c =>
       (forGroupId === 'ungrouped' ? !c.category_group_id : c.category_group_id === forGroupId)
     )
     const maxSortOrder = groupCategories.length > 0
       ? Math.max(...groupCategories.map(c => c.sort_order))
       : -1
 
+    const newCategoryId = `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newCategory: Category = {
-      id: `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: formData.name,
       description: formData.description,
       category_group_id: effectiveGroupId,
       sort_order: maxSortOrder + 1,
       default_monthly_amount: formData.default_monthly_amount,
       default_monthly_type: formData.default_monthly_type,
+      balance: 0,
     }
 
-    const newCategories = [...categories, newCategory].sort((a, b) => a.sort_order - b.sort_order)
+    const newCategories: CategoriesMap = { ...categories, [newCategoryId]: newCategory }
     setCategories(newCategories)
     setCreateForGroupId(null)
 
@@ -178,7 +180,7 @@ function Categories() {
   async function handleUpdateCategory(categoryId: string, formData: CategoryFormData) {
     if (!currentBudget) return
     try {
-      const category = categories.find(c => c.id === categoryId)
+      const category = categories[categoryId]
       if (!category) return
 
       const oldGroupId = category.category_group_id || 'ungrouped'
@@ -187,28 +189,31 @@ function Categories() {
       // If group changed, update sort_order for the new group
       let newSortOrder = category.sort_order
       if (oldGroupId !== (newGroupId || 'ungrouped')) {
-        const targetGroupCategories = categories.filter(c => {
+        const targetGroupCategories = Object.values(categories).filter(c => {
           const catGroupId = c.category_group_id || 'ungrouped'
-          return catGroupId === (newGroupId || 'ungrouped') && c.id !== categoryId
+          return catGroupId === (newGroupId || 'ungrouped')
+        }).filter((_, idx, arr) => {
+          // Exclude the current category from the count
+          const currentCat = categories[categoryId]
+          return currentCat !== arr[idx]
         })
         newSortOrder = targetGroupCategories.length > 0
           ? Math.max(...targetGroupCategories.map(c => c.sort_order)) + 1
           : 0
       }
 
-      const newCategories = categories.map(cat =>
-        cat.id === categoryId
-          ? {
-              ...cat,
-              name: formData.name,
-              description: formData.description,
-              category_group_id: newGroupId,
-              sort_order: newSortOrder,
-              default_monthly_amount: formData.default_monthly_amount,
-              default_monthly_type: formData.default_monthly_type,
-            }
-          : cat
-      )
+      const newCategories: CategoriesMap = {
+        ...categories,
+        [categoryId]: {
+          ...category,
+          name: formData.name,
+          description: formData.description,
+          category_group_id: newGroupId,
+          sort_order: newSortOrder,
+          default_monthly_amount: formData.default_monthly_amount,
+          default_monthly_type: formData.default_monthly_type,
+        },
+      }
       setCategories(newCategories)
       await saveCategories(newCategories)
       setEditingCategoryId(null)
@@ -221,7 +226,7 @@ function Categories() {
     if (!confirm('Are you sure you want to delete this category?')) return
     if (!currentBudget) return
     try {
-      const newCategories = categories.filter(category => category.id !== categoryId)
+      const { [categoryId]: _, ...newCategories } = categories
       setCategories(newCategories)
       await saveCategories(newCategories)
     } catch (err) {
@@ -271,11 +276,12 @@ function Categories() {
     if (!currentBudget) return
     try {
       // Move categories from this group to ungrouped
-      const newCategories = categories.map(category =>
-        category.category_group_id === groupId
+      const newCategories: CategoriesMap = {}
+      Object.entries(categories).forEach(([catId, category]) => {
+        newCategories[catId] = category.category_group_id === groupId
           ? { ...category, category_group_id: null }
           : category
-      )
+      })
       const newGroups = categoryGroups.filter(group => group.id !== groupId)
 
       setCategories(newCategories)
@@ -336,47 +342,52 @@ function Categories() {
       return
     }
 
-    const draggedCategory = categories.find(c => c.id === draggedId)
+    const draggedCategory = categories[draggedId]
     if (!draggedCategory) return
 
     const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId
-    const targetGroupCategories = categories.filter(c => {
+    const targetGroupCategories = Object.entries(categories).filter(([_, c]) => {
       const catGroupId = c.category_group_id || 'ungrouped'
       return catGroupId === targetGroupId
     })
 
-    let newCategories = categories.filter(c => c.id !== draggedId)
+    // Start with categories excluding the dragged one
+    const newCategories: CategoriesMap = {}
+    Object.entries(categories).forEach(([catId, cat]) => {
+      if (catId !== draggedId) {
+        newCategories[catId] = cat
+      }
+    })
+
     let newSortOrder: number
 
-    if (targetId === '__group_end__' || targetGroupCategories.length === 0 || !targetGroupCategories.find(c => c.id === targetId)) {
+    if (targetId === '__group_end__' || targetGroupCategories.length === 0 || !targetGroupCategories.find(([catId]) => catId === targetId)) {
       const maxInGroup = targetGroupCategories.length > 0
-        ? Math.max(...targetGroupCategories.filter(c => c.id !== draggedId).map(c => c.sort_order))
+        ? Math.max(...targetGroupCategories.filter(([catId]) => catId !== draggedId).map(([_, c]) => c.sort_order))
         : -1
       newSortOrder = maxInGroup + 1
     } else {
-      const targetCategory = targetGroupCategories.find(c => c.id === targetId)
-      if (targetCategory) {
-        newSortOrder = targetCategory.sort_order
-        newCategories = newCategories.map(c => {
-          const catGroupId = c.category_group_id || 'ungrouped'
-          if (catGroupId === targetGroupId && c.sort_order >= newSortOrder) {
-            return { ...c, sort_order: c.sort_order + 1 }
+      const targetCategoryEntry = targetGroupCategories.find(([catId]) => catId === targetId)
+      if (targetCategoryEntry) {
+        newSortOrder = targetCategoryEntry[1].sort_order
+        // Shift other categories down
+        Object.entries(newCategories).forEach(([catId, cat]) => {
+          const catGroupId = cat.category_group_id || 'ungrouped'
+          if (catGroupId === targetGroupId && cat.sort_order >= newSortOrder) {
+            newCategories[catId] = { ...cat, sort_order: cat.sort_order + 1 }
           }
-          return c
         })
       } else {
         newSortOrder = 0
       }
     }
 
-    const updatedDraggedCategory: Category = {
+    // Add the dragged category with updated position
+    newCategories[draggedId] = {
       ...draggedCategory,
       category_group_id: newGroupId,
       sort_order: newSortOrder,
     }
-
-    newCategories.push(updatedDraggedCategory)
-    newCategories.sort((a, b) => a.sort_order - b.sort_order)
 
     setCategories(newCategories)
     handleDragEnd()
@@ -442,29 +453,30 @@ function Categories() {
 
   // Move category up/down within its group
   async function handleMoveCategory(categoryId: string, direction: 'up' | 'down') {
-    const category = categories.find(c => c.id === categoryId)
+    const category = categories[categoryId]
     if (!category) return
 
     const groupId = category.category_group_id || 'ungrouped'
-    const groupCategories = categories
-      .filter(c => (c.category_group_id || 'ungrouped') === groupId)
-      .sort((a, b) => a.sort_order - b.sort_order)
+    const groupCategories = Object.entries(categories)
+      .filter(([_, c]) => (c.category_group_id || 'ungrouped') === groupId)
+      .sort((a, b) => a[1].sort_order - b[1].sort_order)
 
-    const currentIndex = groupCategories.findIndex(c => c.id === categoryId)
+    const currentIndex = groupCategories.findIndex(([catId]) => catId === categoryId)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
     if (targetIndex < 0 || targetIndex >= groupCategories.length) return
 
     // Swap sort orders
-    const targetCategory = groupCategories[targetIndex]
-    const newCategories = categories.map(c => {
-      if (c.id === categoryId) {
-        return { ...c, sort_order: targetCategory.sort_order }
+    const [targetCatId, targetCategory] = groupCategories[targetIndex]
+    const newCategories: CategoriesMap = {}
+    Object.entries(categories).forEach(([catId, cat]) => {
+      if (catId === categoryId) {
+        newCategories[catId] = { ...cat, sort_order: targetCategory.sort_order }
+      } else if (catId === targetCatId) {
+        newCategories[catId] = { ...cat, sort_order: category.sort_order }
+      } else {
+        newCategories[catId] = cat
       }
-      if (c.id === targetCategory.id) {
-        return { ...c, sort_order: category.sort_order }
-      }
-      return c
     })
 
     setCategories(newCategories)
@@ -507,13 +519,16 @@ function Categories() {
     }
   }
 
+  // Category entry type for working with categories map
+  type CategoryEntry = [string, Category]
+
   // Organize categories by group
-  const categoriesByGroup = categories.reduce((acc, category) => {
+  const categoriesByGroup = Object.entries(categories).reduce((acc, [catId, category]) => {
     const groupId = category.category_group_id || 'ungrouped'
     if (!acc[groupId]) acc[groupId] = []
-    acc[groupId].push(category)
+    acc[groupId].push([catId, category] as CategoryEntry)
     return acc
-  }, {} as Record<string, Category[]>)
+  }, {} as Record<string, CategoryEntry[]>)
 
   // Sort groups by sort_order, with ungrouped always last
   const sortedGroups = [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
@@ -541,7 +556,7 @@ function Categories() {
         <StatCard style={{ flex: 1, minWidth: '120px' }}>
           <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Categories</p>
           <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
-            {categories.length}
+            {Object.keys(categories).length}
           </p>
         </StatCard>
         <StatCard style={{ flex: 1, minWidth: '120px' }}>
@@ -571,17 +586,17 @@ function Categories() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-        {categories.length === 0 && categoryGroups.length === 0 && (
+        {Object.keys(categories).length === 0 && categoryGroups.length === 0 && (
           <p style={{ opacity: 0.7 }}>No categories yet. Create a group first, then add categories!</p>
         )}
 
         {/* Render groups */}
         {sortedGroups.map((group, groupIndex) => {
-          const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a.sort_order - b.sort_order)
+          const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
           const isGroupDragging = dragType === 'group' && draggedId === group.id
           const isGroupDragOver = dragType === 'group' && dragOverId === group.id
           const isCategoryMovingHere = dragType === 'category' && dragOverGroupId === group.id
-          const draggedCategory = draggedId && dragType === 'category' ? categories.find(c => c.id === draggedId) : null
+          const draggedCategory = draggedId && dragType === 'category' ? categories[draggedId] : null
           const isMovingToDifferentGroup = draggedCategory && (draggedCategory.category_group_id || 'ungrouped') !== group.id
 
           // Check if we should show the drop indicator line above this group
@@ -779,10 +794,10 @@ function Categories() {
                   )}
 
                   <div style={listContainer}>
-                    {groupCategories.map((category) => (
-                      editingCategoryId === category.id ? (
+                    {groupCategories.map(([catId, category]) => (
+                      editingCategoryId === catId ? (
                         <CategoryForm
-                          key={category.id}
+                          key={catId}
                           initialData={{
                             name: category.name,
                             description: category.description,
@@ -790,7 +805,7 @@ function Categories() {
                             default_monthly_amount: category.default_monthly_amount,
                             default_monthly_type: category.default_monthly_type,
                           }}
-                          onSubmit={(data) => handleUpdateCategory(category.id, data)}
+                          onSubmit={(data) => handleUpdateCategory(catId, data)}
                           onCancel={() => setEditingCategoryId(null)}
                           submitLabel="Save"
                           categoryGroups={categoryGroups}
@@ -798,20 +813,20 @@ function Categories() {
                         />
                       ) : (
                         <DraggableCard
-                          key={category.id}
-                          isDragging={dragType === 'category' && draggedId === category.id}
-                          isDragOver={dragOverId === category.id}
-                          onDragStart={(e) => { e.stopPropagation(); handleCategoryDragStart(e, category.id) }}
-                          onDragOver={(e) => handleCategoryDragOver(e, category.id, group.id)}
+                          key={catId}
+                          isDragging={dragType === 'category' && draggedId === catId}
+                          isDragOver={dragOverId === catId}
+                          onDragStart={(e) => { e.stopPropagation(); handleCategoryDragStart(e, catId) }}
+                          onDragOver={(e) => handleCategoryDragOver(e, catId, group.id)}
                           onDragLeave={handleDragLeave}
                           onDragEnd={handleDragEnd}
-                          onDrop={(e) => handleCategoryDrop(e, category.id, group.id)}
-                          onEdit={() => setEditingCategoryId(category.id)}
-                          onDelete={() => handleDeleteCategory(category.id)}
-                          onMoveUp={() => handleMoveCategory(category.id, 'up')}
-                          onMoveDown={() => handleMoveCategory(category.id, 'down')}
-                          canMoveUp={groupCategories.findIndex(c => c.id === category.id) > 0}
-                          canMoveDown={groupCategories.findIndex(c => c.id === category.id) < groupCategories.length - 1}
+                          onDrop={(e) => handleCategoryDrop(e, catId, group.id)}
+                          onEdit={() => setEditingCategoryId(catId)}
+                          onDelete={() => handleDeleteCategory(catId)}
+                          onMoveUp={() => handleMoveCategory(catId, 'up')}
+                          onMoveDown={() => handleMoveCategory(catId, 'down')}
+                          canMoveUp={groupCategories.findIndex(([cId]) => cId === catId) > 0}
+                          canMoveDown={groupCategories.findIndex(([cId]) => cId === catId) < groupCategories.length - 1}
                         >
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -844,9 +859,9 @@ function Categories() {
                               margin: '0.25rem 0 0 0',
                               fontSize: '1rem',
                               fontWeight: 600,
-                              color: getBalanceColor(categoryBalances[category.id] || 0),
+                              color: getBalanceColor(categoryBalances[catId] || 0),
                             }}>
-                              {loadingBalances ? '...' : formatCurrency(categoryBalances[category.id] || 0)}
+                              {loadingBalances ? '...' : formatCurrency(categoryBalances[catId] || 0)}
                             </p>
                           </div>
                         </DraggableCard>
@@ -920,9 +935,9 @@ function Categories() {
 
         {/* Uncategorized section */}
         {(() => {
-          const ungroupedCategories = (categoriesByGroup['ungrouped'] || []).sort((a, b) => a.sort_order - b.sort_order)
+          const ungroupedCategories = (categoriesByGroup['ungrouped'] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
           const isCategoryMovingHere = dragType === 'category' && dragOverGroupId === 'ungrouped'
-          const draggedCategory = draggedId && dragType === 'category' ? categories.find(c => c.id === draggedId) : null
+          const draggedCategory = draggedId && dragType === 'category' ? categories[draggedId] : null
           const isMovingToDifferentGroup = draggedCategory && draggedCategory.category_group_id !== null
 
           if (ungroupedCategories.length === 0 && !createForGroupId && categoryGroups.length > 0 && dragType !== 'category') {
@@ -966,10 +981,10 @@ function Categories() {
               </div>
 
               <div style={listContainer}>
-                {ungroupedCategories.map((category) => (
-                  editingCategoryId === category.id ? (
+                {ungroupedCategories.map(([catId, category]) => (
+                  editingCategoryId === catId ? (
                     <CategoryForm
-                      key={category.id}
+                      key={catId}
                       initialData={{
                         name: category.name,
                         description: category.description,
@@ -977,7 +992,7 @@ function Categories() {
                         default_monthly_amount: category.default_monthly_amount,
                         default_monthly_type: category.default_monthly_type,
                       }}
-                      onSubmit={(data) => handleUpdateCategory(category.id, data)}
+                      onSubmit={(data) => handleUpdateCategory(catId, data)}
                       onCancel={() => setEditingCategoryId(null)}
                       submitLabel="Save"
                       categoryGroups={categoryGroups}
@@ -985,20 +1000,20 @@ function Categories() {
                     />
                   ) : (
                     <DraggableCard
-                      key={category.id}
-                      isDragging={dragType === 'category' && draggedId === category.id}
-                      isDragOver={dragOverId === category.id}
-                      onDragStart={(e) => handleCategoryDragStart(e, category.id)}
-                      onDragOver={(e) => handleCategoryDragOver(e, category.id, 'ungrouped')}
+                      key={catId}
+                      isDragging={dragType === 'category' && draggedId === catId}
+                      isDragOver={dragOverId === catId}
+                      onDragStart={(e) => handleCategoryDragStart(e, catId)}
+                      onDragOver={(e) => handleCategoryDragOver(e, catId, 'ungrouped')}
                       onDragLeave={handleDragLeave}
                       onDragEnd={handleDragEnd}
-                      onDrop={(e) => handleCategoryDrop(e, category.id, 'ungrouped')}
-                      onEdit={() => setEditingCategoryId(category.id)}
-                      onDelete={() => handleDeleteCategory(category.id)}
-                      onMoveUp={() => handleMoveCategory(category.id, 'up')}
-                      onMoveDown={() => handleMoveCategory(category.id, 'down')}
-                      canMoveUp={ungroupedCategories.findIndex(c => c.id === category.id) > 0}
-                      canMoveDown={ungroupedCategories.findIndex(c => c.id === category.id) < ungroupedCategories.length - 1}
+                      onDrop={(e) => handleCategoryDrop(e, catId, 'ungrouped')}
+                      onEdit={() => setEditingCategoryId(catId)}
+                      onDelete={() => handleDeleteCategory(catId)}
+                      onMoveUp={() => handleMoveCategory(catId, 'up')}
+                      onMoveDown={() => handleMoveCategory(catId, 'down')}
+                      canMoveUp={ungroupedCategories.findIndex(([cId]) => cId === catId) > 0}
+                      canMoveDown={ungroupedCategories.findIndex(([cId]) => cId === catId) < ungroupedCategories.length - 1}
                     >
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1031,9 +1046,9 @@ function Categories() {
                           margin: '0.25rem 0 0 0',
                           fontSize: '1rem',
                           fontWeight: 600,
-                          color: getBalanceColor(categoryBalances[category.id] || 0),
+                          color: getBalanceColor(categoryBalances[catId] || 0),
                         }}>
-                          {loadingBalances ? '...' : formatCurrency(categoryBalances[category.id] || 0)}
+                          {loadingBalances ? '...' : formatCurrency(categoryBalances[catId] || 0)}
                         </p>
                       </div>
                     </DraggableCard>
