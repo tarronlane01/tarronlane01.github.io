@@ -1,0 +1,226 @@
+import { useState, type FormEvent } from 'react'
+import {
+  FormWrapper,
+  FormField,
+  TextInput,
+  SelectInput,
+  FormButtonGroup,
+  Button,
+  Checkbox,
+} from '../../ui'
+import { colors } from '../../../styles/shared'
+import type { AccountGroup } from '../../../types/budget'
+
+// Type for account group with its ID (for passing to child components)
+export type GroupWithId = AccountGroup & { id: string }
+
+export interface AccountFormData {
+  nickname: string
+  account_group_id: string | null
+  is_income_account?: boolean
+  is_income_default?: boolean
+  is_outgo_account?: boolean
+  is_outgo_default?: boolean
+  on_budget?: boolean
+  is_active?: boolean
+}
+
+interface AccountFormProps {
+  initialData?: AccountFormData
+  onSubmit: (data: AccountFormData) => void
+  onCancel: () => void
+  submitLabel: string
+  accountGroups: GroupWithId[]
+  showGroupSelector?: boolean
+  showIncomeSettings?: boolean
+  hasExistingIncomeDefault?: boolean
+  hasExistingOutgoDefault?: boolean
+  currentGroupId?: string | null // For checking group-level overrides
+}
+
+export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGroups, showGroupSelector = false, showIncomeSettings = false, hasExistingIncomeDefault = false, hasExistingOutgoDefault = false, currentGroupId }: AccountFormProps) {
+  const [formData, setFormData] = useState<AccountFormData>(initialData || {
+    nickname: '',
+    account_group_id: null,
+    is_income_account: false,
+    is_income_default: false,
+    is_outgo_account: false,
+    is_outgo_default: false,
+    on_budget: true,
+    is_active: true,
+  })
+
+  // Find the current group to check for overrides
+  const effectiveGroupId = formData.account_group_id || currentGroupId
+  const currentGroup = effectiveGroupId ? accountGroups.find(g => g.id === effectiveGroupId) : null
+  const groupOverridesActive = currentGroup?.is_active !== undefined
+  const groupOverridesBudget = currentGroup?.on_budget !== undefined
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!formData.nickname.trim()) return
+    onSubmit(formData)
+  }
+
+  // If unchecking income account, also uncheck income default
+  function handleIncomeAccountChange(checked: boolean) {
+    setFormData({
+      ...formData,
+      is_income_account: checked,
+      is_income_default: checked ? formData.is_income_default : false,
+    })
+  }
+
+  function handleOutgoAccountChange(checked: boolean) {
+    setFormData({
+      ...formData,
+      is_outgo_account: checked,
+      is_outgo_default: checked ? formData.is_outgo_default : false,
+    })
+  }
+
+  return (
+    <FormWrapper onSubmit={handleSubmit}>
+      <FormField label="Account Nickname" htmlFor="account-nickname">
+        <TextInput
+          id="account-nickname"
+          type="text"
+          value={formData.nickname}
+          onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+          placeholder="e.g., Main Checking, Savings"
+          required
+          autoFocus
+        />
+      </FormField>
+      {showGroupSelector && (
+        <FormField label="Account Type" htmlFor="account-group">
+          <SelectInput
+            id="account-group"
+            value={formData.account_group_id || 'ungrouped'}
+            onChange={(e) => setFormData({
+              ...formData,
+              account_group_id: e.target.value === 'ungrouped' ? null : e.target.value
+            })}
+          >
+            <option value="ungrouped">Ungrouped</option>
+            {accountGroups.map(group => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
+          </SelectInput>
+        </FormField>
+      )}
+      {showIncomeSettings && (
+        <div style={{
+          padding: '0.75rem',
+          background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          borderRadius: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+        }}>
+          {/* Account Status */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Account Status</p>
+
+            {/* Active checkbox - disabled if group overrides */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Checkbox
+                id="is-active"
+                checked={groupOverridesActive ? currentGroup!.is_active! : (formData.is_active !== false)}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                disabled={groupOverridesActive}
+              >
+                <span style={{ opacity: groupOverridesActive ? 0.5 : 1 }}>Active account</span>
+              </Checkbox>
+              {groupOverridesActive && (
+                <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
+                  Set by account type "{currentGroup!.name}"
+                </p>
+              )}
+            </div>
+
+            {/* On-budget checkbox - disabled if group overrides */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Checkbox
+                id="on-budget"
+                checked={groupOverridesBudget ? currentGroup!.on_budget! : (formData.on_budget !== false)}
+                onChange={(e) => setFormData({ ...formData, on_budget: e.target.checked })}
+                disabled={groupOverridesBudget}
+              >
+                <span style={{ opacity: groupOverridesBudget ? 0.5 : 1 }}>On budget (affects budget totals)</span>
+              </Checkbox>
+              {groupOverridesBudget && (
+                <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
+                  Set by account type "{currentGroup!.name}"
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Income Settings */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Income Settings</p>
+            <Checkbox
+              id="is-income-account"
+              checked={formData.is_income_account || false}
+              onChange={(e) => handleIncomeAccountChange(e.target.checked)}
+            >
+              Show in income deposit list
+            </Checkbox>
+            {formData.is_income_account && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginLeft: '2rem' }}>
+                <Checkbox
+                  id="is-income-default"
+                  checked={formData.is_income_default || false}
+                  onChange={(e) => setFormData({ ...formData, is_income_default: e.target.checked })}
+                  disabled={hasExistingIncomeDefault && !initialData?.is_income_default}
+                >
+                  Default account for new income
+                </Checkbox>
+                {hasExistingIncomeDefault && !initialData?.is_income_default && (
+                  <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>
+                    Another account is already set as default
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Expense Settings */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Expense Settings</p>
+            <Checkbox
+              id="is-outgo-account"
+              checked={formData.is_outgo_account || false}
+              onChange={(e) => handleOutgoAccountChange(e.target.checked)}
+            >
+              Show in expense account list
+            </Checkbox>
+            {formData.is_outgo_account && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginLeft: '2rem' }}>
+                <Checkbox
+                  id="is-outgo-default"
+                  checked={formData.is_outgo_default || false}
+                  onChange={(e) => setFormData({ ...formData, is_outgo_default: e.target.checked })}
+                  disabled={hasExistingOutgoDefault && !initialData?.is_outgo_default}
+                >
+                  Default account for new expenses
+                </Checkbox>
+                {hasExistingOutgoDefault && !initialData?.is_outgo_default && (
+                  <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>
+                    Another account is already set as default
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      <FormButtonGroup>
+        <Button type="submit">{submitLabel}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+      </FormButtonGroup>
+    </FormWrapper>
+  )
+}
+
