@@ -1,7 +1,7 @@
-import { useState, type FormEvent, type DragEvent } from 'react'
+import { useState, useEffect, type FormEvent, type DragEvent } from 'react'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import app from '../../firebase'
-import { useBudget, type Category, type CategoryGroup } from '../../contexts/budget_context'
+import { useBudget, type Category, type CategoryGroup, type DefaultAmountType } from '../../contexts/budget_context'
 import {
   ErrorAlert,
   Button,
@@ -10,9 +10,13 @@ import {
   FormWrapper,
   FormField,
   TextInput,
+  TextAreaInput,
   SelectInput,
   FormButtonGroup,
   StatCard,
+  CurrencyInput,
+  formatCurrency,
+  getBalanceColor,
 } from '../../components/ui'
 import {
   pageSubtitle,
@@ -27,7 +31,10 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 
 interface CategoryFormData {
   name: string
+  description?: string
   category_group_id: string | null
+  default_monthly_amount?: number
+  default_monthly_type?: DefaultAmountType
 }
 
 interface GroupFormData {
@@ -37,9 +44,13 @@ interface GroupFormData {
 type DragType = 'category' | 'group' | null
 
 function Categories() {
-  const { currentBudget, categories, setCategories, categoryGroups, setCategoryGroups } = useBudget()
+  const { currentBudget, categories, setCategories, categoryGroups, setCategoryGroups, getCategoryBalances, getOnBudgetTotal } = useBudget()
   const [error, setError] = useState<string | null>(null)
   const isMobile = useIsMobile()
+
+  // Category balances state
+  const [categoryBalances, setCategoryBalances] = useState<Record<string, number>>({})
+  const [loadingBalances, setLoadingBalances] = useState(false)
 
   // Category editing state
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
@@ -57,6 +68,34 @@ function Categories() {
 
   const db = getFirestore(app)
 
+  // Load category balances on mount
+  useEffect(() => {
+    if (currentBudget && categories.length > 0) {
+      setLoadingBalances(true)
+      getCategoryBalances()
+        .then(balances => setCategoryBalances(balances))
+        .catch(err => console.warn('Failed to load category balances:', err))
+        .finally(() => setLoadingBalances(false))
+    }
+  }, [currentBudget?.id, categories.length, getCategoryBalances])
+
+  // Helper to clean categories for Firestore (avoid undefined values)
+  function cleanCategoriesForFirestore(cats: Category[]): Record<string, any>[] {
+    return cats.map(cat => {
+      const cleaned: Record<string, any> = {
+        id: cat.id,
+        name: cat.name,
+        category_group_id: cat.category_group_id ?? null,
+        sort_order: cat.sort_order,
+      }
+      // Only include optional fields if they have a value
+      if (cat.description) cleaned.description = cat.description
+      if (cat.default_monthly_amount !== undefined) cleaned.default_monthly_amount = cat.default_monthly_amount
+      if (cat.default_monthly_type !== undefined) cleaned.default_monthly_type = cat.default_monthly_type
+      return cleaned
+    })
+  }
+
   // Save functions
   async function saveCategories(newCategories: Category[]) {
     if (!currentBudget) return
@@ -65,7 +104,7 @@ function Categories() {
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        await setDoc(budgetDocRef, { ...data, categories: newCategories })
+        await setDoc(budgetDocRef, { ...data, categories: cleanCategoriesForFirestore(newCategories) })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save categories')
@@ -93,7 +132,7 @@ function Categories() {
       const budgetDoc = await getDoc(budgetDocRef)
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        await setDoc(budgetDocRef, { ...data, categories: newCategories, category_groups: newGroups })
+        await setDoc(budgetDocRef, { ...data, categories: cleanCategoriesForFirestore(newCategories), category_groups: newGroups })
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save changes')
@@ -117,8 +156,11 @@ function Categories() {
     const newCategory: Category = {
       id: `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: formData.name,
+      description: formData.description,
       category_group_id: effectiveGroupId,
       sort_order: maxSortOrder + 1,
+      default_monthly_amount: formData.default_monthly_amount,
+      default_monthly_type: formData.default_monthly_type,
     }
 
     const newCategories = [...categories, newCategory].sort((a, b) => a.sort_order - b.sort_order)
@@ -159,8 +201,11 @@ function Categories() {
           ? {
               ...cat,
               name: formData.name,
+              description: formData.description,
               category_group_id: newGroupId,
               sort_order: newSortOrder,
+              default_monthly_amount: formData.default_monthly_amount,
+              default_monthly_type: formData.default_monthly_type,
             }
           : cat
       )
@@ -492,20 +537,38 @@ function Categories() {
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      <StatCard style={{ display: 'flex', gap: '2rem' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7 }}>Categories</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.5rem', fontWeight: 600 }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <StatCard style={{ flex: 1, minWidth: '120px' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Categories</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
             {categories.length}
           </p>
-        </div>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7 }}>Groups</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.5rem', fontWeight: 600 }}>
+        </StatCard>
+        <StatCard style={{ flex: 1, minWidth: '120px' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Groups</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
             {categoryGroups.length}
           </p>
-        </div>
-      </StatCard>
+        </StatCard>
+        <StatCard style={{ flex: 1, minWidth: '120px' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>On-Budget</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal()) }}>
+            {formatCurrency(getOnBudgetTotal())}
+          </p>
+        </StatCard>
+        <StatCard style={{ flex: 1, minWidth: '120px' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Allocated</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: colors.primary }}>
+            {loadingBalances ? '...' : formatCurrency(Object.values(categoryBalances).reduce((sum, val) => sum + val, 0))}
+          </p>
+        </StatCard>
+        <StatCard style={{ flex: 1, minWidth: '120px' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Available</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal() - Object.values(categoryBalances).reduce((sum, val) => sum + val, 0)) }}>
+            {loadingBalances ? '...' : formatCurrency(getOnBudgetTotal() - Object.values(categoryBalances).reduce((sum, val) => sum + val, 0))}
+          </p>
+        </StatCard>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
         {categories.length === 0 && categoryGroups.length === 0 && (
@@ -576,13 +639,10 @@ function Categories() {
               )}
 
               <div
-                draggable={editingGroupId !== group.id}
-                onDragStart={(e) => handleGroupDragStart(e, group.id)}
                 onDragOver={(e) => {
                   handleDragOverGroup(e, group.id)
                 }}
                 onDragLeave={handleDragLeaveGroup}
-                onDragEnd={handleDragEnd}
                 onDrop={(e) => handleDropOnGroup(e, group.id)}
                 style={{
                   background: isGroupDragging
@@ -596,7 +656,6 @@ function Categories() {
                   border: (isCategoryMovingHere && isMovingToDifferentGroup)
                       ? `2px dashed ${colors.primary}`
                       : '2px solid transparent',
-                  cursor: editingGroupId === group.id ? 'default' : 'grab',
                   transition: 'all 0.15s',
                 }}
               >
@@ -620,7 +679,24 @@ function Categories() {
                     flexWrap: isMobile ? 'wrap' : 'nowrap',
                   }}>
                     <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-                      {!isMobile && <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>}
+                      {!isMobile && (
+                        <span
+                          draggable
+                          onDragStart={(e) => handleGroupDragStart(e, group.id)}
+                          onDragEnd={handleDragEnd}
+                          style={{
+                            cursor: 'grab',
+                            opacity: 0.4,
+                            padding: '0.25rem',
+                            margin: '-0.25rem',
+                            borderRadius: '4px',
+                            userSelect: 'none',
+                          }}
+                          title="Drag to reorder group"
+                        >
+                          ⋮⋮
+                        </span>
+                      )}
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {group.name}
                       </span>
@@ -707,7 +783,13 @@ function Categories() {
                       editingCategoryId === category.id ? (
                         <CategoryForm
                           key={category.id}
-                          initialData={{ name: category.name, category_group_id: category.category_group_id }}
+                          initialData={{
+                            name: category.name,
+                            description: category.description,
+                            category_group_id: category.category_group_id,
+                            default_monthly_amount: category.default_monthly_amount,
+                            default_monthly_type: category.default_monthly_type,
+                          }}
                           onSubmit={(data) => handleUpdateCategory(category.id, data)}
                           onCancel={() => setEditingCategoryId(null)}
                           submitLabel="Save"
@@ -731,7 +813,42 @@ function Categories() {
                           canMoveUp={groupCategories.findIndex(c => c.id === category.id) > 0}
                           canMoveDown={groupCategories.findIndex(c => c.id === category.id) < groupCategories.length - 1}
                         >
-                          <span style={itemTitle}>{category.name}</span>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                              <span style={itemTitle}>{category.name}</span>
+                              {category.default_monthly_amount !== undefined && category.default_monthly_amount > 0 && (
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  opacity: 0.8,
+                                  background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                                  padding: '0.15rem 0.4rem',
+                                  borderRadius: '4px',
+                                }}>
+                                  Default: {category.default_monthly_type === 'percentage'
+                                    ? <><span style={{ color: colors.success, fontWeight: 500 }}>{category.default_monthly_amount}%</span> of prev income</>
+                                    : <><span style={{ color: colors.success, fontWeight: 500 }}>{formatCurrency(category.default_monthly_amount)}</span>/mo</>}
+                                </span>
+                              )}
+                            </div>
+                            {category.description && (
+                              <p style={{
+                                margin: '0.25rem 0 0 0',
+                                fontSize: '0.8rem',
+                                opacity: 0.6,
+                                lineHeight: 1.3,
+                              }}>
+                                {category.description}
+                              </p>
+                            )}
+                            <p style={{
+                              margin: '0.25rem 0 0 0',
+                              fontSize: '1rem',
+                              fontWeight: 600,
+                              color: getBalanceColor(categoryBalances[category.id] || 0),
+                            }}>
+                              {loadingBalances ? '...' : formatCurrency(categoryBalances[category.id] || 0)}
+                            </p>
+                          </div>
                         </DraggableCard>
                       )
                     ))}
@@ -853,7 +970,13 @@ function Categories() {
                   editingCategoryId === category.id ? (
                     <CategoryForm
                       key={category.id}
-                      initialData={{ name: category.name, category_group_id: category.category_group_id }}
+                      initialData={{
+                        name: category.name,
+                        description: category.description,
+                        category_group_id: category.category_group_id,
+                        default_monthly_amount: category.default_monthly_amount,
+                        default_monthly_type: category.default_monthly_type,
+                      }}
                       onSubmit={(data) => handleUpdateCategory(category.id, data)}
                       onCancel={() => setEditingCategoryId(null)}
                       submitLabel="Save"
@@ -877,7 +1000,42 @@ function Categories() {
                       canMoveUp={ungroupedCategories.findIndex(c => c.id === category.id) > 0}
                       canMoveDown={ungroupedCategories.findIndex(c => c.id === category.id) < ungroupedCategories.length - 1}
                     >
-                      <span style={itemTitle}>{category.name}</span>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <span style={itemTitle}>{category.name}</span>
+                          {category.default_monthly_amount !== undefined && category.default_monthly_amount > 0 && (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              opacity: 0.8,
+                              background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                              padding: '0.15rem 0.4rem',
+                              borderRadius: '4px',
+                            }}>
+                              Default: {category.default_monthly_type === 'percentage'
+                                ? <><span style={{ color: colors.success, fontWeight: 500 }}>{category.default_monthly_amount}%</span> of prev income</>
+                                : <><span style={{ color: colors.success, fontWeight: 500 }}>{formatCurrency(category.default_monthly_amount)}</span>/mo</>}
+                            </span>
+                          )}
+                        </div>
+                        {category.description && (
+                          <p style={{
+                            margin: '0.25rem 0 0 0',
+                            fontSize: '0.8rem',
+                            opacity: 0.6,
+                            lineHeight: 1.3,
+                          }}>
+                            {category.description}
+                          </p>
+                        )}
+                        <p style={{
+                          margin: '0.25rem 0 0 0',
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          color: getBalanceColor(categoryBalances[category.id] || 0),
+                        }}>
+                          {loadingBalances ? '...' : formatCurrency(categoryBalances[category.id] || 0)}
+                        </p>
+                      </div>
                     </DraggableCard>
                   )
                 ))}
@@ -962,13 +1120,22 @@ interface CategoryFormProps {
 
 function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGroups = [], showGroupSelector = false }: CategoryFormProps) {
   const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '', category_group_id: null })
+  const [defaultAmount, setDefaultAmount] = useState(initialData?.default_monthly_amount?.toString() || '')
+  const [defaultType, setDefaultType] = useState<DefaultAmountType>(initialData?.default_monthly_type || 'fixed')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!formData.name.trim()) return
     setIsSubmitting(true)
-    onSubmit(formData)
+    const parsedAmount = parseFloat(defaultAmount)
+    const hasValidAmount = !isNaN(parsedAmount) && parsedAmount > 0
+    onSubmit({
+      ...formData,
+      description: formData.description?.trim() || undefined,
+      default_monthly_amount: hasValidAmount ? parsedAmount : undefined,
+      default_monthly_type: hasValidAmount ? defaultType : undefined,
+    })
   }
 
   return (
@@ -982,6 +1149,15 @@ function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGr
           placeholder="e.g., Groceries, Rent, Gas"
           required
           autoFocus
+        />
+      </FormField>
+      <FormField label="Description (optional)" htmlFor="category-description">
+        <TextAreaInput
+          id="category-description"
+          value={formData.description || ''}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="What is this category used for?"
+          minHeight="3rem"
         />
       </FormField>
       {showGroupSelector && (
@@ -1001,6 +1177,45 @@ function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGr
           </SelectInput>
         </FormField>
       )}
+      <FormField label="Default Monthly Allocation (optional)" htmlFor="default-amount">
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <SelectInput
+            id="default-type"
+            value={defaultType}
+            onChange={(e) => setDefaultType(e.target.value as DefaultAmountType)}
+            style={{ width: 'auto', flex: '0 0 auto' }}
+          >
+            <option value="fixed">Fixed $</option>
+            <option value="percentage">% of Prev Income</option>
+          </SelectInput>
+          {defaultType === 'fixed' ? (
+            <CurrencyInput
+              id="default-amount"
+              value={defaultAmount}
+              onChange={setDefaultAmount}
+              placeholder="$0.00"
+            />
+          ) : (
+            <TextInput
+              id="default-amount"
+              type="number"
+              value={defaultAmount}
+              onChange={(e) => setDefaultAmount(e.target.value)}
+              placeholder="0"
+              min="0"
+              max="100"
+              step="0.1"
+              style={{ width: '80px' }}
+            />
+          )}
+          {defaultType === 'percentage' && <span style={{ opacity: 0.6 }}>%</span>}
+        </div>
+        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
+          {defaultType === 'fixed'
+            ? 'Suggested fixed amount to allocate each month'
+            : 'Percentage of previous month\'s total income'}
+        </p>
+      </FormField>
       <FormButtonGroup>
         <Button type="submit" isLoading={isSubmitting}>{submitLabel}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

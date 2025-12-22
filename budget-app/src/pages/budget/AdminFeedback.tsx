@@ -15,7 +15,7 @@ import {
 } from '../../components/ui'
 import { pageSubtitle, listContainer, card, dragHandle, dropIndicator, colors } from '../../styles/shared'
 
-type FeedbackType = 'critical_bug' | 'bug' | 'feature'
+type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
 
 interface FeedbackItem {
   id: string
@@ -30,7 +30,9 @@ interface FeedbackItem {
 const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
   critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
   bug: { label: 'Bug', color: '#ffa502', bgColor: 'rgba(255, 165, 2, 0.15)' },
-  feature: { label: 'Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
+  new_feature: { label: 'New Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
+  core_feature: { label: 'Core Feature', color: '#1e90ff', bgColor: 'rgba(30, 144, 255, 0.15)' },
+  qol: { label: 'QOL', color: '#a55eea', bgColor: 'rgba(165, 94, 234, 0.15)' },
 }
 
 interface FeedbackDoc {
@@ -272,8 +274,8 @@ function AdminFeedback() {
 
       {showAddForm ? (
         <FormWrapper onSubmit={handleAddFeedback}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', paddingBottom: '1rem', flexWrap: 'wrap' }}>
+            {(['critical_bug', 'bug', 'new_feature', 'core_feature', 'qol'] as FeedbackType[]).map((type) => {
               const config = feedbackTypeConfig[type]
               const isSelected = newFeedbackType === type
               return (
@@ -284,17 +286,31 @@ function AdminFeedback() {
                   style={{
                     flex: 1,
                     padding: '0.6rem 0.75rem',
-                    border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                    border: `2px solid ${config.color}`,
                     borderRadius: '0.5rem',
-                    background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                    background: isSelected ? config.bgColor : 'transparent',
                     color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
                     cursor: 'pointer',
                     fontWeight: isSelected ? 600 : 400,
                     fontSize: '0.85rem',
                     transition: 'all 0.15s ease',
+                    opacity: isSelected ? 1 : 0.5,
+                    boxShadow: isSelected ? `0 0 12px ${config.bgColor}` : 'none',
+                    position: 'relative' as const,
                   }}
                 >
                   {config.label}
+                  {isSelected && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '-14px',
+                      left: '10%',
+                      right: '10%',
+                      height: '3px',
+                      background: 'white',
+                      borderRadius: '2px',
+                    }} />
+                  )}
                 </button>
               )
             })}
@@ -326,7 +342,7 @@ function AdminFeedback() {
           <div style={{ ...listContainer, marginTop: '0.5rem' }}>
             {completedItems.map((item) => (
               <div key={item.id} style={{ ...card, opacity: 0.6, flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <input
                     type="checkbox"
                     checked={item.is_done}
@@ -334,24 +350,23 @@ function AdminFeedback() {
                     style={{
                       width: '1.25rem',
                       height: '1.25rem',
-                      marginTop: '0.1rem',
                       cursor: 'pointer',
                       accentColor: colors.primary,
                       flexShrink: 0,
                     }}
                   />
                   <FeedbackTypeBadge type={item.feedback_type} onClick={() => setEditingTypeItem(item)} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, lineHeight: 1.5, textDecoration: 'line-through' }}>{item.text}</p>
-                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.8 }}>
-                      {item.user_email} • Created: {formatDate(item.created_at)}
+                </div>
+                <div style={{ marginLeft: '2rem' }}>
+                  <p style={{ margin: 0, lineHeight: 1.5, textDecoration: 'line-through' }}>{item.text}</p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.8 }}>
+                    {item.user_email} • Created: {formatDate(item.created_at)}
+                  </p>
+                  {item.completed_at && (
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: colors.success }}>
+                      ✓ Completed: {formatDate(item.completed_at)}
                     </p>
-                    {item.completed_at && (
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: colors.success }}>
-                        ✓ Completed: {formatDate(item.completed_at)}
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -390,10 +405,12 @@ function AdminFeedback() {
         <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', opacity: 0.8 }}>
           Select a new type for this feedback:
         </p>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '1rem', flexWrap: 'wrap' }}>
+          {(['critical_bug', 'bug', 'new_feature', 'core_feature', 'qol'] as FeedbackType[]).map((type) => {
             const config = feedbackTypeConfig[type]
-            const isSelected = editingTypeItem?.feedback_type === type || (!editingTypeItem?.feedback_type && type === 'bug')
+            // Handle legacy 'feature' type by mapping to 'new_feature'
+            const currentType = (editingTypeItem?.feedback_type as string) === 'feature' ? 'new_feature' : editingTypeItem?.feedback_type
+            const isSelected = currentType === type || (!currentType && type === 'bug')
             return (
               <button
                 key={type}
@@ -402,17 +419,31 @@ function AdminFeedback() {
                 style={{
                   flex: 1,
                   padding: '0.75rem 0.5rem',
-                  border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                  border: `2px solid ${config.color}`,
                   borderRadius: '0.5rem',
-                  background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                  background: isSelected ? config.bgColor : 'transparent',
                   color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
                   cursor: 'pointer',
                   fontWeight: isSelected ? 600 : 400,
                   fontSize: '0.85rem',
                   transition: 'all 0.15s ease',
+                  opacity: isSelected ? 1 : 0.5,
+                  boxShadow: isSelected ? `0 0 12px ${config.bgColor}` : 'none',
+                  position: 'relative' as const,
                 }}
               >
                 {config.label}
+                {isSelected && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '-14px',
+                    left: '10%',
+                    right: '10%',
+                    height: '3px',
+                    background: 'white',
+                    borderRadius: '2px',
+                  }} />
+                )}
               </button>
             )
           })}
@@ -439,8 +470,10 @@ interface FeedbackCardProps {
   onTypeClick: () => void
 }
 
-function FeedbackTypeBadge({ type, onClick }: { type?: FeedbackType; onClick?: () => void }) {
-  const feedbackType = type || 'bug'
+function FeedbackTypeBadge({ type, onClick }: { type?: FeedbackType | string; onClick?: () => void }) {
+  // Handle legacy 'feature' type by mapping to 'new_feature'
+  const normalizedType = type === 'feature' ? 'new_feature' : type
+  const feedbackType = (normalizedType && normalizedType in feedbackTypeConfig ? normalizedType : 'bug') as FeedbackType
   const config = feedbackTypeConfig[feedbackType]
   return (
     <button
@@ -482,10 +515,10 @@ function FeedbackCard({ item, isDragging, isDragOver, onDragStart, onDragOver, o
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        style={{ ...card, cursor: 'grab', opacity: isDragging ? 0.5 : 1, flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem' }}
+        style={{ ...card, cursor: 'grab', opacity: isDragging ? 0.5 : 1, flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-          <span style={{ ...dragHandle, marginTop: '0.25rem' }}>⋮⋮</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ ...dragHandle }}>⋮⋮</span>
           <input
             type="checkbox"
             checked={item.is_done}
@@ -493,19 +526,18 @@ function FeedbackCard({ item, isDragging, isDragOver, onDragStart, onDragOver, o
             style={{
               width: '1.25rem',
               height: '1.25rem',
-              marginTop: '0.1rem',
               cursor: 'pointer',
               accentColor: colors.primary,
               flexShrink: 0,
             }}
           />
           <FeedbackTypeBadge type={item.feedback_type} onClick={onTypeClick} />
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, lineHeight: 1.5 }}>{item.text}</p>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.6 }}>
-              {item.user_email} • {formatDate(item.created_at)}
-            </p>
-          </div>
+        </div>
+        <div style={{ marginLeft: '3.25rem' }}>
+          <p style={{ margin: 0, lineHeight: 1.5 }}>{item.text}</p>
+          <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.6 }}>
+            {item.user_email} • {formatDate(item.created_at)}
+          </p>
         </div>
       </div>
     </div>

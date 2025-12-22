@@ -1,7 +1,18 @@
-import { createContext, useContext, useState, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useRef, useCallback, type ReactNode } from 'react'
 import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import app from '../firebase'
 import useFirebaseAuth from '../hooks/useFirebaseAuth'
+import {
+  getFromCache,
+  saveToCache,
+  removeFromCache,
+  clearBudgetCache,
+  clearAllCache,
+  getLastRefreshTime,
+  setLastRefreshTime,
+  getCacheStats,
+  CACHE_KEYS,
+} from '../utils/cache'
 
 // Permission flags that can only be set via Firebase Console
 export interface PermissionFlags {
@@ -45,11 +56,16 @@ export interface FinancialAccount {
   is_active?: boolean // true = active (default), false = hidden/archived
 }
 
+export type DefaultAmountType = 'fixed' | 'percentage'
+
 export interface Category {
   id: string
   name: string
+  description?: string // Optional description of what this category is used for
   category_group_id: string | null
   sort_order: number
+  default_monthly_amount?: number // Suggested allocation amount per month (dollars if fixed, percentage if percentage)
+  default_monthly_type?: DefaultAmountType // 'fixed' = dollar amount, 'percentage' = % of previous month's income
 }
 
 export interface CategoryGroup {
@@ -76,6 +92,12 @@ export interface PayeesDocument {
   updated_at: string
 }
 
+// Category allocation for a month
+export interface CategoryAllocation {
+  category_id: string
+  amount: number
+}
+
 // Month document structure
 export interface MonthDocument {
   budget_id: string
@@ -86,6 +108,9 @@ export interface MonthDocument {
   // Account balances at start and end of this month (account_id -> balance)
   account_balances_start?: Record<string, number>
   account_balances_end?: Record<string, number>
+  // Category allocations for this month
+  allocations?: CategoryAllocation[]
+  allocations_finalized?: boolean // When true, allocations affect category balances
   created_at: string
   updated_at: string
 }
@@ -154,9 +179,16 @@ interface BudgetContextType {
   // Payees
   payees: string[]
 
+  // Cache status
+  lastRefreshTime: number | null
+  cacheStats: { count: number; totalSize: number } | null
+  isUsingCache: boolean
+
   // Methods
   ensureBudgetLoaded: () => Promise<void>
   refreshBudget: () => Promise<void>
+  forceRefreshFromFirebase: () => Promise<void>
+  clearCache: () => void
 
   // Invite flow (owner actions)
   inviteUserToBudget: (userId: string) => Promise<void>
@@ -198,6 +230,14 @@ interface BudgetContextType {
 
   // Payees methods
   loadPayees: () => Promise<void>
+
+  // Allocations methods
+  saveAllocations: (allocations: CategoryAllocation[]) => Promise<void>
+  finalizeAllocations: () => Promise<void>
+  unfinalizeAllocations: () => Promise<void>
+  getCategoryBalances: () => Promise<Record<string, number>>
+  getOnBudgetTotal: () => number
+  getPreviousMonthIncome: () => Promise<number>
 }
 
 const BudgetContext = createContext<BudgetContextType>({
@@ -224,8 +264,13 @@ const BudgetContext = createContext<BudgetContextType>({
   currentMonthNumber: new Date().getMonth() + 1,
   monthLoading: false,
   payees: [],
+  lastRefreshTime: null,
+  cacheStats: null,
+  isUsingCache: false,
   ensureBudgetLoaded: async () => {},
   refreshBudget: async () => {},
+  forceRefreshFromFirebase: async () => {},
+  clearCache: () => {},
   inviteUserToBudget: async () => {},
   revokeUserFromBudget: async () => {},
   checkBudgetInvite: async () => null,
@@ -251,6 +296,12 @@ const BudgetContext = createContext<BudgetContextType>({
   reconcileBalances: async () => {},
   balanceMismatch: null,
   loadPayees: async () => {},
+  saveAllocations: async () => {},
+  finalizeAllocations: async () => {},
+  unfinalizeAllocations: async () => {},
+  getCategoryBalances: async () => ({}),
+  getOnBudgetTotal: () => 0,
+  getPreviousMonthIncome: async () => 0,
 })
 
 // Helper function to clean accounts for Firestore (removes undefined values)
@@ -311,22 +362,48 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // Balance reconciliation state
   const [balanceMismatch, setBalanceMismatch] = useState<Record<string, { stored: number; calculated: number }> | null>(null)
 
+  // Cache state
+  const [lastRefreshTime, setLastRefreshTimeState] = useState<number | null>(() => getLastRefreshTime())
+  const [cacheStats, setCacheStats] = useState<{ count: number; totalSize: number } | null>(null)
+  const [isUsingCache, setIsUsingCache] = useState(false)
+  const forceRefreshRef = useRef(false)
+
   const db = getFirestore(app)
   const current_user = firebase_auth_hook.get_current_firebase_user()
 
+  // Update cache stats periodically
+  const updateCacheStats = useCallback(() => {
+    const stats = getCacheStats()
+    setCacheStats({ count: stats.count, totalSize: stats.totalSize })
+  }, [])
+
   // Helper to get or create user document (only for current user)
-  async function getOrCreateCurrentUserDoc(): Promise<UserDocument> {
+  async function getOrCreateCurrentUserDoc(skipCache = false): Promise<UserDocument> {
     if (!current_user) {
       throw new Error('Not authenticated')
+    }
+
+    const cacheKey = CACHE_KEYS.USER_DOC(current_user.uid)
+
+    // Check cache first (unless force refresh or skipCache)
+    if (!forceRefreshRef.current && !skipCache) {
+      const cached = getFromCache<UserDocument>(cacheKey)
+      if (cached) {
+        setIsUsingCache(true)
+        return cached
+      }
     }
 
     const userDocRef = doc(db, 'users', current_user.uid)
 
     try {
       const userDoc = await getDoc(userDocRef)
+      setIsUsingCache(false)
 
       if (userDoc.exists()) {
-        return userDoc.data() as UserDocument
+        const userData = userDoc.data() as UserDocument
+        saveToCache(cacheKey, userData)
+        return userData
       }
 
       // Create new user document
@@ -338,6 +415,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       }
       await setDoc(userDocRef, newUserDoc)
+      saveToCache(cacheKey, newUserDoc)
       return newUserDoc
     } catch (err) {
       console.error('[BudgetContext] Error getting/creating user doc:', err)
@@ -414,9 +492,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       if (useFallback || (userDoc && userDoc.budget_ids.length === 0)) {
         // FALLBACK: Use old approach - query budgets by user_ids array
+        // Note: queries cannot be cached as easily, so this path always hits Firebase
         const budgetsRef = collection(db, 'budgets')
         const q = query(budgetsRef, where('user_ids', 'array-contains', current_user.uid))
         const querySnapshot = await getDocs(q)
+        setIsUsingCache(false)
 
         // Check for budgets user has actually accepted (is in accepted_user_ids)
         const acceptedBudgets = querySnapshot.docs.filter(doc => {
@@ -428,6 +508,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           // Load the first accepted budget
           const budgetDoc = acceptedBudgets[0]
           const data = budgetDoc.data()
+          // Cache this budget data
+          saveToCache(CACHE_KEYS.BUDGET(budgetDoc.id), data)
           await loadBudgetData(budgetDoc.id, data)
         } else if (foundPendingInvites.length > 0) {
           // User has pending invites but no accepted budgets - don't create new budget
@@ -455,14 +537,30 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       } else if (userDoc && userDoc.budget_ids.length > 0) {
         // NEW APPROACH: Load budget from user's budget_ids
         const budgetId = userDoc.budget_ids[0]
-        const budgetDocRef = doc(db, 'budgets', budgetId)
-        const budgetDoc = await getDoc(budgetDocRef)
+        const cacheKey = CACHE_KEYS.BUDGET(budgetId)
 
-        if (!budgetDoc.exists()) {
-          throw new Error(`Budget ${budgetId} not found`)
+        // Check cache first (unless force refresh)
+        let budgetData = null
+        if (!forceRefreshRef.current) {
+          budgetData = getFromCache<any>(cacheKey)
         }
 
-        await loadBudgetData(budgetDoc.id, budgetDoc.data())
+        if (budgetData) {
+          setIsUsingCache(true)
+          await loadBudgetData(budgetId, budgetData)
+        } else {
+          const budgetDocRef = doc(db, 'budgets', budgetId)
+          const budgetDoc = await getDoc(budgetDocRef)
+          setIsUsingCache(false)
+
+          if (!budgetDoc.exists()) {
+            throw new Error(`Budget ${budgetId} not found`)
+          }
+
+          budgetData = budgetDoc.data()
+          saveToCache(cacheKey, budgetData)
+          await loadBudgetData(budgetId, budgetData)
+        }
       }
 
       loadedForUserRef.current = current_user.uid
@@ -522,8 +620,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     const loadedCategories: Category[] = (data.categories || []).map((category: any) => ({
       id: category.id,
       name: category.name,
+      description: category.description,
       category_group_id: category.category_group_id ?? null,
       sort_order: category.sort_order ?? 0,
+      default_monthly_amount: category.default_monthly_amount,
+      default_monthly_type: category.default_monthly_type,
     }))
     loadedCategories.sort((a, b) => a.sort_order - b.sort_order)
     setCategories(loadedCategories)
@@ -709,13 +810,16 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       if (budgetDoc.exists()) {
         const data = budgetDoc.data()
-        await setDoc(budgetDocRef, {
+        const updatedData = {
           ...data,
           accounts,
           account_groups: accountGroups,
           categories,
           category_groups: categoryGroups,
-        })
+        }
+        await setDoc(budgetDocRef, updatedData)
+        // Update cache with new data
+        saveToCache(CACHE_KEYS.BUDGET(currentBudget.id), updatedData)
       }
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to save budget data')
@@ -950,7 +1054,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   }
 
   // Load or create a month document
-  async function loadMonth(year: number, month: number) {
+  const loadMonth = useCallback(async (year: number, month: number, skipCache = false) => {
     if (!currentBudget || !current_user) return
 
     setMonthLoading(true)
@@ -958,8 +1062,23 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setCurrentMonthNumber(month)
 
     try {
+      const cacheKey = CACHE_KEYS.MONTH(currentBudget.id, year, month)
+
+      // Check cache first (unless force refresh or skipCache)
+      if (!forceRefreshRef.current && !skipCache) {
+        const cached = getFromCache<MonthDocument>(cacheKey)
+        if (cached) {
+          setIsUsingCache(true)
+          setCurrentMonth(cached)
+          setMonthLoading(false)
+          return
+        }
+      }
+
       // Use the shared getOrCreateMonthDoc to prevent race conditions
       const monthData = await getOrCreateMonthDoc(currentBudget.id, year, month)
+      setIsUsingCache(false)
+      saveToCache(cacheKey, monthData)
       setCurrentMonth(monthData)
     } catch (err) {
       console.error('[BudgetContext] Error loading month:', err)
@@ -967,7 +1086,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     } finally {
       setMonthLoading(false)
     }
-  }
+  }, [currentBudget?.id, current_user?.uid])
 
   // Navigate to previous month
   async function goToPreviousMonth() {
@@ -1008,6 +1127,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       })
 
+      // Update cache with new payees
+      saveToCache(CACHE_KEYS.PAYEES(currentBudget.id), updatedPayees)
       setPayees(updatedPayees)
     } catch (err) {
       console.warn('[BudgetContext] Error saving payee:', err)
@@ -1016,10 +1137,21 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   }
 
   // Load payees for the current budget
-  async function loadPayees() {
+  const loadPayees = useCallback(async (skipCache = false) => {
     if (!currentBudget) {
       setPayees([])
       return
+    }
+
+    const cacheKey = CACHE_KEYS.PAYEES(currentBudget.id)
+
+    // Check cache first (unless force refresh or skipCache)
+    if (!forceRefreshRef.current && !skipCache) {
+      const cached = getFromCache<string[]>(cacheKey)
+      if (cached) {
+        setPayees(cached)
+        return
+      }
     }
 
     try {
@@ -1028,7 +1160,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       if (payeesDoc.exists()) {
         const data = payeesDoc.data() as PayeesDocument
-        setPayees(data.payees || [])
+        const payeesList = data.payees || []
+        saveToCache(cacheKey, payeesList)
+        setPayees(payeesList)
       } else {
         setPayees([])
       }
@@ -1036,7 +1170,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       console.warn('[BudgetContext] Error loading payees:', err)
       setPayees([])
     }
-  }
+  }, [currentBudget?.id])
 
   // Helper to clean income array for Firestore
   function cleanIncomeForFirestore(incomeList: IncomeTransaction[]): Record<string, any>[] {
@@ -1080,6 +1214,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           month: data.month,
           income,
           total_income: data.total_income ?? income.reduce((sum: number, inc: any) => sum + (inc.amount || 0), 0),
+          allocations: data.allocations || [],
+          allocations_finalized: data.allocations_finalized || false,
           created_at: data.created_at,
           updated_at: data.updated_at || data.created_at,
         }
@@ -1092,6 +1228,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           month,
           income: [],
           total_income: 0,
+          allocations: [],
+          allocations_finalized: false,
           created_at: now,
           updated_at: now,
         }
@@ -1154,6 +1292,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
       await setDoc(monthDocRef, cleanedMonth)
 
+      // Update cache for this month
+      const updatedMonthData: MonthDocument = {
+        ...targetMonth,
+        income: updatedIncome,
+        total_income: newTotalIncome,
+        updated_at: new Date().toISOString(),
+      }
+      saveToCache(CACHE_KEYS.MONTH(currentBudget.id, incomeYear, incomeMonth), updatedMonthData)
+
       // Update local month state only if it's the currently viewed month
       if (currentMonth && incomeYear === currentYear && incomeMonth === currentMonthNumber) {
         setCurrentMonth({
@@ -1187,7 +1334,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
           const cleanedAccounts = cleanAccountsForFirestore(updatedAccounts)
 
-          await setDoc(budgetDocRef, { ...budgetData, accounts: cleanedAccounts })
+          const updatedBudgetData = { ...budgetData, accounts: cleanedAccounts }
+          await setDoc(budgetDocRef, updatedBudgetData)
+
+          // Update cache with new budget data
+          saveToCache(CACHE_KEYS.BUDGET(currentBudget.id), updatedBudgetData)
 
           // Update local state
           setAccounts(updatedAccounts)
@@ -1347,12 +1498,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
           }
 
           const cleanedAccounts = cleanAccountsForFirestore(currentAccounts)
-          await setDoc(budgetDocRef, { ...budgetData, accounts: cleanedAccounts })
+          const updatedBudgetData = { ...budgetData, accounts: cleanedAccounts }
+          await setDoc(budgetDocRef, updatedBudgetData)
+
+          // Update cache with new budget data
+          saveToCache(CACHE_KEYS.BUDGET(currentBudget.id), updatedBudgetData)
 
           // Update local state
           setAccounts(currentAccounts)
         }
-      } else {
       }
     } catch (err) {
       console.error('[BudgetContext] Error updating income:', err)
@@ -1413,7 +1567,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
         )
 
         const cleanedAccounts = cleanAccountsForFirestore(updatedAccounts)
-        await setDoc(budgetDocRef, { ...budgetData, accounts: cleanedAccounts })
+        const updatedBudgetData = { ...budgetData, accounts: cleanedAccounts }
+        await setDoc(budgetDocRef, updatedBudgetData)
+
+        // Update cache with new budget data
+        saveToCache(CACHE_KEYS.BUDGET(currentBudget.id), updatedBudgetData)
 
         // Update local state
         setAccounts(updatedAccounts)
@@ -1648,8 +1806,266 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     await recomputeAllBalances()
   }
 
+  // Helper to clean allocations for Firestore
+  function cleanAllocationsForFirestore(allocationsList: CategoryAllocation[]): Record<string, any>[] {
+    return allocationsList.map(alloc => ({
+      category_id: alloc.category_id,
+      amount: alloc.amount,
+    }))
+  }
+
+  // Save allocations for the current month
+  async function saveAllocations(allocations: CategoryAllocation[]) {
+    if (!currentBudget || !current_user || !currentMonth) {
+      throw new Error('No budget or month loaded')
+    }
+
+    try {
+      const monthDocId = getMonthDocId(currentBudget.id, currentYear, currentMonthNumber)
+      const monthDocRef = doc(db, 'months', monthDocId)
+
+      const cleanedMonth: Record<string, any> = {
+        budget_id: currentMonth.budget_id,
+        year: currentMonth.year,
+        month: currentMonth.month,
+        income: cleanIncomeForFirestore(currentMonth.income),
+        total_income: currentMonth.total_income,
+        allocations: cleanAllocationsForFirestore(allocations),
+        allocations_finalized: currentMonth.allocations_finalized || false,
+        updated_at: new Date().toISOString(),
+      }
+      if (currentMonth.created_at) cleanedMonth.created_at = currentMonth.created_at
+      if (currentMonth.account_balances_start) cleanedMonth.account_balances_start = currentMonth.account_balances_start
+      if (currentMonth.account_balances_end) cleanedMonth.account_balances_end = currentMonth.account_balances_end
+
+      await setDoc(monthDocRef, cleanedMonth)
+
+      // Update local month state
+      const updatedMonth: MonthDocument = {
+        ...currentMonth,
+        allocations,
+      }
+      setCurrentMonth(updatedMonth)
+
+      // Update cache
+      saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+    } catch (err) {
+      console.error('[BudgetContext] Error saving allocations:', err)
+      throw new Error(err instanceof Error ? err.message : 'Failed to save allocations')
+    }
+  }
+
+  // Finalize allocations for the current month (makes them affect category balances)
+  async function finalizeAllocations() {
+    if (!currentBudget || !current_user || !currentMonth) {
+      throw new Error('No budget or month loaded')
+    }
+
+    try {
+      const monthDocId = getMonthDocId(currentBudget.id, currentYear, currentMonthNumber)
+      const monthDocRef = doc(db, 'months', monthDocId)
+
+      const cleanedMonth: Record<string, any> = {
+        budget_id: currentMonth.budget_id,
+        year: currentMonth.year,
+        month: currentMonth.month,
+        income: cleanIncomeForFirestore(currentMonth.income),
+        total_income: currentMonth.total_income,
+        allocations: cleanAllocationsForFirestore(currentMonth.allocations || []),
+        allocations_finalized: true,
+        updated_at: new Date().toISOString(),
+      }
+      if (currentMonth.created_at) cleanedMonth.created_at = currentMonth.created_at
+      if (currentMonth.account_balances_start) cleanedMonth.account_balances_start = currentMonth.account_balances_start
+      if (currentMonth.account_balances_end) cleanedMonth.account_balances_end = currentMonth.account_balances_end
+
+      await setDoc(monthDocRef, cleanedMonth)
+
+      // Update local month state
+      const updatedMonth: MonthDocument = {
+        ...currentMonth,
+        allocations_finalized: true,
+      }
+      setCurrentMonth(updatedMonth)
+
+      // Update cache
+      saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+    } catch (err) {
+      console.error('[BudgetContext] Error finalizing allocations:', err)
+      throw new Error(err instanceof Error ? err.message : 'Failed to finalize allocations')
+    }
+  }
+
+  // Unfinalize allocations for the current month
+  async function unfinalizeAllocations() {
+    if (!currentBudget || !current_user || !currentMonth) {
+      throw new Error('No budget or month loaded')
+    }
+
+    try {
+      const monthDocId = getMonthDocId(currentBudget.id, currentYear, currentMonthNumber)
+      const monthDocRef = doc(db, 'months', monthDocId)
+
+      const cleanedMonth: Record<string, any> = {
+        budget_id: currentMonth.budget_id,
+        year: currentMonth.year,
+        month: currentMonth.month,
+        income: cleanIncomeForFirestore(currentMonth.income),
+        total_income: currentMonth.total_income,
+        allocations: cleanAllocationsForFirestore(currentMonth.allocations || []),
+        allocations_finalized: false,
+        updated_at: new Date().toISOString(),
+      }
+      if (currentMonth.created_at) cleanedMonth.created_at = currentMonth.created_at
+      if (currentMonth.account_balances_start) cleanedMonth.account_balances_start = currentMonth.account_balances_start
+      if (currentMonth.account_balances_end) cleanedMonth.account_balances_end = currentMonth.account_balances_end
+
+      await setDoc(monthDocRef, cleanedMonth)
+
+      // Update local month state
+      const updatedMonth: MonthDocument = {
+        ...currentMonth,
+        allocations_finalized: false,
+      }
+      setCurrentMonth(updatedMonth)
+
+      // Update cache
+      saveToCache(CACHE_KEYS.MONTH(currentBudget.id, currentYear, currentMonthNumber), updatedMonth)
+    } catch (err) {
+      console.error('[BudgetContext] Error unfinalizing allocations:', err)
+      throw new Error(err instanceof Error ? err.message : 'Failed to unfinalize allocations')
+    }
+  }
+
+  // Get category balances from all finalized allocations across all months
+  const getCategoryBalances = useCallback(async (): Promise<Record<string, number>> => {
+    if (!currentBudget) {
+      return {}
+    }
+
+    try {
+      // Query all months for this budget
+      const monthsQuery = query(
+        collection(db, 'months'),
+        where('budget_id', '==', currentBudget.id)
+      )
+      const monthsSnapshot = await getDocs(monthsQuery)
+
+      // Sum up allocations from finalized months only
+      const balances: Record<string, number> = {}
+
+      // Initialize all categories to 0
+      categories.forEach(cat => { balances[cat.id] = 0 })
+
+      monthsSnapshot.forEach(docSnap => {
+        const data = docSnap.data()
+        // Only count finalized allocations
+        if (data.allocations_finalized && data.allocations) {
+          for (const alloc of data.allocations) {
+            balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
+          }
+        }
+      })
+
+      return balances
+    } catch (err) {
+      console.error('[BudgetContext] Error getting category balances:', err)
+      return {}
+    }
+  }, [currentBudget?.id, categories])
+
+  // Get total of all on-budget accounts
+  function getOnBudgetTotal(): number {
+    return accounts
+      .filter(acc => {
+        const group = accountGroups.find(g => g.id === acc.account_group_id)
+        // Check effective on_budget (group override takes precedence)
+        const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (acc.on_budget !== false)
+        // Check effective is_active
+        const effectiveActive = group?.is_active !== undefined ? group.is_active : (acc.is_active !== false)
+        return effectiveOnBudget && effectiveActive
+      })
+      .reduce((sum, acc) => sum + acc.balance, 0)
+  }
+
+  // Get the previous month's total income
+  const getPreviousMonthIncome = useCallback(async (): Promise<number> => {
+    if (!currentBudget) {
+      return 0
+    }
+
+    // Calculate previous month
+    let prevYear = currentYear
+    let prevMonth = currentMonthNumber - 1
+    if (prevMonth < 1) {
+      prevMonth = 12
+      prevYear -= 1
+    }
+
+    try {
+      const monthDocId = getMonthDocId(currentBudget.id, prevYear, prevMonth)
+      const monthDocRef = doc(db, 'months', monthDocId)
+      const monthDoc = await getDoc(monthDocRef)
+
+      if (monthDoc.exists()) {
+        const data = monthDoc.data()
+        return data.total_income || 0
+      }
+      return 0
+    } catch (err) {
+      console.error('[BudgetContext] Error getting previous month income:', err)
+      return 0
+    }
+  }, [currentBudget?.id, currentYear, currentMonthNumber])
+
   const isOwner = !!(currentBudget && current_user && currentBudget.owner_id === current_user.uid)
   const hasPendingInvites = pendingInvites.length > 0
+
+  // Force refresh all data from Firebase (bypasses cache)
+  async function forceRefreshFromFirebase() {
+    if (!current_user) return
+
+    console.log('[BudgetContext] Force refreshing from Firebase...')
+    forceRefreshRef.current = true
+
+    try {
+      // Clear all cache for clean refresh
+      if (currentBudget) {
+        clearBudgetCache(currentBudget.id)
+      }
+      removeFromCache(CACHE_KEYS.USER_DOC(current_user.uid))
+
+      // Reset initialization state to force reload
+      loadedForUserRef.current = null
+      setIsInitialized(false)
+
+      // Reload everything
+      await loadOrCreateBudget()
+
+      // If we have a budget and were viewing a month, reload that too
+      if (currentBudget && currentMonth) {
+        await loadMonth(currentYear, currentMonthNumber, true)
+        await loadPayees(true)
+      }
+
+      // Update last refresh time
+      setLastRefreshTime()
+      setLastRefreshTimeState(Date.now())
+      updateCacheStats()
+
+      console.log('[BudgetContext] Force refresh complete')
+    } finally {
+      forceRefreshRef.current = false
+    }
+  }
+
+  // Clear all cached data
+  function handleClearCache() {
+    clearAllCache()
+    setLastRefreshTimeState(null)
+    updateCacheStats()
+    console.log('[BudgetContext] Cache cleared')
+  }
 
   return (
     <BudgetContext.Provider value={{
@@ -1676,8 +2092,13 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       currentMonthNumber,
       monthLoading,
       payees,
+      lastRefreshTime,
+      cacheStats,
+      isUsingCache,
       ensureBudgetLoaded,
       refreshBudget: loadOrCreateBudget,
+      forceRefreshFromFirebase,
+      clearCache: handleClearCache,
       inviteUserToBudget,
       revokeUserFromBudget,
       checkBudgetInvite,
@@ -1703,6 +2124,12 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       reconcileBalances,
       balanceMismatch,
       loadPayees,
+      saveAllocations,
+      finalizeAllocations,
+      unfinalizeAllocations,
+      getCategoryBalances,
+      getOnBudgetTotal,
+      getPreviousMonthIncome,
     }}>
       {children}
     </BudgetContext.Provider>

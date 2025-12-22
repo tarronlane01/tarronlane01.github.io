@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "publish": "f() { npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m \"${1:-Build and publish}\") && git push; }; f"
+    "publish": "f() { if [ -z \"$1\" ]; then echo 'Error: Please provide a commit message. Usage: npm run publish -- \"your message\"' && exit 1; fi; npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m \"$1\") && git push; }; f"
   },
   "dependencies": {
     "firebase": "^12.7.0",

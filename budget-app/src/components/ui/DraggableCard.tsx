@@ -74,17 +74,29 @@ export function DraggableCard({
         }}
       />
       <div
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
         style={{
           ...(isMobile ? cardMobile : card),
-          cursor: 'grab',
           opacity: isDragging ? 0.5 : 1,
         }}
       >
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.75rem', minWidth: 0 }}>
-          <span style={{ ...dragHandle, fontSize: isMobile ? '0.9rem' : undefined }}>⋮⋮</span>
+          <span
+            draggable
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            style={{
+              ...dragHandle,
+              fontSize: isMobile ? '0.9rem' : undefined,
+              cursor: 'grab',
+              padding: '0.25rem',
+              margin: '-0.25rem',
+              borderRadius: '4px',
+              userSelect: 'none',
+            }}
+            title="Drag to reorder"
+          >
+            ⋮⋮
+          </span>
           <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {children}
           </div>

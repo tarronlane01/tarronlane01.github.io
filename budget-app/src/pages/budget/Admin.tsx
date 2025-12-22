@@ -1,17 +1,13 @@
+import { useEffect } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
+
+const ADMIN_TAB_KEY = 'admin_active_tab'
+const VALID_ADMIN_TABS = ['my-budgets', 'accounts', 'categories', 'users', 'migration', 'feedback', 'tests']
 
 function Admin() {
   const { currentBudget, loading, isOwner, isAdmin, isTest } = useBudget()
   const location = useLocation()
-
-  if (loading) {
-    return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
-        <p>Loading...</p>
-      </div>
-    )
-  }
 
   const isAccountsPage = location.pathname.includes('/admin/accounts')
   const isCategoriesPage = location.pathname.includes('/admin/categories')
@@ -21,6 +17,42 @@ function Admin() {
   const isMyBudgetsPage = location.pathname.includes('/admin/my-budgets')
   const isTestsPage = location.pathname.includes('/admin/tests')
   const isRootAdmin = location.pathname === '/budget/admin'
+
+  // Save current admin tab to localStorage when it changes
+  useEffect(() => {
+    if (isRootAdmin) return // Don't save when at root (about to redirect)
+
+    let currentTab = 'my-budgets'
+    if (isAccountsPage) currentTab = 'accounts'
+    else if (isCategoriesPage) currentTab = 'categories'
+    else if (isUsersPage) currentTab = 'users'
+    else if (isMigrationPage) currentTab = 'migration'
+    else if (isFeedbackPage) currentTab = 'feedback'
+    else if (isTestsPage) currentTab = 'tests'
+
+    localStorage.setItem(ADMIN_TAB_KEY, currentTab)
+  }, [location.pathname, isRootAdmin, isAccountsPage, isCategoriesPage, isUsersPage, isMigrationPage, isFeedbackPage, isMyBudgetsPage, isTestsPage])
+
+  // Get the saved tab for redirect (with permission checks)
+  function getSavedAdminTab(): string {
+    const saved = localStorage.getItem(ADMIN_TAB_KEY)
+    if (!saved || !VALID_ADMIN_TABS.includes(saved)) return 'my-budgets'
+
+    // Check permissions for restricted tabs
+    if (saved === 'users' && !isOwner) return 'my-budgets'
+    if ((saved === 'migration' || saved === 'feedback') && !isAdmin) return 'my-budgets'
+    if (saved === 'tests' && !isTest) return 'my-budgets'
+
+    return saved
+  }
+
+  if (loading) {
+    return (
+      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+        <p>Loading...</p>
+      </div>
+    )
+  }
 
   // Owner-only pages (Users)
   const isOwnerOnlyPage = isUsersPage
@@ -215,9 +247,9 @@ function Admin() {
         )}
       </div>
 
-      {/* Redirect to my-budgets by default (for everyone), or show nested route */}
+      {/* Redirect to saved tab (or my-budgets by default), or show nested route */}
       {isRootAdmin ? (
-        <Navigate to="/budget/admin/my-budgets" replace />
+        <Navigate to={`/budget/admin/${getSavedAdminTab()}`} replace />
       ) : (
         <Outlet />
       )}

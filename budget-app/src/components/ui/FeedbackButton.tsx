@@ -9,7 +9,7 @@ import { Modal } from './Modal'
 import { TextAreaInput } from './FormElements'
 import { FormButtonGroup } from './FormElements'
 
-type FeedbackType = 'critical_bug' | 'bug' | 'feature'
+type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
 
 interface FeedbackItem {
   id: string
@@ -24,7 +24,9 @@ interface FeedbackItem {
 const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
   critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
   bug: { label: 'Bug', color: '#ffa502', bgColor: 'rgba(255, 165, 2, 0.15)' },
-  feature: { label: 'Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
+  new_feature: { label: 'New Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
+  core_feature: { label: 'Core Feature', color: '#1e90ff', bgColor: 'rgba(30, 144, 255, 0.15)' },
+  qol: { label: 'QOL', color: '#a55eea', bgColor: 'rgba(165, 94, 234, 0.15)' },
 }
 
 export function FeedbackButton() {
@@ -131,8 +133,8 @@ export function FeedbackButton() {
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {(['critical_bug', 'bug', 'feature'] as FeedbackType[]).map((type) => {
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', paddingBottom: '1rem', flexWrap: 'wrap' }}>
+              {(['critical_bug', 'bug', 'new_feature', 'core_feature', 'qol'] as FeedbackType[]).map((type) => {
                 const config = feedbackTypeConfig[type]
                 const isSelected = feedbackType === type
                 return (
@@ -143,17 +145,31 @@ export function FeedbackButton() {
                     style={{
                       flex: 1,
                       padding: '0.6rem 0.5rem',
-                      border: `2px solid ${isSelected ? config.color : 'transparent'}`,
+                      border: `2px solid ${config.color}`,
                       borderRadius: '0.5rem',
-                      background: isSelected ? config.bgColor : 'rgba(255,255,255,0.05)',
+                      background: isSelected ? config.bgColor : 'transparent',
                       color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
                       cursor: 'pointer',
                       fontWeight: isSelected ? 600 : 400,
                       fontSize: '0.8rem',
                       transition: 'all 0.15s ease',
+                      opacity: isSelected ? 1 : 0.5,
+                      boxShadow: isSelected ? `0 0 12px ${config.bgColor}` : 'none',
+                      position: 'relative',
                     }}
                   >
                     {config.label}
+                    {isSelected && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: '-14px',
+                        left: '10%',
+                        right: '10%',
+                        height: '3px',
+                        background: 'white',
+                        borderRadius: '2px',
+                      }} />
+                    )}
                   </button>
                 )
               })}
