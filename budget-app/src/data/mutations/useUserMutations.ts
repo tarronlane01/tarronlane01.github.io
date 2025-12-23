@@ -11,9 +11,8 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
-import app from '../../firebase'
 import { queryKeys } from '../queryClient'
+import { readDoc, writeDoc } from '../../utils/firestoreHelpers'
 import type { UserDocument, BudgetInvite } from '../../types/budget'
 import type { BudgetData } from '../queries/useBudgetQuery'
 
@@ -54,7 +53,6 @@ interface CheckInviteParams {
  */
 export function useUserMutations() {
   const queryClient = useQueryClient()
-  const db = getFirestore(app)
 
   /**
    * Create a new budget
@@ -65,7 +63,6 @@ export function useUserMutations() {
       const now = new Date().toISOString()
 
       // Create budget document
-      const budgetDocRef = doc(db, 'budgets', budgetId)
       const newBudget = {
         name: name.trim() || 'My Budget',
         user_ids: [userId],
@@ -79,22 +76,20 @@ export function useUserMutations() {
         created_at: now,
         updated_at: now,
       }
-      await setDoc(budgetDocRef, newBudget)
+      await writeDoc('budgets', budgetId, newBudget)
 
       // Update user document
-      const userDocRef = doc(db, 'users', userId)
-      const userDoc = await getDoc(userDocRef)
+      const { exists: userExists, data: userData } = await readDoc<UserDocument>('users', userId)
 
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as UserDocument
-        await setDoc(userDocRef, {
+      if (userExists && userData) {
+        await writeDoc('users', userId, {
           ...userData,
           budget_ids: [budgetId, ...userData.budget_ids],
           updated_at: now,
         })
       } else {
         // Create new user document
-        await setDoc(userDocRef, {
+        await writeDoc('users', userId, {
           uid: userId,
           email: userEmail,
           budget_ids: [budgetId],
@@ -120,35 +115,31 @@ export function useUserMutations() {
       const now = new Date().toISOString()
 
       // Verify invitation exists
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists: budgetExists, data: budgetData } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!budgetExists || !budgetData) {
         throw new Error('Budget not found')
       }
 
-      const budgetData = budgetDoc.data()
       if (!budgetData.user_ids?.includes(userId)) {
         throw new Error('You have not been invited to this budget')
       }
 
       // Update user document
-      const userDocRef = doc(db, 'users', userId)
-      const userDoc = await getDoc(userDocRef)
-      const userData = userDoc.exists() ? userDoc.data() as UserDocument : null
+      const { data: userData } = await readDoc<UserDocument>('users', userId)
 
       if (userData?.budget_ids?.includes(budgetId)) {
         throw new Error('You have already accepted this invite')
       }
 
-      await setDoc(userDocRef, {
+      await writeDoc('users', userId, {
         ...(userData || { uid: userId, email: null }),
         budget_ids: [budgetId, ...(userData?.budget_ids || [])],
         updated_at: now,
       })
 
       // Update budget's accepted_user_ids
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...budgetData,
         accepted_user_ids: [...(budgetData.accepted_user_ids || []), userId],
       })
@@ -168,19 +159,17 @@ export function useUserMutations() {
    */
   const inviteUser = useMutation({
     mutationFn: async ({ budgetId, userId }: InviteUserParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
       if (data.user_ids?.includes(userId)) {
         throw new Error('User is already invited')
       }
 
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         user_ids: [...(data.user_ids || []), userId],
       })
@@ -218,15 +207,13 @@ export function useUserMutations() {
    */
   const revokeUser = useMutation({
     mutationFn: async ({ budgetId, userId }: RevokeUserParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         user_ids: (data.user_ids || []).filter((id: string) => id !== userId),
         accepted_user_ids: (data.accepted_user_ids || []).filter((id: string) => id !== userId),
@@ -266,17 +253,15 @@ export function useUserMutations() {
    */
   const switchBudget = useMutation({
     mutationFn: async ({ budgetId, userId }: SwitchBudgetParams) => {
-      const userDocRef = doc(db, 'users', userId)
-      const userDoc = await getDoc(userDocRef)
+      const { exists, data: userData } = await readDoc<UserDocument>('users', userId)
 
-      if (!userDoc.exists()) {
+      if (!exists || !userData) {
         throw new Error('User document not found')
       }
 
-      const userData = userDoc.data() as UserDocument
       const updatedBudgetIds = [budgetId, ...userData.budget_ids.filter(id => id !== budgetId)]
 
-      await setDoc(userDocRef, {
+      await writeDoc('users', userId, {
         ...userData,
         budget_ids: updatedBudgetIds,
         updated_at: new Date().toISOString(),
@@ -313,17 +298,15 @@ export function useUserMutations() {
    */
   const checkInvite = useMutation({
     mutationFn: async ({ budgetId, userId, userBudgetIds }: CheckInviteParams): Promise<BudgetInvite | null> => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) return null
+      if (!exists || !data) return null
 
-      const data = budgetDoc.data()
       if (!data.user_ids?.includes(userId)) return null
       if (userBudgetIds.includes(budgetId)) return null
 
       return {
-        budgetId: budgetDoc.id,
+        budgetId,
         budgetName: data.name,
         ownerEmail: data.owner_email || null,
       }

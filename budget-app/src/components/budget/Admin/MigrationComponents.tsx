@@ -19,7 +19,7 @@ export interface BudgetMigrationResult {
 }
 
 // Simple CSS spinner component
-export function Spinner() {
+export function Spinner({ noMargin }: { noMargin?: boolean } = {}) {
   return (
     <span style={{
       display: 'inline-block',
@@ -29,7 +29,7 @@ export function Spinner() {
       borderTopColor: 'white',
       borderRadius: '50%',
       animation: 'spin 0.8s linear infinite',
-      marginRight: '0.5rem',
+      marginRight: noMargin ? 0 : '0.5rem',
       verticalAlign: 'middle',
     }} />
   )
@@ -46,7 +46,10 @@ interface MigrationStatusCardProps {
   budgetsToMigrateCategories: number
   budgetsToMigrateAccounts: number
   onRunMigration: () => void
+  onRefresh?: () => void
+  isRefreshing?: boolean
   disabled: boolean
+  isUnknown?: boolean
   children?: ReactNode
 }
 
@@ -60,9 +63,31 @@ export function MigrationStatusCard({
   budgetsToMigrateCategories,
   budgetsToMigrateAccounts,
   onRunMigration,
+  onRefresh,
+  isRefreshing,
   disabled,
+  isUnknown,
   children,
 }: MigrationStatusCardProps) {
+  // Determine badge style and text
+  const getBadgeStyle = () => {
+    if (isUnknown) {
+      return { background: 'rgba(100, 100, 100, 0.2)', color: '#9ca3af' }
+    }
+    if (isComplete) {
+      return { background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80' }
+    }
+    return { background: 'rgba(100, 108, 255, 0.2)', color: '#a5b4fc' }
+  }
+
+  const getBadgeText = () => {
+    if (isUnknown) return 'Unknown'
+    if (isComplete) return 'Complete'
+    return 'Required'
+  }
+
+  const badgeStyle = getBadgeStyle()
+
   return (
     <div style={{
       background: 'color-mix(in srgb, currentColor 5%, transparent)',
@@ -70,20 +95,49 @@ export function MigrationStatusCard({
       borderRadius: '8px',
       marginBottom: '1.5rem',
     }}>
-      <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span style={{
-          background: isComplete ? 'rgba(34, 197, 94, 0.2)' : 'rgba(100, 108, 255, 0.2)',
-          color: isComplete ? '#4ade80' : '#a5b4fc',
-          padding: '0.15rem 0.5rem',
-          borderRadius: '4px',
-          fontSize: '0.7rem',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-        }}>
-          {isComplete ? 'Complete' : 'Required'}
-        </span>
-        {title}
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{
+            background: badgeStyle.background,
+            color: badgeStyle.color,
+            padding: '0.15rem 0.5rem',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+          }}>
+            {getBadgeText()}
+          </span>
+          {title}
+        </h3>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing || isMigrating}
+            title="Refresh status"
+            style={{
+              background: 'transparent',
+              border: '1px solid color-mix(in srgb, currentColor 30%, transparent)',
+              color: 'inherit',
+              padding: '0.35rem 0.6rem',
+              borderRadius: '6px',
+              cursor: isRefreshing || isMigrating ? 'not-allowed' : 'pointer',
+              opacity: isRefreshing || isMigrating ? 0.5 : 0.7,
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              minWidth: '85px',
+              minHeight: '28px',
+            }}
+          >
+            <span style={{ width: '16px', height: '16px', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+              {isRefreshing ? <Spinner noMargin /> : '🔄'}
+            </span>
+            Refresh
+          </button>
+        )}
+      </div>
       <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
         {description}
       </p>
@@ -99,6 +153,16 @@ export function MigrationStatusCard({
           alignItems: 'center',
         }}>
           <Spinner /> Running migration across all budgets...
+        </div>
+      ) : isUnknown ? (
+        <div style={{
+          background: 'rgba(100, 100, 100, 0.1)',
+          border: '1px solid rgba(100, 100, 100, 0.3)',
+          color: '#9ca3af',
+          padding: '0.75rem 1rem',
+          borderRadius: '8px',
+        }}>
+          ❓ Status unknown — click Refresh to check migration status
         </div>
       ) : isComplete ? (
         <div style={{

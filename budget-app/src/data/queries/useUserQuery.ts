@@ -7,22 +7,18 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
-import app from '../../firebase'
 import { queryKeys } from '../queryClient'
+import { readDoc, writeDoc } from '../../utils/firestoreHelpers'
 import type { UserDocument } from '../../types/budget'
 
 /**
  * Fetch or create user document from Firestore
  */
 async function fetchUser(userId: string, email: string | null): Promise<UserDocument> {
-  const db = getFirestore(app)
-  const userDocRef = doc(db, 'users', userId)
+  const { exists, data } = await readDoc<UserDocument>('users', userId)
 
-  const userDoc = await getDoc(userDocRef)
-
-  if (userDoc.exists()) {
-    return userDoc.data() as UserDocument
+  if (exists && data) {
+    return data
   }
 
   // Create new user document
@@ -34,7 +30,7 @@ async function fetchUser(userId: string, email: string | null): Promise<UserDocu
     updated_at: new Date().toISOString(),
   }
 
-  await setDoc(userDocRef, newUserDoc)
+  await writeDoc('users', userId, newUserDoc)
   return newUserDoc
 }
 

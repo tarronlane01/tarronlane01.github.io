@@ -6,8 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, collection, getDocs } from 'firebase/firestore'
-import app from '../../firebase'
+import { queryCollection } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
@@ -35,16 +34,16 @@ export interface FeedbackData {
  * Fetch all feedback from the collection
  */
 async function fetchAllFeedback(): Promise<FeedbackData> {
-  const db = getFirestore(app)
-  const feedbackCollection = collection(db, 'feedback')
-  const snapshot = await getDocs(feedbackCollection)
+  const result = await queryCollection<{
+    items?: FeedbackItem[]
+    user_email?: string
+  }>('feedback')
 
   const flattened: FlattenedFeedbackItem[] = []
 
-  snapshot.forEach(docSnap => {
-    const data = docSnap.data()
-    const items = data.items || []
-    const userEmail = data.user_email || docSnap.id
+  for (const docSnap of result.docs) {
+    const items = docSnap.data.items || []
+    const userEmail = docSnap.data.user_email || docSnap.id
 
     items.forEach((item: FeedbackItem) => {
       flattened.push({
@@ -53,7 +52,7 @@ async function fetchAllFeedback(): Promise<FeedbackData> {
         user_email: userEmail,
       })
     })
-  })
+  }
 
   return { items: flattened }
 }

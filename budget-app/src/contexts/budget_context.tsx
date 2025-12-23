@@ -16,8 +16,7 @@
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
-import app from '../firebase'
+import { readDoc } from '../utils/firestoreHelpers'
 import useFirebaseAuth from '../hooks/useFirebaseAuth'
 import {
   useUserQuery,
@@ -252,13 +251,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     if (!current_user) return null
 
     try {
-      const db = getFirestore(app)
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<{
+        user_ids?: string[]
+        accepted_user_ids?: string[]
+        name?: string
+        owner_email?: string
+      }>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) return null
+      if (!exists || !data) return null
 
-      const data = budgetDoc.data()
       // Check if user is invited but hasn't accepted
       const isInvited = data.user_ids?.includes(current_user.uid)
       const hasAccepted = data.accepted_user_ids?.includes(current_user.uid)

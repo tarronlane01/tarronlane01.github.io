@@ -4,8 +4,6 @@
  * Shared utilities used across income, expense, and allocation mutations.
  */
 
-import type { QueryClient } from '@tanstack/react-query'
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import type { MonthDocument, AccountsMap } from '../../types/budget'
 import {
   getMonthDocId,
@@ -14,7 +12,9 @@ import {
   cleanAllocationsForFirestore,
   cleanCategoryBalancesForFirestore,
   cleanAccountsForFirestore,
-} from '../../utils/budgetHelpers'
+  writeDoc,
+  readDoc,
+} from '../../utils/firestoreHelpers'
 import { markNextMonthSnapshotStaleInFirestore } from '../queries/useMonthQuery'
 
 /**
@@ -27,13 +27,10 @@ import { markNextMonthSnapshotStaleInFirestore } from '../queries/useMonthQuery'
  * The stale flag is only written to Firestore if not already stale (avoids duplicate writes).
  */
 export async function saveMonthToFirestore(
-  db: ReturnType<typeof getFirestore>,
   budgetId: string,
-  month: MonthDocument,
-  queryClient: QueryClient
+  month: MonthDocument
 ) {
   const monthDocId = getMonthDocId(budgetId, month.year, month.month)
-  const monthDocRef = doc(db, 'months', monthDocId)
 
   const cleanedMonth: Record<string, any> = {
     budget_id: month.budget_id,
@@ -56,27 +53,24 @@ export async function saveMonthToFirestore(
   if (month.snapshot_stale !== undefined) cleanedMonth.snapshot_stale = month.snapshot_stale
 
   // Save the month document
-  await setDoc(monthDocRef, cleanedMonth)
+  await writeDoc('months', monthDocId, cleanedMonth)
 
   // CROSS-MONTH: Mark next month as stale (only writes to Firestore if not already stale)
-  await markNextMonthSnapshotStaleInFirestore(budgetId, month.year, month.month, queryClient)
+  await markNextMonthSnapshotStaleInFirestore(budgetId, month.year, month.month)
 }
 
 /**
  * Update account balance in budget document and return updated accounts
  */
 export async function updateAccountBalance(
-  db: ReturnType<typeof getFirestore>,
   budgetId: string,
   accountId: string,
   delta: number
 ): Promise<AccountsMap | null> {
-  const budgetDocRef = doc(db, 'budgets', budgetId)
-  const budgetDoc = await getDoc(budgetDocRef)
+  const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-  if (!budgetDoc.exists()) return null
+  if (!exists || !data) return null
 
-  const data = budgetDoc.data()
   const accounts = data.accounts || {}
 
   if (!accounts[accountId]) return null
@@ -89,7 +83,7 @@ export async function updateAccountBalance(
     },
   }
 
-  await setDoc(budgetDocRef, {
+  await writeDoc('budgets', budgetId, {
     ...data,
     accounts: cleanAccountsForFirestore(updatedAccounts),
   })
@@ -101,7 +95,6 @@ export async function updateAccountBalance(
  * Save payee if new and return updated payees list
  */
 export async function savePayeeIfNew(
-  db: ReturnType<typeof getFirestore>,
   budgetId: string,
   payee: string,
   existingPayees: string[]
@@ -109,12 +102,11 @@ export async function savePayeeIfNew(
   const trimmed = payee.trim()
   if (!trimmed || existingPayees.includes(trimmed)) return null
 
-  const payeesDocRef = doc(db, 'payees', budgetId)
   const updatedPayees = [...existingPayees, trimmed].sort((a, b) =>
     a.toLowerCase().localeCompare(b.toLowerCase())
   )
 
-  await setDoc(payeesDocRef, {
+  await writeDoc('payees', budgetId, {
     budget_id: budgetId,
     payees: updatedPayees,
     updated_at: new Date().toISOString(),

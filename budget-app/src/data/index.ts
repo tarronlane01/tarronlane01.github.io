@@ -5,7 +5,7 @@
  */
 
 // Query client and provider
-export { queryClient, queryKeys, setupQueryPersistence } from './queryClient'
+export { queryClient, queryKeys, localStoragePersister } from './queryClient'
 export { QueryProvider } from './QueryProvider'
 
 // Query hooks

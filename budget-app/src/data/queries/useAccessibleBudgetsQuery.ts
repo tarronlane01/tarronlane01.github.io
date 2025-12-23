@@ -8,8 +8,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore'
-import app from '../../firebase'
+import { queryCollection } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 import type { BudgetInvite, BudgetSummary, UserDocument } from '../../types/budget'
 
@@ -26,16 +25,20 @@ async function fetchAccessibleBudgets(
   userId: string,
   userData: UserDocument | null
 ): Promise<AccessibleBudgetsData> {
-  const db = getFirestore(app)
-  const budgetsRef = collection(db, 'budgets')
-  const q = query(budgetsRef, where('user_ids', 'array-contains', userId))
-  const snapshot = await getDocs(q)
+  const result = await queryCollection<{
+    name?: string
+    owner_email?: string
+    owner_id?: string
+    accepted_user_ids?: string[]
+  }>('budgets', [
+    { field: 'user_ids', op: 'array-contains', value: userId }
+  ])
 
   const budgets: BudgetSummary[] = []
   const pendingInvites: BudgetInvite[] = []
 
-  for (const budgetDoc of snapshot.docs) {
-    const data = budgetDoc.data()
+  for (const budgetDoc of result.docs) {
+    const data = budgetDoc.data
     const hasAccepted = data.accepted_user_ids?.includes(userId) ||
                         userData?.budget_ids?.includes(budgetDoc.id)
 

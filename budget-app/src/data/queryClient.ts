@@ -10,8 +10,7 @@
  */
 
 import { QueryClient } from '@tanstack/react-query'
-import { persistQueryClient } from '@tanstack/react-query-persist-client'
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
 // Query client configuration per spec
 export const queryClient = new QueryClient({
@@ -30,26 +29,29 @@ export const queryClient = new QueryClient({
   },
 })
 
-// LocalStorage persister for React Query cache
-const localStoragePersister = createSyncStoragePersister({
-  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'BUDGET_APP_QUERY_CACHE',
-  // Serialize/deserialize helpers (using default JSON)
+// Debug logging for query errors (reads are now logged via Firebase wrappers)
+queryClient.getQueryCache().subscribe(event => {
+  const query = event?.query
+  if (!query) return
+
+  if (event.type === 'updated') {
+    const { state } = query
+    // Log any query errors
+    if (state.status === 'error' && state.error) {
+      console.error('[RQ] Query FAILED:', query.queryKey, state.error)
+    }
+  }
 })
 
-// Set up persistence
-// This persists the entire query cache to localStorage
-// and rehydrates it on app load
-export function setupQueryPersistence() {
-  if (typeof window === 'undefined') return
-
-  persistQueryClient({
-    queryClient,
-    persister: localStoragePersister,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours - must match gcTime
-    buster: 'v1', // Increment this to invalidate all persisted caches
-  })
-}
+// LocalStorage persister for React Query cache (async wrapper)
+export const localStoragePersister = createAsyncStoragePersister({
+  storage: typeof window !== 'undefined' ? {
+    getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+    setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
+    removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key)),
+  } : undefined,
+  key: 'BUDGET_APP_QUERY_CACHE',
+})
 
 // Query key factory - ensures consistent query keys
 // Pattern: ['domain', 'entity', 'identifier']
@@ -75,4 +77,3 @@ export const queryKeys = {
   // Feedback collection (admin only)
   feedback: () => ['feedback'] as const,
 }
-

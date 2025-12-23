@@ -10,8 +10,6 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFirestore } from 'firebase/firestore'
-import app from '../../firebase'
 import { queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
@@ -22,7 +20,6 @@ import { saveMonthToFirestore, updateAccountBalance, savePayeeIfNew } from './mo
 
 export function useIncomeMutations() {
   const queryClient = useQueryClient()
-  const db = getFirestore(app)
 
   /**
    * Add income transaction
@@ -62,16 +59,16 @@ export function useIncomeMutations() {
       }
 
       // Save to Firestore
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
+      await saveMonthToFirestore(budgetId, updatedMonth)
 
       // Update account balance
-      const updatedAccounts = await updateAccountBalance(db, budgetId, accountId, amount)
+      const updatedAccounts = await updateAccountBalance(budgetId, accountId, amount)
 
       // Save payee if new
       const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(db, budgetId, payee, payeesData)
+        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
       }
 
       return { updatedMonth, newIncome, updatedAccounts, updatedPayees }
@@ -125,7 +122,7 @@ export function useIncomeMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },
@@ -203,22 +200,22 @@ export function useIncomeMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
+      await saveMonthToFirestore(budgetId, updatedMonth)
 
       // Update account balances if changed
       let updatedAccounts = null
       if (accountId !== oldAccountId) {
-        await updateAccountBalance(db, budgetId, oldAccountId, -oldAmount)
-        updatedAccounts = await updateAccountBalance(db, budgetId, accountId, amount)
+        await updateAccountBalance(budgetId, oldAccountId, -oldAmount)
+        updatedAccounts = await updateAccountBalance(budgetId, accountId, amount)
       } else if (amount !== oldAmount) {
-        updatedAccounts = await updateAccountBalance(db, budgetId, accountId, amount - oldAmount)
+        updatedAccounts = await updateAccountBalance(budgetId, accountId, amount - oldAmount)
       }
 
       // Save payee if new
       const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(db, budgetId, payee, payeesData)
+        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
       }
 
       return { updatedMonth, updatedAccounts, updatedPayees }
@@ -287,7 +284,7 @@ export function useIncomeMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },
@@ -352,8 +349,8 @@ export function useIncomeMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
-      const updatedAccounts = await updateAccountBalance(db, budgetId, accountId, -amount)
+      await saveMonthToFirestore(budgetId, updatedMonth)
+      const updatedAccounts = await updateAccountBalance(budgetId, accountId, -amount)
 
       return { updatedMonth, updatedAccounts }
     },
@@ -394,7 +391,7 @@ export function useIncomeMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },

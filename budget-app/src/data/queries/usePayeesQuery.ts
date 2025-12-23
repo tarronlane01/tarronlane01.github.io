@@ -6,8 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
-import app from '../../firebase'
+import { readDoc } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 import type { PayeesDocument } from '../../types/budget'
 
@@ -15,13 +14,9 @@ import type { PayeesDocument } from '../../types/budget'
  * Fetch payees from Firestore
  */
 async function fetchPayees(budgetId: string): Promise<string[]> {
-  const db = getFirestore(app)
-  const payeesDocRef = doc(db, 'payees', budgetId)
+  const { exists, data } = await readDoc<PayeesDocument>('payees', budgetId)
 
-  const payeesDoc = await getDoc(payeesDocRef)
-
-  if (payeesDoc.exists()) {
-    const data = payeesDoc.data() as PayeesDocument
+  if (exists && data) {
     return data.payees || []
   }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../hooks'
 import { PageContainer, ErrorAlert } from '../../components/ui'
@@ -17,13 +17,32 @@ import {
   type RecalcResults,
 } from '../../components/budget/Month'
 
+const VALID_TABS: BudgetTab[] = ['income', 'allocations', 'spend', 'balances']
+
+function parsePathParams(params: { year?: string; month?: string; tab?: string }) {
+  const year = params.year ? parseInt(params.year, 10) : null
+  const month = params.month ? parseInt(params.month, 10) : null
+  const tab = params.tab && VALID_TABS.includes(params.tab as BudgetTab) ? params.tab as BudgetTab : null
+
+  return {
+    year: year && !isNaN(year) && year >= 2000 && year <= 2100 ? year : null,
+    month: month && !isNaN(month) && month >= 1 && month <= 12 ? month : null,
+    tab,
+  }
+}
+
 function Budget() {
+  const params = useParams<{ year?: string; month?: string; tab?: string }>()
+  const navigate = useNavigate()
+
   // Context: identifiers and UI state only
   const {
     currentUserId,
     selectedBudgetId,
     currentYear,
     currentMonthNumber,
+    setCurrentYear,
+    setCurrentMonthNumber,
     goToPreviousMonth,
     goToNextMonth,
     hasPendingInvites,
@@ -48,16 +67,34 @@ function Budget() {
   const [isRecomputing, setIsRecomputing] = useState(false)
   const [showRecalcModal, setShowRecalcModal] = useState(false)
   const [recalcResults, setRecalcResults] = useState<RecalcResults | null>(null)
+  const [urlInitialized, setUrlInitialized] = useState(false)
 
+  // Initialize from URL params on mount, default to 'balances'
   const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
-    const saved = localStorage.getItem('budget_active_tab')
-    return (saved === 'income' || saved === 'allocations' || saved === 'spend' || saved === 'balances') ? saved : 'income'
+    const { tab } = parsePathParams(params)
+    return tab ?? 'balances'
   })
 
-  // Persist active tab to localStorage
+  // Initialize year/month from URL on first render
   useEffect(() => {
-    localStorage.setItem('budget_active_tab', activeTab)
-  }, [activeTab])
+    if (urlInitialized) return
+    const { year, month } = parsePathParams(params)
+    if (year) setCurrentYear(year)
+    if (month) setCurrentMonthNumber(month)
+    setUrlInitialized(true)
+  }, [params, setCurrentYear, setCurrentMonthNumber, urlInitialized])
+
+  // Sync URL path when month/year/tab changes
+  useEffect(() => {
+    if (!urlInitialized) return
+    const newPath = `/budget/${currentYear}/${currentMonthNumber}/${activeTab}`
+    const currentPath = `/budget/${params.year}/${params.month}/${params.tab}`
+
+    if (newPath !== currentPath) {
+      navigate(newPath, { replace: true })
+    }
+  }, [currentYear, currentMonthNumber, activeTab, urlInitialized, navigate, params])
+
 
   // Handlers for onboarding screens
   async function handleAcceptInvite(budgetId: string) {

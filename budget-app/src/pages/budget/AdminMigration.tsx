@@ -1,113 +1,42 @@
-import { useState, useEffect, useRef } from 'react'
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
-import app from '../../firebase'
+import { useState } from 'react'
+import { readDoc, writeDoc, queryCollection } from '../../utils/firestoreHelpers'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useBudget } from '../../contexts/budget_context'
-import { useBudgetData } from '../../hooks'
+import { useAdminMigrationQuery, queryClient } from '../../data'
 import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../types/budget'
 import {
   MigrationStatusCard,
   MigrationResults,
-  type MigrationStatus,
+  Spinner,
   type BudgetMigrationResult,
 } from '../../components/budget/Admin'
 
 function AdminMigration() {
   const firebase_auth_hook = useFirebaseAuth()
 
-  // Context: identifiers only
-  const { selectedBudgetId, currentUserId } = useBudget()
+  const current_user = firebase_auth_hook.get_current_firebase_user()
 
-  // Hook: budget data
-  const { budget: currentBudget } = useBudgetData(selectedBudgetId, currentUserId)
-
-  const hasCheckedRef = useRef(false)
-
-  const [migrationStatus, setMigrationStatus] = useState<MigrationStatus>({
-    categoriesArrayMigrationNeeded: false,
-    accountsArrayMigrationNeeded: false,
-    budgetsToMigrateCategories: 0,
-    budgetsToMigrateAccounts: 0,
-    loading: true,
-  })
+  // Use React Query for migration status - does NOT auto-refetch
+  const migrationQuery = useAdminMigrationQuery()
 
   const [isMigrating, setIsMigrating] = useState(false)
   const [migrationResults, setMigrationResults] = useState<BudgetMigrationResult[] | null>(null)
 
-  const db = getFirestore(app)
-  const current_user = firebase_auth_hook.get_current_firebase_user()
-
-  // Check if migration is needed on mount
-  useEffect(() => {
-    async function checkMigrationStatus() {
-      if (!current_user || hasCheckedRef.current) {
-        setMigrationStatus(prev => ({ ...prev, loading: false }))
-        return
-      }
-
-      hasCheckedRef.current = true
-
-      try {
-        // Get user document to find their budgets
-        const userDocRef = doc(db, 'users', current_user.uid)
-        const userDoc = await getDoc(userDocRef)
-
-        if (!userDoc.exists()) {
-          setMigrationStatus({
-            categoriesArrayMigrationNeeded: false,
-            accountsArrayMigrationNeeded: false,
-            budgetsToMigrateCategories: 0,
-            budgetsToMigrateAccounts: 0,
-            loading: false,
-          })
-          return
-        }
-
-        const userData = userDoc.data()
-        const budgetIds = userData.budget_ids || []
-
-        let budgetsNeedingCategoriesMigration = 0
-        let budgetsNeedingAccountsMigration = 0
-
-        // Check each budget for array formats
-        for (const budgetId of budgetIds) {
-          const budgetDocRef = doc(db, 'budgets', budgetId)
-          const budgetDoc = await getDoc(budgetDocRef)
-
-          if (budgetDoc.exists()) {
-            const data = budgetDoc.data()
-            // Check if categories is an array (old format)
-            if (Array.isArray(data.categories)) {
-              budgetsNeedingCategoriesMigration++
-            }
-            // Check if accounts is an array (old format)
-            if (Array.isArray(data.accounts)) {
-              budgetsNeedingAccountsMigration++
-            }
-          }
-        }
-
-        setMigrationStatus({
-          categoriesArrayMigrationNeeded: budgetsNeedingCategoriesMigration > 0,
-          accountsArrayMigrationNeeded: budgetsNeedingAccountsMigration > 0,
-          budgetsToMigrateCategories: budgetsNeedingCategoriesMigration,
-          budgetsToMigrateAccounts: budgetsNeedingAccountsMigration,
-          loading: false,
-        })
-      } catch (err) {
-        console.error('Error checking migration status:', err)
-        setMigrationStatus({
-          categoriesArrayMigrationNeeded: false,
-          accountsArrayMigrationNeeded: false,
-          budgetsToMigrateCategories: 0,
-          budgetsToMigrateAccounts: 0,
-          loading: false,
-        })
-      }
-    }
-
-    checkMigrationStatus()
-  }, [current_user, db])
+  // Derive status from query
+  const hasData = migrationQuery.data !== undefined
+  const isStale = migrationQuery.isStale
+  const migrationStatus = migrationQuery.data ?? {
+    categoriesArrayMigrationNeeded: false,
+    accountsArrayMigrationNeeded: false,
+    budgetsToMigrateCategories: 0,
+    budgetsToMigrateAccounts: 0,
+    budgetsNeedingCategoryBalance: 0,
+    totalBudgetsChecked: 0,
+  }
+  const isLoading = migrationQuery.isLoading
+  const isRefreshing = migrationQuery.isFetching && !migrationQuery.isLoading
+  const lastUpdated = migrationQuery.dataUpdatedAt
+    ? new Date(migrationQuery.dataUpdatedAt).toLocaleString()
+    : null
 
   // Calculate category balances from finalized months
   async function calculateCategoryBalances(budgetId: string, categoryIds: string[]): Promise<Record<string, number>> {
@@ -115,20 +44,21 @@ function AdminMigration() {
     categoryIds.forEach(id => { balances[id] = 0 })
 
     try {
-      const monthsQuery = query(
-        collection(db, 'months'),
-        where('budget_id', '==', budgetId)
-      )
-      const monthsSnapshot = await getDocs(monthsQuery)
+      const monthsResult = await queryCollection<{
+        allocations_finalized?: boolean
+        allocations?: Array<{ category_id: string; amount: number }>
+      }>('months', [
+        { field: 'budget_id', op: '==', value: budgetId }
+      ])
 
-      monthsSnapshot.forEach(docSnap => {
-        const data = docSnap.data()
+      for (const docSnap of monthsResult.docs) {
+        const data = docSnap.data
         if (data.allocations_finalized && data.allocations) {
           for (const alloc of data.allocations) {
             balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
           }
         }
-      })
+      }
     } catch (err) {
       console.error('Error calculating balances for budget:', budgetId, err)
     }
@@ -136,7 +66,7 @@ function AdminMigration() {
     return balances
   }
 
-  // Run the migration across all budgets
+  // Run the migration across ALL budgets in the system
   async function runMigration() {
     if (!current_user) return
 
@@ -146,33 +76,28 @@ function AdminMigration() {
     const results: BudgetMigrationResult[] = []
 
     try {
-      // Get user document to find their budgets
-      const userDocRef = doc(db, 'users', current_user.uid)
-      const userDoc = await getDoc(userDocRef)
+      // Query ALL budgets in the system (no filter)
+      const budgetsResult = await queryCollection<{ name?: string }>('budgets', [])
 
-      if (!userDoc.exists()) {
-        setMigrationResults([{ budgetId: '', budgetName: 'No user document found', categoriesMigrated: 0, accountsMigrated: 0, accountGroupsMigrated: 0, balancesCalculated: false, error: 'User document not found' }])
+      if (budgetsResult.docs.length === 0) {
+        setMigrationResults([{ budgetId: '', budgetName: 'No budgets found', categoriesMigrated: 0, accountsMigrated: 0, accountGroupsMigrated: 0, balancesCalculated: false, error: 'No budgets in system' }])
         setIsMigrating(false)
         return
       }
 
-      const userData = userDoc.data()
-      const budgetIds = userData.budget_ids || []
-
       // Process each budget
-      for (const budgetId of budgetIds) {
-        const result = await migrateBudget(budgetId)
+      for (const budgetDoc of budgetsResult.docs) {
+        const result = await migrateBudget(budgetDoc.id)
         results.push(result)
       }
 
       setMigrationResults(results)
-      setMigrationStatus({
-        categoriesArrayMigrationNeeded: false,
-        accountsArrayMigrationNeeded: false,
-        budgetsToMigrateCategories: 0,
-        budgetsToMigrateAccounts: 0,
-        loading: false,
-      })
+      // Invalidate all budget-related caches so other pages show updated data
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+      queryClient.invalidateQueries({ queryKey: ['month'] })
+      // Refetch migration status to show updated state (needed because enabled: false)
+      queryClient.invalidateQueries({ queryKey: ['adminMigration'] })
+      migrationQuery.refetch()
     } catch (err) {
       setMigrationResults([{
         budgetId: '',
@@ -190,10 +115,9 @@ function AdminMigration() {
 
   async function migrateBudget(budgetId: string): Promise<BudgetMigrationResult> {
     try {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists: budgetExists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!budgetExists || !data) {
         return {
           budgetId,
           budgetName: 'Unknown',
@@ -204,8 +128,6 @@ function AdminMigration() {
           error: 'Budget not found',
         }
       }
-
-      const data = budgetDoc.data()
       const budgetName = data.name || 'Unnamed Budget'
 
       // Check if already migrated
@@ -355,7 +277,7 @@ function AdminMigration() {
       // Save updated budget document - remove category_balances from data
       const { category_balances: _catBalRemoved, ...restData } = data as any
       void _catBalRemoved // Intentionally unused - destructuring to exclude from saved data
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...restData,
         categories: updatedCategories,
         accounts: updatedAccounts,
@@ -386,7 +308,13 @@ function AdminMigration() {
   const needsMigration = migrationStatus.categoriesArrayMigrationNeeded || migrationStatus.accountsArrayMigrationNeeded
   const totalBudgetsToMigrate = Math.max(migrationStatus.budgetsToMigrateCategories, migrationStatus.budgetsToMigrateAccounts)
 
-  if (migrationStatus.loading) {
+  // Refresh migration status - invalidate cache first to ensure fresh Firebase read
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['adminMigration'] })
+    migrationQuery.refetch()
+  }
+
+  if (isLoading) {
     return (
       <div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -399,40 +327,76 @@ function AdminMigration() {
   return (
     <div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <h2 style={{ marginTop: 0 }}>Data Migrations</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <h2 style={{ margin: 0 }}>Data Migrations</h2>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing || isMigrating}
+          style={{
+            background: '#646cff',
+            color: 'white',
+            border: 'none',
+            padding: '0.5rem 1rem',
+            borderRadius: '6px',
+            cursor: isRefreshing || isMigrating ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            opacity: isRefreshing || isMigrating ? 0.7 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            minWidth: '130px',
+            minHeight: '36px',
+          }}
+        >
+          <span style={{ width: '18px', height: '18px', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+            {isRefreshing ? <Spinner noMargin /> : '🔄'}
+          </span>
+          Refresh All
+        </button>
+      </div>
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-        Run migrations to update your budget data structure.
+        Run migrations to update your budget data structure. Status is cached and won't auto-refresh.
+        <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+          {!hasData ? (
+            <span style={{ color: '#a5b4fc' }}>Status: Unknown (click Refresh to check)</span>
+          ) : isStale ? (
+            <span style={{ color: '#fbbf24' }}>⚠️ Status may be stale — Last checked: {lastUpdated}</span>
+          ) : (
+            <span>Last checked: {lastUpdated}</span>
+          )}
+        </span>
       </p>
 
       <MigrationStatusCard
         title="Migrate Data to Map Structure"
         description="Converts categories, accounts, and account groups from array format to map structure. This improves performance and enables direct lookup by ID."
-        isComplete={!needsMigration}
+        isComplete={hasData ? !needsMigration : false}
         isMigrating={isMigrating}
-        needsMigration={needsMigration}
+        needsMigration={hasData ? needsMigration : false}
         totalBudgetsToMigrate={totalBudgetsToMigrate}
         budgetsToMigrateCategories={migrationStatus.budgetsToMigrateCategories}
         budgetsToMigrateAccounts={migrationStatus.budgetsToMigrateAccounts}
         onRunMigration={runMigration}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
         disabled={!current_user}
+        isUnknown={!hasData}
       >
         {migrationResults && <MigrationResults results={migrationResults} />}
       </MigrationStatusCard>
 
-      {/* Info about current budget */}
-      {currentBudget && (
-        <div style={{
-          background: 'color-mix(in srgb, currentColor 3%, transparent)',
-          padding: '1rem',
-          borderRadius: '8px',
-          fontSize: '0.85rem',
-        }}>
-          <p style={{ margin: 0, opacity: 0.7 }}>
-            <strong>Note:</strong> This migration will process all budgets you have access to,
-            not just "{currentBudget.name}". After migration, reload the page to see updated data.
-          </p>
-        </div>
-      )}
+      {/* Info about migration scope */}
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 3%, transparent)',
+        padding: '1rem',
+        borderRadius: '8px',
+        fontSize: '0.85rem',
+      }}>
+        <p style={{ margin: 0, opacity: 0.7 }}>
+          <strong>Note:</strong> This migration will process <strong>all {hasData ? migrationStatus.totalBudgetsChecked : '?'} budgets</strong> in the system,
+          not just the ones you own or are invited to.
+        </p>
+      </div>
     </div>
   )
 }

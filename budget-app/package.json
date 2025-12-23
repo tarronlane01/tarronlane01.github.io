@@ -13,7 +13,7 @@
     "publish": "f() { if [ -z \"$1\" ]; then echo 'Error: Please provide a commit message. Usage: npm run publish -- \"your message\"' && exit 1; fi; npm run precommit && npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m \"$1\") && git push; }; f"
   },
   "dependencies": {
-    "@tanstack/query-sync-storage-persister": "^5.90.14",
+    "@tanstack/query-async-storage-persister": "^5.90.14",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-persist-client": "^5.90.14",
     "firebase": "^12.7.0",

@@ -10,8 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
-import app from '../../firebase'
+import { queryCollection, readDoc, writeDoc } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
@@ -22,7 +21,6 @@ import { saveMonthToFirestore } from './monthMutationHelpers'
 
 export function useAllocationMutations() {
   const queryClient = useQueryClient()
-  const db = getFirestore(app)
 
   /**
    * Save allocations (draft)
@@ -44,7 +42,7 @@ export function useAllocationMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
+      await saveMonthToFirestore(budgetId, updatedMonth)
 
       return { updatedMonth }
     },
@@ -66,7 +64,7 @@ export function useAllocationMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth }
     },
@@ -102,7 +100,7 @@ export function useAllocationMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
+      await saveMonthToFirestore(budgetId, updatedMonth)
 
       // Recalculate category balances on budget document
       const budgetKey = queryKeys.budget(budgetId)
@@ -111,23 +109,24 @@ export function useAllocationMutations() {
 
       if (budgetData) {
         // Sum allocations from all finalized months
-        const monthsQuery = query(
-          collection(db, 'months'),
-          where('budget_id', '==', budgetId)
-        )
-        const monthsSnapshot = await getDocs(monthsQuery)
+        const monthsResult = await queryCollection<{
+          allocations_finalized?: boolean
+          allocations?: Array<{ category_id: string; amount: number }>
+        }>('months', [
+          { field: 'budget_id', op: '==', value: budgetId }
+        ])
 
         const balances: Record<string, number> = {}
         Object.keys(budgetData.categories).forEach(catId => { balances[catId] = 0 })
 
-        monthsSnapshot.forEach(docSnap => {
-          const data = docSnap.data()
+        for (const docSnap of monthsResult.docs) {
+          const data = docSnap.data
           if (data.allocations_finalized && data.allocations) {
             for (const alloc of data.allocations) {
               balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
             }
           }
-        })
+        }
 
         // Update categories with new balances
         updatedCategories = { ...budgetData.categories }
@@ -139,11 +138,9 @@ export function useAllocationMutations() {
         })
 
         // Save to budget document
-        const budgetDocRef = doc(db, 'budgets', budgetId)
-        const budgetDoc = await getDoc(budgetDocRef)
-        if (budgetDoc.exists()) {
-          const data = budgetDoc.data()
-          await setDoc(budgetDocRef, {
+        const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+        if (exists && data) {
+          await writeDoc('budgets', budgetId, {
             ...data,
             categories: updatedCategories,
           })
@@ -171,7 +168,7 @@ export function useAllocationMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth }
     },
@@ -219,7 +216,7 @@ export function useAllocationMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(db, budgetId, updatedMonth, queryClient)
+      await saveMonthToFirestore(budgetId, updatedMonth)
 
       return { updatedMonth }
     },
@@ -241,7 +238,7 @@ export function useAllocationMutations() {
       }
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(queryClient, budgetId, year, month)
+      markNextMonthSnapshotStaleInCache(budgetId, year, month)
 
       return { previousMonth }
     },

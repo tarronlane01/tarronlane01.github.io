@@ -68,6 +68,7 @@ function App() {
               <Route path="/budget" element={<ProtectedRoute />}>
                 <Route element={<BudgetLayout />}>
                   <Route index element={<Budget />} />
+                  <Route path=":year/:month/:tab" element={<Budget />} />
                   <Route path="analytics" element={<Analytics />} />
 
                   {/* Admin routes */}

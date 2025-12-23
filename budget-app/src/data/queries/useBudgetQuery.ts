@@ -11,8 +11,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
-import app from '../../firebase'
+import { readDoc } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 import type {
   Budget,
@@ -124,15 +123,11 @@ function parseCategoryGroups(categoryGroupsData: any[] = []): CategoryGroup[] {
  * Fetch budget document from Firestore
  */
 async function fetchBudget(budgetId: string): Promise<BudgetData> {
-  const db = getFirestore(app)
-  const budgetDocRef = doc(db, 'budgets', budgetId)
-  const budgetDoc = await getDoc(budgetDocRef)
+  const { exists, data } = await readDoc<BudgetDocument>('budgets', budgetId)
 
-  if (!budgetDoc.exists()) {
+  if (!exists || !data) {
     throw new Error(`Budget ${budgetId} not found`)
   }
-
-  const data = budgetDoc.data() as BudgetDocument
 
   return {
     budget: {

@@ -1,7 +1,7 @@
 /**
  * Admin Migration Query Hook
  *
- * Checks if any data migrations are needed for the current user's budgets.
+ * Checks if any data migrations are needed across ALL budgets in the system.
  * This is an admin-only query that checks data structures.
  *
  * NOTE: The actual migration operations remain as direct Firestore calls
@@ -12,8 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
-import app from '../../firebase'
+import { queryCollection } from '../../utils/firestoreHelpers'
 
 interface MigrationStatus {
   categoriesArrayMigrationNeeded: boolean
@@ -21,70 +20,43 @@ interface MigrationStatus {
   budgetsToMigrateCategories: number
   budgetsToMigrateAccounts: number
   budgetsNeedingCategoryBalance: number
+  totalBudgetsChecked: number
 }
 
 /**
- * Check migration status for a user's budgets
+ * Check migration status for ALL budgets in the system
  */
-async function checkMigrationStatus(userId: string): Promise<MigrationStatus> {
-  const db = getFirestore(app)
-
-  // Get user document to find their budgets
-  const userDocRef = doc(db, 'users', userId)
-  const userDoc = await getDoc(userDocRef)
-
-  if (!userDoc.exists()) {
-    return {
-      categoriesArrayMigrationNeeded: false,
-      accountsArrayMigrationNeeded: false,
-      budgetsToMigrateCategories: 0,
-      budgetsToMigrateAccounts: 0,
-      budgetsNeedingCategoryBalance: 0,
-    }
-  }
-
-  const userData = userDoc.data()
-  const budgetIds: string[] = userData.budget_ids || []
-
-  if (budgetIds.length === 0) {
-    return {
-      categoriesArrayMigrationNeeded: false,
-      accountsArrayMigrationNeeded: false,
-      budgetsToMigrateCategories: 0,
-      budgetsToMigrateAccounts: 0,
-      budgetsNeedingCategoryBalance: 0,
-    }
-  }
+async function checkMigrationStatus(): Promise<MigrationStatus> {
+  // Query ALL budgets in the system (no filter)
+  const budgetsResult = await queryCollection<{
+    categories?: unknown
+    accounts?: unknown
+  }>('budgets', [])
 
   let budgetsToMigrateCategories = 0
   let budgetsToMigrateAccounts = 0
   let budgetsNeedingCategoryBalance = 0
 
   // Check each budget for array formats
-  for (const budgetId of budgetIds) {
-    const budgetDocRef = doc(db, 'budgets', budgetId)
-    const budgetDoc = await getDoc(budgetDocRef)
+  for (const budgetDoc of budgetsResult.docs) {
+    const budgetData = budgetDoc.data
 
-    if (budgetDoc.exists()) {
-      const data = budgetDoc.data()
+    // Check if categories is an array (old format)
+    if (Array.isArray(budgetData.categories)) {
+      budgetsToMigrateCategories++
+    }
 
-      // Check if categories is an array (old format)
-      if (Array.isArray(data.categories)) {
-        budgetsToMigrateCategories++
-      }
+    // Check if accounts is an array (old format)
+    if (Array.isArray(budgetData.accounts)) {
+      budgetsToMigrateAccounts++
+    }
 
-      // Check if accounts is an array (old format)
-      if (Array.isArray(data.accounts)) {
-        budgetsToMigrateAccounts++
-      }
-
-      // Check if categories need balance calculation
-      if (data.categories && typeof data.categories === 'object' && !Array.isArray(data.categories)) {
-        const categories = data.categories as Record<string, any>
-        const needsBalance = Object.values(categories).some(cat => cat.balance === undefined)
-        if (needsBalance) {
-          budgetsNeedingCategoryBalance++
-        }
+    // Check if categories need balance calculation
+    if (budgetData.categories && typeof budgetData.categories === 'object' && !Array.isArray(budgetData.categories)) {
+      const categories = budgetData.categories as Record<string, unknown>
+      const needsBalance = Object.values(categories).some(cat => (cat as Record<string, unknown>).balance === undefined)
+      if (needsBalance) {
+        budgetsNeedingCategoryBalance++
       }
     }
   }
@@ -95,35 +67,29 @@ async function checkMigrationStatus(userId: string): Promise<MigrationStatus> {
     budgetsToMigrateCategories,
     budgetsToMigrateAccounts,
     budgetsNeedingCategoryBalance,
+    totalBudgetsChecked: budgetsResult.docs.length,
   }
 }
 
 /**
  * Query hook for admin migration status
  *
- * @param userId - The current user's ID
- * @param options - Additional query options including enabled flag
+ * Checks ALL budgets in the system (admin feature).
+ * NEVER auto-fetches - user must manually click Refresh to fetch/update status.
+ * Cached data persists and is shown when returning to the page.
+ *
  */
-export function useAdminMigrationQuery(
-  userId: string | null,
-  options?: { enabled?: boolean }
-) {
+export function useAdminMigrationQuery() {
   return useQuery({
-    queryKey: userId ? ['adminMigration', userId] as const : ['adminMigration', 'none'],
+    queryKey: ['adminMigration', 'all'] as const,
     queryFn: async (): Promise<MigrationStatus> => {
-      if (!userId) {
-        return {
-          categoriesArrayMigrationNeeded: false,
-          accountsArrayMigrationNeeded: false,
-          budgetsToMigrateCategories: 0,
-          budgetsToMigrateAccounts: 0,
-          budgetsNeedingCategoryBalance: 0,
-        }
-      }
-      return checkMigrationStatus(userId)
+      return checkMigrationStatus()
     },
-    enabled: !!userId && (options?.enabled !== false),
-    staleTime: 5 * 60 * 1000, // 5 minutes - migration status doesn't change often
+    enabled: false,           // NEVER auto-fetch - only fetch via manual refetch()
+    staleTime: 5 * 60 * 1000, // 5 minutes - after this, data is considered stale (for UI indicator)
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 

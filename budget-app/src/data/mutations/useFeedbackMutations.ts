@@ -10,8 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFirestore, doc, getDoc, setDoc, arrayUnion } from 'firebase/firestore'
-import app from '../../firebase'
+import { readDoc, writeDoc, arrayUnion } from '../../utils/firestoreHelpers'
 import { queryKeys } from '../queryClient'
 import type { FlattenedFeedbackItem, FeedbackItem } from '../queries/useFeedbackQuery'
 
@@ -39,7 +38,6 @@ interface UpdateSortOrderParams {
  */
 export function useFeedbackMutations() {
   const queryClient = useQueryClient()
-  const db = getFirestore(app)
 
   /**
    * Submit new feedback
@@ -48,7 +46,6 @@ export function useFeedbackMutations() {
     mutationFn: async ({ userId, userEmail, text, feedbackType, currentPath }: SubmitFeedbackParams) => {
       // Use email as doc ID if available, otherwise use uid
       const feedbackDocId = userEmail || userId
-      const feedbackDocRef = doc(db, 'feedback', feedbackDocId)
 
       const newFeedbackItem: FeedbackItem = {
         id: `feedback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -60,18 +57,18 @@ export function useFeedbackMutations() {
         feedback_type: feedbackType,
       }
 
-      const docSnap = await getDoc(feedbackDocRef)
+      const { exists } = await readDoc('feedback', feedbackDocId)
 
-      if (docSnap.exists()) {
+      if (exists) {
         // Add to existing array
-        await setDoc(feedbackDocRef, {
+        await writeDoc('feedback', feedbackDocId, {
           items: arrayUnion(newFeedbackItem),
           user_email: userEmail,
           updated_at: new Date().toISOString(),
         }, { merge: true })
       } else {
         // Create new document
-        await setDoc(feedbackDocRef, {
+        await writeDoc('feedback', feedbackDocId, {
           items: [newFeedbackItem],
           user_email: userEmail,
           created_at: new Date().toISOString(),
@@ -92,14 +89,12 @@ export function useFeedbackMutations() {
    */
   const toggleFeedback = useMutation({
     mutationFn: async ({ item }: ToggleFeedbackParams) => {
-      const docRef = doc(db, 'feedback', item.doc_id)
-      const docSnap = await getDoc(docRef)
+      const { exists, data } = await readDoc<Record<string, any>>('feedback', item.doc_id)
 
-      if (!docSnap.exists()) {
+      if (!exists || !data) {
         throw new Error('Feedback document not found')
       }
 
-      const data = docSnap.data()
       const items = data.items || []
       const updatedItems = items.map((i: FeedbackItem) => {
         if (i.id === item.id) {
@@ -112,7 +107,7 @@ export function useFeedbackMutations() {
         return i
       })
 
-      await setDoc(docRef, {
+      await writeDoc('feedback', item.doc_id, {
         ...data,
         items: updatedItems,
         updated_at: new Date().toISOString(),
@@ -130,16 +125,13 @@ export function useFeedbackMutations() {
    */
   const updateSortOrder = useMutation({
     mutationFn: async ({ docId, items }: UpdateSortOrderParams) => {
-      const docRef = doc(db, 'feedback', docId)
-      const docSnap = await getDoc(docRef)
+      const { exists, data } = await readDoc<Record<string, any>>('feedback', docId)
 
-      if (!docSnap.exists()) {
+      if (!exists || !data) {
         throw new Error('Feedback document not found')
       }
 
-      const data = docSnap.data()
-
-      await setDoc(docRef, {
+      await writeDoc('feedback', docId, {
         ...data,
         items,
         updated_at: new Date().toISOString(),

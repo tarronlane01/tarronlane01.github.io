@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 import { BudgetCard } from '../../components/budget/Admin'
@@ -23,7 +23,6 @@ function AdminMyBudgets() {
     isLoading: loading,
   } = useBudgetData(selectedBudgetId, currentUserId)
 
-  const [isLoading, setIsLoading] = useState(false)
   const [isSwitching, setIsSwitching] = useState<string | null>(null)
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -38,16 +37,6 @@ function AdminMyBudgets() {
   const [budgetIdInput, setBudgetIdInput] = useState('')
   const [isCheckingManual, setIsCheckingManual] = useState(false)
   const [manualInvite, setManualInvite] = useState<{ budgetId: string; budgetName: string; ownerEmail: string | null } | null>(null)
-
-  // Load accessible budgets on mount
-  useEffect(() => {
-    async function load() {
-      setIsLoading(true)
-      await loadAccessibleBudgets()
-      setIsLoading(false)
-    }
-    load()
-  }, [])
 
   async function handleSwitchBudget(budgetId: string) {
     if (budgetId === currentBudget?.id) return
@@ -159,7 +148,7 @@ function AdminMyBudgets() {
   const acceptedBudgets = accessibleBudgets.filter(b => !b.isPending)
   const pendingBudgetsList = accessibleBudgets.filter(b => b.isPending)
 
-  if (loading || isLoading || !isInitialized) {
+  if (loading || !isInitialized) {
     return <p>Loading your budgets...</p>
   }
 

@@ -13,8 +13,6 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
-import app from '../../firebase'
 import { queryKeys } from '../queryClient'
 import type { BudgetData } from '../queries/useBudgetQuery'
 import type {
@@ -23,7 +21,7 @@ import type {
   CategoriesMap,
   CategoryGroup,
 } from '../../types/budget'
-import { cleanAccountsForFirestore } from '../../utils/budgetHelpers'
+import { cleanAccountsForFirestore, readDoc, writeDoc } from '../../utils/firestoreHelpers'
 
 /**
  * Clean categories for Firestore (removes undefined values)
@@ -103,24 +101,21 @@ interface RenameBudgetParams {
  */
 export function useBudgetMutations() {
   const queryClient = useQueryClient()
-  const db = getFirestore(app)
 
   /**
    * Update accounts in budget document
    */
   const updateAccounts = useMutation({
     mutationFn: async ({ budgetId, accounts }: UpdateAccountsParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
       const cleanedAccounts = cleanAccountsForFirestore(accounts)
 
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         accounts: cleanedAccounts,
       })
@@ -162,17 +157,15 @@ export function useBudgetMutations() {
    */
   const updateAccountGroups = useMutation({
     mutationFn: async ({ budgetId, accountGroups }: UpdateAccountGroupsParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
       const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
 
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         account_groups: cleanedGroups,
       })
@@ -213,17 +206,15 @@ export function useBudgetMutations() {
    */
   const updateCategories = useMutation({
     mutationFn: async ({ budgetId, categories }: UpdateCategoriesParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
       const cleanedCategories = cleanCategoriesForFirestore(categories)
 
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         categories: cleanedCategories,
       })
@@ -264,16 +255,13 @@ export function useBudgetMutations() {
    */
   const updateCategoryGroups = useMutation({
     mutationFn: async ({ budgetId, categoryGroups }: UpdateCategoryGroupsParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
-
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         category_groups: categoryGroups,
       })
@@ -314,14 +302,12 @@ export function useBudgetMutations() {
    */
   const updateAccountBalance = useMutation({
     mutationFn: async ({ budgetId, accountId, delta }: UpdateAccountBalanceParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
       const accounts = data.accounts || {}
 
       if (!accounts[accountId]) {
@@ -336,7 +322,7 @@ export function useBudgetMutations() {
         },
       }
 
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         accounts: cleanAccountsForFirestore(updatedAccounts),
       })
@@ -384,16 +370,13 @@ export function useBudgetMutations() {
    */
   const renameBudget = useMutation({
     mutationFn: async ({ budgetId, newName }: RenameBudgetParams) => {
-      const budgetDocRef = doc(db, 'budgets', budgetId)
-      const budgetDoc = await getDoc(budgetDocRef)
+      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
 
-      if (!budgetDoc.exists()) {
+      if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      const data = budgetDoc.data()
-
-      await setDoc(budgetDocRef, {
+      await writeDoc('budgets', budgetId, {
         ...data,
         name: newName.trim(),
       })

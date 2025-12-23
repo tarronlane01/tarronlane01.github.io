@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore'
-import app from '../../firebase'
+import { readDoc, updateDocByPath } from '../../utils/firestoreHelpers'
 import { useBudget } from '../../contexts/budget_context'
 import { Button, ErrorAlert } from '../../components/ui'
 import { pageSubtitle, card, colors } from '../../styles/shared'
@@ -18,8 +17,6 @@ function AdminTests() {
 
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
-
-  const db = getFirestore(app)
 
   function updateTestResult(name: string, updates: Partial<TestResult>) {
     setTestResults(prev => prev.map(t => t.name === name ? { ...t, ...updates } : t))
@@ -74,8 +71,7 @@ function AdminTests() {
     await runTest('Read unauthorized budget', async () => {
       // Use a fake budget ID that the user shouldn't have access to
       const fakeBudgetId = 'unauthorized_budget_test_12345'
-      const budgetRef = doc(db, 'budgets', fakeBudgetId)
-      await getDoc(budgetRef)
+      await readDoc('budgets', fakeBudgetId)
       return 'Was able to read budget (unexpected)'
     }, true)
 
@@ -83,8 +79,7 @@ function AdminTests() {
     await runTest('Read another user\'s document', async () => {
       // Use a fake user ID
       const fakeUserId = 'another_user_test_12345'
-      const userRef = doc(db, 'users', fakeUserId)
-      await getDoc(userRef)
+      await readDoc('users', fakeUserId)
       return 'Was able to read user document (unexpected)'
     }, true)
 
@@ -94,20 +89,18 @@ function AdminTests() {
       // Month document IDs follow the format: {budgetId}_{year}_{month}
       const fakeBudgetId = 'unauthorized_budget_test_12345'
       const fakeMonthId = `${fakeBudgetId}_2024_01`
-      const monthRef = doc(db, 'months', fakeMonthId)
-      await getDoc(monthRef)
+      await readDoc('months', fakeMonthId)
       return 'Was able to read month document for unauthorized budget (unexpected)'
     }, true)
 
     // Test 4: Try to toggle is_admin in own permission_flags
     await runTest('Toggle is_admin in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
-      const userRef = doc(db, 'users', currentUserId)
       // First read current value
-      const userDoc = await getDoc(userRef)
-      const currentIsAdmin = userDoc.data()?.permission_flags?.is_admin ?? false
+      const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>('users', currentUserId)
+      const currentIsAdmin = data?.permission_flags?.is_admin ?? false
       // Try to set it to the opposite
-      await updateDoc(userRef, {
+      await updateDocByPath('users', currentUserId, {
         'permission_flags.is_admin': !currentIsAdmin,
       })
       return `Was able to change is_admin from ${currentIsAdmin} to ${!currentIsAdmin} (SECURITY ISSUE!)`
@@ -116,12 +109,11 @@ function AdminTests() {
     // Test 5: Try to toggle is_test in own permission_flags
     await runTest('Toggle is_test in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
-      const userRef = doc(db, 'users', currentUserId)
       // First read current value
-      const userDoc = await getDoc(userRef)
-      const currentIsTest = userDoc.data()?.permission_flags?.is_test ?? false
+      const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>('users', currentUserId)
+      const currentIsTest = data?.permission_flags?.is_test ?? false
       // Try to set it to the opposite
-      await updateDoc(userRef, {
+      await updateDocByPath('users', currentUserId, {
         'permission_flags.is_test': !currentIsTest,
       })
       return `Was able to change is_test from ${currentIsTest} to ${!currentIsTest} (SECURITY ISSUE!)`
@@ -130,9 +122,8 @@ function AdminTests() {
     // Test 6: Read own user document (should succeed)
     await runTest('Read own user document', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
-      const userRef = doc(db, 'users', currentUserId)
-      const userDoc = await getDoc(userRef)
-      if (userDoc.exists()) {
+      const { exists } = await readDoc('users', currentUserId)
+      if (exists) {
         return 'Successfully read own document'
       }
       throw new Error('Document does not exist')
@@ -193,16 +184,14 @@ function AdminTests() {
       case 'Read unauthorized budget':
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
-          const budgetRef = doc(db, 'budgets', fakeBudgetId)
-          await getDoc(budgetRef)
+          await readDoc('budgets', fakeBudgetId)
           return 'Was able to read budget (unexpected)'
         }, true)
         break
       case 'Read another user\'s document':
         await runTest(name, async () => {
           const fakeUserId = 'another_user_test_12345'
-          const userRef = doc(db, 'users', fakeUserId)
-          await getDoc(userRef)
+          await readDoc('users', fakeUserId)
           return 'Was able to read user document (unexpected)'
         }, true)
         break
@@ -210,18 +199,16 @@ function AdminTests() {
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
           const fakeMonthId = `${fakeBudgetId}_2024_01`
-          const monthRef = doc(db, 'months', fakeMonthId)
-          await getDoc(monthRef)
+          await readDoc('months', fakeMonthId)
           return 'Was able to read month document for unauthorized budget (unexpected)'
         }, true)
         break
       case 'Toggle is_admin in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const userRef = doc(db, 'users', currentUserId)
-          const userDoc = await getDoc(userRef)
-          const currentIsAdmin = userDoc.data()?.permission_flags?.is_admin ?? false
-          await updateDoc(userRef, {
+          const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>('users', currentUserId)
+          const currentIsAdmin = data?.permission_flags?.is_admin ?? false
+          await updateDocByPath('users', currentUserId, {
             'permission_flags.is_admin': !currentIsAdmin,
           })
           return `Was able to change is_admin from ${currentIsAdmin} to ${!currentIsAdmin} (SECURITY ISSUE!)`
@@ -230,10 +217,9 @@ function AdminTests() {
       case 'Toggle is_test in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const userRef = doc(db, 'users', currentUserId)
-          const userDoc = await getDoc(userRef)
-          const currentIsTest = userDoc.data()?.permission_flags?.is_test ?? false
-          await updateDoc(userRef, {
+          const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>('users', currentUserId)
+          const currentIsTest = data?.permission_flags?.is_test ?? false
+          await updateDocByPath('users', currentUserId, {
             'permission_flags.is_test': !currentIsTest,
           })
           return `Was able to change is_test from ${currentIsTest} to ${!currentIsTest} (SECURITY ISSUE!)`
@@ -242,9 +228,8 @@ function AdminTests() {
       case 'Read own user document':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const userRef = doc(db, 'users', currentUserId)
-          const userDoc = await getDoc(userRef)
-          if (userDoc.exists()) {
+          const { exists } = await readDoc('users', currentUserId)
+          if (exists) {
             return 'Successfully read own document'
           }
           throw new Error('Document does not exist')

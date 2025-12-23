@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget, type Category } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
@@ -13,50 +13,22 @@ export function BalancesSection() {
   const { month: currentMonth, isLoading: monthLoading } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
-  // State for recalculating balances
-  const [isRecalculatingBalances, setIsRecalculatingBalances] = useState(false)
-  const [hasAutoRecalculated, setHasAutoRecalculated] = useState(false)
-
-  // Handle recalculate balances
-  const doRecalculateBalances = useCallback(async () => {
-    setIsRecalculatingBalances(true)
-    try {
-      // Note: recalculateCategoryMonthBalances would need to be added to useBudgetMonth if needed
-      console.warn('[BalancesSection] recalculateCategoryMonthBalances not yet implemented')
-    } finally {
-      setIsRecalculatingBalances(false)
-    }
-  }, [])
-
-  // Auto-recalculate balances when no stored balances exist
-  useEffect(() => {
-    if (
-      currentMonth &&
-      !monthLoading &&
-      (!currentMonth.category_balances || currentMonth.category_balances.length === 0) &&
-      !isRecalculatingBalances &&
-      !hasAutoRecalculated
-    ) {
-      setHasAutoRecalculated(true)
-      doRecalculateBalances()
-    }
-  }, [currentMonth, monthLoading, hasAutoRecalculated, isRecalculatingBalances, doRecalculateBalances])
-
-  // Reset auto-recalculate flag when month changes
-  useEffect(() => {
-    setHasAutoRecalculated(false)
-  }, [currentYear, currentMonthNumber])
-
   // Calculate category balances for the balances tab
+  // Uses previous_month_snapshot.category_balances_end for start_balance
   const categoryBalances = useMemo(() => {
-    // Use stored balances from the month document
+    // Use stored balances from the month document if available
     if (currentMonth?.category_balances && currentMonth.category_balances.length > 0) {
       return currentMonth.category_balances
     }
 
-    // Fallback: show empty/zero balances while calculating
+    // Calculate balances using previous month snapshot for start values
+    const prevBalances = currentMonth?.previous_month_snapshot?.category_balances_end ?? {}
+
     const balances: CategoryMonthBalance[] = []
     Object.entries(categories).forEach(([catId]) => {
+      // Start balance comes from previous month's end balance
+      const startBalance = prevBalances[catId] ?? 0
+
       let allocated = 0
       if (currentMonth?.allocations_finalized && currentMonth.allocations) {
         const alloc = currentMonth.allocations.find(a => a.category_id === catId)
@@ -72,10 +44,10 @@ export function BalancesSection() {
 
       balances.push({
         category_id: catId,
-        start_balance: 0,
+        start_balance: startBalance,
         allocated,
         spent,
-        end_balance: allocated - spent,
+        end_balance: startBalance + allocated - spent,
       })
     })
 
