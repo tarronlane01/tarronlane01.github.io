@@ -1,0 +1,179 @@
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useBudget, type CategoryAllocation, type Category } from '../contexts/budget_context'
+import { useBudgetData, useBudgetMonth } from './index'
+
+export function useAllocationsSection() {
+  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
+  const { categories, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
+  const {
+    month: currentMonth,
+    isLoading: monthLoading,
+    previousMonthIncome,
+    saveAllocations,
+    finalizeAllocations,
+  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Allocations state - track local edits before saving
+  const [localAllocations, setLocalAllocations] = useState<Record<string, string>>({})
+  const [isSavingAllocations, setIsSavingAllocations] = useState(false)
+  const [isFinalizingAllocations, setIsFinalizingAllocations] = useState(false)
+  const [isEditingAppliedAllocations, setIsEditingAppliedAllocations] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Total finalized allocations - computed from balance on each category
+  const totalFinalizedAllocations = useMemo(() => {
+    return Object.values(categories).reduce((sum, cat) => sum + cat.balance, 0)
+  }, [categories])
+
+  // Initialize local allocations when month changes (only for non-percentage categories)
+  useEffect(() => {
+    if (!currentMonth) return
+
+    const allocMap: Record<string, string> = {}
+    Object.entries(categories).forEach(([catId, cat]) => {
+      // Skip percentage-based categories - they're auto-calculated
+      if (cat.default_monthly_type === 'percentage') {
+        return
+      }
+
+      const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
+      if (existingAlloc) {
+        allocMap[catId] = existingAlloc.amount.toString()
+      } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
+        allocMap[catId] = cat.default_monthly_amount.toString()
+      } else {
+        allocMap[catId] = ''
+      }
+    })
+    setLocalAllocations(allocMap)
+  }, [currentMonth?.year, currentMonth?.month, categories])
+
+  // Helper to get allocation amount for a category (handles percentage-based)
+  const getAllocationAmount = useCallback((catId: string, cat: Category): number => {
+    if (cat.default_monthly_type === 'percentage' && cat.default_monthly_amount !== undefined) {
+      return (cat.default_monthly_amount / 100) * previousMonthIncome
+    }
+    const val = localAllocations[catId]
+    const num = parseFloat(val || '0')
+    return isNaN(num) ? 0 : num
+  }, [localAllocations, previousMonthIncome])
+
+  // Calculate allocation totals (includes both manual and percentage-based)
+  const currentDraftTotal = useMemo(() => {
+    return Object.entries(categories).reduce((sum, [catId, cat]) => {
+      return sum + getAllocationAmount(catId, cat)
+    }, 0)
+  }, [categories, getAllocationAmount])
+
+  const onBudgetTotal = getOnBudgetTotal()
+
+  // Calculate current month's already-finalized allocation total
+  const currentMonthFinalizedTotal = currentMonth?.allocations_finalized
+    ? (currentMonth.allocations || []).reduce((sum, a) => sum + a.amount, 0)
+    : 0
+
+  // Available Now = on-budget total minus all finalized allocations
+  const availableNow = onBudgetTotal - totalFinalizedAllocations
+
+  // Available After Apply = what it would be if we apply current draft
+  const availableAfterApply = useMemo(() => {
+    return availableNow - currentDraftTotal + currentMonthFinalizedTotal
+  }, [availableNow, currentDraftTotal, currentMonthFinalizedTotal])
+
+  // Handle allocation changes
+  const handleAllocationChange = useCallback((categoryId: string, value: string) => {
+    setLocalAllocations(prev => ({
+      ...prev,
+      [categoryId]: value,
+    }))
+  }, [])
+
+  // Reset allocations back to what's saved/applied (for Cancel button)
+  const resetAllocationsToSaved = useCallback(() => {
+    if (!currentMonth) return
+    const allocMap: Record<string, string> = {}
+    Object.entries(categories).forEach(([catId, cat]) => {
+      if (cat.default_monthly_type === 'percentage') return
+      const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
+      if (existingAlloc) {
+        allocMap[catId] = existingAlloc.amount.toString()
+      } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
+        allocMap[catId] = cat.default_monthly_amount.toString()
+      } else {
+        allocMap[catId] = ''
+      }
+    })
+    setLocalAllocations(allocMap)
+    setIsEditingAppliedAllocations(false)
+  }, [currentMonth, categories])
+
+  // Build allocations array including percentage-based categories
+  const buildAllocationsArray = useCallback((): CategoryAllocation[] => {
+    const allocationsArr: CategoryAllocation[] = []
+    Object.entries(categories).forEach(([catId, cat]) => {
+      const amount = getAllocationAmount(catId, cat)
+      if (amount > 0) {
+        allocationsArr.push({ category_id: catId, amount })
+      }
+    })
+    return allocationsArr
+  }, [categories, getAllocationAmount])
+
+  // Save allocations to database
+  const handleSaveAllocations = useCallback(async () => {
+    setError(null)
+    setIsSavingAllocations(true)
+    try {
+      await saveAllocations(buildAllocationsArray())
+      setIsEditingAppliedAllocations(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save allocations')
+    } finally {
+      setIsSavingAllocations(false)
+    }
+  }, [saveAllocations, buildAllocationsArray])
+
+  // Finalize allocations
+  const handleFinalizeAllocations = useCallback(async () => {
+    setError(null)
+    setIsFinalizingAllocations(true)
+    try {
+      // First save any pending changes (including percentage-based)
+      await saveAllocations(buildAllocationsArray())
+      // Then finalize
+      await finalizeAllocations()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
+    } finally {
+      setIsFinalizingAllocations(false)
+    }
+  }, [saveAllocations, finalizeAllocations, buildAllocationsArray])
+
+  return {
+    // State
+    localAllocations,
+    isSavingAllocations,
+    isFinalizingAllocations,
+    isEditingAppliedAllocations,
+    error,
+    monthLoading,
+
+    // Computed values
+    onBudgetTotal,
+    availableNow,
+    currentDraftTotal,
+    availableAfterApply,
+    previousMonthIncome,
+    allocationsFinalized: currentMonth?.allocations_finalized ?? false,
+
+    // Functions
+    getAllocationAmount,
+    handleAllocationChange,
+    resetAllocationsToSaved,
+    handleSaveAllocations,
+    handleFinalizeAllocations,
+    setIsEditingAppliedAllocations,
+    setError,
+  }
+}
+

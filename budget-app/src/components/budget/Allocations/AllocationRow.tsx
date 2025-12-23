@@ -3,7 +3,6 @@ import { formatCurrency } from '../../ui'
 import { colors } from '../../../styles/shared'
 
 interface AllocationRowProps {
-  catId: string
   category: Category
   value: string
   onChange: (value: string) => void
@@ -11,7 +10,7 @@ interface AllocationRowProps {
   disabled?: boolean
 }
 
-export function AllocationRow({ catId: _catId, category, value, onChange, previousMonthIncome, disabled }: AllocationRowProps) {
+export function AllocationRow({ category, value, onChange, previousMonthIncome, disabled }: AllocationRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
 
   // For percentage-based categories, calculate the amount

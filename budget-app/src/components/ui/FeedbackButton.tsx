@@ -1,8 +1,8 @@
 import { useState, useContext, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
-import { getFirestore, doc, getDoc, setDoc, arrayUnion } from 'firebase/firestore'
-import app from '../../firebase'
 import UserContext from '../../contexts/user_context'
+import useFirebaseAuth from '../../hooks/useFirebaseAuth'
+import { useFeedbackMutations } from '../../data'
 import { colors } from '../../styles/shared'
 import { Button } from './Button'
 import { Modal } from './Modal'
@@ -10,16 +10,6 @@ import { TextAreaInput } from './FormElements'
 import { FormButtonGroup } from './FormElements'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
-
-interface FeedbackItem {
-  id: string
-  text: string
-  created_at: string
-  is_done: boolean
-  completed_at: string | null
-  sort_order: number
-  feedback_type?: FeedbackType
-}
 
 const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
   critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
@@ -33,13 +23,14 @@ export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const userContext = useContext(UserContext)
+  const firebase_auth_hook = useFirebaseAuth()
+  const currentUser = firebase_auth_hook.get_current_firebase_user()
   const location = useLocation()
-  const db = getFirestore(app)
+  const feedbackMutations = useFeedbackMutations()
 
   // Hide on feedback admin page since it has its own form
   const isOnFeedbackPage = location.pathname.includes('/admin/feedback')
@@ -48,32 +39,18 @@ export function FeedbackButton() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!feedbackText.trim() || !userContext.username) return
+    if (!feedbackText.trim() || !userContext.username || !currentUser) return
 
-    setIsSubmitting(true)
     setError(null)
 
     try {
-      const docId = userContext.username.replace(/[.@]/g, '_')
-      const feedbackDocRef = doc(db, 'feedback', docId)
-
-      const newFeedbackItem: FeedbackItem = {
-        id: `feedback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      await feedbackMutations.submitFeedback.mutateAsync({
+        userId: currentUser.uid,
+        userEmail: userContext.username,
         text: feedbackText.trim(),
-        created_at: new Date().toISOString(),
-        is_done: false,
-        completed_at: null,
-        sort_order: Date.now(),
-        feedback_type: feedbackType,
-      }
-
-      const docSnap = await getDoc(feedbackDocRef)
-
-      if (docSnap.exists()) {
-        await setDoc(feedbackDocRef, { items: arrayUnion(newFeedbackItem) }, { merge: true })
-      } else {
-        await setDoc(feedbackDocRef, { user_email: userContext.username, items: [newFeedbackItem] })
-      }
+        feedbackType,
+        currentPath: location.pathname,
+      })
 
       setFeedbackText('')
       setFeedbackType('bug')
@@ -84,8 +61,6 @@ export function FeedbackButton() {
       }, 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit feedback')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -193,7 +168,7 @@ export function FeedbackButton() {
               <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={isSubmitting} disabled={!feedbackText.trim()}>
+              <Button type="submit" isLoading={feedbackMutations.submitFeedback.isPending} disabled={!feedbackText.trim()}>
                 Submit
               </Button>
             </FormButtonGroup>

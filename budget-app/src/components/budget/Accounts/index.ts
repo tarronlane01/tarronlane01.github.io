@@ -13,3 +13,7 @@ export { GroupOverrideFlags } from './GroupOverrideFlags'
 // Drag & drop
 export { AccountEndDropZone } from './AccountEndDropZone'
 
+// Section components
+export { AccountGroupCard } from './AccountGroupCard'
+export { UngroupedAccountsSection } from './UngroupedAccountsSection'
+

@@ -16,6 +16,13 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@constants": ["src/constants"],
+      "@constants/*": ["src/constants/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

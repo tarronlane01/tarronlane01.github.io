@@ -1,0 +1,6 @@
+- [ ] Use vite path aliases and barrel files to reduce import complexity
+- [ ] Migraiont so all ID's have some human readable pattern to them, to help with tracking down issues
+- [ ] Check difference between hooks in data and hooks in hooks
+- [ ] Split ata fetching hooks from the data manipulation
+- [ ] Double check es lint disable line / next-line, any warning
+- [ ] double check budget context loadAccessibleBudgets, no data loading

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-
-const MOBILE_BREAKPOINT = 640
+import { MOBILE_BREAKPOINT, BREAKPOINTS } from '@constants'
 
 export function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
   const [isMobile, setIsMobile] = useState(() => {
@@ -23,10 +22,6 @@ export function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
   return isMobile
 }
 
-// Export breakpoint for CSS-in-JS consistency
-export const BREAKPOINTS = {
-  mobile: 640,
-  tablet: 768,
-  desktop: 1024,
-}
+// Re-export breakpoints for backwards compatibility
+export { BREAKPOINTS }
 

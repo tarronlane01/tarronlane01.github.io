@@ -1,42 +1,60 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
-
-const ADMIN_TAB_KEY = 'admin_active_tab'
-const VALID_ADMIN_TABS = ['my-budgets', 'accounts', 'categories', 'users', 'migration', 'feedback', 'tests']
+import { useBudgetData } from '../../hooks'
+import { ADMIN_TAB_KEY, VALID_ADMIN_TABS } from '@constants'
+import { TabNavigation, type Tab } from '../../components/ui'
 
 function Admin() {
-  const { currentBudget, loading, isOwner, isAdmin, isTest } = useBudget()
+  // Context: identifiers and UI flags
+  const { selectedBudgetId, currentUserId, isAdmin, isTest } = useBudget()
+
+  // Hook: budget data
+  const {
+    budget: currentBudget,
+    accounts,
+    accountGroups,
+    categories,
+    categoryGroups,
+    isOwner,
+    isLoading: loading,
+  } = useBudgetData(selectedBudgetId, currentUserId)
+
   const location = useLocation()
 
-  const isAccountsPage = location.pathname.includes('/admin/accounts')
-  const isCategoriesPage = location.pathname.includes('/admin/categories')
-  const isUsersPage = location.pathname.includes('/admin/users')
-  const isMigrationPage = location.pathname.includes('/admin/migration')
-  const isFeedbackPage = location.pathname.includes('/admin/feedback')
-  const isMyBudgetsPage = location.pathname.includes('/admin/my-budgets')
-  const isTestsPage = location.pathname.includes('/admin/tests')
   const isRootAdmin = location.pathname === '/budget/admin'
+
+  // Derive current tab from URL path
+  const currentTab = useMemo(() => {
+    const path = location.pathname
+    if (path.includes('/admin/accounts')) return 'accounts'
+    if (path.includes('/admin/categories')) return 'categories'
+    if (path.includes('/admin/users')) return 'users'
+    if (path.includes('/admin/migration')) return 'migration'
+    if (path.includes('/admin/feedback')) return 'feedback'
+    if (path.includes('/admin/tests')) return 'tests'
+    if (path.includes('/admin/my-budgets')) return 'my-budgets'
+    return 'my-budgets'
+  }, [location.pathname])
+
+  // For permission checks
+  const isUsersPage = currentTab === 'users'
+  const isMigrationPage = currentTab === 'migration'
+  const isFeedbackPage = currentTab === 'feedback'
+  const isTestsPage = currentTab === 'tests'
 
   // Save current admin tab to localStorage when it changes
   useEffect(() => {
     if (isRootAdmin) return // Don't save when at root (about to redirect)
-
-    let currentTab = 'my-budgets'
-    if (isAccountsPage) currentTab = 'accounts'
-    else if (isCategoriesPage) currentTab = 'categories'
-    else if (isUsersPage) currentTab = 'users'
-    else if (isMigrationPage) currentTab = 'migration'
-    else if (isFeedbackPage) currentTab = 'feedback'
-    else if (isTestsPage) currentTab = 'tests'
-
     localStorage.setItem(ADMIN_TAB_KEY, currentTab)
-  }, [location.pathname, isRootAdmin, isAccountsPage, isCategoriesPage, isUsersPage, isMigrationPage, isFeedbackPage, isMyBudgetsPage, isTestsPage])
+  }, [currentTab, isRootAdmin])
 
   // Get the saved tab for redirect (with permission checks)
   function getSavedAdminTab(): string {
     const saved = localStorage.getItem(ADMIN_TAB_KEY)
-    if (!saved || !VALID_ADMIN_TABS.includes(saved)) return 'my-budgets'
+    // Type guard: check if saved is a valid admin tab
+    const isValidTab = saved && (VALID_ADMIN_TABS as readonly string[]).includes(saved)
+    if (!isValidTab) return 'my-budgets'
 
     // Check permissions for restricted tabs
     if (saved === 'users' && !isOwner) return 'my-budgets'
@@ -45,6 +63,17 @@ function Admin() {
 
     return saved
   }
+
+  // Define admin tabs with permission-based visibility
+  const adminTabs: Tab[] = useMemo(() => [
+    { id: 'my-budgets', label: 'My Budgets', icon: '📂' },
+    { id: 'accounts', label: 'Accounts', icon: '🏦' },
+    { id: 'categories', label: 'Categories', icon: '🏷️' },
+    { id: 'users', label: 'Users', icon: '👥', hidden: !isOwner },
+    { id: 'migration', label: 'Migration', icon: '🔄', hidden: !isAdmin },
+    { id: 'feedback', label: 'Feedback', icon: '💬', hidden: !isAdmin },
+    { id: 'tests', label: 'Tests', icon: '🧪', hidden: !isTest },
+  ], [isOwner, isAdmin, isTest])
 
   if (loading) {
     return (
@@ -118,133 +147,66 @@ function Admin() {
             <span>👤</span>
             <span>Budget Owner: <strong style={{ opacity: 1 }}>{currentBudget.owner_email || currentBudget.owner_id}</strong></span>
           </p>
+          {/* Admin-only: Download budget document */}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                const budgetData = {
+                  ...currentBudget,
+                  accounts,
+                  account_groups: accountGroups,
+                  categories,
+                  category_groups: categoryGroups,
+                  _meta: {
+                    downloaded_at: new Date().toISOString(),
+                  }
+                }
+                const blob = new Blob([JSON.stringify(budgetData, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `budget_${currentBudget.id}.json`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+              }}
+              style={{
+                marginTop: '0.5rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                borderRadius: '6px',
+                padding: '0.5rem 0.75rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                color: 'inherit',
+                opacity: 1,
+                transition: 'background 0.15s',
+                alignSelf: 'flex-start',
+              }}
+              title="Download budget document as JSON (for debugging)"
+            >
+              📥 Download Budget JSON
+            </button>
+          )}
         </div>
       )}
 
       {/* Admin Navigation */}
       <div style={{
-        display: 'flex',
-        gap: '0.5rem',
-        marginBottom: '2rem',
         borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-        paddingBottom: '1rem',
-        flexWrap: 'wrap',
+        paddingBottom: '0.5rem',
+        marginBottom: '0.5rem',
       }}>
-        {/* My Budgets - available to everyone */}
-        <Link
-          to="/budget/admin/my-budgets"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isMyBudgetsPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isMyBudgetsPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isMyBudgetsPage ? 500 : 400,
-          }}
-        >
-          📂 My Budgets
-        </Link>
-
-        {/* Accounts & Categories - available to everyone on the budget */}
-        <Link
-          to="/budget/admin/accounts"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isAccountsPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isAccountsPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isAccountsPage ? 500 : 400,
-          }}
-        >
-          🏦 Accounts
-        </Link>
-        <Link
-          to="/budget/admin/categories"
-          style={{
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            color: 'inherit',
-            background: isCategoriesPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-            border: isCategoriesPage ? '1px solid #646cff' : '1px solid transparent',
-            fontWeight: isCategoriesPage ? 500 : 400,
-          }}
-        >
-          🏷️ Categories
-        </Link>
-
-        {/* Owner-only tabs */}
-        {isOwner && (
-          <Link
-            to="/budget/admin/users"
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              color: 'inherit',
-              background: isUsersPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-              border: isUsersPage ? '1px solid #646cff' : '1px solid transparent',
-              fontWeight: isUsersPage ? 500 : 400,
-            }}
-          >
-            👥 Users
-          </Link>
-        )}
-
-        {/* Admin-only tabs */}
-        {isAdmin && (
-          <>
-            <Link
-              to="/budget/admin/migration"
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                color: 'inherit',
-                background: isMigrationPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-                border: isMigrationPage ? '1px solid #646cff' : '1px solid transparent',
-                fontWeight: isMigrationPage ? 500 : 400,
-              }}
-            >
-              🔄 Migration
-            </Link>
-            <Link
-              to="/budget/admin/feedback"
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                color: 'inherit',
-                background: isFeedbackPage ? 'color-mix(in srgb, #646cff 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-                border: isFeedbackPage ? '1px solid #646cff' : '1px solid transparent',
-                fontWeight: isFeedbackPage ? 500 : 400,
-              }}
-            >
-              💬 Feedback
-            </Link>
-          </>
-        )}
-
-        {/* Test-only tabs */}
-        {isTest && (
-          <Link
-            to="/budget/admin/tests"
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              color: 'inherit',
-              background: isTestsPage ? 'color-mix(in srgb, #ff6b6b 20%, transparent)' : 'color-mix(in srgb, currentColor 8%, transparent)',
-              border: isTestsPage ? '1px solid #ff6b6b' : '1px solid transparent',
-              fontWeight: isTestsPage ? 500 : 400,
-            }}
-          >
-            🧪 Tests
-          </Link>
-        )}
+        <TabNavigation
+          mode="link"
+          linkPrefix="/budget/admin"
+          tabs={adminTabs}
+          activeTab={currentTab}
+        />
       </div>
 
       {/* Redirect to saved tab (or my-budgets by default), or show nested route */}
@@ -258,4 +220,3 @@ function Admin() {
 }
 
 export default Admin
-

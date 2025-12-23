@@ -82,6 +82,27 @@ export interface IncomeTransaction {
   created_at: string
 }
 
+// Expense transaction for a month
+export interface ExpenseTransaction {
+  id: string
+  amount: number // Always positive - represents money spent
+  category_id: string
+  account_id: string
+  date: string // YYYY-MM-DD format
+  payee?: string
+  description?: string
+  created_at: string
+}
+
+// Category balance tracking for a month (stored with allocations)
+export interface CategoryMonthBalance {
+  category_id: string
+  start_balance: number // Balance at start of month (end of previous month)
+  allocated: number // Allocations this month
+  spent: number // Total spend this month
+  end_balance: number // start + allocated - spent
+}
+
 // Payees document structure (one per budget)
 export interface PayeesDocument {
   budget_id: string
@@ -95,6 +116,22 @@ export interface CategoryAllocation {
   amount: number
 }
 
+/**
+ * Snapshot of data from the previous month.
+ * This is copied once when a month is created or when navigating to a stale month.
+ * Months never read from other month documents during normal rendering.
+ */
+export interface PreviousMonthSnapshot {
+  /** Total income from previous month (used for percentage-based allocations) */
+  total_income: number
+  /** Ending account balances from previous month (account_id -> balance) */
+  account_balances_end: Record<string, number>
+  /** Ending category balances from previous month (category_id -> end_balance) */
+  category_balances_end: Record<string, number>
+  /** When this snapshot was taken */
+  snapshot_taken_at: string
+}
+
 // Month document structure
 export interface MonthDocument {
   budget_id: string
@@ -102,12 +139,33 @@ export interface MonthDocument {
   month: number // 1-12
   income: IncomeTransaction[]
   total_income: number // Sum of all income amounts for this month
+  // Expenses for this month
+  expenses?: ExpenseTransaction[]
+  total_expenses?: number // Sum of all expense amounts for this month
   // Account balances at start and end of this month (account_id -> balance)
   account_balances_start?: Record<string, number>
   account_balances_end?: Record<string, number>
   // Category allocations for this month
   allocations?: CategoryAllocation[]
   allocations_finalized?: boolean // When true, allocations affect category balances
+  // Category balances for this month (tracks start, allocated, spent, end per category)
+  category_balances?: CategoryMonthBalance[]
+
+  /**
+   * Snapshot of previous month's data (carry-forward pattern).
+   * Contains the values this month needs from the previous month.
+   * Undefined if this is the first month or hasn't been populated yet.
+   */
+  previous_month_snapshot?: PreviousMonthSnapshot
+
+  /**
+   * True if the previous month was edited after this snapshot was taken.
+   * When true, the snapshot needs to be refreshed before this month can render correctly.
+   * Set to true in cache immediately when prev month changes.
+   * Persisted to Firestore only once (not on every edit).
+   */
+  snapshot_stale?: boolean
+
   created_at: string
   updated_at: string
 }

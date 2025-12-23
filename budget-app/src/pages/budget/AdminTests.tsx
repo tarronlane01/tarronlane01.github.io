@@ -13,7 +13,9 @@ interface TestResult {
 }
 
 function AdminTests() {
+  // Context: identifiers only
   const { currentUserId } = useBudget()
+
   const [testResults, setTestResults] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
 
@@ -425,4 +427,3 @@ function TestButton({ name, description, expectedBehavior, result, onRun, disabl
 }
 
 export default AdminTests
-

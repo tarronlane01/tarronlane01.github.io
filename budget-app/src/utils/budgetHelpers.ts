@@ -1,7 +1,7 @@
 // Utility functions for budget operations
 // Extracted from budget_context.tsx for better organization
 
-import type { AccountsMap, IncomeTransaction, CategoryAllocation } from '../types/budget'
+import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../types/budget'
 
 /**
  * Clean accounts for Firestore (removes undefined values)
@@ -52,6 +52,38 @@ export function cleanAllocationsForFirestore(allocationsList: CategoryAllocation
   return allocationsList.map(alloc => ({
     category_id: alloc.category_id,
     amount: alloc.amount,
+  }))
+}
+
+/**
+ * Clean expenses array for Firestore (removes undefined values)
+ */
+export function cleanExpensesForFirestore(expensesList: ExpenseTransaction[]): Record<string, any>[] {
+  return expensesList.map(exp => {
+    const cleaned: Record<string, any> = {
+      id: exp.id,
+      amount: exp.amount,
+      category_id: exp.category_id,
+      account_id: exp.account_id,
+      date: exp.date,
+      created_at: exp.created_at,
+    }
+    if (exp.payee) cleaned.payee = exp.payee
+    if (exp.description) cleaned.description = exp.description
+    return cleaned
+  })
+}
+
+/**
+ * Clean category balances for Firestore
+ */
+export function cleanCategoryBalancesForFirestore(balances: CategoryMonthBalance[]): Record<string, any>[] {
+  return balances.map(bal => ({
+    category_id: bal.category_id,
+    start_balance: bal.start_balance,
+    allocated: bal.allocated,
+    spent: bal.spent,
+    end_balance: bal.end_balance,
   }))
 }
 

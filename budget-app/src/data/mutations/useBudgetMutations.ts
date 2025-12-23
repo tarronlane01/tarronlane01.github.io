@@ -1,0 +1,446 @@
+/**
+ * Budget Mutations Hook
+ *
+ * Provides mutation functions for budget-level changes:
+ * - Account CRUD operations
+ * - Account group CRUD operations
+ * - Category CRUD operations
+ * - Category group CRUD operations
+ * - Budget renaming
+ *
+ * All mutations use optimistic updates and update the cache with server response.
+ * NO invalidateQueries calls - we trust the mutation result to avoid unnecessary reads.
+ */
+
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
+import app from '../../firebase'
+import { queryKeys } from '../queryClient'
+import type { BudgetData } from '../queries/useBudgetQuery'
+import type {
+  AccountsMap,
+  AccountGroupsMap,
+  CategoriesMap,
+  CategoryGroup,
+} from '../../types/budget'
+import { cleanAccountsForFirestore } from '../../utils/budgetHelpers'
+
+/**
+ * Clean categories for Firestore (removes undefined values)
+ */
+function cleanCategoriesForFirestore(categories: CategoriesMap): Record<string, any> {
+  const cleaned: Record<string, any> = {}
+  Object.entries(categories).forEach(([catId, cat]) => {
+    cleaned[catId] = {
+      name: cat.name,
+      category_group_id: cat.category_group_id ?? null,
+      sort_order: cat.sort_order,
+      balance: cat.balance ?? 0,
+    }
+    if (cat.description !== undefined) cleaned[catId].description = cat.description
+    if (cat.default_monthly_amount !== undefined) cleaned[catId].default_monthly_amount = cat.default_monthly_amount
+    if (cat.default_monthly_type !== undefined) cleaned[catId].default_monthly_type = cat.default_monthly_type
+  })
+  return cleaned
+}
+
+/**
+ * Clean account groups for Firestore
+ */
+function cleanAccountGroupsForFirestore(groups: AccountGroupsMap): Record<string, any> {
+  const cleaned: Record<string, any> = {}
+  Object.entries(groups).forEach(([groupId, group]) => {
+    cleaned[groupId] = {
+      name: group.name,
+      sort_order: group.sort_order,
+    }
+    if (group.expected_balance !== undefined) cleaned[groupId].expected_balance = group.expected_balance
+    if (group.on_budget !== undefined) cleaned[groupId].on_budget = group.on_budget
+    if (group.is_active !== undefined) cleaned[groupId].is_active = group.is_active
+  })
+  return cleaned
+}
+
+interface UpdateAccountsParams {
+  budgetId: string
+  accounts: AccountsMap
+}
+
+interface UpdateAccountGroupsParams {
+  budgetId: string
+  accountGroups: AccountGroupsMap
+}
+
+interface UpdateCategoriesParams {
+  budgetId: string
+  categories: CategoriesMap
+}
+
+interface UpdateCategoryGroupsParams {
+  budgetId: string
+  categoryGroups: CategoryGroup[]
+}
+
+interface UpdateAccountBalanceParams {
+  budgetId: string
+  accountId: string
+  delta: number
+}
+
+interface RenameBudgetParams {
+  budgetId: string
+  newName: string
+}
+
+/**
+ * Hook providing mutation functions for budget-level data
+ *
+ * Pattern for all mutations:
+ * - onMutate: Optimistic update (instant UI feedback)
+ * - mutationFn: Firestore write (returns server truth)
+ * - onSuccess: Update cache with server response (NO refetch)
+ * - onError: Rollback to previous state
+ */
+export function useBudgetMutations() {
+  const queryClient = useQueryClient()
+  const db = getFirestore(app)
+
+  /**
+   * Update accounts in budget document
+   */
+  const updateAccounts = useMutation({
+    mutationFn: async ({ budgetId, accounts }: UpdateAccountsParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+      const cleanedAccounts = cleanAccountsForFirestore(accounts)
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        accounts: cleanedAccounts,
+      })
+
+      return accounts
+    },
+    onMutate: async ({ budgetId, accounts }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          accounts,
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      // Update cache with server response - NO refetch needed
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          accounts: data,
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  /**
+   * Update account groups in budget document
+   */
+  const updateAccountGroups = useMutation({
+    mutationFn: async ({ budgetId, accountGroups }: UpdateAccountGroupsParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+      const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        account_groups: cleanedGroups,
+      })
+
+      return accountGroups
+    },
+    onMutate: async ({ budgetId, accountGroups }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          accountGroups,
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          accountGroups: data,
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  /**
+   * Update categories in budget document
+   */
+  const updateCategories = useMutation({
+    mutationFn: async ({ budgetId, categories }: UpdateCategoriesParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+      const cleanedCategories = cleanCategoriesForFirestore(categories)
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        categories: cleanedCategories,
+      })
+
+      return categories
+    },
+    onMutate: async ({ budgetId, categories }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          categories,
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          categories: data,
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  /**
+   * Update category groups in budget document
+   */
+  const updateCategoryGroups = useMutation({
+    mutationFn: async ({ budgetId, categoryGroups }: UpdateCategoryGroupsParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        category_groups: categoryGroups,
+      })
+
+      return categoryGroups
+    },
+    onMutate: async ({ budgetId, categoryGroups }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          categoryGroups,
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          categoryGroups: data,
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  /**
+   * Update a single account's balance (used after income/expense changes)
+   */
+  const updateAccountBalance = useMutation({
+    mutationFn: async ({ budgetId, accountId, delta }: UpdateAccountBalanceParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+      const accounts = data.accounts || {}
+
+      if (!accounts[accountId]) {
+        throw new Error('Account not found')
+      }
+
+      const updatedAccounts = {
+        ...accounts,
+        [accountId]: {
+          ...accounts[accountId],
+          balance: accounts[accountId].balance + delta,
+        },
+      }
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        accounts: cleanAccountsForFirestore(updatedAccounts),
+      })
+
+      return updatedAccounts
+    },
+    onMutate: async ({ budgetId, accountId, delta }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData && previousData.accounts[accountId]) {
+        const updatedAccounts = {
+          ...previousData.accounts,
+          [accountId]: {
+            ...previousData.accounts[accountId],
+            balance: previousData.accounts[accountId].balance + delta,
+          },
+        }
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          accounts: updatedAccounts,
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          accounts: data,
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  /**
+   * Rename budget
+   */
+  const renameBudget = useMutation({
+    mutationFn: async ({ budgetId, newName }: RenameBudgetParams) => {
+      const budgetDocRef = doc(db, 'budgets', budgetId)
+      const budgetDoc = await getDoc(budgetDocRef)
+
+      if (!budgetDoc.exists()) {
+        throw new Error('Budget not found')
+      }
+
+      const data = budgetDoc.data()
+
+      await setDoc(budgetDocRef, {
+        ...data,
+        name: newName.trim(),
+      })
+
+      return newName.trim()
+    },
+    onMutate: async ({ budgetId, newName }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
+      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...previousData,
+          budget: {
+            ...previousData.budget,
+            name: newName.trim(),
+          },
+        })
+      }
+
+      return { previousData }
+    },
+    onSuccess: (data, { budgetId }) => {
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...currentData,
+          budget: {
+            ...currentData.budget,
+            name: data,
+          },
+        })
+      }
+    },
+    onError: (_err, { budgetId }, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
+      }
+    },
+  })
+
+  return {
+    updateAccounts,
+    updateAccountGroups,
+    updateCategories,
+    updateCategoryGroups,
+    updateAccountBalance,
+    renameBudget,
+  }
+}

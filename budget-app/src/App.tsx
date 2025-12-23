@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
 import UserContext from './contexts/user_context'
+import { QueryProvider } from './data'
 import { BudgetProvider } from './contexts/budget_context'
 import useFirebaseAuth from './hooks/useFirebaseAuth'
 
@@ -9,6 +10,7 @@ import Home from './pages/Home'
 import SqlTest from './pages/SqlTest'
 import Account from './pages/Account'
 import Budget from './pages/budget/Budget'
+import Analytics from './pages/budget/Analytics'
 import Accounts from './pages/budget/Accounts'
 import Categories from './pages/budget/Categories'
 import Admin from './pages/budget/Admin'
@@ -54,34 +56,37 @@ function App() {
 
   return (
     <UserContext.Provider value={user_context}>
-      <BudgetProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/account" element={<Account />} />
-            <Route path="/sql-test" element={<SqlTest />} />
+      <QueryProvider>
+        <BudgetProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="/sql-test" element={<SqlTest />} />
 
-            {/* Protected budget routes */}
-            <Route path="/budget" element={<ProtectedRoute />}>
-              <Route element={<BudgetLayout />}>
-                <Route index element={<Budget />} />
+              {/* Protected budget routes */}
+              <Route path="/budget" element={<ProtectedRoute />}>
+                <Route element={<BudgetLayout />}>
+                  <Route index element={<Budget />} />
+                  <Route path="analytics" element={<Analytics />} />
 
-                {/* Admin routes */}
-                <Route path="admin" element={<Admin />}>
-                  <Route path="my-budgets" element={<AdminMyBudgets />} />
-                  <Route path="accounts" element={<Accounts />} />
-                  <Route path="categories" element={<Categories />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="migration" element={<AdminMigration />} />
-                  <Route path="feedback" element={<AdminFeedback />} />
-                  <Route path="tests" element={<AdminTests />} />
+                  {/* Admin routes */}
+                  <Route path="admin" element={<Admin />}>
+                    <Route path="my-budgets" element={<AdminMyBudgets />} />
+                    <Route path="accounts" element={<Accounts />} />
+                    <Route path="categories" element={<Categories />} />
+                    <Route path="users" element={<AdminUsers />} />
+                    <Route path="migration" element={<AdminMigration />} />
+                    <Route path="feedback" element={<AdminFeedback />} />
+                    <Route path="tests" element={<AdminTests />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
-          </Routes>
-          <FeedbackButton />
-        </BrowserRouter>
-      </BudgetProvider>
+            </Routes>
+            <FeedbackButton />
+          </BrowserRouter>
+        </BudgetProvider>
+      </QueryProvider>
     </UserContext.Provider>
   )
 }

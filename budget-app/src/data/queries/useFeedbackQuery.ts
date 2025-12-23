@@ -1,0 +1,75 @@
+/**
+ * Feedback Query Hook
+ *
+ * Fetches all feedback items from the feedback collection.
+ * Used by AdminFeedback page.
+ */
+
+import { useQuery } from '@tanstack/react-query'
+import { getFirestore, collection, getDocs } from 'firebase/firestore'
+import app from '../../firebase'
+import { queryKeys } from '../queryClient'
+
+type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
+
+export interface FeedbackItem {
+  id: string
+  text: string
+  created_at: string
+  is_done: boolean
+  completed_at: string | null
+  sort_order: number
+  feedback_type?: FeedbackType
+}
+
+export interface FlattenedFeedbackItem extends FeedbackItem {
+  doc_id: string // The document ID (user email or uid)
+  user_email: string | null
+}
+
+export interface FeedbackData {
+  items: FlattenedFeedbackItem[]
+}
+
+/**
+ * Fetch all feedback from the collection
+ */
+async function fetchAllFeedback(): Promise<FeedbackData> {
+  const db = getFirestore(app)
+  const feedbackCollection = collection(db, 'feedback')
+  const snapshot = await getDocs(feedbackCollection)
+
+  const flattened: FlattenedFeedbackItem[] = []
+
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data()
+    const items = data.items || []
+    const userEmail = data.user_email || docSnap.id
+
+    items.forEach((item: FeedbackItem) => {
+      flattened.push({
+        ...item,
+        doc_id: docSnap.id,
+        user_email: userEmail,
+      })
+    })
+  })
+
+  return { items: flattened }
+}
+
+/**
+ * Query hook for all feedback items
+ * Only enabled for admin users
+ *
+ * @param options - Additional query options including enabled flag
+ */
+export function useFeedbackQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: queryKeys.feedback(),
+    queryFn: fetchAllFeedback,
+    enabled: options?.enabled !== false,
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+

@@ -1,19 +1,24 @@
 import { useEffect, useState, useRef } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useBudget } from '../contexts/budget_context'
+import { useBudgetData } from '../hooks'
 import { colors } from '../styles/shared'
 
 export default function BudgetLayout() {
+  // Context: identifiers and UI state
   const {
-    ensureBudgetLoaded,
+    selectedBudgetId,
+    currentUserId,
     isInitialized,
-    loading,
-    error,
-    isUsingCache,
-    lastRefreshTime,
-    forceRefreshFromFirebase,
     clearCache,
   } = useBudget()
+
+  // Hook: budget data and refresh
+  const {
+    isLoading: loading,
+    error,
+    refreshBudget,
+  } = useBudgetData(selectedBudgetId, currentUserId)
 
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showCacheInfo, setShowCacheInfo] = useState(false)
@@ -31,28 +36,13 @@ export default function BudgetLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showCacheInfo])
 
-  useEffect(() => {
-    ensureBudgetLoaded()
-  }, [])
-
   async function handleForceRefresh() {
     setIsRefreshing(true)
     try {
-      await forceRefreshFromFirebase()
+      await refreshBudget()
     } finally {
       setIsRefreshing(false)
     }
-  }
-
-  function formatTimeAgo(timestamp: number | null): string {
-    if (!timestamp) return 'Never'
-    const seconds = Math.floor((Date.now() - timestamp) / 1000)
-    if (seconds < 60) return `${seconds}s ago`
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    return `${Math.floor(hours / 24)}d ago`
   }
 
   // Don't render children until budget is initialized
@@ -69,7 +59,7 @@ export default function BudgetLayout() {
     console.error('[BudgetLayout] Error:', error)
     return (
       <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
-        <p style={{ color: '#ef4444' }}>Error: {error}</p>
+        <p style={{ color: '#ef4444' }}>Error: {error.message}</p>
       </div>
     )
   }
@@ -108,19 +98,7 @@ export default function BudgetLayout() {
                 Data Source
               </p>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', fontWeight: 500 }}>
-                {isUsingCache ? (
-                  <span style={{ color: colors.warning }}>📦 From Cache</span>
-                ) : (
-                  <span style={{ color: colors.success }}>☁️ From Firebase</span>
-                )}
-              </p>
-            </div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Last Firebase Sync
-              </p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>
-                {formatTimeAgo(lastRefreshTime)}
+                <span style={{ color: colors.success }}>☁️ React Query Cache</span>
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -164,7 +142,7 @@ export default function BudgetLayout() {
               </button>
             </div>
             <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.7rem', opacity: 0.5, lineHeight: 1.4 }}>
-              Data is cached locally to reduce Firebase reads. Click "Sync Now" to fetch fresh data.
+              Data is cached via React Query. Click "Sync Now" to fetch fresh data.
             </p>
           </div>
         )}
@@ -176,13 +154,9 @@ export default function BudgetLayout() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
-            background: isUsingCache
-              ? `color-mix(in srgb, ${colors.warning} 20%, rgba(30, 30, 35, 0.9))`
-              : 'rgba(30, 30, 35, 0.9)',
+            background: 'rgba(30, 30, 35, 0.9)',
             backdropFilter: 'blur(8px)',
-            border: isUsingCache
-              ? `1px solid ${colors.warning}`
-              : '1px solid rgba(255, 255, 255, 0.15)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: '20px',
             padding: '0.4rem 0.75rem',
             fontSize: '0.75rem',
@@ -191,12 +165,10 @@ export default function BudgetLayout() {
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
             transition: 'all 0.15s',
           }}
-          title={isUsingCache ? 'Data loaded from cache' : 'Data loaded from Firebase'}
+          title="Data loaded via React Query"
         >
-          <span>{isUsingCache ? '📦' : '☁️'}</span>
-          <span style={{ opacity: 0.8 }}>
-            {isUsingCache ? 'Cached' : 'Live'}
-          </span>
+          <span>☁️</span>
+          <span style={{ opacity: 0.8 }}>Cache</span>
           <span style={{ opacity: 0.5, fontSize: '0.65rem' }}>
             {showCacheInfo ? '▼' : '▲'}
           </span>

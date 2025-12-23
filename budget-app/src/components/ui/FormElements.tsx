@@ -40,9 +40,7 @@ export function FormField({ label, htmlFor, children, hint }: FormFieldProps) {
 }
 
 // Text input
-interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {}
-
-export function TextInput(props: TextInputProps) {
+export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input style={inputStyle} {...props} />
 }
 
@@ -138,13 +136,14 @@ export function CurrencyInput({ id, value, onChange, placeholder = '$0.00', requ
   const [displayValue, setDisplayValue] = useState(() => formatCurrencyDisplay(value))
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Update display when external value changes
+  // Update display when external value changes (controlled input sync pattern)
   useEffect(() => {
     const formatted = formatCurrencyDisplay(value)
     if (parseCurrencyValue(displayValue) !== value) {
       setDisplayValue(formatted)
     }
-  }, [value])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]) // displayValue intentionally excluded to prevent infinite loops
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const rawInput = e.target.value

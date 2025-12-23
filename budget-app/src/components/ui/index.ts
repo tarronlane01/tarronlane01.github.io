@@ -15,11 +15,13 @@ export {
 } from './FormElements'
 export { DraggableCard } from './DraggableCard'
 export { DropZone } from './DropZone'
-export { StatCard, StatItem, formatCurrency, getBalanceColor } from './StatCard'
+export { StatCard, StatItem } from './StatCard'
+export { formatCurrency, getBalanceColor } from './statHelpers'
 export { FeedbackButton } from './FeedbackButton'
 export { Modal } from './Modal'
 export { Checkbox } from './Checkbox'
 export { CollapsibleSection } from './CollapsibleSection'
+export { TabNavigation, type Tab, type TabNavigationProps } from './TabNavigation'
 
 // Utility functions
 export function formatDate(isoString: string) {

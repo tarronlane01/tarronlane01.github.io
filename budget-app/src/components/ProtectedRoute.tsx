@@ -1,8 +1,7 @@
 import { useContext } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import UserContext from "../contexts/user_context"
-
-const ENABLE_AUTH_PROTECTION = true
+import { ENABLE_AUTH_PROTECTION } from '@constants'
 
 interface ProtectedRouteProps {
     children?: React.ReactNode

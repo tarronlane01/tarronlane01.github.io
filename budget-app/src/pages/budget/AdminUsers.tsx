@@ -1,8 +1,20 @@
 import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
+import { useBudgetData } from '../../hooks'
 
 function AdminUsers() {
-  const { currentBudget, currentUserId, budgetUserIds, acceptedUserIds, inviteUserToBudget, revokeUserFromBudget } = useBudget()
+  // Context: identifiers only
+  const { selectedBudgetId, currentUserId } = useBudget()
+
+  // Hook: budget data and mutations
+  const {
+    budget: currentBudget,
+    budgetUserIds,
+    acceptedUserIds,
+    inviteUser,
+    revokeUser,
+  } = useBudgetData(selectedBudgetId, currentUserId)
+
   const [newUserId, setNewUserId] = useState('')
   const [isInviting, setIsInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +33,7 @@ function AdminUsers() {
     setSuccess(null)
 
     try {
-      await inviteUserToBudget(newUserId.trim())
+      await inviteUser(newUserId.trim())
       setNewUserId('')
       setSuccess('Invite sent! The user can now accept the invitation from their account.')
     } catch (err) {
@@ -55,7 +67,7 @@ function AdminUsers() {
     setSuccess(null)
 
     try {
-      await revokeUserFromBudget(userIdToRevoke)
+      await revokeUser(userIdToRevoke)
       setSuccess(hasAccepted ? 'User access revoked.' : 'Invitation cancelled.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke user')
