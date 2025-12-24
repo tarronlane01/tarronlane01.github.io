@@ -19,7 +19,6 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const currentPath = location.pathname
-  const prevPathnameRef = useRef(location.pathname)
 
   // Close on outside click
   useEffect(() => {
@@ -34,15 +33,6 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
-
-  // Close on route change (only when pathname actually changes, not on initial render)
-  useEffect(() => {
-    if (prevPathnameRef.current !== location.pathname) {
-      prevPathnameRef.current = location.pathname
-      // Use queueMicrotask to satisfy eslint's set-state-in-effect rule
-      queueMicrotask(() => setIsOpen(false))
-    }
-  }, [location.pathname])
 
   // Close on Escape key
   useEffect(() => {
