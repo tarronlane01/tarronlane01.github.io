@@ -28,13 +28,13 @@ import type {
   CategoryMonthBalance,
   PreviousMonthSnapshot,
 } from '../../types/budget'
-import { getMonthDocId, readDoc, writeDoc } from '../../utils/firestoreHelpers'
+import { getMonthDocId, readDoc, writeDoc, type FirestoreData } from '../firestore/operations'
 
 /**
  * Parse raw Firestore month data into typed MonthDocument
  */
-function parseMonthData(data: any, budgetId: string, year: number, month: number): MonthDocument {
-  const income: IncomeTransaction[] = (data.income || []).map((inc: any) => ({
+function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
+  const income: IncomeTransaction[] = (data.income || []).map((inc: FirestoreData) => ({
     id: inc.id,
     amount: inc.amount,
     account_id: inc.account_id,
@@ -44,7 +44,7 @@ function parseMonthData(data: any, budgetId: string, year: number, month: number
     created_at: inc.created_at,
   }))
 
-  const expenses: ExpenseTransaction[] = (data.expenses || []).map((exp: any) => ({
+  const expenses: ExpenseTransaction[] = (data.expenses || []).map((exp: FirestoreData) => ({
     id: exp.id,
     amount: exp.amount,
     category_id: exp.category_id,
@@ -55,12 +55,12 @@ function parseMonthData(data: any, budgetId: string, year: number, month: number
     created_at: exp.created_at,
   }))
 
-  const allocations: CategoryAllocation[] = (data.allocations || []).map((alloc: any) => ({
+  const allocations: CategoryAllocation[] = (data.allocations || []).map((alloc: FirestoreData) => ({
     category_id: alloc.category_id,
     amount: alloc.amount,
   }))
 
-  const categoryBalances: CategoryMonthBalance[] = (data.category_balances || []).map((bal: any) => ({
+  const categoryBalances: CategoryMonthBalance[] = (data.category_balances || []).map((bal: FirestoreData) => ({
     category_id: bal.category_id,
     start_balance: bal.start_balance,
     allocated: bal.allocated,
@@ -93,7 +93,7 @@ function parseMonthData(data: any, budgetId: string, year: number, month: number
     account_balances_end: data.account_balances_end,
     category_balances: categoryBalances,
     previous_month_snapshot: previousMonthSnapshot,
-    snapshot_stale: data.snapshot_stale ?? false,
+    previous_month_snapshot_stale: data.previous_month_snapshot_stale ?? false,
     created_at: data.created_at,
     updated_at: data.updated_at || data.created_at,
   }
@@ -147,13 +147,13 @@ async function fetchMonth(
 ): Promise<MonthDocument> {
   const monthDocId = getMonthDocId(budgetId, year, month)
 
-  const { exists, data: monthData } = await readDoc<Record<string, any>>('months', monthDocId)
+  const { exists, data: monthData } = await readDoc<FirestoreData>('months', monthDocId)
 
   if (exists && monthData) {
     const parsedMonth = parseMonthData(monthData, budgetId, year, month)
 
     // Check if snapshot needs reconciliation
-    const needsReconciliation = parsedMonth.snapshot_stale === true ||
+    const needsReconciliation = parsedMonth.previous_month_snapshot_stale === true ||
       (parsedMonth.previous_month_snapshot === undefined && month !== 1) // January doesn't need prev month
 
     if (needsReconciliation) {
@@ -204,7 +204,7 @@ async function reconcileSnapshot(
   } else {
     // Not in cache, fetch from Firestore (1 read - acceptable for reconciliation)
     const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
-    const { exists, data: prevData } = await readDoc<Record<string, any>>('months', prevMonthDocId)
+    const { exists, data: prevData } = await readDoc<FirestoreData>('months', prevMonthDocId)
 
     if (exists && prevData) {
       prevMonthData = parseMonthData(prevData, budgetId, prevYear, prevMonth)
@@ -230,13 +230,13 @@ async function reconcileSnapshot(
   const updatedMonth: MonthDocument = {
     ...currentMonth,
     previous_month_snapshot: newSnapshot,
-    snapshot_stale: false,
+    previous_month_snapshot_stale: false,
     updated_at: new Date().toISOString(),
   }
 
   // Write to Firestore (1 write)
   // Build document and strip undefined values (Firestore doesn't allow undefined)
-  const docToWrite: Record<string, any> = {
+  const docToWrite: FirestoreData = {
     budget_id: updatedMonth.budget_id,
     year: updatedMonth.year,
     month: updatedMonth.month,
@@ -248,7 +248,7 @@ async function reconcileSnapshot(
     allocations_finalized: updatedMonth.allocations_finalized ?? false,
     category_balances: updatedMonth.category_balances ?? [],
     previous_month_snapshot: newSnapshot,
-    snapshot_stale: false,
+    previous_month_snapshot_stale: false,
     created_at: updatedMonth.created_at ?? new Date().toISOString(),
     updated_at: updatedMonth.updated_at,
   }
@@ -290,7 +290,7 @@ async function createNewMonthWithSnapshot(
     } else {
       // Fetch previous month if not cached (1 read - one time for new month creation)
       const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
-      const { exists, data: prevData } = await readDoc<Record<string, any>>('months', prevMonthDocId)
+      const { exists, data: prevData } = await readDoc<FirestoreData>('months', prevMonthDocId)
 
       if (exists && prevData) {
         const prevMonthData = parseMonthData(prevData, budgetId, prevYear, prevMonth)
@@ -316,13 +316,13 @@ async function createNewMonthWithSnapshot(
     allocations_finalized: false,
     category_balances: [],
     previous_month_snapshot: snapshot,
-    snapshot_stale: false,
+    previous_month_snapshot_stale: false,
     created_at: now,
     updated_at: now,
   }
 
   // Build clean document for Firestore
-  const docToWrite: Record<string, any> = {
+  const docToWrite: FirestoreData = {
     budget_id: budgetId,
     year,
     month,
@@ -333,7 +333,7 @@ async function createNewMonthWithSnapshot(
     allocations: [],
     allocations_finalized: false,
     category_balances: [],
-    snapshot_stale: false,
+    previous_month_snapshot_stale: false,
     created_at: now,
     updated_at: now,
   }
@@ -406,11 +406,11 @@ export function markNextMonthSnapshotStaleInCache(
   const nextMonthKey = queryKeys.month(budgetId, nextYear, nextMonth)
   const cachedNextMonth = queryClient.getQueryData<MonthQueryData>(nextMonthKey)
 
-  if (cachedNextMonth && !cachedNextMonth.month.snapshot_stale) {
+  if (cachedNextMonth && !cachedNextMonth.month.previous_month_snapshot_stale) {
     queryClient.setQueryData<MonthQueryData>(nextMonthKey, {
       month: {
         ...cachedNextMonth.month,
-        snapshot_stale: true,
+        previous_month_snapshot_stale: true,
       },
     })
   }
@@ -436,14 +436,14 @@ export async function markNextMonthSnapshotStaleInFirestore(
   const nextMonthDocId = getMonthDocId(budgetId, nextYear, nextMonth)
 
   // Check if next month exists and if it's already marked stale
-  const { exists, data } = await readDoc<Record<string, any>>('months', nextMonthDocId)
+  const { exists, data } = await readDoc<FirestoreData>('months', nextMonthDocId)
 
   if (exists && data) {
     // Only write if not already stale (avoid double writes)
-    if (!data.snapshot_stale) {
+    if (!data.previous_month_snapshot_stale) {
       await writeDoc('months', nextMonthDocId, {
         ...data,
-        snapshot_stale: true,
+        previous_month_snapshot_stale: true,
         updated_at: new Date().toISOString(),
       })
 
@@ -454,7 +454,7 @@ export async function markNextMonthSnapshotStaleInFirestore(
         queryClient.setQueryData<MonthQueryData>(nextMonthKey, {
           month: {
             ...cachedNextMonth.month,
-            snapshot_stale: true,
+            previous_month_snapshot_stale: true,
           },
         })
       }

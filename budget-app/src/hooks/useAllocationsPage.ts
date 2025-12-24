@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useBudget, type CategoryAllocation, type Category } from '../contexts/budget_context'
+import { useBudget } from '../contexts/budget_context'
+import type { CategoryAllocation, Category } from '../types/budget'
 import { useBudgetData, useBudgetMonth } from './index'
 
-export function useAllocationsSection() {
+export function useAllocationsPage() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
   const { categories, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
   const {
@@ -46,7 +47,7 @@ export function useAllocationsSection() {
       }
     })
     setLocalAllocations(allocMap)
-  }, [currentMonth?.year, currentMonth?.month, categories])
+  }, [currentMonth, categories])
 
   // Helper to get allocation amount for a category (handles percentage-based)
   const getAllocationAmount = useCallback((catId: string, cat: Category): number => {

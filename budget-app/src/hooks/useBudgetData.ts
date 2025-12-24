@@ -12,7 +12,7 @@
  *   } = useBudgetData(selectedBudgetId, currentUserId)
  */
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   useBudgetQuery,
   useBudgetMutations,
@@ -26,6 +26,7 @@ import type {
   AccountGroupsMap,
   CategoriesMap,
   CategoryGroup,
+  CategoryBalancesSnapshot,
   Budget,
 } from '../types/budget'
 
@@ -41,6 +42,7 @@ interface UseBudgetDataReturn {
   accountGroups: AccountGroupsMap
   categories: CategoriesMap
   categoryGroups: CategoryGroup[]
+  categoryBalancesSnapshot: CategoryBalancesSnapshot | null
 
   // Derived values
   isOwner: boolean
@@ -62,11 +64,16 @@ interface UseBudgetDataReturn {
   revokeUser: (userId: string) => Promise<void>
   acceptInvite: (budgetId: string) => Promise<void>
 
+  // Snapshot mutations
+  saveCategoryBalancesSnapshot: (balances: Record<string, { current: number; total: number }>, year: number, month: number) => Promise<void>
+  recalculateCategoryBalances: (categories: CategoriesMap, balances: Record<string, { current: number; total: number }>, year: number, month: number) => Promise<void>
+
   // Cache utilities
   setAccountsOptimistic: (accounts: AccountsMap) => void
   setAccountGroupsOptimistic: (groups: AccountGroupsMap) => void
   setCategoriesOptimistic: (categories: CategoriesMap) => void
   setCategoryGroupsOptimistic: (groups: CategoryGroup[]) => void
+  setCategoryBalancesSnapshotOptimistic: (snapshot: CategoryBalancesSnapshot | null) => void
   refreshBudget: () => Promise<void>
 
   // Computed helpers
@@ -84,18 +91,19 @@ export function useBudgetData(
   const budgetMutations = useBudgetMutations()
   const userMutations = useUserMutations()
 
-  // Extract data from query
+  // Extract data from query with stable references
   const budgetData = budgetQuery.data
   const budget = budgetData?.budget || null
-  const accounts = budgetData?.accounts || {}
-  const accountGroups = budgetData?.accountGroups || {}
-  const categories = budgetData?.categories || {}
-  const categoryGroups = budgetData?.categoryGroups || []
+  const accounts = useMemo(() => budgetData?.accounts || {}, [budgetData?.accounts])
+  const accountGroups = useMemo(() => budgetData?.accountGroups || {}, [budgetData?.accountGroups])
+  const categories = useMemo(() => budgetData?.categories || {}, [budgetData?.categories])
+  const categoryGroups = useMemo(() => budgetData?.categoryGroups || [], [budgetData?.categoryGroups])
+  const categoryBalancesSnapshot = budgetData?.categoryBalancesSnapshot || null
 
   // Derived values
   const isOwner = budget?.owner_id === currentUserId
-  const budgetUserIds = budget?.user_ids || []
-  const acceptedUserIds = budget?.accepted_user_ids || []
+  const budgetUserIds = useMemo(() => budget?.user_ids || [], [budget?.user_ids])
+  const acceptedUserIds = useMemo(() => budget?.accepted_user_ids || [], [budget?.accepted_user_ids])
 
   // ==========================================================================
   // BUDGET MUTATIONS
@@ -187,6 +195,40 @@ export function useBudgetData(
   }, [currentUserId, userMutations.acceptInvite])
 
   // ==========================================================================
+  // SNAPSHOT MUTATIONS
+  // ==========================================================================
+
+  const saveCategoryBalancesSnapshot = useCallback(async (
+    balances: Record<string, { current: number; total: number }>,
+    year: number,
+    month: number
+  ) => {
+    if (!budgetId) throw new Error('No budget selected')
+    await budgetMutations.saveCategoryBalancesSnapshot.mutateAsync({
+      budgetId,
+      balances,
+      year,
+      month,
+    })
+  }, [budgetId, budgetMutations.saveCategoryBalancesSnapshot])
+
+  const recalculateCategoryBalances = useCallback(async (
+    newCategories: CategoriesMap,
+    balances: Record<string, { current: number; total: number }>,
+    year: number,
+    month: number
+  ) => {
+    if (!budgetId) throw new Error('No budget selected')
+    await budgetMutations.recalculateCategoryBalances.mutateAsync({
+      budgetId,
+      categories: newCategories,
+      balances,
+      year,
+      month,
+    })
+  }, [budgetId, budgetMutations.recalculateCategoryBalances])
+
+  // ==========================================================================
   // CACHE UTILITIES (for optimistic updates)
   // ==========================================================================
 
@@ -234,6 +276,17 @@ export function useBudgetData(
     }
   }, [budgetId])
 
+  const setCategoryBalancesSnapshotOptimistic = useCallback((newSnapshot: CategoryBalancesSnapshot | null) => {
+    if (!budgetId) return
+    const cachedData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+    if (cachedData) {
+      queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+        ...cachedData,
+        categoryBalancesSnapshot: newSnapshot,
+      })
+    }
+  }, [budgetId])
+
   const refreshBudget = useCallback(async () => {
     if (!budgetId) return
     await queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) })
@@ -266,6 +319,7 @@ export function useBudgetData(
     accountGroups,
     categories,
     categoryGroups,
+    categoryBalancesSnapshot,
 
     // Derived
     isOwner,
@@ -284,12 +338,15 @@ export function useBudgetData(
     inviteUser,
     revokeUser,
     acceptInvite,
+    saveCategoryBalancesSnapshot,
+    recalculateCategoryBalances,
 
     // Cache utilities
     setAccountsOptimistic,
     setAccountGroupsOptimistic,
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
+    setCategoryBalancesSnapshotOptimistic,
     refreshBudget,
 
     // Computed

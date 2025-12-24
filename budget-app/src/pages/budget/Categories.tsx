@@ -29,6 +29,10 @@ function Categories() {
     error,
     setError,
     getOnBudgetTotal,
+    // Reconciliation
+    categoryBalanceMismatch,
+    checkCategoryBalanceMismatch,
+    recalculateAndSaveCategoryBalances,
     // Category handlers
     handleCreateCategory,
     handleUpdateCategory,
@@ -67,10 +71,9 @@ function Categories() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
 
-  // Reconciliation state (placeholder - not yet implemented)
+  // Reconciliation state
   const [isCheckingMismatch, setIsCheckingMismatch] = useState(false)
   const [isReconciling, setIsReconciling] = useState(false)
-  const categoryBalanceMismatch: Record<string, { stored: number; calculated: number }> | null = null
 
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
@@ -116,7 +119,7 @@ function Categories() {
             onClick={async () => {
               setIsReconciling(true)
               try {
-                console.warn('[Categories] recalculateAndSaveCategoryBalances not yet implemented')
+                await recalculateAndSaveCategoryBalances()
               } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to reconcile')
               } finally {
@@ -153,7 +156,7 @@ function Categories() {
             onClick={async () => {
               setIsCheckingMismatch(true)
               try {
-                console.warn('[Categories] checkCategoryBalanceMismatch not yet implemented')
+                await checkCategoryBalanceMismatch()
               } finally {
                 setIsCheckingMismatch(false)
               }
@@ -176,7 +179,7 @@ function Categories() {
             onClick={async () => {
               setIsReconciling(true)
               try {
-                console.warn('[Categories] recalculateAndSaveCategoryBalances not yet implemented')
+                await recalculateAndSaveCategoryBalances()
               } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to reconcile')
               } finally {
@@ -201,38 +204,58 @@ function Categories() {
       )}
 
       {/* Stats Cards */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <StatCard style={{ flex: 1, minWidth: '120px' }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Categories</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
-            {Object.keys(categories).length}
-          </p>
-        </StatCard>
-        <StatCard style={{ flex: 1, minWidth: '120px' }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Groups</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
-            {categoryGroups.length}
-          </p>
-        </StatCard>
-        <StatCard style={{ flex: 1, minWidth: '120px' }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>On-Budget</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal()) }}>
-            {formatCurrency(getOnBudgetTotal())}
-          </p>
-        </StatCard>
-        <StatCard style={{ flex: 1, minWidth: '120px' }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Allocated</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: colors.primary }}>
-            {loadingBalances ? '...' : formatCurrency(Object.values(categoryBalances).reduce((sum, val) => sum + val, 0))}
-          </p>
-        </StatCard>
-        <StatCard style={{ flex: 1, minWidth: '120px' }}>
-          <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Available</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal() - Object.values(categoryBalances).reduce((sum, val) => sum + val, 0)) }}>
-            {loadingBalances ? '...' : formatCurrency(getOnBudgetTotal() - Object.values(categoryBalances).reduce((sum, val) => sum + val, 0))}
-          </p>
-        </StatCard>
-      </div>
+      {(() => {
+        const totalCurrentAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.current, 0)
+        const totalAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.total, 0)
+        const availableNow = getOnBudgetTotal() - totalCurrentAllocated
+        const availableTotal = getOnBudgetTotal() - totalAllocated
+        const hasFutureAllocations = Math.abs(totalAllocated - totalCurrentAllocated) > 0.01
+
+        return (
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <StatCard style={{ flex: 1, minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Categories</p>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
+                {Object.keys(categories).length}
+              </p>
+            </StatCard>
+            <StatCard style={{ flex: 1, minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Groups</p>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
+                {categoryGroups.length}
+              </p>
+            </StatCard>
+            <StatCard style={{ flex: 1, minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>On-Budget</p>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal()) }}>
+                {formatCurrency(getOnBudgetTotal())}
+              </p>
+            </StatCard>
+            <StatCard style={{ flex: 1, minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Allocated Now</p>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: colors.primary }}>
+                {loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}
+              </p>
+              {hasFutureAllocations && (
+                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
+                  {loadingBalances ? '' : `${formatCurrency(totalAllocated)} total`}
+                </p>
+              )}
+            </StatCard>
+            <StatCard style={{ flex: 1, minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Available Now</p>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(availableNow) }}>
+                {loadingBalances ? '...' : formatCurrency(availableNow)}
+              </p>
+              {hasFutureAllocations && (
+                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
+                  {loadingBalances ? '' : `${formatCurrency(availableTotal)} after future`}
+                </p>
+              )}
+            </StatCard>
+          </div>
+        )
+      })()}
 
       {/* Category Groups */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>

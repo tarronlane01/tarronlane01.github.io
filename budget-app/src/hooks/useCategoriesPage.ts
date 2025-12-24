@@ -1,9 +1,23 @@
-import { useState, useEffect, type DragEvent } from 'react'
-import { useBudget, type Category, type CategoriesMap, type CategoryGroup } from '../contexts/budget_context'
-import { useBudgetData } from './useBudgetData'
-import type { CategoryFormData } from '../components/budget/Categories'
+/**
+ * useCategoriesPage Hook
+ *
+ * Main hook for the Categories page. Provides:
+ * - Category and group CRUD operations
+ * - Category balances (via useCategoryBalances)
+ * - Drag and drop (via useCategoryDragDrop)
+ *
+ * Split into smaller hooks for maintainability:
+ * - useCategoryBalances: Balance loading, caching, reconciliation
+ * - useCategoryDragDrop: Drag and drop state and handlers
+ */
 
-type DragType = 'category' | 'group' | null
+import { useState } from 'react'
+import { useBudget } from '../contexts/budget_context'
+import type { Category, CategoriesMap, CategoryGroup } from '../types/budget'
+import { useBudgetData } from './useBudgetData'
+import { useCategoryBalances } from './useCategoryBalances'
+import { useCategoryDragDrop } from './useCategoryDragDrop'
+import type { CategoryFormData } from '../components/budget/Categories'
 
 export type CategoryWithId = {
   id: string
@@ -12,47 +26,64 @@ export type CategoryWithId = {
 
 export type CategoryEntry = [string, Category]
 
+// Re-export CategoryBalance type for consumers
+export type { CategoryBalance } from './useCategoryBalances'
+
 export function useCategoriesPage() {
-  // Context: identifiers only
-  const { selectedBudgetId, currentUserId } = useBudget()
+  // Context: identifiers and current month
+  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
 
   // Hook: budget data and mutations
   const {
     budget: currentBudget,
     categories,
     categoryGroups,
+    categoryBalancesSnapshot,
     saveCategories,
     saveCategoryGroups,
     saveCategoriesAndGroups,
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
+    saveCategoryBalancesSnapshot: saveCategoryBalancesSnapshotMutation,
+    recalculateCategoryBalances: recalculateCategoryBalancesMutation,
     getOnBudgetTotal,
   } = useBudgetData(selectedBudgetId, currentUserId)
 
   const [error, setError] = useState<string | null>(null)
 
-  // Category balances state
-  const [categoryBalances, setCategoryBalances] = useState<Record<string, number>>({})
-  const [loadingBalances] = useState(false)
+  // Hook: category balances (loading, caching, reconciliation)
+  const {
+    categoryBalances,
+    loadingBalances,
+    categoryBalanceMismatch,
+    checkCategoryBalanceMismatch,
+    recalculateAndSaveCategoryBalances,
+  } = useCategoryBalances({
+    budgetId: selectedBudgetId,
+    categories,
+    categoryBalancesSnapshot,
+    currentYear,
+    currentMonth: currentMonthNumber,
+    saveCategoryBalancesSnapshot: saveCategoryBalancesSnapshotMutation,
+    recalculateCategoryBalancesMutation,
+  })
 
-  // Drag state
-  const [dragType, setDragType] = useState<DragType>(null)
-  const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
+  // Hook: drag and drop
+  const dragDrop = useCategoryDragDrop({
+    categories,
+    categoryGroups,
+    currentBudget,
+    setCategoriesOptimistic,
+    setCategoryGroupsOptimistic,
+    saveCategories,
+    saveCategoryGroups,
+    setError,
+  })
 
-  // Load category balances from category data
-  useEffect(() => {
-    if (currentBudget && Object.keys(categories).length > 0) {
-      const balances: Record<string, number> = {}
-      Object.entries(categories).forEach(([catId, cat]) => {
-        balances[catId] = cat.balance
-      })
-      setCategoryBalances(balances)
-    }
-  }, [currentBudget?.id, categories])
+  // ==========================================================================
+  // CATEGORY CRUD HANDLERS
+  // ==========================================================================
 
-  // Category handlers
   async function handleCreateCategory(formData: CategoryFormData, forGroupId: string | null) {
     if (!currentBudget) return
 
@@ -184,7 +215,10 @@ export function useCategoriesPage() {
     }
   }
 
-  // Group handlers
+  // ==========================================================================
+  // GROUP CRUD HANDLERS
+  // ==========================================================================
+
   async function handleCreateGroup(formData: { name: string }) {
     if (!currentBudget) return
     try {
@@ -269,164 +303,9 @@ export function useCategoriesPage() {
     }
   }
 
-  // Category drag handlers
-  function handleCategoryDragStart(e: DragEvent, categoryId: string) {
-    setDragType('category')
-    setDraggedId(categoryId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  function handleCategoryDragOver(e: DragEvent, categoryId: string, groupId: string) {
-    e.preventDefault()
-    if (dragType !== 'category') return
-    if (categoryId !== draggedId) {
-      setDragOverId(categoryId)
-    }
-    setDragOverGroupId(groupId)
-  }
-
-  function handleDragOverGroup(e: DragEvent, groupId: string) {
-    e.preventDefault()
-    if (dragType === 'category') {
-      setDragOverGroupId(groupId)
-      setDragOverId(null)
-    } else if (dragType === 'group' && groupId !== draggedId) {
-      setDragOverId(groupId)
-    }
-  }
-
-  function handleDragLeave() {
-    setDragOverId(null)
-  }
-
-  function handleDragLeaveGroup() {
-    setDragOverGroupId(null)
-  }
-
-  function handleDragEnd() {
-    setDragType(null)
-    setDraggedId(null)
-    setDragOverId(null)
-    setDragOverGroupId(null)
-  }
-
-  async function handleCategoryDrop(e: DragEvent, targetId: string, targetGroupId: string) {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!draggedId || dragType !== 'category') {
-      handleDragEnd()
-      return
-    }
-
-    const draggedCategory = categories[draggedId]
-    if (!draggedCategory) return
-
-    const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId
-    const targetGroupCategories = Object.entries(categories).filter(([, c]) => {
-      const catGroupId = c.category_group_id || 'ungrouped'
-      return catGroupId === targetGroupId
-    })
-
-    // Start with categories excluding the dragged one
-    const newCategories: CategoriesMap = {}
-    Object.entries(categories).forEach(([catId, cat]) => {
-      if (catId !== draggedId) {
-        newCategories[catId] = cat
-      }
-    })
-
-    let newSortOrder: number
-
-    if (targetId === '__group_end__' || targetGroupCategories.length === 0 || !targetGroupCategories.find(([catId]) => catId === targetId)) {
-      const maxInGroup = targetGroupCategories.length > 0
-        ? Math.max(...targetGroupCategories.filter(([catId]) => catId !== draggedId).map(([, c]) => c.sort_order))
-        : -1
-      newSortOrder = maxInGroup + 1
-    } else {
-      const targetCategoryEntry = targetGroupCategories.find(([catId]) => catId === targetId)
-      if (targetCategoryEntry) {
-        newSortOrder = targetCategoryEntry[1].sort_order
-        // Shift other categories down
-        Object.entries(newCategories).forEach(([catId, cat]) => {
-          const catGroupId = cat.category_group_id || 'ungrouped'
-          if (catGroupId === targetGroupId && cat.sort_order >= newSortOrder) {
-            newCategories[catId] = { ...cat, sort_order: cat.sort_order + 1 }
-          }
-        })
-      } else {
-        newSortOrder = 0
-      }
-    }
-
-    // Add the dragged category with updated position
-    newCategories[draggedId] = {
-      ...draggedCategory,
-      category_group_id: newGroupId,
-      sort_order: newSortOrder,
-    }
-
-    setCategoriesOptimistic(newCategories)
-    handleDragEnd()
-
-    if (!currentBudget) return
-    try {
-      await saveCategories(newCategories)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save changes')
-    }
-  }
-
-  async function handleDropOnGroup(e: DragEvent, groupId: string) {
-    e.preventDefault()
-    if (dragType === 'category') {
-      await handleCategoryDrop(e, '__group_end__', groupId)
-    } else if (dragType === 'group') {
-      await handleGroupDrop(e, groupId)
-    }
-  }
-
-  // Group drag handlers
-  function handleGroupDragStart(e: DragEvent, groupId: string) {
-    e.stopPropagation()
-    setDragType('group')
-    setDraggedId(groupId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  async function handleGroupDrop(e: DragEvent, targetId: string) {
-    e.preventDefault()
-    if (!draggedId || dragType !== 'group' || draggedId === targetId) {
-      handleDragEnd()
-      return
-    }
-
-    const draggedIndex = categoryGroups.findIndex(g => g.id === draggedId)
-    const newGroups = [...categoryGroups]
-    const [draggedItem] = newGroups.splice(draggedIndex, 1)
-
-    if (targetId === '__end__') {
-      newGroups.push(draggedItem)
-    } else {
-      const targetIndex = newGroups.findIndex(g => g.id === targetId)
-      newGroups.splice(targetIndex, 0, draggedItem)
-    }
-
-    const updatedGroups = newGroups.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }))
-
-    setCategoryGroupsOptimistic(updatedGroups)
-    handleDragEnd()
-
-    if (!currentBudget) return
-    try {
-      await saveCategoryGroups(updatedGroups)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save new order')
-    }
-  }
+  // ==========================================================================
+  // COMPUTED VALUES
+  // ==========================================================================
 
   // Organize categories by group
   const categoriesByGroup = Object.entries(categories).reduce((acc, [catId, category]) => {
@@ -451,6 +330,10 @@ export function useCategoriesPage() {
     error,
     setError,
     getOnBudgetTotal,
+    // Reconciliation
+    categoryBalanceMismatch,
+    checkCategoryBalanceMismatch,
+    recalculateAndSaveCategoryBalances,
     // Category handlers
     handleCreateCategory,
     handleUpdateCategory,
@@ -461,24 +344,23 @@ export function useCategoriesPage() {
     handleUpdateGroup,
     handleDeleteGroup,
     handleMoveGroup,
-    // Drag state
-    dragType,
-    draggedId,
-    dragOverId,
-    dragOverGroupId,
-    setDragOverId,
-    setDragOverGroupId,
-    // Drag handlers
-    handleCategoryDragStart,
-    handleCategoryDragOver,
-    handleDragOverGroup,
-    handleDragLeave,
-    handleDragLeaveGroup,
-    handleDragEnd,
-    handleCategoryDrop,
-    handleDropOnGroup,
-    handleGroupDragStart,
-    handleGroupDrop,
+    // Drag state (from useCategoryDragDrop)
+    dragType: dragDrop.dragType,
+    draggedId: dragDrop.draggedId,
+    dragOverId: dragDrop.dragOverId,
+    dragOverGroupId: dragDrop.dragOverGroupId,
+    setDragOverId: dragDrop.setDragOverId,
+    setDragOverGroupId: dragDrop.setDragOverGroupId,
+    // Drag handlers (from useCategoryDragDrop)
+    handleCategoryDragStart: dragDrop.handleCategoryDragStart,
+    handleCategoryDragOver: dragDrop.handleCategoryDragOver,
+    handleDragOverGroup: dragDrop.handleDragOverGroup,
+    handleDragLeave: dragDrop.handleDragLeave,
+    handleDragLeaveGroup: dragDrop.handleDragLeaveGroup,
+    handleDragEnd: dragDrop.handleDragEnd,
+    handleCategoryDrop: dragDrop.handleCategoryDrop,
+    handleDropOnGroup: dragDrop.handleDropOnGroup,
+    handleGroupDragStart: dragDrop.handleGroupDragStart,
+    handleGroupDrop: dragDrop.handleGroupDrop,
   }
 }
-

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import type { User } from 'firebase/auth'
 
 import UserContext from './contexts/user_context'
 import { QueryProvider } from './data'
@@ -34,9 +35,14 @@ const initial_user_context: type_user_context = {
 function App() {
   const [user_context, set_user_context] = useState<type_user_context>(initial_user_context)
   const firebase_auth_hook = useFirebaseAuth()
+  const listenerSetRef = useRef(false)
 
   useEffect(function() {
-    firebase_auth_hook.set_user_listener((user: any) => {
+    // Only set up listener once (firebase_auth_hook is stable but ESLint doesn't know that)
+    if (listenerSetRef.current) return
+    listenerSetRef.current = true
+
+    firebase_auth_hook.set_user_listener((user: User | null) => {
       set_user_context({
         is_logged_in: user != null,
         is_auth_checked: true,
@@ -44,7 +50,7 @@ function App() {
         set_user_context: set_user_context,
       })
     })
-  }, [])
+  }, [firebase_auth_hook])
 
   if (!user_context.is_auth_checked) {
     return (

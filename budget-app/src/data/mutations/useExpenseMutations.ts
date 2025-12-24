@@ -11,12 +11,25 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../queryClient'
+import { readDoc, getMonthDocId } from '../firestore/operations'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
 import type { BudgetData } from '../queries/useBudgetQuery'
 import type { MonthDocument, ExpenseTransaction } from '../../types/budget'
 import type { AddExpenseParams, UpdateExpenseParams, DeleteExpenseParams } from './monthMutationTypes'
-import { saveMonthToFirestore, updateAccountBalance, savePayeeIfNew } from './monthMutationHelpers'
+import {
+  saveMonthToFirestore,
+  updateAccountBalance,
+  savePayeeIfNew,
+  // Cache-only helpers (for onMutate)
+  markCategoryBalancesSnapshotStaleInCache,
+  markMonthCategoryBalancesStaleInCache,
+  markFutureMonthsCategoryBalancesStaleInCache,
+  // Firestore-only helpers (for mutationFn)
+  markCategoryBalancesSnapshotStaleInFirestore,
+  markMonthCategoryBalancesStaleInFirestore,
+  markFutureMonthsCategoryBalancesStaleInFirestore,
+} from './monthMutationHelpers'
 
 export function useExpenseMutations() {
   const queryClient = useQueryClient()
@@ -30,11 +43,12 @@ export function useExpenseMutations() {
     mutationFn: async (params: AddExpenseParams) => {
       const { budgetId, year, month, amount, categoryId, accountId, date, payee, description } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       const newExpense: ExpenseTransaction = {
@@ -48,9 +62,9 @@ export function useExpenseMutations() {
       if (payee?.trim()) newExpense.payee = payee.trim()
       if (description) newExpense.description = description
 
-      const updatedExpenses = [...(monthData.month.expenses || []), newExpense]
+      const updatedExpenses = [...(monthData.expenses || []), newExpense]
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         expenses: updatedExpenses,
         total_expenses: updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0),
         updated_at: new Date().toISOString(),
@@ -59,12 +73,19 @@ export function useExpenseMutations() {
       await saveMonthToFirestore(budgetId, updatedMonth)
       const updatedAccounts = await updateAccountBalance(budgetId, accountId, -amount) // Expenses reduce balance
 
-      // Save payee if new
-      const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const existingPayees = payeesDoc?.payees || []
+        updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
+
+      // Mark stale in Firestore: budget snapshot + this month + future months
+      // (Cache already updated in onMutate)
+      await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
+      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+      await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth, newExpense, updatedAccounts, updatedPayees }
     },
@@ -117,6 +138,10 @@ export function useExpenseMutations() {
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
       markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // Mark stale in cache: budget snapshot + this month + future months
+      markCategoryBalancesSnapshotStaleInCache(budgetId)
+      markMonthCategoryBalancesStaleInCache(budgetId, year, month)
+      markFutureMonthsCategoryBalancesStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },
@@ -160,11 +185,12 @@ export function useExpenseMutations() {
     mutationFn: async (params: UpdateExpenseParams) => {
       const { budgetId, year, month, expenseId, amount, categoryId, accountId, date, payee, description, oldAmount, oldAccountId } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       const updatedExpense: ExpenseTransaction = {
@@ -173,17 +199,17 @@ export function useExpenseMutations() {
         category_id: categoryId,
         account_id: accountId,
         date,
-        created_at: monthData.month.expenses?.find(e => e.id === expenseId)?.created_at || new Date().toISOString(),
+        created_at: monthData.expenses?.find(e => e.id === expenseId)?.created_at || new Date().toISOString(),
       }
       if (payee?.trim()) updatedExpense.payee = payee.trim()
       if (description) updatedExpense.description = description
 
-      const updatedExpensesList = (monthData.month.expenses || []).map(exp =>
+      const updatedExpensesList = (monthData.expenses || []).map(exp =>
         exp.id === expenseId ? updatedExpense : exp
       )
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         expenses: updatedExpensesList,
         total_expenses: updatedExpensesList.reduce((sum, exp) => sum + exp.amount, 0),
         updated_at: new Date().toISOString(),
@@ -200,12 +226,19 @@ export function useExpenseMutations() {
         updatedAccounts = await updateAccountBalance(budgetId, accountId, oldAmount - amount) // Adjust difference
       }
 
-      // Save payee if new
-      const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const existingPayees = payeesDoc?.payees || []
+        updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
+
+      // Mark stale in Firestore: budget snapshot + this month + future months
+      // (Cache already updated in onMutate)
+      await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
+      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+      await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth, updatedAccounts, updatedPayees }
     },
@@ -275,6 +308,10 @@ export function useExpenseMutations() {
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
       markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // Mark stale in cache: budget snapshot + this month + future months
+      markCategoryBalancesSnapshotStaleInCache(budgetId)
+      markMonthCategoryBalancesStaleInCache(budgetId, year, month)
+      markFutureMonthsCategoryBalancesStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },
@@ -318,17 +355,18 @@ export function useExpenseMutations() {
     mutationFn: async (params: DeleteExpenseParams) => {
       const { budgetId, year, month, expenseId, amount, accountId } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
-      const updatedExpensesList = (monthData.month.expenses || []).filter(exp => exp.id !== expenseId)
+      const updatedExpensesList = (monthData.expenses || []).filter(exp => exp.id !== expenseId)
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         expenses: updatedExpensesList,
         total_expenses: updatedExpensesList.reduce((sum, exp) => sum + exp.amount, 0),
         updated_at: new Date().toISOString(),
@@ -336,6 +374,12 @@ export function useExpenseMutations() {
 
       await saveMonthToFirestore(budgetId, updatedMonth)
       const updatedAccounts = await updateAccountBalance(budgetId, accountId, amount) // Add back to balance
+
+      // Mark stale in Firestore: budget snapshot + this month + future months
+      // (Cache already updated in onMutate)
+      await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
+      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+      await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth, updatedAccounts }
     },
@@ -377,6 +421,10 @@ export function useExpenseMutations() {
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
       markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // Mark stale in cache: budget snapshot + this month + future months
+      markCategoryBalancesSnapshotStaleInCache(budgetId)
+      markMonthCategoryBalancesStaleInCache(budgetId, year, month)
+      markFutureMonthsCategoryBalancesStaleInCache(budgetId, year, month)
 
       return { previousMonth, previousBudget }
     },

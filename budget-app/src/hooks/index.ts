@@ -8,6 +8,6 @@ export { useBudgetMonth } from './useBudgetMonth'
 
 // Page/Section-specific hooks
 export { useAccountsPage, type AccountWithId } from './useAccountsPage'
-export { useAllocationsSection } from './useAllocationsSection'
-export { useCategoriesPage, type CategoryEntry, type CategoryWithId } from './useCategoriesPage'
+export { useAllocationsPage } from './useAllocationsPage'
+export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
 

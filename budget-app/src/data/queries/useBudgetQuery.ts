@@ -11,7 +11,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { readDoc } from '../../utils/firestoreHelpers'
+import { readDoc, type FirestoreData } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type {
   Budget,
@@ -19,6 +19,7 @@ import type {
   AccountGroupsMap,
   CategoriesMap,
   CategoryGroup,
+  CategoryBalancesSnapshot,
   FinancialAccount,
   AccountGroup,
   Category,
@@ -31,10 +32,11 @@ interface BudgetDocument {
   accepted_user_ids: string[]
   owner_id: string
   owner_email: string | null
-  accounts: Record<string, any>
-  account_groups: Record<string, any>
-  categories: Record<string, any>
-  category_groups: any[]
+  accounts: FirestoreData
+  account_groups: FirestoreData
+  categories: FirestoreData
+  category_groups: FirestoreData[]
+  category_balances_snapshot?: FirestoreData
   created_at?: string
   updated_at?: string
 }
@@ -46,12 +48,13 @@ export interface BudgetData {
   accountGroups: AccountGroupsMap
   categories: CategoriesMap
   categoryGroups: CategoryGroup[]
+  categoryBalancesSnapshot: CategoryBalancesSnapshot | null
 }
 
 /**
  * Parse raw Firestore accounts data into typed AccountsMap
  */
-function parseAccounts(accountsData: Record<string, any> = {}): AccountsMap {
+function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
   const accounts: AccountsMap = {}
   Object.entries(accountsData).forEach(([id, account]) => {
     accounts[id] = {
@@ -73,7 +76,7 @@ function parseAccounts(accountsData: Record<string, any> = {}): AccountsMap {
 /**
  * Parse raw Firestore account groups data into typed AccountGroupsMap
  */
-function parseAccountGroups(accountGroupsData: Record<string, any> = {}): AccountGroupsMap {
+function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroupsMap {
   const groups: AccountGroupsMap = {}
   Object.entries(accountGroupsData).forEach(([id, group]) => {
     groups[id] = {
@@ -90,7 +93,7 @@ function parseAccountGroups(accountGroupsData: Record<string, any> = {}): Accoun
 /**
  * Parse raw Firestore categories data into typed CategoriesMap
  */
-function parseCategories(categoriesData: Record<string, any> = {}): CategoriesMap {
+function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
   const categories: CategoriesMap = {}
   Object.entries(categoriesData).forEach(([id, category]) => {
     categories[id] = {
@@ -109,7 +112,7 @@ function parseCategories(categoriesData: Record<string, any> = {}): CategoriesMa
 /**
  * Parse raw Firestore category groups data into typed CategoryGroup[]
  */
-function parseCategoryGroups(categoryGroupsData: any[] = []): CategoryGroup[] {
+function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): CategoryGroup[] {
   const groups = categoryGroupsData.map((group) => ({
     id: group.id,
     name: group.name,
@@ -117,6 +120,32 @@ function parseCategoryGroups(categoryGroupsData: any[] = []): CategoryGroup[] {
   }))
   groups.sort((a, b) => a.sort_order - b.sort_order)
   return groups
+}
+
+/**
+ * Parse raw Firestore category balances snapshot into typed CategoryBalancesSnapshot
+ */
+function parseCategoryBalancesSnapshot(snapshotData: FirestoreData | undefined): CategoryBalancesSnapshot | null {
+  if (!snapshotData) return null
+
+  // Validate required fields exist
+  if (
+    typeof snapshotData.computed_at !== 'string' ||
+    typeof snapshotData.computed_for_year !== 'number' ||
+    typeof snapshotData.computed_for_month !== 'number' ||
+    typeof snapshotData.is_stale !== 'boolean' ||
+    !snapshotData.balances
+  ) {
+    return null
+  }
+
+  return {
+    computed_at: snapshotData.computed_at,
+    computed_for_year: snapshotData.computed_for_year,
+    computed_for_month: snapshotData.computed_for_month,
+    is_stale: snapshotData.is_stale,
+    balances: snapshotData.balances,
+  }
 }
 
 /**
@@ -142,6 +171,7 @@ async function fetchBudget(budgetId: string): Promise<BudgetData> {
     accountGroups: parseAccountGroups(data.account_groups),
     categories: parseCategories(data.categories),
     categoryGroups: parseCategoryGroups(data.category_groups),
+    categoryBalancesSnapshot: parseCategoryBalancesSnapshot(data.category_balances_snapshot),
   }
 }
 

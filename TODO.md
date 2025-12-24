@@ -1,5 +1,7 @@
+- [ ] Setup balance calculations between account and months pages
+- [ ] sure when editing month, it only marks the budget doc as stale once
 - [ ] Use vite path aliases and barrel files to reduce import complexity
 - [ ] Migraiont so all ID's have some human readable pattern to them, to help with tracking down issues
 - [ ] Check difference between hooks in data and hooks in hooks
-- [ ] Split ata fetching hooks from the data manipulation
-- [ ] Double check es lint disable line / next-line, any warning
+- [ ] admin.ts - why do admin pages need to avoid using query cache layer? L'ets see if we can consolidate to vaoid needing this
+- [ ] Have all read/write opertions have a desxritpion mandatory field that will get output to theconsole, to help with debugging to understand why each read/write is being made

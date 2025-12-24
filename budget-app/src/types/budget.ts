@@ -71,6 +71,35 @@ export interface CategoryGroup {
   sort_order: number
 }
 
+/**
+ * Snapshot of category balances stored on the budget document.
+ * Avoids needing to query all month documents on every page load.
+ *
+ * Snapshot is considered stale if:
+ * - is_stale === true (explicitly marked after month edits)
+ * - computed_for_year/month doesn't match current year/month
+ * - snapshot doesn't exist
+ */
+export interface CategoryBalancesSnapshot {
+  /** When this snapshot was last computed */
+  computed_at: string
+
+  /** The "current month" this was computed for */
+  computed_for_year: number
+  computed_for_month: number
+
+  /** Explicit stale flag - set to true when months are edited */
+  is_stale: boolean
+
+  /** Balances per category */
+  balances: Record<string, {
+    /** Available through computed_for_year/month (allocations - expenses up to that month) */
+    current: number
+    /** Total including all future allocations minus all expenses */
+    total: number
+  }>
+}
+
 // Income transaction for a month
 export interface IncomeTransaction {
   id: string
@@ -152,6 +181,15 @@ export interface MonthDocument {
   category_balances?: CategoryMonthBalance[]
 
   /**
+   * True if this month's category_balances need recalculation.
+   * Set to true when:
+   * - Allocations or expenses are edited in THIS month
+   * - ANY PREVIOUS month is edited (since this month's start_balance depends on it)
+   * When true, we need to walk backwards to find a valid starting point.
+   */
+  category_balances_stale?: boolean
+
+  /**
    * Snapshot of previous month's data (carry-forward pattern).
    * Contains the values this month needs from the previous month.
    * Undefined if this is the first month or hasn't been populated yet.
@@ -159,12 +197,13 @@ export interface MonthDocument {
   previous_month_snapshot?: PreviousMonthSnapshot
 
   /**
-   * True if the previous month was edited after this snapshot was taken.
+   * True if the previous_month_snapshot needs to be refreshed.
+   * Set to true when ANY previous month is edited (changes cascade forward).
    * When true, the snapshot needs to be refreshed before this month can render correctly.
-   * Set to true in cache immediately when prev month changes.
+   * Set to true in cache immediately when a previous month changes.
    * Persisted to Firestore only once (not on every edit).
    */
-  snapshot_stale?: boolean
+  previous_month_snapshot_stale?: boolean
 
   created_at: string
   updated_at: string

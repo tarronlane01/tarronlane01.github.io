@@ -16,12 +16,12 @@
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import { readDoc } from '../utils/firestoreHelpers'
 import useFirebaseAuth from '../hooks/useFirebaseAuth'
 import {
   useUserQuery,
   useAccessibleBudgetsQuery,
   queryClient,
+  fetchBudgetInviteStatus,
 } from '../data'
 
 // Import types from centralized types file
@@ -251,24 +251,16 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     if (!current_user) return null
 
     try {
-      const { exists, data } = await readDoc<{
-        user_ids?: string[]
-        accepted_user_ids?: string[]
-        name?: string
-        owner_email?: string
-      }>('budgets', budgetId)
+      const status = await fetchBudgetInviteStatus(budgetId, current_user.uid)
 
-      if (!exists || !data) return null
+      if (!status) return null
 
       // Check if user is invited but hasn't accepted
-      const isInvited = data.user_ids?.includes(current_user.uid)
-      const hasAccepted = data.accepted_user_ids?.includes(current_user.uid)
-
-      if (isInvited && !hasAccepted) {
+      if (status.isInvited && !status.hasAccepted) {
         return {
           budgetId,
-          budgetName: data.name || 'Unnamed Budget',
-          ownerEmail: data.owner_email || null,
+          budgetName: status.budgetName,
+          ownerEmail: status.ownerEmail,
         }
       }
 

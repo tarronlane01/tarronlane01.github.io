@@ -10,6 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { readDoc, getMonthDocId } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
@@ -30,12 +31,12 @@ export function useIncomeMutations() {
     mutationFn: async (params: AddIncomeParams) => {
       const { budgetId, year, month, amount, accountId, date, payee, description } = params
 
-      // Get current month data from cache
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       // Create new income transaction with server-generated ID
@@ -50,9 +51,9 @@ export function useIncomeMutations() {
       if (description) newIncome.description = description
 
       // Build updated month
-      const updatedIncome = [...monthData.month.income, newIncome]
+      const updatedIncome = [...(monthData.income || []), newIncome]
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         income: updatedIncome,
         total_income: updatedIncome.reduce((sum, inc) => sum + inc.amount, 0),
         updated_at: new Date().toISOString(),
@@ -64,11 +65,12 @@ export function useIncomeMutations() {
       // Update account balance
       const updatedAccounts = await updateAccountBalance(budgetId, accountId, amount)
 
-      // Save payee if new
-      const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const existingPayees = payeesDoc?.payees || []
+        updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
 
       return { updatedMonth, newIncome, updatedAccounts, updatedPayees }
@@ -171,11 +173,12 @@ export function useIncomeMutations() {
     mutationFn: async (params: UpdateIncomeParams) => {
       const { budgetId, year, month, incomeId, amount, accountId, date, payee, description, oldAmount, oldAccountId } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       // Build updated income
@@ -184,17 +187,17 @@ export function useIncomeMutations() {
         amount,
         account_id: accountId,
         date,
-        created_at: monthData.month.income.find(i => i.id === incomeId)?.created_at || new Date().toISOString(),
+        created_at: (monthData.income || []).find(i => i.id === incomeId)?.created_at || new Date().toISOString(),
       }
       if (payee?.trim()) updatedIncome.payee = payee.trim()
       if (description) updatedIncome.description = description
 
-      const updatedIncomeList = monthData.month.income.map(inc =>
+      const updatedIncomeList = (monthData.income || []).map(inc =>
         inc.id === incomeId ? updatedIncome : inc
       )
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         income: updatedIncomeList,
         total_income: updatedIncomeList.reduce((sum, inc) => sum + inc.amount, 0),
         updated_at: new Date().toISOString(),
@@ -211,11 +214,12 @@ export function useIncomeMutations() {
         updatedAccounts = await updateAccountBalance(budgetId, accountId, amount - oldAmount)
       }
 
-      // Save payee if new
-      const payeesData = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        updatedPayees = await savePayeeIfNew(budgetId, payee, payeesData)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const existingPayees = payeesDoc?.payees || []
+        updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
 
       return { updatedMonth, updatedAccounts, updatedPayees }
@@ -333,17 +337,18 @@ export function useIncomeMutations() {
     mutationFn: async (params: DeleteIncomeParams) => {
       const { budgetId, year, month, incomeId, amount, accountId } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
-      const updatedIncomeList = monthData.month.income.filter(inc => inc.id !== incomeId)
+      const updatedIncomeList = (monthData.income || []).filter(inc => inc.id !== incomeId)
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         income: updatedIncomeList,
         total_income: updatedIncomeList.reduce((sum, inc) => sum + inc.amount, 0),
         updated_at: new Date().toISOString(),

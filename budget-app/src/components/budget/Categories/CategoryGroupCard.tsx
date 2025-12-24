@@ -13,6 +13,7 @@ import {
 import { CategoryForm, type CategoryFormData } from './CategoryForm'
 import { CategoryGroupForm, type CategoryGroupFormData } from './CategoryGroupForm'
 import { CategoryEndDropZone } from './CategoryEndDropZone'
+import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
 
 type CategoryEntry = [string, Category]
 type DragType = 'category' | 'group' | null
@@ -23,7 +24,7 @@ interface CategoryGroupCardProps {
   groupCategories: CategoryEntry[]
   sortedGroups: CategoryGroup[]
   categoryGroups: CategoryGroup[]
-  categoryBalances: Record<string, number>
+  categoryBalances: Record<string, CategoryBalance>
   loadingBalances: boolean
   // Drag state
   dragType: DragType
@@ -411,9 +412,11 @@ export function CategoryCardContent({
 }: {
   category: Category
   catId: string
-  categoryBalances: Record<string, number>
+  categoryBalances: Record<string, CategoryBalance>
   loadingBalances: boolean
 }) {
+  const balance = categoryBalances[catId] || { current: 0, total: 0 }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -442,14 +445,34 @@ export function CategoryCardContent({
           {category.description}
         </p>
       )}
-      <p style={{
-        margin: '0.25rem 0 0 0',
-        fontSize: '1rem',
-        fontWeight: 600,
-        color: getBalanceColor(categoryBalances[catId] || 0),
-      }}>
-        {loadingBalances ? '...' : formatCurrency(categoryBalances[catId] || 0)}
-      </p>
+      {/* Balances display */}
+      <div style={{ marginTop: '0.25rem' }}>
+        {/* Current balance (available now) */}
+        <p style={{
+          margin: 0,
+          fontSize: '1rem',
+          fontWeight: 600,
+          color: getBalanceColor(balance.current),
+        }}>
+          {loadingBalances ? '...' : formatCurrency(balance.current)}
+          <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.6, marginLeft: '0.35rem' }}>
+            available now
+          </span>
+        </p>
+        {/* Total balance (always shown) */}
+        <p style={{
+          margin: '0.15rem 0 0 0',
+          fontSize: '0.85rem',
+          fontWeight: 500,
+          color: getBalanceColor(balance.total),
+          opacity: 0.75,
+        }}>
+          {loadingBalances ? '...' : formatCurrency(balance.total)}
+          <span style={{ fontSize: '0.7rem', fontWeight: 400, opacity: 0.7, marginLeft: '0.35rem' }}>
+            total allocated
+          </span>
+        </p>
+      </div>
     </div>
   )
 }

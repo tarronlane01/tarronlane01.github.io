@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { readDoc, updateDocByPath } from '../../utils/firestoreHelpers'
+// Security rule testing requires raw Firestore access to verify that unauthorized
+// reads/writes are actually rejected by Firestore rules. Using React Query would
+// cache results and interfere with testing actual security behavior.
+// eslint-disable-next-line no-restricted-imports
+import { readDoc, updateDocByPath } from '../../data/firestore/operations'
 import { useBudget } from '../../contexts/budget_context'
 import { Button, ErrorAlert } from '../../components/ui'
 import { pageSubtitle, card, colors } from '../../styles/shared'

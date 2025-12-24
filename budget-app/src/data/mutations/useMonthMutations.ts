@@ -38,6 +38,14 @@ export {
   saveMonthToFirestore,
   updateAccountBalance,
   savePayeeIfNew,
+  // Cache-only helpers (use in onMutate)
+  markCategoryBalancesSnapshotStaleInCache,
+  markMonthCategoryBalancesStaleInCache,
+  markFutureMonthsCategoryBalancesStaleInCache,
+  // Firestore-only helpers (use in mutationFn)
+  markCategoryBalancesSnapshotStaleInFirestore,
+  markMonthCategoryBalancesStaleInFirestore,
+  markFutureMonthsCategoryBalancesStaleInFirestore,
 } from './monthMutationHelpers'
 
 // Re-export individual hooks for granular usage

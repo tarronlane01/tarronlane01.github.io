@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { readDoc, writeDoc, queryCollection } from '../../utils/firestoreHelpers'
+// Admin migrations need raw Firestore access to query ALL budgets system-wide
+// and perform one-off data structure migrations. These are admin-only operations
+// that run across all users' data, not suitable for React Query caching.
+// eslint-disable-next-line no-restricted-imports
+import { readDoc, writeDoc, queryCollection, type FirestoreData } from '../../data/firestore/operations'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
 import { useAdminMigrationQuery, queryClient } from '../../data'
 import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../types/budget'
@@ -115,7 +119,7 @@ function AdminMigration() {
 
   async function migrateBudget(budgetId: string): Promise<BudgetMigrationResult> {
     try {
-      const { exists: budgetExists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+      const { exists: budgetExists, data } = await readDoc<FirestoreData>('budgets', budgetId)
 
       if (!budgetExists || !data) {
         return {
@@ -158,7 +162,7 @@ function AdminMigration() {
 
       // Migrate categories if needed
       if (categoriesNeedMigration) {
-        const categoriesArray = data.categories as any[]
+        const categoriesArray = data.categories as FirestoreData[]
         const categoriesMap: CategoriesMap = {}
         const categoryIds: string[] = []
 
@@ -208,7 +212,7 @@ function AdminMigration() {
 
       // Migrate accounts if needed
       if (accountsNeedMigration) {
-        const accountsArray = data.accounts as any[]
+        const accountsArray = data.accounts as FirestoreData[]
         const accountsMap: AccountsMap = {}
 
         for (const acc of accountsArray) {
@@ -234,7 +238,7 @@ function AdminMigration() {
 
       // Migrate account groups if needed
       if (accountGroupsNeedMigration) {
-        const groupsArray = data.account_groups as any[]
+        const groupsArray = data.account_groups as FirestoreData[]
         const groupsMap: AccountGroupsMap = {}
 
         for (const group of groupsArray) {
@@ -252,10 +256,10 @@ function AdminMigration() {
         // Update account references if needed
         if (accountsNeedMigration && updatedAccounts) {
           const accountsMap = updatedAccounts as AccountsMap
-          const oldGroupsArray = data.account_groups as any[]
+          const oldGroupsArray = data.account_groups as FirestoreData[]
 
           const oldToNewGroupId: Record<string, string> = {}
-          oldGroupsArray.forEach((oldGroup: any, index: number) => {
+          oldGroupsArray.forEach((oldGroup: FirestoreData, index: number) => {
             const oldId = oldGroup.id || String(index)
             const newId = Object.keys(groupsMap)[index]
             if (newId) {
@@ -275,7 +279,7 @@ function AdminMigration() {
       }
 
       // Save updated budget document - remove category_balances from data
-      const { category_balances: _catBalRemoved, ...restData } = data as any
+      const { category_balances: _catBalRemoved, ...restData } = data as FirestoreData
       void _catBalRemoved // Intentionally unused - destructuring to exclude from saved data
       await writeDoc('budgets', budgetId, {
         ...restData,

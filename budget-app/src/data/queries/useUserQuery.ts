@@ -8,7 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '../queryClient'
-import { readDoc, writeDoc } from '../../utils/firestoreHelpers'
+import { readDoc, writeDoc } from '../firestore/operations'
 import type { UserDocument } from '../../types/budget'
 
 /**

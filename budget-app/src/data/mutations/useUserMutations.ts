@@ -12,7 +12,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../queryClient'
-import { readDoc, writeDoc } from '../../utils/firestoreHelpers'
+import { readDoc, writeDoc, type FirestoreData } from '../firestore/operations'
 import type { UserDocument, BudgetInvite } from '../../types/budget'
 import type { BudgetData } from '../queries/useBudgetQuery'
 
@@ -115,7 +115,7 @@ export function useUserMutations() {
       const now = new Date().toISOString()
 
       // Verify invitation exists
-      const { exists: budgetExists, data: budgetData } = await readDoc<Record<string, any>>('budgets', budgetId)
+      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>('budgets', budgetId)
 
       if (!budgetExists || !budgetData) {
         throw new Error('Budget not found')
@@ -159,7 +159,7 @@ export function useUserMutations() {
    */
   const inviteUser = useMutation({
     mutationFn: async ({ budgetId, userId }: InviteUserParams) => {
-      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -207,7 +207,7 @@ export function useUserMutations() {
    */
   const revokeUser = useMutation({
     mutationFn: async ({ budgetId, userId }: RevokeUserParams) => {
-      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -298,7 +298,7 @@ export function useUserMutations() {
    */
   const checkInvite = useMutation({
     mutationFn: async ({ budgetId, userId, userBudgetIds }: CheckInviteParams): Promise<BudgetInvite | null> => {
-      const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
 
       if (!exists || !data) return null
 

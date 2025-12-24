@@ -1,6 +1,21 @@
-// Centralized Firestore access layer
-// ALL Firestore operations should go through this module
-// Other files should NOT import from firebase/firestore directly
+/**
+ * INTERNAL: Raw Firestore Operations
+ *
+ * ⚠️ DO NOT IMPORT THIS FILE DIRECTLY ⚠️
+ *
+ * This module provides low-level Firestore operations for INTERNAL use only.
+ * It should only be imported by:
+ * - data/queries/*.ts (query hooks)
+ * - data/mutations/*.ts (mutation hooks)
+ * - data/cachedReads.ts (cached read functions)
+ *
+ * ALL external code must use:
+ * - Query hooks or cachedReads for READS
+ * - Mutation hooks for WRITES
+ *
+ * The ESLint rule 'no-restricted-imports' enforces this pattern.
+ * Exceptions require eslint-disable with an explanatory comment.
+ */
 
 import {
   getFirestore,
@@ -21,8 +36,24 @@ import {
   type QuerySnapshot,
   type WhereFilterOp,
 } from 'firebase/firestore'
-import app from '../firebase'
-import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../types/budget'
+import app from '../../firebase'
+import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../../types/budget'
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/**
+ * Raw Firestore document data - structure determined at runtime.
+ * Using `any` is intentional here because:
+ * 1. Firestore documents have flexible schemas
+ * 2. We often access nested properties dynamically
+ * 3. Type narrowing for every access would be verbose
+ *
+ * eslint-disable-next-line @typescript-eslint/no-explicit-any
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type FirestoreData = Record<string, any>
 
 // ============================================================================
 // FIRESTORE INSTANCE & REFERENCES
@@ -61,8 +92,8 @@ export interface WhereClause {
  * Strip undefined values from an object (Firestore doesn't allow undefined)
  * Recursively removes undefined from nested objects and arrays
  */
-export function stripUndefined<T extends Record<string, any>>(obj: T): T {
-  const result: Record<string, any> = {}
+export function stripUndefined<T extends FirestoreData>(obj: T): T {
+  const result: FirestoreData = {}
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -85,8 +116,10 @@ export function stripUndefined<T extends Record<string, any>>(obj: T): T {
 /**
  * Read a document by collection and doc ID
  * Logs the read with full path
+ *
+ * @internal Use cached reads from data/ instead when possible
  */
-export async function readDoc<T = Record<string, any>>(
+export async function readDoc<T = FirestoreData>(
   collectionPath: string,
   docId: string
 ): Promise<{ exists: boolean; data: T | null; ref: DocumentReference }> {
@@ -108,7 +141,7 @@ export async function readDoc<T = Record<string, any>>(
 export async function writeDoc(
   collectionPath: string,
   docId: string,
-  data: Record<string, any>,
+  data: FirestoreData,
   options?: { merge?: boolean }
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
@@ -125,7 +158,7 @@ export async function writeDoc(
 export async function updateDocByPath(
   collectionPath: string,
   docId: string,
-  data: Record<string, any>
+  data: FirestoreData
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const cleanData = stripUndefined(data)
@@ -152,6 +185,8 @@ export async function deleteDocByPath(
  * Query a collection with optional where clauses
  * Logs the query with collection name and constraints
  *
+ * @internal Use cached reads from data/ instead when possible
+ *
  * @example
  * // Simple collection read
  * const feedback = await queryCollection('feedback')
@@ -161,7 +196,7 @@ export async function deleteDocByPath(
  *   { field: 'user_ids', op: 'array-contains', value: userId }
  * ])
  */
-export async function queryCollection<T = Record<string, any>>(
+export async function queryCollection<T = FirestoreData>(
   collectionPath: string,
   whereClauses?: WhereClause[]
 ): Promise<{ docs: Array<{ id: string; data: T }> }> {
@@ -206,7 +241,7 @@ export async function queryCollection<T = Record<string, any>>(
  */
 export async function firebaseSetDoc(
   docRef: DocumentReference,
-  data: Record<string, any>,
+  data: FirestoreData,
   options?: { merge?: boolean }
 ): Promise<void> {
   const cleanData = stripUndefined(data)
@@ -221,7 +256,7 @@ export async function firebaseSetDoc(
  */
 export async function firebaseUpdateDoc(
   docRef: DocumentReference,
-  data: Record<string, any>
+  data: FirestoreData
 ): Promise<void> {
   const cleanData = stripUndefined(data)
   const docPath = docRef.path
@@ -288,9 +323,9 @@ export function cleanAccountsForFirestore(accounts: AccountsMap): AccountsMap {
 /**
  * Clean income array for Firestore (removes undefined values)
  */
-export function cleanIncomeForFirestore(incomeList: IncomeTransaction[]): Record<string, any>[] {
+export function cleanIncomeForFirestore(incomeList: IncomeTransaction[]): FirestoreData[] {
   return incomeList.map(inc => {
-    const cleaned: Record<string, any> = {
+    const cleaned: FirestoreData = {
       id: inc.id,
       amount: inc.amount,
       account_id: inc.account_id,
@@ -306,7 +341,7 @@ export function cleanIncomeForFirestore(incomeList: IncomeTransaction[]): Record
 /**
  * Clean allocations for Firestore
  */
-export function cleanAllocationsForFirestore(allocationsList: CategoryAllocation[]): Record<string, any>[] {
+export function cleanAllocationsForFirestore(allocationsList: CategoryAllocation[]): FirestoreData[] {
   return allocationsList.map(alloc => ({
     category_id: alloc.category_id,
     amount: alloc.amount,
@@ -316,9 +351,9 @@ export function cleanAllocationsForFirestore(allocationsList: CategoryAllocation
 /**
  * Clean expenses array for Firestore (removes undefined values)
  */
-export function cleanExpensesForFirestore(expensesList: ExpenseTransaction[]): Record<string, any>[] {
+export function cleanExpensesForFirestore(expensesList: ExpenseTransaction[]): FirestoreData[] {
   return expensesList.map(exp => {
-    const cleaned: Record<string, any> = {
+    const cleaned: FirestoreData = {
       id: exp.id,
       amount: exp.amount,
       category_id: exp.category_id,
@@ -335,7 +370,7 @@ export function cleanExpensesForFirestore(expensesList: ExpenseTransaction[]): R
 /**
  * Clean category balances for Firestore
  */
-export function cleanCategoryBalancesForFirestore(balances: CategoryMonthBalance[]): Record<string, any>[] {
+export function cleanCategoryBalancesForFirestore(balances: CategoryMonthBalance[]): FirestoreData[] {
   return balances.map(bal => ({
     category_id: bal.category_id,
     start_balance: bal.start_balance,

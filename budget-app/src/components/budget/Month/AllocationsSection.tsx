@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget, type Category } from '../../../contexts/budget_context'
-import { useBudgetData, useAllocationsSection } from '../../../hooks'
+import { useBudgetData, useAllocationsPage } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import { Button, StatCard, formatCurrency, getBalanceColor, ErrorAlert } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
@@ -30,7 +30,7 @@ export function AllocationsSection() {
     handleFinalizeAllocations,
     setIsEditingAppliedAllocations,
     setError,
-  } = useAllocationsSection()
+  } = useAllocationsPage()
   const isMobile = useIsMobile()
 
   // Category entry type for working with categories map

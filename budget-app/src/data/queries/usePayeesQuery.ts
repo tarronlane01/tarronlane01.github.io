@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { readDoc } from '../../utils/firestoreHelpers'
+import { readDoc } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { PayeesDocument } from '../../types/budget'
 

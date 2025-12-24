@@ -14,8 +14,11 @@ import {
   cleanAccountsForFirestore,
   writeDoc,
   readDoc,
-} from '../../utils/firestoreHelpers'
+  type FirestoreData,
+} from '../firestore/operations'
 import { markNextMonthSnapshotStaleInFirestore } from '../queries/useMonthQuery'
+import { queryClient, queryKeys } from '../queryClient'
+import type { BudgetData } from '../queries/useBudgetQuery'
 
 /**
  * Save month document to Firestore AND automatically mark next month as stale.
@@ -32,7 +35,7 @@ export async function saveMonthToFirestore(
 ) {
   const monthDocId = getMonthDocId(budgetId, month.year, month.month)
 
-  const cleanedMonth: Record<string, any> = {
+  const cleanedMonth: FirestoreData = {
     budget_id: month.budget_id,
     year: month.year,
     month: month.month,
@@ -50,7 +53,7 @@ export async function saveMonthToFirestore(
   if (month.account_balances_start) cleanedMonth.account_balances_start = month.account_balances_start
   if (month.account_balances_end) cleanedMonth.account_balances_end = month.account_balances_end
   if (month.previous_month_snapshot) cleanedMonth.previous_month_snapshot = month.previous_month_snapshot
-  if (month.snapshot_stale !== undefined) cleanedMonth.snapshot_stale = month.snapshot_stale
+  if (month.previous_month_snapshot_stale !== undefined) cleanedMonth.previous_month_snapshot_stale = month.previous_month_snapshot_stale
 
   // Save the month document
   await writeDoc('months', monthDocId, cleanedMonth)
@@ -67,7 +70,7 @@ export async function updateAccountBalance(
   accountId: string,
   delta: number
 ): Promise<AccountsMap | null> {
-  const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
+  const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
 
   if (!exists || !data) return null
 
@@ -113,5 +116,184 @@ export async function savePayeeIfNew(
   })
 
   return updatedPayees
+}
+
+// ============================================================================
+// BUDGET-LEVEL CATEGORY BALANCES SNAPSHOT STALE HELPERS
+// ============================================================================
+
+/**
+ * Mark budget snapshot stale in CACHE only.
+ * Use this in onMutate for instant UI feedback.
+ */
+export function markCategoryBalancesSnapshotStaleInCache(budgetId: string): void {
+  const budgetKey = queryKeys.budget(budgetId)
+  const budgetData = queryClient.getQueryData<BudgetData>(budgetKey)
+
+  if (budgetData?.categoryBalancesSnapshot && !budgetData.categoryBalancesSnapshot.is_stale) {
+    queryClient.setQueryData<BudgetData>(budgetKey, {
+      ...budgetData,
+      categoryBalancesSnapshot: {
+        ...budgetData.categoryBalancesSnapshot,
+        is_stale: true,
+      },
+    })
+  }
+}
+
+/**
+ * Mark budget snapshot stale in FIRESTORE only.
+ * Use this in mutationFn. Only writes if not already stale.
+ */
+export async function markCategoryBalancesSnapshotStaleInFirestore(budgetId: string): Promise<void> {
+  try {
+    const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+    if (exists && data && data.category_balances_snapshot && !data.category_balances_snapshot.is_stale) {
+      await writeDoc('budgets', budgetId, {
+        ...data,
+        category_balances_snapshot: {
+          ...data.category_balances_snapshot,
+          is_stale: true,
+        },
+      })
+    }
+  } catch (err) {
+    console.error('Error marking category balances snapshot stale in Firestore:', err)
+  }
+}
+
+// ============================================================================
+// MONTH-LEVEL CATEGORY BALANCES STALE HELPERS
+// ============================================================================
+
+import type { MonthQueryData } from '../queries/useMonthQuery'
+import { queryCollection } from '../firestore/operations'
+
+/**
+ * Mark a specific month's category_balances as stale in CACHE only.
+ * Use this in onMutate for instant UI feedback.
+ */
+export function markMonthCategoryBalancesStaleInCache(
+  budgetId: string,
+  year: number,
+  month: number
+): void {
+  const monthKey = queryKeys.month(budgetId, year, month)
+  const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+
+  if (monthData?.month && !monthData.month.category_balances_stale) {
+    queryClient.setQueryData<MonthQueryData>(monthKey, {
+      ...monthData,
+      month: {
+        ...monthData.month,
+        category_balances_stale: true,
+      },
+    })
+  }
+}
+
+/**
+ * Mark a specific month's category_balances as stale in FIRESTORE only.
+ * Use this in mutationFn. Only writes if not already stale.
+ */
+export async function markMonthCategoryBalancesStaleInFirestore(
+  budgetId: string,
+  year: number,
+  month: number
+): Promise<void> {
+  try {
+    const monthDocId = getMonthDocId(budgetId, year, month)
+    const { exists, data } = await readDoc<FirestoreData>('months', monthDocId)
+
+    if (exists && data && !data.category_balances_stale) {
+      await writeDoc('months', monthDocId, {
+        ...data,
+        category_balances_stale: true,
+      })
+    }
+  } catch (err) {
+    console.error('Error marking month category balances stale in Firestore:', err)
+  }
+}
+
+/**
+ * Mark all future months' category_balances as stale in CACHE only.
+ * Use this in onMutate for instant UI feedback.
+ */
+export function markFutureMonthsCategoryBalancesStaleInCache(
+  budgetId: string,
+  afterYear: number,
+  afterMonth: number
+): void {
+  // Get all cached month queries for this budget
+  const cache = queryClient.getQueryCache()
+  const monthQueries = cache.findAll({
+    predicate: (query) => {
+      const key = query.queryKey
+      return key[0] === 'month' && key[1] === budgetId
+    },
+  })
+
+  for (const query of monthQueries) {
+    const key = query.queryKey as readonly ['month', string, number, number]
+    const queryYear = key[2]
+    const queryMonth = key[3]
+
+    // Check if this month is after the edited month
+    const isAfter = queryYear > afterYear ||
+      (queryYear === afterYear && queryMonth > afterMonth)
+
+    if (isAfter) {
+      const monthData = queryClient.getQueryData<MonthQueryData>(key)
+      if (monthData?.month && !monthData.month.category_balances_stale) {
+        queryClient.setQueryData<MonthQueryData>(key, {
+          ...monthData,
+          month: {
+            ...monthData.month,
+            category_balances_stale: true,
+          },
+        })
+      }
+    }
+  }
+}
+
+/**
+ * Mark all future months' category_balances as stale in FIRESTORE only.
+ * Use this in mutationFn. Only writes if not already stale.
+ */
+export async function markFutureMonthsCategoryBalancesStaleInFirestore(
+  budgetId: string,
+  afterYear: number,
+  afterMonth: number
+): Promise<void> {
+  try {
+    const monthsResult = await queryCollection<{
+      year: number
+      month: number
+      category_balances_stale?: boolean
+    }>('months', [
+      { field: 'budget_id', op: '==', value: budgetId }
+    ])
+
+    for (const doc of monthsResult.docs) {
+      const docYear = doc.data.year
+      const docMonth = doc.data.month
+
+      // Check if this month is after the edited month
+      const isAfter = docYear > afterYear ||
+        (docYear === afterYear && docMonth > afterMonth)
+
+      if (isAfter && !doc.data.category_balances_stale) {
+        await writeDoc('months', doc.id, {
+          ...doc.data,
+          budget_id: budgetId,
+          category_balances_stale: true,
+        })
+      }
+    }
+  } catch (err) {
+    console.error('Error marking future months category balances stale in Firestore:', err)
+  }
 }
 

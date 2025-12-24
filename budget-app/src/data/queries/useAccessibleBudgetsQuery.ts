@@ -8,7 +8,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { queryCollection } from '../../utils/firestoreHelpers'
+import { queryCollection } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { BudgetInvite, BudgetSummary, UserDocument } from '../../types/budget'
 

@@ -10,7 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { readDoc, writeDoc, arrayUnion } from '../../utils/firestoreHelpers'
+import { readDoc, writeDoc, arrayUnion, type FirestoreData } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { FlattenedFeedbackItem, FeedbackItem } from '../queries/useFeedbackQuery'
 
@@ -89,7 +89,7 @@ export function useFeedbackMutations() {
    */
   const toggleFeedback = useMutation({
     mutationFn: async ({ item }: ToggleFeedbackParams) => {
-      const { exists, data } = await readDoc<Record<string, any>>('feedback', item.doc_id)
+      const { exists, data } = await readDoc<FirestoreData>('feedback', item.doc_id)
 
       if (!exists || !data) {
         throw new Error('Feedback document not found')
@@ -125,7 +125,7 @@ export function useFeedbackMutations() {
    */
   const updateSortOrder = useMutation({
     mutationFn: async ({ docId, items }: UpdateSortOrderParams) => {
-      const { exists, data } = await readDoc<Record<string, any>>('feedback', docId)
+      const { exists, data } = await readDoc<FirestoreData>('feedback', docId)
 
       if (!exists || !data) {
         throw new Error('Feedback document not found')

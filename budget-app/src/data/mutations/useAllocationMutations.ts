@@ -10,14 +10,24 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryCollection, readDoc, writeDoc } from '../../utils/firestoreHelpers'
+import { queryCollection, readDoc, writeDoc, getMonthDocId, type FirestoreData } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
 import type { BudgetData } from '../queries/useBudgetQuery'
 import type { MonthDocument, CategoriesMap } from '../../types/budget'
 import type { SaveAllocationsParams, FinalizeAllocationsParams, UnfinalizeAllocationsParams } from './monthMutationTypes'
-import { saveMonthToFirestore } from './monthMutationHelpers'
+import {
+  saveMonthToFirestore,
+  // Cache-only helpers (for onMutate)
+  markCategoryBalancesSnapshotStaleInCache,
+  markMonthCategoryBalancesStaleInCache,
+  markFutureMonthsCategoryBalancesStaleInCache,
+  // Firestore-only helpers (for mutationFn)
+  markCategoryBalancesSnapshotStaleInFirestore,
+  markMonthCategoryBalancesStaleInFirestore,
+  markFutureMonthsCategoryBalancesStaleInFirestore,
+} from './monthMutationHelpers'
 
 export function useAllocationMutations() {
   const queryClient = useQueryClient()
@@ -29,15 +39,16 @@ export function useAllocationMutations() {
     mutationFn: async (params: SaveAllocationsParams) => {
       const { budgetId, year, month, allocations } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         allocations,
         updated_at: new Date().toISOString(),
       }
@@ -86,15 +97,16 @@ export function useAllocationMutations() {
     mutationFn: async (params: FinalizeAllocationsParams) => {
       const { budgetId, year, month, allocations } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         allocations,
         allocations_finalized: true,
         updated_at: new Date().toISOString(),
@@ -103,11 +115,11 @@ export function useAllocationMutations() {
       await saveMonthToFirestore(budgetId, updatedMonth)
 
       // Recalculate category balances on budget document
-      const budgetKey = queryKeys.budget(budgetId)
-      const budgetData = queryClient.getQueryData<BudgetData>(budgetKey)
+      // Read budget from Firestore (server truth), not cache
+      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>('budgets', budgetId)
       let updatedCategories: CategoriesMap | null = null
 
-      if (budgetData) {
+      if (budgetExists && budgetData) {
         // Sum allocations from all finalized months
         const monthsResult = await queryCollection<{
           allocations_finalized?: boolean
@@ -117,7 +129,8 @@ export function useAllocationMutations() {
         ])
 
         const balances: Record<string, number> = {}
-        Object.keys(budgetData.categories).forEach(catId => { balances[catId] = 0 })
+        const existingCategories: CategoriesMap = budgetData.categories || {}
+        Object.keys(existingCategories).forEach(catId => { balances[catId] = 0 })
 
         for (const docSnap of monthsResult.docs) {
           const data = docSnap.data
@@ -129,23 +142,27 @@ export function useAllocationMutations() {
         }
 
         // Update categories with new balances
-        updatedCategories = { ...budgetData.categories }
-        Object.entries(updatedCategories).forEach(([catId, cat]) => {
-          updatedCategories![catId] = {
+        const categoriesWithBalances: CategoriesMap = {}
+        Object.entries(existingCategories).forEach(([catId, cat]) => {
+          categoriesWithBalances[catId] = {
             ...cat,
             balance: balances[catId] ?? 0,
           }
         })
+        updatedCategories = categoriesWithBalances
 
         // Save to budget document
-        const { exists, data } = await readDoc<Record<string, any>>('budgets', budgetId)
-        if (exists && data) {
-          await writeDoc('budgets', budgetId, {
-            ...data,
-            categories: updatedCategories,
-          })
-        }
+        await writeDoc('budgets', budgetId, {
+          ...budgetData,
+          categories: updatedCategories,
+        })
       }
+
+      // Mark stale in Firestore: budget snapshot + this month + future months
+      // (Cache already updated in onMutate)
+      await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
+      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+      await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth, updatedCategories }
     },
@@ -169,6 +186,10 @@ export function useAllocationMutations() {
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
       markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // Mark stale in cache: budget snapshot + this month + future months
+      markCategoryBalancesSnapshotStaleInCache(budgetId)
+      markMonthCategoryBalancesStaleInCache(budgetId, year, month)
+      markFutureMonthsCategoryBalancesStaleInCache(budgetId, year, month)
 
       return { previousMonth }
     },
@@ -203,20 +224,27 @@ export function useAllocationMutations() {
     mutationFn: async (params: UnfinalizeAllocationsParams) => {
       const { budgetId, year, month } = params
 
-      const monthKey = queryKeys.month(budgetId, year, month)
-      const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
+      // Read from Firestore (server truth), not cache
+      const monthDocId = getMonthDocId(budgetId, year, month)
+      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
 
-      if (!monthData) {
-        throw new Error('Month data not found')
+      if (!exists || !monthData) {
+        throw new Error('Month data not found in Firestore')
       }
 
       const updatedMonth: MonthDocument = {
-        ...monthData.month,
+        ...monthData,
         allocations_finalized: false,
         updated_at: new Date().toISOString(),
       }
 
       await saveMonthToFirestore(budgetId, updatedMonth)
+
+      // Mark stale in Firestore: budget snapshot + this month + future months
+      // (Cache already updated in onMutate)
+      await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
+      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+      await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth }
     },
@@ -239,6 +267,10 @@ export function useAllocationMutations() {
 
       // CROSS-MONTH: Mark next month as stale in cache immediately
       markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // Mark stale in cache: budget snapshot + this month + future months
+      markCategoryBalancesSnapshotStaleInCache(budgetId)
+      markMonthCategoryBalancesStaleInCache(budgetId, year, month)
+      markFutureMonthsCategoryBalancesStaleInCache(budgetId, year, month)
 
       return { previousMonth }
     },

@@ -5,6 +5,7 @@ import { listContainer, sectionHeader, colors } from '../../../styles/shared'
 import { CategoryForm, type CategoryFormData } from './CategoryForm'
 import { CategoryEndDropZone } from './CategoryEndDropZone'
 import { CategoryCardContent } from './CategoryGroupCard'
+import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
 
 type CategoryEntry = [string, Category]
 type DragType = 'category' | 'group' | null
@@ -12,7 +13,7 @@ type DragType = 'category' | 'group' | null
 interface UncategorizedSectionProps {
   ungroupedCategories: CategoryEntry[]
   categoryGroups: CategoryGroup[]
-  categoryBalances: Record<string, number>
+  categoryBalances: Record<string, CategoryBalance>
   loadingBalances: boolean
   // Drag state
   dragType: DragType

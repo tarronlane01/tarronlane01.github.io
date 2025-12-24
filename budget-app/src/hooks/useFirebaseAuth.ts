@@ -1,4 +1,4 @@
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from "firebase/auth";
 import app from "../firebase";
 import type { type_firebase_auth_hook } from "../types/type_firebase_auth_hook"
 
@@ -17,7 +17,7 @@ export default function useFirebaseAuth() {
         return signOut(firebase_auth);
     }
 
-    function set_user_listener(auth_changed_callback: (user: any) => void) {
+    function set_user_listener(auth_changed_callback: (user: User | null) => void) {
         onAuthStateChanged(firebase_auth, (user) => {
             auth_changed_callback(user);
         });
