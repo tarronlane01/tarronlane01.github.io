@@ -30,9 +30,11 @@ async function fetchAccessibleBudgets(
     owner_email?: string
     owner_id?: string
     accepted_user_ids?: string[]
-  }>('budgets', [
-    { field: 'user_ids', op: 'array-contains', value: userId }
-  ])
+  }>(
+    'budgets',
+    'loading budgets user has access to (cache miss or stale)',
+    [{ field: 'user_ids', op: 'array-contains', value: userId }]
+  )
 
   const budgets: BudgetSummary[] = []
   const pendingInvites: BudgetInvite[] = []

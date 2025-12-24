@@ -56,7 +56,12 @@ export async function saveMonthToFirestore(
   if (month.previous_month_snapshot_stale !== undefined) cleanedMonth.previous_month_snapshot_stale = month.previous_month_snapshot_stale
 
   // Save the month document
-  await writeDoc('months', monthDocId, cleanedMonth)
+  await writeDoc(
+    'months',
+    monthDocId,
+    cleanedMonth,
+    'saveMonthToFirestore: saving month document after mutation'
+  )
 
   // CROSS-MONTH: Mark next month as stale (only writes to Firestore if not already stale)
   await markNextMonthSnapshotStaleInFirestore(budgetId, month.year, month.month)
@@ -70,7 +75,11 @@ export async function updateAccountBalance(
   accountId: string,
   delta: number
 ): Promise<AccountsMap | null> {
-  const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+  const { exists, data } = await readDoc<FirestoreData>(
+    'budgets',
+    budgetId,
+    `reading budget to update account balance (delta: ${delta})`
+  )
 
   if (!exists || !data) return null
 
@@ -86,10 +95,15 @@ export async function updateAccountBalance(
     },
   }
 
-  await writeDoc('budgets', budgetId, {
-    ...data,
-    accounts: cleanAccountsForFirestore(updatedAccounts),
-  })
+  await writeDoc(
+    'budgets',
+    budgetId,
+    {
+      ...data,
+      accounts: cleanAccountsForFirestore(updatedAccounts),
+    },
+    'saving updated account balance after income/expense change'
+  )
 
   return updatedAccounts
 }
@@ -109,11 +123,16 @@ export async function savePayeeIfNew(
     a.toLowerCase().localeCompare(b.toLowerCase())
   )
 
-  await writeDoc('payees', budgetId, {
-    budget_id: budgetId,
-    payees: updatedPayees,
-    updated_at: new Date().toISOString(),
-  })
+  await writeDoc(
+    'payees',
+    budgetId,
+    {
+      budget_id: budgetId,
+      payees: updatedPayees,
+      updated_at: new Date().toISOString(),
+    },
+    `adding new payee "${trimmed}" to autocomplete list`
+  )
 
   return updatedPayees
 }
@@ -147,15 +166,24 @@ export function markCategoryBalancesSnapshotStaleInCache(budgetId: string): void
  */
 export async function markCategoryBalancesSnapshotStaleInFirestore(budgetId: string): Promise<void> {
   try {
-    const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+    const { exists, data } = await readDoc<FirestoreData>(
+      'budgets',
+      budgetId,
+      'checking if budget category snapshot needs stale flag'
+    )
     if (exists && data && data.category_balances_snapshot && !data.category_balances_snapshot.is_stale) {
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        category_balances_snapshot: {
-          ...data.category_balances_snapshot,
-          is_stale: true,
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          category_balances_snapshot: {
+            ...data.category_balances_snapshot,
+            is_stale: true,
+          },
         },
-      })
+        'marking budget category balances snapshot as stale (expense or allocation changed)'
+      )
     }
   } catch (err) {
     console.error('Error marking category balances snapshot stale in Firestore:', err)
@@ -203,13 +231,22 @@ export async function markMonthCategoryBalancesStaleInFirestore(
 ): Promise<void> {
   try {
     const monthDocId = getMonthDocId(budgetId, year, month)
-    const { exists, data } = await readDoc<FirestoreData>('months', monthDocId)
+    const { exists, data } = await readDoc<FirestoreData>(
+      'months',
+      monthDocId,
+      `checking if ${year}/${month} category balances need stale flag`
+    )
 
     if (exists && data && !data.category_balances_stale) {
-      await writeDoc('months', monthDocId, {
-        ...data,
-        category_balances_stale: true,
-      })
+      await writeDoc(
+        'months',
+        monthDocId,
+        {
+          ...data,
+          category_balances_stale: true,
+        },
+        `marking ${year}/${month} category balances as stale`
+      )
     }
   } catch (err) {
     console.error('Error marking month category balances stale in Firestore:', err)
@@ -272,9 +309,11 @@ export async function markFutureMonthsCategoryBalancesStaleInFirestore(
       year: number
       month: number
       category_balances_stale?: boolean
-    }>('months', [
-      { field: 'budget_id', op: '==', value: budgetId }
-    ])
+    }>(
+      'months',
+      `finding months after ${afterYear}/${afterMonth} to mark category balances stale`,
+      [{ field: 'budget_id', op: '==', value: budgetId }]
+    )
 
     for (const doc of monthsResult.docs) {
       const docYear = doc.data.year
@@ -285,11 +324,16 @@ export async function markFutureMonthsCategoryBalancesStaleInFirestore(
         (docYear === afterYear && docMonth > afterMonth)
 
       if (isAfter && !doc.data.category_balances_stale) {
-        await writeDoc('months', doc.id, {
-          ...doc.data,
-          budget_id: budgetId,
-          category_balances_stale: true,
-        })
+        await writeDoc(
+          'months',
+          doc.id,
+          {
+            ...doc.data,
+            budget_id: budgetId,
+            category_balances_stale: true,
+          },
+          `marking ${docYear}/${docMonth} category balances as stale (earlier month was edited)`
+        )
       }
     }
   } catch (err) {

@@ -41,7 +41,11 @@ export function useAllocationMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before saving allocations (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
@@ -99,7 +103,11 @@ export function useAllocationMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before saving allocations (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
@@ -116,7 +124,11 @@ export function useAllocationMutations() {
 
       // Recalculate category balances on budget document
       // Read budget from Firestore (server truth), not cache
-      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget to recalculate category balances after finalizing allocations'
+      )
       let updatedCategories: CategoriesMap | null = null
 
       if (budgetExists && budgetData) {
@@ -124,9 +136,11 @@ export function useAllocationMutations() {
         const monthsResult = await queryCollection<{
           allocations_finalized?: boolean
           allocations?: Array<{ category_id: string; amount: number }>
-        }>('months', [
-          { field: 'budget_id', op: '==', value: budgetId }
-        ])
+        }>(
+          'months',
+          'summing allocations from all finalized months to recalculate category balances',
+          [{ field: 'budget_id', op: '==', value: budgetId }]
+        )
 
         const balances: Record<string, number> = {}
         const existingCategories: CategoriesMap = budgetData.categories || {}
@@ -152,10 +166,15 @@ export function useAllocationMutations() {
         updatedCategories = categoriesWithBalances
 
         // Save to budget document
-        await writeDoc('budgets', budgetId, {
-          ...budgetData,
-          categories: updatedCategories,
-        })
+        await writeDoc(
+          'budgets',
+          budgetId,
+          {
+            ...budgetData,
+            categories: updatedCategories,
+          },
+          'saving recalculated category balances after finalizing allocations'
+        )
       }
 
       // Mark stale in Firestore: budget snapshot + this month + future months
@@ -226,7 +245,11 @@ export function useAllocationMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before saving allocations (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')

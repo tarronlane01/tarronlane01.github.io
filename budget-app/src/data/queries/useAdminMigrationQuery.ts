@@ -31,7 +31,10 @@ async function checkMigrationStatus(): Promise<MigrationStatus> {
   const budgetsResult = await queryCollection<{
     categories?: unknown
     accounts?: unknown
-  }>('budgets', [])
+  }>(
+    'budgets',
+    'admin checking migration status for all budgets'
+  )
 
   let budgetsToMigrateCategories = 0
   let budgetsToMigrateAccounts = 0

@@ -59,7 +59,11 @@ export function useAccountMutations() {
    */
   const updateAccounts = useMutation({
     mutationFn: async ({ budgetId, accounts }: UpdateAccountsParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before updating accounts (need current state)'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -67,10 +71,15 @@ export function useAccountMutations() {
 
       const cleanedAccounts = cleanAccountsForFirestore(accounts)
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        accounts: cleanedAccounts,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          accounts: cleanedAccounts,
+        },
+        'saving updated accounts (user edited account settings)'
+      )
 
       return accounts
     },
@@ -108,7 +117,11 @@ export function useAccountMutations() {
    */
   const updateAccountGroups = useMutation({
     mutationFn: async ({ budgetId, accountGroups }: UpdateAccountGroupsParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before updating account groups (need current state)'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -116,10 +129,15 @@ export function useAccountMutations() {
 
       const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        account_groups: cleanedGroups,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          account_groups: cleanedGroups,
+        },
+        'saving updated account groups (user edited group settings)'
+      )
 
       return accountGroups
     },
@@ -157,7 +175,11 @@ export function useAccountMutations() {
    */
   const updateAccountBalance = useMutation({
     mutationFn: async ({ budgetId, accountId, delta }: UpdateAccountBalanceParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        `reading budget before updating account balance (delta: ${delta})`
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -177,10 +199,15 @@ export function useAccountMutations() {
         },
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        accounts: cleanAccountsForFirestore(updatedAccounts),
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          accounts: cleanAccountsForFirestore(updatedAccounts),
+        },
+        'saving updated account balance'
+      )
 
       return updatedAccounts
     },

@@ -57,23 +57,38 @@ export function useFeedbackMutations() {
         feedback_type: feedbackType,
       }
 
-      const { exists } = await readDoc('feedback', feedbackDocId)
+      const { exists } = await readDoc(
+        'feedback',
+        feedbackDocId,
+        'checking if user has existing feedback document'
+      )
 
       if (exists) {
         // Add to existing array
-        await writeDoc('feedback', feedbackDocId, {
-          items: arrayUnion(newFeedbackItem),
-          user_email: userEmail,
-          updated_at: new Date().toISOString(),
-        }, { merge: true })
+        await writeDoc(
+          'feedback',
+          feedbackDocId,
+          {
+            items: arrayUnion(newFeedbackItem),
+            user_email: userEmail,
+            updated_at: new Date().toISOString(),
+          },
+          'adding new feedback item to existing document',
+          { merge: true }
+        )
       } else {
         // Create new document
-        await writeDoc('feedback', feedbackDocId, {
-          items: [newFeedbackItem],
-          user_email: userEmail,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        await writeDoc(
+          'feedback',
+          feedbackDocId,
+          {
+            items: [newFeedbackItem],
+            user_email: userEmail,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          'creating new feedback document for user'
+        )
       }
 
       return { feedbackItem: newFeedbackItem }
@@ -89,7 +104,11 @@ export function useFeedbackMutations() {
    */
   const toggleFeedback = useMutation({
     mutationFn: async ({ item }: ToggleFeedbackParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('feedback', item.doc_id)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'feedback',
+        item.doc_id,
+        'reading feedback document before toggling completion status'
+      )
 
       if (!exists || !data) {
         throw new Error('Feedback document not found')
@@ -107,11 +126,16 @@ export function useFeedbackMutations() {
         return i
       })
 
-      await writeDoc('feedback', item.doc_id, {
-        ...data,
-        items: updatedItems,
-        updated_at: new Date().toISOString(),
-      })
+      await writeDoc(
+        'feedback',
+        item.doc_id,
+        {
+          ...data,
+          items: updatedItems,
+          updated_at: new Date().toISOString(),
+        },
+        `marking feedback item as ${!item.is_done ? 'done' : 'not done'}`
+      )
 
       return { itemId: item.id, isDone: !item.is_done }
     },
@@ -125,17 +149,26 @@ export function useFeedbackMutations() {
    */
   const updateSortOrder = useMutation({
     mutationFn: async ({ docId, items }: UpdateSortOrderParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('feedback', docId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'feedback',
+        docId,
+        'reading feedback document before updating sort order'
+      )
 
       if (!exists || !data) {
         throw new Error('Feedback document not found')
       }
 
-      await writeDoc('feedback', docId, {
-        ...data,
-        items,
-        updated_at: new Date().toISOString(),
-      })
+      await writeDoc(
+        'feedback',
+        docId,
+        {
+          ...data,
+          items,
+          updated_at: new Date().toISOString(),
+        },
+        'saving reordered feedback items'
+      )
 
       return { docId }
     },

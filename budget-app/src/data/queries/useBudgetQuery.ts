@@ -152,7 +152,11 @@ function parseCategoryBalancesSnapshot(snapshotData: FirestoreData | undefined):
  * Fetch budget document from Firestore
  */
 async function fetchBudget(budgetId: string): Promise<BudgetData> {
-  const { exists, data } = await readDoc<BudgetDocument>('budgets', budgetId)
+  const { exists, data } = await readDoc<BudgetDocument>(
+    'budgets',
+    budgetId,
+    'loading budget data (cache miss or stale)'
+  )
 
   if (!exists || !data) {
     throw new Error(`Budget ${budgetId} not found`)

@@ -24,7 +24,11 @@ export async function fetchBudgetDocument(budgetId: string): Promise<FirestoreDa
   return queryClient.fetchQuery({
     queryKey: [...queryKeys.budget(budgetId), 'raw'] as const,
     queryFn: async () => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'fetching raw budget document (React Query cache miss)'
+      )
       return exists ? data : null
     },
     staleTime: 5 * 60 * 1000,
@@ -47,7 +51,11 @@ export async function fetchBudgetInviteStatus(
         accepted_user_ids?: string[]
         name?: string
         owner_email?: string
-      }>('budgets', budgetId)
+      }>(
+        'budgets',
+        budgetId,
+        'checking if user has pending invite for budget'
+      )
 
       if (!exists || !data) return null
 
@@ -114,7 +122,11 @@ async function fetchMonthForBalances(
   }
 
   // Fetch from Firestore
-  const { exists, data } = await readDoc<MonthBalanceData>('months', monthDocId)
+  const { exists, data } = await readDoc<MonthBalanceData>(
+    'months',
+    monthDocId,
+    `fetching month for balance calculation (not in cache, walking ${year}/${month})`
+  )
   return exists ? data : null
 }
 

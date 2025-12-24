@@ -147,7 +147,11 @@ async function fetchMonth(
 ): Promise<MonthDocument> {
   const monthDocId = getMonthDocId(budgetId, year, month)
 
-  const { exists, data: monthData } = await readDoc<FirestoreData>('months', monthDocId)
+  const { exists, data: monthData } = await readDoc<FirestoreData>(
+    'months',
+    monthDocId,
+    'loading month document (cache miss or stale)'
+  )
 
   if (exists && monthData) {
     const parsedMonth = parseMonthData(monthData, budgetId, year, month)
@@ -204,7 +208,11 @@ async function reconcileSnapshot(
   } else {
     // Not in cache, fetch from Firestore (1 read - acceptable for reconciliation)
     const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
-    const { exists, data: prevData } = await readDoc<FirestoreData>('months', prevMonthDocId)
+    const { exists, data: prevData } = await readDoc<FirestoreData>(
+      'months',
+      prevMonthDocId,
+      'fetching previous month to rebuild stale snapshot (not in cache)'
+    )
 
     if (exists && prevData) {
       prevMonthData = parseMonthData(prevData, budgetId, prevYear, prevMonth)
@@ -259,7 +267,12 @@ async function reconcileSnapshot(
   if (updatedMonth.account_balances_end !== undefined) {
     docToWrite.account_balances_end = updatedMonth.account_balances_end
   }
-  await writeDoc('months', monthDocId, docToWrite)
+  await writeDoc(
+    'months',
+    monthDocId,
+    docToWrite,
+    'saving month with fresh snapshot rebuilt from previous month'
+  )
 
   return updatedMonth
 }
@@ -290,7 +303,11 @@ async function createNewMonthWithSnapshot(
     } else {
       // Fetch previous month if not cached (1 read - one time for new month creation)
       const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
-      const { exists, data: prevData } = await readDoc<FirestoreData>('months', prevMonthDocId)
+      const { exists, data: prevData } = await readDoc<FirestoreData>(
+        'months',
+        prevMonthDocId,
+        'fetching previous month to create snapshot for new month (not in cache)'
+      )
 
       if (exists && prevData) {
         const prevMonthData = parseMonthData(prevData, budgetId, prevYear, prevMonth)
@@ -342,7 +359,12 @@ async function createNewMonthWithSnapshot(
     docToWrite.previous_month_snapshot = snapshot
   }
 
-  await writeDoc('months', monthDocId, docToWrite)
+  await writeDoc(
+    'months',
+    monthDocId,
+    docToWrite,
+    'creating new month document (first time viewing this month)'
+  )
   return newMonth
 }
 
@@ -436,16 +458,25 @@ export async function markNextMonthSnapshotStaleInFirestore(
   const nextMonthDocId = getMonthDocId(budgetId, nextYear, nextMonth)
 
   // Check if next month exists and if it's already marked stale
-  const { exists, data } = await readDoc<FirestoreData>('months', nextMonthDocId)
+  const { exists, data } = await readDoc<FirestoreData>(
+    'months',
+    nextMonthDocId,
+    'checking if next month exists to mark its snapshot stale'
+  )
 
   if (exists && data) {
     // Only write if not already stale (avoid double writes)
     if (!data.previous_month_snapshot_stale) {
-      await writeDoc('months', nextMonthDocId, {
-        ...data,
-        previous_month_snapshot_stale: true,
-        updated_at: new Date().toISOString(),
-      })
+      await writeDoc(
+        'months',
+        nextMonthDocId,
+        {
+          ...data,
+          previous_month_snapshot_stale: true,
+          updated_at: new Date().toISOString(),
+        },
+        'marking next month snapshot as stale (previous month was edited)'
+      )
 
       // Also update cache
       const nextMonthKey = queryKeys.month(budgetId, nextYear, nextMonth)

@@ -37,7 +37,19 @@ import {
   type WhereFilterOp,
 } from 'firebase/firestore'
 import app from '../../firebase'
+import { featureFlags } from '../../constants/featureFlags'
 import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../../types/budget'
+
+// Helper to conditionally log Firebase operations with source context
+function logFirebase(operation: string, path: string, source: string, data?: unknown): void {
+  if (featureFlags.logFirebaseOperations) {
+    if (data !== undefined) {
+      console.log(`[Firebase] ${operation}: ${path} ← ${source}`, data)
+    } else {
+      console.log(`[Firebase] ${operation}: ${path} ← ${source}`)
+    }
+  }
+}
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -115,17 +127,21 @@ export function stripUndefined<T extends FirestoreData>(obj: T): T {
 
 /**
  * Read a document by collection and doc ID
- * Logs the read with full path
+ * Logs the read with full path and source context
  *
+ * @param collectionPath - Firestore collection path
+ * @param docId - Document ID
+ * @param source - Description of what triggered this read (e.g., "useBudgetQuery: initial load")
  * @internal Use cached reads from data/ instead when possible
  */
 export async function readDoc<T = FirestoreData>(
   collectionPath: string,
-  docId: string
+  docId: string,
+  source: string
 ): Promise<{ exists: boolean; data: T | null; ref: DocumentReference }> {
   const docRef = doc(getDb(), collectionPath, docId)
   const path = `${collectionPath}/${docId}`
-  console.log('[Firebase] READ getDoc:', path)
+  logFirebase('READ', path, source)
   const snapshot = await getDoc(docRef)
   return {
     exists: snapshot.exists(),
@@ -136,68 +152,90 @@ export async function readDoc<T = FirestoreData>(
 
 /**
  * Write (set) a document by collection and doc ID
- * Logs the write with full path and data
+ * Logs the write with full path, source context, and data
+ *
+ * @param collectionPath - Firestore collection path
+ * @param docId - Document ID
+ * @param data - Data to write
+ * @param source - Description of what triggered this write (e.g., "addIncome: saving new income transaction")
+ * @param options - Firestore setDoc options
  */
 export async function writeDoc(
   collectionPath: string,
   docId: string,
   data: FirestoreData,
+  source: string,
   options?: { merge?: boolean }
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const cleanData = stripUndefined(data)
   const path = `${collectionPath}/${docId}`
-  console.log('[Firebase] WRITE setDoc:', path, cleanData)
+  logFirebase('WRITE', path, source, cleanData)
   return setDoc(docRef, cleanData, options ?? {})
 }
 
 /**
  * Update a document by collection and doc ID
- * Logs the update with full path and data
+ * Logs the update with full path, source context, and data
+ *
+ * @param collectionPath - Firestore collection path
+ * @param docId - Document ID
+ * @param data - Data to update
+ * @param source - Description of what triggered this update (e.g., "updateAccounts: saving account changes")
  */
 export async function updateDocByPath(
   collectionPath: string,
   docId: string,
-  data: FirestoreData
+  data: FirestoreData,
+  source: string
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const cleanData = stripUndefined(data)
   const path = `${collectionPath}/${docId}`
-  console.log('[Firebase] WRITE updateDoc:', path, cleanData)
+  logFirebase('UPDATE', path, source, cleanData)
   return updateDoc(docRef, cleanData)
 }
 
 /**
  * Delete a document by collection and doc ID
- * Logs the delete with full path
+ * Logs the delete with full path and source context
+ *
+ * @param collectionPath - Firestore collection path
+ * @param docId - Document ID
+ * @param source - Description of what triggered this delete
  */
 export async function deleteDocByPath(
   collectionPath: string,
-  docId: string
+  docId: string,
+  source: string
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const path = `${collectionPath}/${docId}`
-  console.log('[Firebase] DELETE:', path)
+  logFirebase('DELETE', path, source)
   return deleteDoc(docRef)
 }
 
 /**
  * Query a collection with optional where clauses
- * Logs the query with collection name and constraints
+ * Logs the query with collection name, constraints, and source context
  *
+ * @param collectionPath - Firestore collection path
+ * @param source - Description of what triggered this query (e.g., "useAccessibleBudgetsQuery: loading user's budgets")
+ * @param whereClauses - Optional where clauses to filter the query
  * @internal Use cached reads from data/ instead when possible
  *
  * @example
  * // Simple collection read
- * const feedback = await queryCollection('feedback')
+ * const feedback = await queryCollection('feedback', 'useFeedbackQuery: loading all feedback')
  *
  * // With where clause
- * const userBudgets = await queryCollection('budgets', [
+ * const userBudgets = await queryCollection('budgets', 'useAccessibleBudgetsQuery: loading budgets for user', [
  *   { field: 'user_ids', op: 'array-contains', value: userId }
  * ])
  */
 export async function queryCollection<T = FirestoreData>(
   collectionPath: string,
+  source: string,
   whereClauses?: WhereClause[]
 ): Promise<{ docs: Array<{ id: string; data: T }> }> {
   const db = getDb()
@@ -211,7 +249,7 @@ export async function queryCollection<T = FirestoreData>(
       .join(', ')
     logDescription += ` WHERE ${clauseStr}`
   }
-  console.log('[Firebase] READ getDocs:', logDescription)
+  logFirebase('QUERY', logDescription, source)
 
   // Build and execute query
   let q: Query
@@ -242,11 +280,12 @@ export async function queryCollection<T = FirestoreData>(
 export async function firebaseSetDoc(
   docRef: DocumentReference,
   data: FirestoreData,
+  source: string,
   options?: { merge?: boolean }
 ): Promise<void> {
   const cleanData = stripUndefined(data)
   const docPath = docRef.path
-  console.log('[Firebase] WRITE setDoc:', docPath, cleanData)
+  logFirebase('WRITE', docPath, source, cleanData)
   return setDoc(docRef, cleanData, options ?? {})
 }
 
@@ -256,11 +295,12 @@ export async function firebaseSetDoc(
  */
 export async function firebaseUpdateDoc(
   docRef: DocumentReference,
-  data: FirestoreData
+  data: FirestoreData,
+  source: string
 ): Promise<void> {
   const cleanData = stripUndefined(data)
   const docPath = docRef.path
-  console.log('[Firebase] WRITE updateDoc:', docPath, cleanData)
+  logFirebase('UPDATE', docPath, source, cleanData)
   return updateDoc(docRef, cleanData)
 }
 
@@ -268,9 +308,9 @@ export async function firebaseUpdateDoc(
  * Wrapper for Firestore deleteDoc that logs deletes
  * @deprecated Use deleteDocByPath() instead
  */
-export async function firebaseDeleteDoc(docRef: DocumentReference): Promise<void> {
+export async function firebaseDeleteDoc(docRef: DocumentReference, source: string): Promise<void> {
   const docPath = docRef.path
-  console.log('[Firebase] DELETE:', docPath)
+  logFirebase('DELETE', docPath, source)
   return deleteDoc(docRef)
 }
 
@@ -278,9 +318,9 @@ export async function firebaseDeleteDoc(docRef: DocumentReference): Promise<void
  * Wrapper for Firestore getDoc that logs reads
  * @deprecated Use readDoc() instead
  */
-export async function firebaseGetDoc<T>(docRef: DocumentReference<T>): Promise<DocumentSnapshot<T>> {
+export async function firebaseGetDoc<T>(docRef: DocumentReference<T>, source: string): Promise<DocumentSnapshot<T>> {
   const docPath = docRef.path
-  console.log('[Firebase] READ getDoc:', docPath)
+  logFirebase('READ', docPath, source)
   return getDoc(docRef)
 }
 
@@ -288,11 +328,10 @@ export async function firebaseGetDoc<T>(docRef: DocumentReference<T>): Promise<D
  * Wrapper for Firestore getDocs that logs collection/query reads
  * @deprecated Use queryCollection() instead
  * @param queryRef - The Firestore query to execute
- * @param label - Optional label describing what is being queried (e.g., "budgets for user", "months for budget")
+ * @param source - Description of what triggered this query
  */
-export async function firebaseGetDocs<T>(queryRef: Query<T>, label?: string): Promise<QuerySnapshot<T>> {
-  const description = label ? label : '(collection query)'
-  console.log('[Firebase] READ getDocs:', description)
+export async function firebaseGetDocs<T>(queryRef: Query<T>, source: string): Promise<QuerySnapshot<T>> {
+  logFirebase('QUERY', '(collection query)', source)
   return getDocs(queryRef)
 }
 

@@ -76,7 +76,11 @@ export function useCategoryMutations() {
    */
   const updateCategories = useMutation({
     mutationFn: async ({ budgetId, categories }: UpdateCategoriesParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before updating categories (need current state)'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -84,10 +88,15 @@ export function useCategoryMutations() {
 
       const cleanedCategories = cleanCategoriesForFirestore(categories)
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        categories: cleanedCategories,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          categories: cleanedCategories,
+        },
+        'saving updated categories (user edited category settings)'
+      )
 
       return categories
     },
@@ -125,16 +134,25 @@ export function useCategoryMutations() {
    */
   const updateCategoryGroups = useMutation({
     mutationFn: async ({ budgetId, categoryGroups }: UpdateCategoryGroupsParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before updating category groups (need current state)'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        category_groups: categoryGroups,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          category_groups: categoryGroups,
+        },
+        'saving updated category groups (user edited group settings)'
+      )
 
       return categoryGroups
     },
@@ -181,16 +199,25 @@ export function useCategoryMutations() {
         balances: balances,
       }
 
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before saving category balances snapshot'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        category_balances_snapshot: newSnapshot,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          category_balances_snapshot: newSnapshot,
+        },
+        'saving category balances snapshot (caching computed balances)'
+      )
 
       return newSnapshot
     },
@@ -245,17 +272,26 @@ export function useCategoryMutations() {
         balances: balances,
       }
 
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before recalculating category balances'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        categories: cleanCategoriesForFirestore(categories),
-        category_balances_snapshot: newSnapshot,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          categories: cleanCategoriesForFirestore(categories),
+          category_balances_snapshot: newSnapshot,
+        },
+        'saving recalculated category balances and snapshot (user triggered recalculation)'
+      )
 
       return { categories, snapshot: newSnapshot }
     },

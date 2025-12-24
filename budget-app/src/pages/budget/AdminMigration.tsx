@@ -51,9 +51,11 @@ function AdminMigration() {
       const monthsResult = await queryCollection<{
         allocations_finalized?: boolean
         allocations?: Array<{ category_id: string; amount: number }>
-      }>('months', [
-        { field: 'budget_id', op: '==', value: budgetId }
-      ])
+      }>(
+        'months',
+        `admin migration: calculating category balances for budget ${budgetId}`,
+        [{ field: 'budget_id', op: '==', value: budgetId }]
+      )
 
       for (const docSnap of monthsResult.docs) {
         const data = docSnap.data
@@ -81,7 +83,10 @@ function AdminMigration() {
 
     try {
       // Query ALL budgets in the system (no filter)
-      const budgetsResult = await queryCollection<{ name?: string }>('budgets', [])
+      const budgetsResult = await queryCollection<{ name?: string }>(
+        'budgets',
+        'admin migration: listing all budgets in system to migrate'
+      )
 
       if (budgetsResult.docs.length === 0) {
         setMigrationResults([{ budgetId: '', budgetName: 'No budgets found', categoriesMigrated: 0, accountsMigrated: 0, accountGroupsMigrated: 0, balancesCalculated: false, error: 'No budgets in system' }])
@@ -119,7 +124,11 @@ function AdminMigration() {
 
   async function migrateBudget(budgetId: string): Promise<BudgetMigrationResult> {
     try {
-      const { exists: budgetExists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists: budgetExists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        `admin migration: reading budget to check if migration needed`
+      )
 
       if (!budgetExists || !data) {
         return {
@@ -281,12 +290,17 @@ function AdminMigration() {
       // Save updated budget document - remove category_balances from data
       const { category_balances: _catBalRemoved, ...restData } = data as FirestoreData
       void _catBalRemoved // Intentionally unused - destructuring to exclude from saved data
-      await writeDoc('budgets', budgetId, {
-        ...restData,
-        categories: updatedCategories,
-        accounts: updatedAccounts,
-        account_groups: updatedAccountGroups,
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...restData,
+          categories: updatedCategories,
+          accounts: updatedAccounts,
+          account_groups: updatedAccountGroups,
+        },
+        `admin migration: saving migrated budget data (categories: ${categoriesMigrated}, accounts: ${accountsMigrated}, groups: ${accountGroupsMigrated})`
+      )
 
       return {
         budgetId,

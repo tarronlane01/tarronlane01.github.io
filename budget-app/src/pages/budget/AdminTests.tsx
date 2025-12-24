@@ -75,7 +75,7 @@ function AdminTests() {
     await runTest('Read unauthorized budget', async () => {
       // Use a fake budget ID that the user shouldn't have access to
       const fakeBudgetId = 'unauthorized_budget_test_12345'
-      await readDoc('budgets', fakeBudgetId)
+      await readDoc('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
       return 'Was able to read budget (unexpected)'
     }, true)
 
@@ -83,7 +83,7 @@ function AdminTests() {
     await runTest('Read another user\'s document', async () => {
       // Use a fake user ID
       const fakeUserId = 'another_user_test_12345'
-      await readDoc('users', fakeUserId)
+      await readDoc('users', fakeUserId, 'security test: attempting unauthorized user read')
       return 'Was able to read user document (unexpected)'
     }, true)
 
@@ -93,7 +93,7 @@ function AdminTests() {
       // Month document IDs follow the format: {budgetId}_{year}_{month}
       const fakeBudgetId = 'unauthorized_budget_test_12345'
       const fakeMonthId = `${fakeBudgetId}_2024_01`
-      await readDoc('months', fakeMonthId)
+      await readDoc('months', fakeMonthId, 'security test: attempting unauthorized month read')
       return 'Was able to read month document for unauthorized budget (unexpected)'
     }, true)
 
@@ -101,12 +101,19 @@ function AdminTests() {
     await runTest('Toggle is_admin in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       // First read current value
-      const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>('users', currentUserId)
+      const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>(
+        'users',
+        currentUserId,
+        'security test: reading own user to get current is_admin value'
+      )
       const currentIsAdmin = data?.permission_flags?.is_admin ?? false
       // Try to set it to the opposite
-      await updateDocByPath('users', currentUserId, {
-        'permission_flags.is_admin': !currentIsAdmin,
-      })
+      await updateDocByPath(
+        'users',
+        currentUserId,
+        { 'permission_flags.is_admin': !currentIsAdmin },
+        'security test: attempting to toggle is_admin (should fail)'
+      )
       return `Was able to change is_admin from ${currentIsAdmin} to ${!currentIsAdmin} (SECURITY ISSUE!)`
     }, true)
 
@@ -114,19 +121,26 @@ function AdminTests() {
     await runTest('Toggle is_test in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       // First read current value
-      const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>('users', currentUserId)
+      const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>(
+        'users',
+        currentUserId,
+        'security test: reading own user to get current is_test value'
+      )
       const currentIsTest = data?.permission_flags?.is_test ?? false
       // Try to set it to the opposite
-      await updateDocByPath('users', currentUserId, {
-        'permission_flags.is_test': !currentIsTest,
-      })
+      await updateDocByPath(
+        'users',
+        currentUserId,
+        { 'permission_flags.is_test': !currentIsTest },
+        'security test: attempting to toggle is_test (should fail)'
+      )
       return `Was able to change is_test from ${currentIsTest} to ${!currentIsTest} (SECURITY ISSUE!)`
     }, true)
 
     // Test 6: Read own user document (should succeed)
     await runTest('Read own user document', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
-      const { exists } = await readDoc('users', currentUserId)
+      const { exists } = await readDoc('users', currentUserId, 'security test: reading own user document (should succeed)')
       if (exists) {
         return 'Successfully read own document'
       }
@@ -188,14 +202,14 @@ function AdminTests() {
       case 'Read unauthorized budget':
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
-          await readDoc('budgets', fakeBudgetId)
+          await readDoc('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
           return 'Was able to read budget (unexpected)'
         }, true)
         break
       case 'Read another user\'s document':
         await runTest(name, async () => {
           const fakeUserId = 'another_user_test_12345'
-          await readDoc('users', fakeUserId)
+          await readDoc('users', fakeUserId, 'security test: attempting unauthorized user read')
           return 'Was able to read user document (unexpected)'
         }, true)
         break
@@ -203,36 +217,50 @@ function AdminTests() {
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
           const fakeMonthId = `${fakeBudgetId}_2024_01`
-          await readDoc('months', fakeMonthId)
+          await readDoc('months', fakeMonthId, 'security test: attempting unauthorized month read')
           return 'Was able to read month document for unauthorized budget (unexpected)'
         }, true)
         break
       case 'Toggle is_admin in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>('users', currentUserId)
+          const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>(
+            'users',
+            currentUserId,
+            'security test: reading own user to get current is_admin value'
+          )
           const currentIsAdmin = data?.permission_flags?.is_admin ?? false
-          await updateDocByPath('users', currentUserId, {
-            'permission_flags.is_admin': !currentIsAdmin,
-          })
+          await updateDocByPath(
+            'users',
+            currentUserId,
+            { 'permission_flags.is_admin': !currentIsAdmin },
+            'security test: attempting to toggle is_admin (should fail)'
+          )
           return `Was able to change is_admin from ${currentIsAdmin} to ${!currentIsAdmin} (SECURITY ISSUE!)`
         }, true)
         break
       case 'Toggle is_test in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>('users', currentUserId)
+          const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>(
+            'users',
+            currentUserId,
+            'security test: reading own user to get current is_test value'
+          )
           const currentIsTest = data?.permission_flags?.is_test ?? false
-          await updateDocByPath('users', currentUserId, {
-            'permission_flags.is_test': !currentIsTest,
-          })
+          await updateDocByPath(
+            'users',
+            currentUserId,
+            { 'permission_flags.is_test': !currentIsTest },
+            'security test: attempting to toggle is_test (should fail)'
+          )
           return `Was able to change is_test from ${currentIsTest} to ${!currentIsTest} (SECURITY ISSUE!)`
         }, true)
         break
       case 'Read own user document':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { exists } = await readDoc('users', currentUserId)
+          const { exists } = await readDoc('users', currentUserId, 'security test: reading own user document (should succeed)')
           if (exists) {
             return 'Successfully read own document'
           }

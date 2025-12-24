@@ -76,26 +76,45 @@ export function useUserMutations() {
         created_at: now,
         updated_at: now,
       }
-      await writeDoc('budgets', budgetId, newBudget)
+      await writeDoc(
+        'budgets',
+        budgetId,
+        newBudget,
+        'creating new budget document'
+      )
 
       // Update user document
-      const { exists: userExists, data: userData } = await readDoc<UserDocument>('users', userId)
+      const { exists: userExists, data: userData } = await readDoc<UserDocument>(
+        'users',
+        userId,
+        'reading user document to add new budget to their list'
+      )
 
       if (userExists && userData) {
-        await writeDoc('users', userId, {
-          ...userData,
-          budget_ids: [budgetId, ...userData.budget_ids],
-          updated_at: now,
-        })
+        await writeDoc(
+          'users',
+          userId,
+          {
+            ...userData,
+            budget_ids: [budgetId, ...userData.budget_ids],
+            updated_at: now,
+          },
+          'adding new budget to user\'s budget list'
+        )
       } else {
         // Create new user document
-        await writeDoc('users', userId, {
-          uid: userId,
-          email: userEmail,
-          budget_ids: [budgetId],
-          created_at: now,
-          updated_at: now,
-        })
+        await writeDoc(
+          'users',
+          userId,
+          {
+            uid: userId,
+            email: userEmail,
+            budget_ids: [budgetId],
+            created_at: now,
+            updated_at: now,
+          },
+          'creating new user document with first budget'
+        )
       }
 
       return { budgetId, budget: { id: budgetId, ...newBudget } }
@@ -115,7 +134,11 @@ export function useUserMutations() {
       const now = new Date().toISOString()
 
       // Verify invitation exists
-      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'verifying user was invited to this budget'
+      )
 
       if (!budgetExists || !budgetData) {
         throw new Error('Budget not found')
@@ -126,23 +149,37 @@ export function useUserMutations() {
       }
 
       // Update user document
-      const { data: userData } = await readDoc<UserDocument>('users', userId)
+      const { data: userData } = await readDoc<UserDocument>(
+        'users',
+        userId,
+        'reading user document before accepting invite'
+      )
 
       if (userData?.budget_ids?.includes(budgetId)) {
         throw new Error('You have already accepted this invite')
       }
 
-      await writeDoc('users', userId, {
-        ...(userData || { uid: userId, email: null }),
-        budget_ids: [budgetId, ...(userData?.budget_ids || [])],
-        updated_at: now,
-      })
+      await writeDoc(
+        'users',
+        userId,
+        {
+          ...(userData || { uid: userId, email: null }),
+          budget_ids: [budgetId, ...(userData?.budget_ids || [])],
+          updated_at: now,
+        },
+        'adding accepted budget to user\'s budget list'
+      )
 
       // Update budget's accepted_user_ids
-      await writeDoc('budgets', budgetId, {
-        ...budgetData,
-        accepted_user_ids: [...(budgetData.accepted_user_ids || []), userId],
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...budgetData,
+          accepted_user_ids: [...(budgetData.accepted_user_ids || []), userId],
+        },
+        'marking user as accepted in budget\'s accepted_user_ids'
+      )
 
       return { budgetId }
     },
@@ -159,7 +196,11 @@ export function useUserMutations() {
    */
   const inviteUser = useMutation({
     mutationFn: async ({ budgetId, userId }: InviteUserParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before inviting user'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
@@ -169,10 +210,15 @@ export function useUserMutations() {
         throw new Error('User is already invited')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        user_ids: [...(data.user_ids || []), userId],
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          user_ids: [...(data.user_ids || []), userId],
+        },
+        'adding user to budget\'s invited users list'
+      )
 
       return { budgetId }
     },
@@ -207,17 +253,26 @@ export function useUserMutations() {
    */
   const revokeUser = useMutation({
     mutationFn: async ({ budgetId, userId }: RevokeUserParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before revoking user access'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        user_ids: (data.user_ids || []).filter((id: string) => id !== userId),
-        accepted_user_ids: (data.accepted_user_ids || []).filter((id: string) => id !== userId),
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          user_ids: (data.user_ids || []).filter((id: string) => id !== userId),
+          accepted_user_ids: (data.accepted_user_ids || []).filter((id: string) => id !== userId),
+        },
+        'removing user from budget\'s access lists'
+      )
 
       return { budgetId }
     },
@@ -253,7 +308,11 @@ export function useUserMutations() {
    */
   const switchBudget = useMutation({
     mutationFn: async ({ budgetId, userId }: SwitchBudgetParams) => {
-      const { exists, data: userData } = await readDoc<UserDocument>('users', userId)
+      const { exists, data: userData } = await readDoc<UserDocument>(
+        'users',
+        userId,
+        'reading user document before switching active budget'
+      )
 
       if (!exists || !userData) {
         throw new Error('User document not found')
@@ -261,11 +320,16 @@ export function useUserMutations() {
 
       const updatedBudgetIds = [budgetId, ...userData.budget_ids.filter(id => id !== budgetId)]
 
-      await writeDoc('users', userId, {
-        ...userData,
-        budget_ids: updatedBudgetIds,
-        updated_at: new Date().toISOString(),
-      })
+      await writeDoc(
+        'users',
+        userId,
+        {
+          ...userData,
+          budget_ids: updatedBudgetIds,
+          updated_at: new Date().toISOString(),
+        },
+        'reordering budget list to make selected budget active'
+      )
 
       return { budgetId }
     },
@@ -298,7 +362,11 @@ export function useUserMutations() {
    */
   const checkInvite = useMutation({
     mutationFn: async ({ budgetId, userId, userBudgetIds }: CheckInviteParams): Promise<BudgetInvite | null> => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'checking if user has pending invite for this budget'
+      )
 
       if (!exists || !data) return null
 

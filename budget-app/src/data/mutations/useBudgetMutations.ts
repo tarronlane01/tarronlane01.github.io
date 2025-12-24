@@ -45,16 +45,25 @@ export function useBudgetMutations() {
    */
   const renameBudget = useMutation({
     mutationFn: async ({ budgetId, newName }: RenameBudgetParams) => {
-      const { exists, data } = await readDoc<FirestoreData>('budgets', budgetId)
+      const { exists, data } = await readDoc<FirestoreData>(
+        'budgets',
+        budgetId,
+        'reading budget before renaming (need current state)'
+      )
 
       if (!exists || !data) {
         throw new Error('Budget not found')
       }
 
-      await writeDoc('budgets', budgetId, {
-        ...data,
-        name: newName.trim(),
-      })
+      await writeDoc(
+        'budgets',
+        budgetId,
+        {
+          ...data,
+          name: newName.trim(),
+        },
+        `renaming budget to "${newName.trim()}"`
+      )
 
       return newName.trim()
     },

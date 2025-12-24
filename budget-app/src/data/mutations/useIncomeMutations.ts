@@ -33,7 +33,11 @@ export function useIncomeMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before adding income (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
@@ -68,7 +72,11 @@ export function useIncomeMutations() {
       // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>(
+          'payees',
+          budgetId,
+          'checking existing payees to see if new payee should be added'
+        )
         const existingPayees = payeesDoc?.payees || []
         updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
@@ -175,7 +183,11 @@ export function useIncomeMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before updating income (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
@@ -217,7 +229,11 @@ export function useIncomeMutations() {
       // Save payee if new - read existing payees from Firestore
       let updatedPayees: string[] | null = null
       if (payee?.trim()) {
-        const { data: payeesDoc } = await readDoc<{ payees: string[] }>('payees', budgetId)
+        const { data: payeesDoc } = await readDoc<{ payees: string[] }>(
+          'payees',
+          budgetId,
+          'checking existing payees to see if new payee should be added'
+        )
         const existingPayees = payeesDoc?.payees || []
         updatedPayees = await savePayeeIfNew(budgetId, payee, existingPayees)
       }
@@ -339,7 +355,11 @@ export function useIncomeMutations() {
 
       // Read from Firestore (server truth), not cache
       const monthDocId = getMonthDocId(budgetId, year, month)
-      const { exists, data: monthData } = await readDoc<MonthDocument>('months', monthDocId)
+      const { exists, data: monthData } = await readDoc<MonthDocument>(
+        'months',
+        monthDocId,
+        'reading month before deleting income (need current state)'
+      )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')

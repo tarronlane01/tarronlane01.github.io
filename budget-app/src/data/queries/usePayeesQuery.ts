@@ -14,7 +14,11 @@ import type { PayeesDocument } from '../../types/budget'
  * Fetch payees from Firestore
  */
 async function fetchPayees(budgetId: string): Promise<string[]> {
-  const { exists, data } = await readDoc<PayeesDocument>('payees', budgetId)
+  const { exists, data } = await readDoc<PayeesDocument>(
+    'payees',
+    budgetId,
+    'loading payees for autocomplete (cache miss or stale)'
+  )
 
   if (exists && data) {
     return data.payees || []

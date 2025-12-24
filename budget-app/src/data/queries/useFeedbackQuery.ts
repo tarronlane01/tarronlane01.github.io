@@ -37,7 +37,10 @@ async function fetchAllFeedback(): Promise<FeedbackData> {
   const result = await queryCollection<{
     items?: FeedbackItem[]
     user_email?: string
-  }>('feedback')
+  }>(
+    'feedback',
+    'admin loading all feedback (cache miss or stale)'
+  )
 
   const flattened: FlattenedFeedbackItem[] = []
 

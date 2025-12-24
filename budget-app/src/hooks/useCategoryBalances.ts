@@ -71,6 +71,9 @@ export function useCategoryBalances({
 
     const loadKey = `${budgetId}_${currentYear}_${currentMonth}`
 
+    // Skip if we already loaded for this exact context (prevents duplicate loads/infinite loop)
+    if (loadedForRef.current === loadKey) return
+
     // If snapshot is valid, use it immediately without recalculating
     if (isSnapshotValid(categoryBalancesSnapshot)) {
       const balances: Record<string, CategoryBalance> = {}
@@ -82,9 +85,6 @@ export function useCategoryBalances({
       loadedForRef.current = loadKey
       return
     }
-
-    // Skip if we already loaded for this exact context (prevents duplicate loads)
-    if (loadedForRef.current === loadKey) return
 
     const loadBalances = async () => {
       setLoadingBalances(true)

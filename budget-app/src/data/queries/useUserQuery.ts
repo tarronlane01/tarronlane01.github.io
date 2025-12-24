@@ -15,7 +15,11 @@ import type { UserDocument } from '../../types/budget'
  * Fetch or create user document from Firestore
  */
 async function fetchUser(userId: string, email: string | null): Promise<UserDocument> {
-  const { exists, data } = await readDoc<UserDocument>('users', userId)
+  const { exists, data } = await readDoc<UserDocument>(
+    'users',
+    userId,
+    'loading user profile (cache miss or stale)'
+  )
 
   if (exists && data) {
     return data
@@ -30,7 +34,12 @@ async function fetchUser(userId: string, email: string | null): Promise<UserDocu
     updated_at: new Date().toISOString(),
   }
 
-  await writeDoc('users', userId, newUserDoc)
+  await writeDoc(
+    'users',
+    userId,
+    newUserDoc,
+    'creating new user document (first login)'
+  )
   return newUserDoc
 }
 
