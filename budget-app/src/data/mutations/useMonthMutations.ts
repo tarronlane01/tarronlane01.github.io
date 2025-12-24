@@ -31,6 +31,7 @@ export type {
   SaveAllocationsParams,
   FinalizeAllocationsParams,
   UnfinalizeAllocationsParams,
+  DeleteAllocationsParams,
 } from './monthMutationTypes'
 
 // Re-export helper functions for use elsewhere if needed
@@ -70,7 +71,7 @@ export { useAllocationMutations } from './useAllocationMutations'
 export function useMonthMutations() {
   const { addIncome, updateIncome, deleteIncome } = useIncomeMutations()
   const { addExpense, updateExpense, deleteExpense } = useExpenseMutations()
-  const { saveAllocations, finalizeAllocations, unfinalizeAllocations } = useAllocationMutations()
+  const { saveAllocations, finalizeAllocations, unfinalizeAllocations, deleteAllocations } = useAllocationMutations()
 
   return {
     // Income
@@ -85,5 +86,6 @@ export function useMonthMutations() {
     saveAllocations,
     finalizeAllocations,
     unfinalizeAllocations,
+    deleteAllocations,
   }
 }

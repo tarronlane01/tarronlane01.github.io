@@ -1,13 +1,11 @@
 import { Link } from 'react-router-dom'
-import { PageContainer } from '../../components/ui'
-import { navBar, colors } from '../../styles/shared'
+import { PageContainer, BudgetNavBar } from '../../components/ui'
+import { colors } from '../../styles/shared'
 
 function Analytics() {
   return (
     <PageContainer>
-      <nav style={navBar}>
-        <Link to="/budget">← Back to Budget</Link>
-      </nav>
+      <BudgetNavBar title="Analytics" />
 
       <div style={{
         display: 'flex',
@@ -69,4 +67,3 @@ function Analytics() {
 }
 
 export default Analytics
-

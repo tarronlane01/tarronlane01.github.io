@@ -12,6 +12,7 @@ import {
   AccountGroupCard,
   UngroupedAccountsSection,
 } from '../../components/budget/Accounts'
+import { RecalculateAllButton } from '../../components/budget/Month'
 
 type DragType = 'account' | 'group' | null
 
@@ -153,6 +154,15 @@ function Accounts() {
       </p>
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+
+      {/* Recalculate All button - for syncing data during development */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        marginBottom: '1rem',
+      }}>
+        <RecalculateAllButton />
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
         {Object.keys(accounts).length === 0 && sortedGroups.length === 0 && (

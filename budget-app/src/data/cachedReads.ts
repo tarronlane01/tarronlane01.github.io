@@ -10,6 +10,7 @@
 
 import { queryClient, queryKeys } from './queryClient'
 import { readDoc, type FirestoreData } from './firestore/operations'
+import { parseMonthData, type MonthQueryData } from './queries/useMonthQuery'
 
 /**
  * Fetch a budget document - uses React Query cache
@@ -99,6 +100,9 @@ interface MonthBalanceData {
 /**
  * Fetch a single month document for balance calculations
  * Uses React Query cache via the existing month query
+ *
+ * When fetching from Firestore, also caches the full month document
+ * so navigation to that month won't require another Firebase read.
  */
 async function fetchMonthForBalances(
   budgetId: string,
@@ -122,12 +126,34 @@ async function fetchMonthForBalances(
   }
 
   // Fetch from Firestore
-  const { exists, data } = await readDoc<MonthBalanceData>(
+  const { exists, data } = await readDoc<FirestoreData>(
     'months',
     monthDocId,
     `fetching month for balance calculation (not in cache, walking ${year}/${month})`
   )
-  return exists ? data : null
+
+  if (!exists || !data) {
+    return null
+  }
+
+  // Parse and cache the full month document so navigation to this month
+  // won't require another Firebase read
+  const parsedMonth = parseMonthData(data, budgetId, year, month)
+  queryClient.setQueryData<MonthQueryData>(
+    queryKeys.month(budgetId, year, month),
+    { month: parsedMonth }
+  )
+
+  // Return just the data needed for balance calculations
+  return {
+    year: parsedMonth.year,
+    month: parsedMonth.month,
+    category_balances: parsedMonth.category_balances,
+    category_balances_stale: parsedMonth.category_balances_stale,
+    allocations_finalized: parsedMonth.allocations_finalized,
+    allocations: parsedMonth.allocations,
+    expenses: parsedMonth.expenses,
+  }
 }
 
 /**

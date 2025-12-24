@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { TabNavigation, type Tab } from '../../ui'
-import { colors } from '../../../styles/shared'
 
 export type BudgetTab = 'income' | 'allocations' | 'spend' | 'balances'
 
@@ -12,15 +11,14 @@ interface BudgetTabsProps {
 
 export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: BudgetTabsProps) {
   const tabs: Tab[] = useMemo(() => [
-    { id: 'income', label: 'Income', icon: '💰' },
+    { id: 'income', label: 'Income' },
     {
       id: 'allocations',
       label: 'Allocations',
-      icon: '📊',
-      badge: allocationsFinalized ? { text: 'Applied', color: colors.success } : undefined,
+      checkmark: allocationsFinalized,
     },
-    { id: 'spend', label: 'Spend', icon: '🛒' },
-    { id: 'balances', label: 'Balances', icon: '💰' },
+    { id: 'spend', label: 'Spend' },
+    { id: 'balances', label: 'Balances' },
   ], [allocationsFinalized])
 
   return (

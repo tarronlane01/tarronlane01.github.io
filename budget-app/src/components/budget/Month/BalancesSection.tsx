@@ -4,7 +4,7 @@ import { useBudget, type Category } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import type { CategoryMonthBalance } from '../../../types/budget'
-import { StatCard, formatCurrency, getBalanceColor } from '../../ui'
+import { formatCurrency, getBalanceColor } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 
 export function BalancesSection() {
@@ -95,37 +95,64 @@ export function BalancesSection() {
       transition: 'opacity 0.15s ease-out',
       pointerEvents: monthLoading ? 'none' : 'auto',
     }}>
-      {/* Balance Summary Cards */}
+      {/* Balance Summary Table */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-        gap: '1rem',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        borderRadius: '8px',
         marginBottom: '1.5rem',
+        overflow: 'hidden',
       }}>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Start of Month</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: getBalanceColor(balanceTotals.start) }}>
+        {/* Start of Month - always first */}
+        <div style={{
+          padding: '0.75rem 1rem',
+          borderRight: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          borderBottom: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : 'none',
+          textAlign: 'center',
+          order: 1,
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Start of Month</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: getBalanceColor(balanceTotals.start) }}>
             {formatCurrency(balanceTotals.start)}
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Allocated</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: colors.success }}>
+        </div>
+        {/* Allocated - 2nd on desktop, 3rd on mobile (row 2, col 1) */}
+        <div style={{
+          padding: '0.75rem 1rem',
+          borderRight: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          textAlign: 'center',
+          order: isMobile ? 3 : 2,
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allocated</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: colors.success }}>
             +{formatCurrency(balanceTotals.allocated)}
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Spent</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: colors.error }}>
+        </div>
+        {/* Spent - 3rd on desktop, 4th on mobile (row 2, col 2) */}
+        <div style={{
+          padding: '0.75rem 1rem',
+          borderRight: isMobile ? 'none' : '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          textAlign: 'center',
+          order: isMobile ? 4 : 3,
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Spent</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: colors.error }}>
             -{formatCurrency(balanceTotals.spent)}
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>End of Month</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: getBalanceColor(balanceTotals.end) }}>
+        </div>
+        {/* End of Month - 4th on desktop, 2nd on mobile (row 1, col 2) */}
+        <div style={{
+          padding: '0.75rem 1rem',
+          borderBottom: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : 'none',
+          textAlign: 'center',
+          order: isMobile ? 2 : 4,
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>End of Month</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: getBalanceColor(balanceTotals.end) }}>
             {formatCurrency(balanceTotals.end)}
           </p>
-        </StatCard>
+        </div>
       </div>
 
       {/* Category Balances by Group */}
@@ -133,7 +160,7 @@ export function BalancesSection() {
         {Object.keys(categories).length === 0 && (
           <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
             No categories yet.{' '}
-            <Link to="/budget/admin/categories" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/settings/categories" style={{ color: colors.primaryLight }}>
               Create categories →
             </Link>
           </p>

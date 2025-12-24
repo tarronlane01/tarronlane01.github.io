@@ -2,7 +2,7 @@
  * Feedback Query Hook
  *
  * Fetches all feedback items from the feedback collection.
- * Used by AdminFeedback page.
+ * Used by SettingsFeedback page.
  */
 
 import { useQuery } from '@tanstack/react-query'

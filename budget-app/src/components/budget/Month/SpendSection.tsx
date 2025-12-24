@@ -148,7 +148,7 @@ export function SpendSection() {
       {Object.keys(categories).length === 0 && (
         <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1rem' }}>
           You need to create at least one category before adding expenses.{' '}
-          <Link to="/budget/admin/categories" style={{ color: colors.primaryLight }}>
+          <Link to="/budget/settings/categories" style={{ color: colors.primaryLight }}>
             Create categories →
           </Link>
         </p>

@@ -3,21 +3,18 @@ import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { colors } from '../../../styles/shared'
 import { MONTH_NAMES } from '@constants'
+import { RecalculateAllButton } from './RecalculateAllButton'
 
 interface MonthNavigationProps {
   isLoading: boolean
   onPreviousMonth: () => void
   onNextMonth: () => void
-  onRecalculateAll: () => void
-  isRecomputing: boolean
 }
 
 export function MonthNavigation({
   isLoading,
   onPreviousMonth,
   onNextMonth,
-  onRecalculateAll,
-  isRecomputing,
 }: MonthNavigationProps) {
   const { currentYear, currentMonthNumber, isAdmin, selectedBudgetId, currentUserId } = useBudget()
   const { budget: currentBudget } = useBudgetData(selectedBudgetId, currentUserId)
@@ -156,32 +153,7 @@ export function MonthNavigation({
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             }}
           >
-            <button
-              onClick={() => {
-                onRecalculateAll()
-                setShowMonthMenu(false)
-              }}
-              disabled={isRecomputing || isLoading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.5rem 0.75rem',
-                cursor: isRecomputing || isLoading ? 'not-allowed' : 'pointer',
-                fontSize: '0.85rem',
-                color: 'inherit',
-                opacity: isRecomputing || isLoading ? 0.5 : 1,
-                textAlign: 'left',
-                transition: 'background 0.15s',
-              }}
-              title="Recalculate all totals and category balances for this month"
-            >
-              {isRecomputing ? '⏳' : '🔄'} Recalculate All
-            </button>
+            <RecalculateAllButton isDisabled={isLoading} />
             {/* Admin-only: Download month data */}
             {isAdmin && currentMonth && (
               <button

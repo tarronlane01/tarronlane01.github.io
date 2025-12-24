@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useBudget, type Category } from '../../../contexts/budget_context'
 import { useBudgetData, useAllocationsPage } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
-import { Button, StatCard, formatCurrency, getBalanceColor, ErrorAlert } from '../../ui'
+import { Button, formatCurrency, getBalanceColor, ErrorAlert } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 import { AllocationRow } from '../Allocations'
 
@@ -14,6 +14,7 @@ export function AllocationsSection() {
     localAllocations,
     isSavingAllocations,
     isFinalizingAllocations,
+    isDeletingAllocations,
     isEditingAppliedAllocations,
     error,
     monthLoading,
@@ -28,6 +29,7 @@ export function AllocationsSection() {
     resetAllocationsToSaved,
     handleSaveAllocations,
     handleFinalizeAllocations,
+    handleDeleteAllocations,
     setIsEditingAppliedAllocations,
     setError,
   } = useAllocationsPage()
@@ -65,43 +67,67 @@ export function AllocationsSection() {
     }}>
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Allocation Summary Cards */}
+      {/* Allocation Summary Table */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-        gap: '1rem',
+        display: 'flex',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        borderRadius: '8px',
         marginBottom: '1.5rem',
+        overflow: 'hidden',
+        flexDirection: isMobile ? 'column' : 'row',
       }}>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>On-Budget Total</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: getBalanceColor(onBudgetTotal) }}>
+        <div style={{
+          flex: 1,
+          padding: '0.75rem 1rem',
+          borderRight: isMobile ? 'none' : '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          borderBottom: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : 'none',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>On-Budget Total</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: getBalanceColor(onBudgetTotal) }}>
             {formatCurrency(onBudgetTotal)}
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>Available Now</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: getBalanceColor(availableNow) }}>
+        </div>
+        <div style={{
+          flex: 1,
+          padding: '0.75rem 1rem',
+          borderRight: isMobile ? 'none' : '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          borderBottom: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : 'none',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available Now</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: getBalanceColor(availableNow) }}>
             {formatCurrency(availableNow)}
           </p>
-          <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.7rem', opacity: 0.5 }}>
-            (applied allocations only)
+          <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.65rem', opacity: 0.5 }}>
+            applied only
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>This Month's Draft</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: colors.primary }}>
+        </div>
+        <div style={{
+          flex: 1,
+          padding: '0.75rem 1rem',
+          borderRight: isMobile ? 'none' : '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          borderBottom: isMobile ? '1px solid color-mix(in srgb, currentColor 10%, transparent)' : 'none',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Draft Total</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: colors.primary }}>
             {formatCurrency(currentDraftTotal)}
           </p>
-        </StatCard>
-        <StatCard>
-          <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>After Apply</p>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.3rem', fontWeight: 600, color: getBalanceColor(availableAfterApply) }}>
+        </div>
+        <div style={{
+          flex: 1,
+          padding: '0.75rem 1rem',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>After Apply</p>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 600, color: getBalanceColor(availableAfterApply) }}>
             {formatCurrency(availableAfterApply)}
           </p>
-          <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.7rem', opacity: 0.5 }}>
-            (if you apply draft)
+          <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.65rem', opacity: 0.5 }}>
+            if applied
           </p>
-        </StatCard>
+        </div>
       </div>
 
       {/* Previous month income info for percentage calculations */}
@@ -112,11 +138,7 @@ export function AllocationsSection() {
           padding: '0.6rem 1rem',
           marginBottom: '1rem',
           fontSize: '0.85rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
         }}>
-          <span style={{ opacity: 0.6 }}>📊</span>
           <span style={{ opacity: 0.7 }}>
             Percentage allocations based on prev month income: <strong style={{ color: colors.primary }}>{formatCurrency(previousMonthIncome)}</strong>
           </span>
@@ -129,10 +151,12 @@ export function AllocationsSection() {
         isEditingAppliedAllocations={isEditingAppliedAllocations}
         isSavingAllocations={isSavingAllocations}
         isFinalizingAllocations={isFinalizingAllocations}
+        isDeletingAllocations={isDeletingAllocations}
         monthLoading={monthLoading}
         onCancel={resetAllocationsToSaved}
         onSave={handleSaveAllocations}
         onFinalize={handleFinalizeAllocations}
+        onDelete={handleDeleteAllocations}
         onStartEdit={() => setIsEditingAppliedAllocations(true)}
       />
 
@@ -141,7 +165,7 @@ export function AllocationsSection() {
         {Object.keys(categories).length === 0 && (
           <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
             No categories yet.{' '}
-            <Link to="/budget/admin/categories" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/settings/categories" style={{ color: colors.primaryLight }}>
               Create categories →
             </Link>
           </p>
@@ -194,10 +218,12 @@ interface AllocationStatusProps {
   isEditingAppliedAllocations: boolean
   isSavingAllocations: boolean
   isFinalizingAllocations: boolean
+  isDeletingAllocations: boolean
   monthLoading: boolean
   onCancel: () => void
   onSave: () => void
   onFinalize: () => void
+  onDelete: () => void
   onStartEdit: () => void
 }
 
@@ -206,10 +232,12 @@ function AllocationStatus({
   isEditingAppliedAllocations,
   isSavingAllocations,
   isFinalizingAllocations,
+  isDeletingAllocations,
   monthLoading,
   onCancel,
   onSave,
   onFinalize,
+  onDelete,
   onStartEdit,
 }: AllocationStatusProps) {
   const statusColor = allocationsFinalized
@@ -245,21 +273,30 @@ function AllocationStatus({
             : 'Save and apply to update category balances.'}
         </p>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {allocationsFinalized ? (
           isEditingAppliedAllocations ? (
             <>
-              <Button onClick={onCancel} disabled={isSavingAllocations || monthLoading} variant="secondary">
+              <Button onClick={onCancel} disabled={isSavingAllocations || isDeletingAllocations || monthLoading} variant="secondary">
                 Cancel
               </Button>
-              <Button onClick={onSave} disabled={isSavingAllocations || monthLoading}>
+              <Button onClick={onSave} disabled={isSavingAllocations || isDeletingAllocations || monthLoading}>
                 {isSavingAllocations ? '⏳ Saving...' : '💾 Save Changes'}
               </Button>
             </>
           ) : (
-            <Button onClick={onStartEdit} disabled={monthLoading} variant="secondary">
-              ✏️ Edit Allocations
-            </Button>
+            <>
+              <Button onClick={onStartEdit} disabled={isDeletingAllocations || monthLoading} variant="secondary">
+                ✏️ Edit Allocations
+              </Button>
+              <Button
+                onClick={onDelete}
+                disabled={isDeletingAllocations || monthLoading}
+                variant="danger"
+              >
+                {isDeletingAllocations ? '⏳ Deleting...' : '🗑️ Delete Allocations'}
+              </Button>
+            </>
           )
         ) : (
           <>

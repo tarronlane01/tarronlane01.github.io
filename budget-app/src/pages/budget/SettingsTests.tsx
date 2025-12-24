@@ -15,7 +15,7 @@ interface TestResult {
   expectedToFail: boolean
 }
 
-function AdminTests() {
+function SettingsTests() {
   // Context: identifiers only
   const { currentUserId } = useBudget()
 
@@ -443,4 +443,5 @@ function TestButton({ name, description, expectedBehavior, result, onRun, disabl
   )
 }
 
-export default AdminTests
+export default SettingsTests
+

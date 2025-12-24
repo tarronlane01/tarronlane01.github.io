@@ -41,13 +41,9 @@ import { featureFlags } from '../../constants/featureFlags'
 import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../../types/budget'
 
 // Helper to conditionally log Firebase operations with source context
-function logFirebase(operation: string, path: string, source: string, data?: unknown): void {
+function logFirebase(operation: string, path: string, source: string): void {
   if (featureFlags.logFirebaseOperations) {
-    if (data !== undefined) {
-      console.log(`[Firebase] ${operation}: ${path} ← ${source}`, data)
-    } else {
-      console.log(`[Firebase] ${operation}: ${path} ← ${source}`)
-    }
+    console.log(`[Firebase] ${operation}: ${path} ← ${source}`)
   }
 }
 
@@ -170,7 +166,7 @@ export async function writeDoc(
   const docRef = doc(getDb(), collectionPath, docId)
   const cleanData = stripUndefined(data)
   const path = `${collectionPath}/${docId}`
-  logFirebase('WRITE', path, source, cleanData)
+  logFirebase('WRITE', path, source)
   return setDoc(docRef, cleanData, options ?? {})
 }
 
@@ -192,7 +188,7 @@ export async function updateDocByPath(
   const docRef = doc(getDb(), collectionPath, docId)
   const cleanData = stripUndefined(data)
   const path = `${collectionPath}/${docId}`
-  logFirebase('UPDATE', path, source, cleanData)
+  logFirebase('UPDATE', path, source)
   return updateDoc(docRef, cleanData)
 }
 
@@ -285,7 +281,7 @@ export async function firebaseSetDoc(
 ): Promise<void> {
   const cleanData = stripUndefined(data)
   const docPath = docRef.path
-  logFirebase('WRITE', docPath, source, cleanData)
+  logFirebase('WRITE', docPath, source)
   return setDoc(docRef, cleanData, options ?? {})
 }
 
@@ -300,7 +296,7 @@ export async function firebaseUpdateDoc(
 ): Promise<void> {
   const cleanData = stripUndefined(data)
   const docPath = docRef.path
-  logFirebase('UPDATE', docPath, source, cleanData)
+  logFirebase('UPDATE', docPath, source)
   return updateDoc(docRef, cleanData)
 }
 

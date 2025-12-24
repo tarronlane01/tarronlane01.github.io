@@ -32,8 +32,9 @@ import { getMonthDocId, readDoc, writeDoc, type FirestoreData } from '../firesto
 
 /**
  * Parse raw Firestore month data into typed MonthDocument
+ * Exported so it can be reused by cachedReads.ts for consistent parsing
  */
-function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
+export function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
   const income: IncomeTransaction[] = (data.income || []).map((inc: FirestoreData) => ({
     id: inc.id,
     amount: inc.amount,
@@ -92,6 +93,7 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     account_balances_start: data.account_balances_start,
     account_balances_end: data.account_balances_end,
     category_balances: categoryBalances,
+    category_balances_stale: data.category_balances_stale ?? false,
     previous_month_snapshot: previousMonthSnapshot,
     previous_month_snapshot_stale: data.previous_month_snapshot_stale ?? false,
     created_at: data.created_at,

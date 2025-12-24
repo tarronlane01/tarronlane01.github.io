@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../hooks'
-import { PageContainer, ErrorAlert } from '../../components/ui'
-import { navBar, colors } from '../../styles/shared'
+import { PageContainer, ErrorAlert, BudgetNavBar, ContentContainer } from '../../components/ui'
 import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
 import {
   BudgetTabs,
@@ -13,8 +12,6 @@ import {
   SpendSection,
   AllocationsSection,
   BalancesSection,
-  RecalculateModal,
-  type RecalcResults,
 } from '../../components/budget/Month'
 
 const VALID_TABS: BudgetTab[] = ['income', 'allocations', 'spend', 'balances']
@@ -53,7 +50,6 @@ function Budget() {
   // Hooks: data and mutations
   const {
     budget: currentBudget,
-    isOwner,
     createBudget,
     acceptInvite,
   } = useBudgetData(selectedBudgetId, currentUserId)
@@ -64,10 +60,7 @@ function Budget() {
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
   const [error, setError] = useState<string | null>(null)
-  const [isRecomputing, setIsRecomputing] = useState(false)
-  const [showRecalcModal, setShowRecalcModal] = useState(false)
-  const [recalcResults, setRecalcResults] = useState<RecalcResults | null>(null)
-  const [urlInitialized, setUrlInitialized] = useState(false)
+  const urlInitializedRef = useRef(false)
 
   // Initialize from URL params on mount, default to 'balances'
   const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
@@ -77,23 +70,23 @@ function Budget() {
 
   // Initialize year/month from URL on first render
   useEffect(() => {
-    if (urlInitialized) return
+    if (urlInitializedRef.current) return
     const { year, month } = parsePathParams(params)
     if (year) setCurrentYear(year)
     if (month) setCurrentMonthNumber(month)
-    setUrlInitialized(true)
-  }, [params, setCurrentYear, setCurrentMonthNumber, urlInitialized])
+    urlInitializedRef.current = true
+  }, [params, setCurrentYear, setCurrentMonthNumber])
 
   // Sync URL path when month/year/tab changes
   useEffect(() => {
-    if (!urlInitialized) return
+    if (!urlInitializedRef.current) return
     const newPath = `/budget/${currentYear}/${currentMonthNumber}/${activeTab}`
     const currentPath = `/budget/${params.year}/${params.month}/${params.tab}`
 
     if (newPath !== currentPath) {
       navigate(newPath, { replace: true })
     }
-  }, [currentYear, currentMonthNumber, activeTab, urlInitialized, navigate, params])
+  }, [currentYear, currentMonthNumber, activeTab, navigate, params])
 
 
   // Handlers for onboarding screens
@@ -117,9 +110,7 @@ function Budget() {
   if (!currentBudget && hasPendingInvites) {
     return (
       <PageContainer>
-        <nav style={navBar}>
-          <Link to="/">← Back to Home</Link>
-        </nav>
+        <BudgetNavBar title="Budget" showBackArrow hideMenu />
         <PendingInvitesScreen
           invites={pendingInvites}
           onAccept={handleAcceptInvite}
@@ -133,9 +124,7 @@ function Budget() {
   if (!currentBudget && needsFirstBudget) {
     return (
       <PageContainer>
-        <nav style={navBar}>
-          <Link to="/">← Back to Home</Link>
-        </nav>
+        <BudgetNavBar title="Budget" showBackArrow hideMenu />
         <CreateFirstBudgetScreen onCreateNew={handleCreateNewBudget} />
       </PageContainer>
     )
@@ -152,183 +141,31 @@ function Budget() {
     goToNextMonth()
   }
 
-  // Handle recalculate all
-  async function handleRecalculateAll() {
-    setError(null)
-    setIsRecomputing(true)
-    setShowRecalcModal(true)
-    setRecalcResults({ status: 'pending' })
-
-    try {
-      // Step 1: Count income transactions
-      await new Promise(resolve => setTimeout(resolve, 200))
-      const incomeCount = currentMonth?.income.length || 0
-      const oldIncomeTotal = currentMonth?.total_income || 0
-      setRecalcResults({ status: 'income_counting', incomeCount, oldIncomeTotal })
-
-      // Step 2: Calculate new income total
-      await new Promise(resolve => setTimeout(resolve, 200))
-      const newIncomeTotal = currentMonth?.income.reduce((sum, inc) => sum + inc.amount, 0) || 0
-      setRecalcResults({ status: 'income_calculating', incomeCount, oldIncomeTotal, newIncomeTotal })
-
-      // Step 3: Save income totals
-      await new Promise(resolve => setTimeout(resolve, 150))
-      setRecalcResults({ status: 'income_saving', incomeCount, oldIncomeTotal, newIncomeTotal })
-
-      // Step 4: Count expenses
-      await new Promise(resolve => setTimeout(resolve, 200))
-      const expenseCount = currentMonth?.expenses?.length || 0
-      const oldExpenseTotal = currentMonth?.total_expenses || 0
-      const newExpenseTotal = currentMonth?.expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0
-      setRecalcResults({
-        status: 'expenses_counting',
-        incomeCount, oldIncomeTotal, newIncomeTotal,
-        expenseCount, oldExpenseTotal, newExpenseTotal
-      })
-
-      // Step 5: Recalculate category balances
-      await new Promise(resolve => setTimeout(resolve, 200))
-      setRecalcResults({
-        status: 'balances_calculating',
-        incomeCount, oldIncomeTotal, newIncomeTotal,
-        expenseCount, oldExpenseTotal, newExpenseTotal
-      })
-
-      // Step 6: Save category balances
-      await new Promise(resolve => setTimeout(resolve, 150))
-      setRecalcResults({
-        status: 'balances_saving',
-        incomeCount, oldIncomeTotal, newIncomeTotal,
-        expenseCount, oldExpenseTotal, newExpenseTotal
-      })
-
-      // Done!
-      setRecalcResults({
-        status: 'done',
-        incomeCount, oldIncomeTotal, newIncomeTotal,
-        expenseCount, oldExpenseTotal, newExpenseTotal
-      })
-    } catch (err) {
-      setRecalcResults({
-        status: 'error',
-        error: err instanceof Error ? err.message : 'Failed to recalculate'
-      })
-    } finally {
-      setIsRecomputing(false)
-    }
-  }
-
   return (
     <PageContainer>
-      <nav style={navBar}>
-        <Link to="/">← Back to Home</Link>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link
-            to="/budget/analytics"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '2.5rem',
-              height: '2.5rem',
-              borderRadius: '8px',
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              textDecoration: 'none',
-              fontSize: '1.25rem',
-              transition: 'background 0.15s',
-            }}
-            title="Analytics"
-          >
-            📊
-          </Link>
-          <Link
-            to="/budget/admin"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '2.5rem',
-              height: '2.5rem',
-              borderRadius: '8px',
-              background: 'color-mix(in srgb, currentColor 8%, transparent)',
-              textDecoration: 'none',
-              fontSize: '1.25rem',
-              transition: 'background 0.15s',
-            }}
-            title={isOwner ? 'Admin Settings' : 'Budget Settings'}
-          >
-            ⚙️
-          </Link>
-        </div>
-      </nav>
+      <BudgetNavBar title={currentBudget?.name || 'Budget'} />
 
-      <BudgetHeader budgetName={currentBudget?.name} userCount={currentBudget?.user_ids.length} isOwner={isOwner} />
+      <ContentContainer>
+        {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+        <MonthNavigation
+          isLoading={monthLoading}
+          onPreviousMonth={handlePreviousMonth}
+          onNextMonth={handleNextMonth}
+        />
 
-      <MonthNavigation
-        isLoading={monthLoading}
-        onPreviousMonth={handlePreviousMonth}
-        onNextMonth={handleNextMonth}
-        onRecalculateAll={handleRecalculateAll}
-        isRecomputing={isRecomputing}
-      />
+        <BudgetTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          allocationsFinalized={currentMonth?.allocations_finalized}
+        />
 
-      <BudgetTabs
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        allocationsFinalized={currentMonth?.allocations_finalized}
-      />
-
-      {activeTab === 'income' && <IncomeSection />}
-      {activeTab === 'allocations' && <AllocationsSection />}
-      {activeTab === 'spend' && <SpendSection />}
-      {activeTab === 'balances' && <BalancesSection />}
-
-      <RecalculateModal
-        isOpen={showRecalcModal}
-        onClose={() => {
-          setShowRecalcModal(false)
-          setRecalcResults(null)
-        }}
-        results={recalcResults}
-      />
+        {activeTab === 'income' && <IncomeSection />}
+        {activeTab === 'allocations' && <AllocationsSection />}
+        {activeTab === 'spend' && <SpendSection />}
+        {activeTab === 'balances' && <BalancesSection />}
+      </ContentContainer>
     </PageContainer>
-  )
-}
-
-interface BudgetHeaderProps {
-  budgetName?: string
-  userCount?: number
-  isOwner: boolean
-}
-
-function BudgetHeader({ budgetName, userCount, isOwner }: BudgetHeaderProps) {
-  return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-        <h1 style={{ margin: 0 }}>Budget</h1>
-        {budgetName && (
-          <span style={{
-            background: `color-mix(in srgb, ${colors.primary} 15%, transparent)`,
-            color: colors.primaryLight,
-            padding: '0.25rem 0.75rem',
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-          }}>
-            {budgetName}
-          </span>
-        )}
-      </div>
-
-      {userCount !== undefined && (
-        <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-          {userCount} user{userCount !== 1 ? 's' : ''} •
-          {isOwner ? ' You are the owner' : ' Shared with you'}
-        </p>
-      )}
-    </>
   )
 }
 

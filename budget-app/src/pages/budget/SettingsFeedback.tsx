@@ -20,7 +20,7 @@ import {
   type FeedbackType,
 } from '../../components/budget/Admin'
 
-function AdminFeedback() {
+function SettingsFeedback() {
   const [error, setError] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -52,7 +52,7 @@ function AdminFeedback() {
         userEmail: userContext.username,
         text: newFeedbackText.trim(),
         feedbackType: newFeedbackType,
-        currentPath: '/admin/feedback',
+        currentPath: '/settings/feedback',
       })
 
       setNewFeedbackText('')
@@ -395,4 +395,5 @@ function FeedbackTypeSelector({
   )
 }
 
-export default AdminFeedback
+export default SettingsFeedback
+

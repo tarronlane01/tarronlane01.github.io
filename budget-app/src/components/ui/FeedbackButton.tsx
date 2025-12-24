@@ -33,7 +33,7 @@ export function FeedbackButton() {
   const feedbackMutations = useFeedbackMutations()
 
   // Hide on feedback admin page since it has its own form
-  const isOnFeedbackPage = location.pathname.includes('/admin/feedback')
+  const isOnFeedbackPage = location.pathname.includes('/settings/feedback')
   if (isOnFeedbackPage) return null
   if (!userContext.is_logged_in) return null
 

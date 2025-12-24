@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 
-function AdminUsers() {
+function SettingsUsers() {
   // Context: identifiers only
   const { selectedBudgetId, currentUserId } = useBudget()
 
@@ -377,4 +377,5 @@ function AdminUsers() {
   )
 }
 
-export default AdminUsers
+export default SettingsUsers
+

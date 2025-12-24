@@ -64,6 +64,7 @@ interface UseBudgetMonthReturn {
   saveAllocations: (allocations: CategoryAllocation[]) => Promise<void>
   finalizeAllocations: () => Promise<void>
   unfinalizeAllocations: () => Promise<void>
+  deleteAllocations: () => Promise<void>
 
   // Cache/refresh
   refreshMonth: () => Promise<void>
@@ -297,6 +298,16 @@ export function useBudgetMonth(
     })
   }, [budgetId, year, month, monthMutations.unfinalizeAllocations])
 
+  const deleteAllocations = useCallback(async () => {
+    if (!budgetId) throw new Error('No budget selected')
+
+    await monthMutations.deleteAllocations.mutateAsync({
+      budgetId,
+      year,
+      month,
+    })
+  }, [budgetId, year, month, monthMutations.deleteAllocations])
+
   // ==========================================================================
   // CACHE/REFRESH
   // ==========================================================================
@@ -337,6 +348,7 @@ export function useBudgetMonth(
     saveAllocations,
     finalizeAllocations,
     unfinalizeAllocations,
+    deleteAllocations,
 
     // Cache
     refreshMonth,

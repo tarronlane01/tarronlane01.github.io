@@ -22,6 +22,10 @@ export { Modal } from './Modal'
 export { Checkbox } from './Checkbox'
 export { CollapsibleSection } from './CollapsibleSection'
 export { TabNavigation, type Tab, type TabNavigationProps } from './TabNavigation'
+export { Breadcrumb, type BreadcrumbItem } from './Breadcrumb'
+export { DropdownMenu, type MenuItem } from './DropdownMenu'
+export { BudgetNavBar } from './BudgetNavBar'
+export { ContentContainer } from './ContentContainer'
 
 // Utility functions
 export function formatDate(isoString: string) {

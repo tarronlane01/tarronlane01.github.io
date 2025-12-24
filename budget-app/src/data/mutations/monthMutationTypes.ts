@@ -108,3 +108,9 @@ export interface UnfinalizeAllocationsParams {
   month: number
 }
 
+export interface DeleteAllocationsParams {
+  budgetId: string
+  year: number
+  month: number
+}
+

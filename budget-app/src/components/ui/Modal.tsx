@@ -5,10 +5,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: ReactNode
-  maxWidth?: string
+  width?: string
 }
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = '28rem' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, width = '28rem' }: ModalProps) {
   if (!isOpen) return null
 
   return (
@@ -31,8 +31,10 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = '28rem' }: 
           color: 'rgba(255, 255, 255, 0.87)',
           borderRadius: '12px',
           padding: '1.5rem',
-          width: '100%',
-          maxWidth,
+          width: width,
+          maxWidth: 'calc(100vw - 2rem)',
+          flexShrink: 0,
+          boxSizing: 'border-box',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
         }}
         onClick={(e) => e.stopPropagation()}

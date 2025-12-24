@@ -1,46 +1,32 @@
 import { useState } from 'react'
-// Admin migrations need raw Firestore access to query ALL budgets system-wide
+// Settings migrations need raw Firestore access to query ALL budgets system-wide
 // and perform one-off data structure migrations. These are admin-only operations
 // that run across all users' data, not suitable for React Query caching.
 // eslint-disable-next-line no-restricted-imports
-import { readDoc, writeDoc, queryCollection, type FirestoreData } from '../../data/firestore/operations'
-import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useAdminMigrationQuery, queryClient } from '../../data'
-import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../types/budget'
-import {
-  MigrationStatusCard,
-  MigrationResults,
-  Spinner,
-  type BudgetMigrationResult,
-} from '../../components/budget/Admin'
+import { readDoc, writeDoc, queryCollection, deleteDocByPath, type FirestoreData } from '../data/firestore/operations'
+import { queryClient } from '../data'
+import type { FutureMonthInfo } from '../data/queries/useSettingsMigrationQuery'
+import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../types/budget'
+import type { BudgetMigrationResult } from '../components/budget/Admin'
 
-function AdminMigration() {
-  const firebase_auth_hook = useFirebaseAuth()
+interface UseMigrationActionsOptions {
+  currentUser: unknown
+  futureMonthsToDelete: FutureMonthInfo[]
+  onRefetch: () => void
+}
 
-  const current_user = firebase_auth_hook.get_current_firebase_user()
-
-  // Use React Query for migration status - does NOT auto-refetch
-  const migrationQuery = useAdminMigrationQuery()
-
+export function useMigrationActions({
+  currentUser,
+  futureMonthsToDelete,
+  onRefetch,
+}: UseMigrationActionsOptions) {
   const [isMigrating, setIsMigrating] = useState(false)
   const [migrationResults, setMigrationResults] = useState<BudgetMigrationResult[] | null>(null)
-
-  // Derive status from query
-  const hasData = migrationQuery.data !== undefined
-  const isStale = migrationQuery.isStale
-  const migrationStatus = migrationQuery.data ?? {
-    categoriesArrayMigrationNeeded: false,
-    accountsArrayMigrationNeeded: false,
-    budgetsToMigrateCategories: 0,
-    budgetsToMigrateAccounts: 0,
-    budgetsNeedingCategoryBalance: 0,
-    totalBudgetsChecked: 0,
-  }
-  const isLoading = migrationQuery.isLoading
-  const isRefreshing = migrationQuery.isFetching && !migrationQuery.isLoading
-  const lastUpdated = migrationQuery.dataUpdatedAt
-    ? new Date(migrationQuery.dataUpdatedAt).toLocaleString()
-    : null
+  const [isCleaningFutureMonths, setIsCleaningFutureMonths] = useState(false)
+  const [futureMonthsCleanupResult, setFutureMonthsCleanupResult] = useState<{
+    deleted: number
+    errors: string[]
+  } | null>(null)
 
   // Calculate category balances from finalized months
   async function calculateCategoryBalances(budgetId: string, categoryIds: string[]): Promise<Record<string, number>> {
@@ -53,7 +39,7 @@ function AdminMigration() {
         allocations?: Array<{ category_id: string; amount: number }>
       }>(
         'months',
-        `admin migration: calculating category balances for budget ${budgetId}`,
+        `settings migration: calculating category balances for budget ${budgetId}`,
         [{ field: 'budget_id', op: '==', value: budgetId }]
       )
 
@@ -72,62 +58,12 @@ function AdminMigration() {
     return balances
   }
 
-  // Run the migration across ALL budgets in the system
-  async function runMigration() {
-    if (!current_user) return
-
-    setIsMigrating(true)
-    setMigrationResults(null)
-
-    const results: BudgetMigrationResult[] = []
-
-    try {
-      // Query ALL budgets in the system (no filter)
-      const budgetsResult = await queryCollection<{ name?: string }>(
-        'budgets',
-        'admin migration: listing all budgets in system to migrate'
-      )
-
-      if (budgetsResult.docs.length === 0) {
-        setMigrationResults([{ budgetId: '', budgetName: 'No budgets found', categoriesMigrated: 0, accountsMigrated: 0, accountGroupsMigrated: 0, balancesCalculated: false, error: 'No budgets in system' }])
-        setIsMigrating(false)
-        return
-      }
-
-      // Process each budget
-      for (const budgetDoc of budgetsResult.docs) {
-        const result = await migrateBudget(budgetDoc.id)
-        results.push(result)
-      }
-
-      setMigrationResults(results)
-      // Invalidate all budget-related caches so other pages show updated data
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-      queryClient.invalidateQueries({ queryKey: ['month'] })
-      // Refetch migration status to show updated state (needed because enabled: false)
-      queryClient.invalidateQueries({ queryKey: ['adminMigration'] })
-      migrationQuery.refetch()
-    } catch (err) {
-      setMigrationResults([{
-        budgetId: '',
-        budgetName: 'Migration Error',
-        categoriesMigrated: 0,
-        accountsMigrated: 0,
-        accountGroupsMigrated: 0,
-        balancesCalculated: false,
-        error: err instanceof Error ? err.message : 'Migration failed',
-      }])
-    } finally {
-      setIsMigrating(false)
-    }
-  }
-
   async function migrateBudget(budgetId: string): Promise<BudgetMigrationResult> {
     try {
       const { exists: budgetExists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        `admin migration: reading budget to check if migration needed`
+        `settings migration: reading budget to check if migration needed`
       )
 
       if (!budgetExists || !data) {
@@ -299,7 +235,7 @@ function AdminMigration() {
           accounts: updatedAccounts,
           account_groups: updatedAccountGroups,
         },
-        `admin migration: saving migrated budget data (categories: ${categoriesMigrated}, accounts: ${accountsMigrated}, groups: ${accountGroupsMigrated})`
+        `settings migration: saving migrated budget data (categories: ${categoriesMigrated}, accounts: ${accountsMigrated}, groups: ${accountGroupsMigrated})`
       )
 
       return {
@@ -323,100 +259,96 @@ function AdminMigration() {
     }
   }
 
-  const needsMigration = migrationStatus.categoriesArrayMigrationNeeded || migrationStatus.accountsArrayMigrationNeeded
-  const totalBudgetsToMigrate = Math.max(migrationStatus.budgetsToMigrateCategories, migrationStatus.budgetsToMigrateAccounts)
+  // Run the migration across ALL budgets in the system
+  async function runMigration() {
+    if (!currentUser) return
 
-  // Refresh migration status - invalidate cache first to ensure fresh Firebase read
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['adminMigration'] })
-    migrationQuery.refetch()
+    setIsMigrating(true)
+    setMigrationResults(null)
+
+    const results: BudgetMigrationResult[] = []
+
+    try {
+      // Query ALL budgets in the system (no filter)
+      const budgetsResult = await queryCollection<{ name?: string }>(
+        'budgets',
+        'settings migration: listing all budgets in system to migrate'
+      )
+
+      if (budgetsResult.docs.length === 0) {
+        setMigrationResults([{ budgetId: '', budgetName: 'No budgets found', categoriesMigrated: 0, accountsMigrated: 0, accountGroupsMigrated: 0, balancesCalculated: false, error: 'No budgets in system' }])
+        setIsMigrating(false)
+        return
+      }
+
+      // Process each budget
+      for (const budgetDoc of budgetsResult.docs) {
+        const result = await migrateBudget(budgetDoc.id)
+        results.push(result)
+      }
+
+      setMigrationResults(results)
+      // Invalidate all budget-related caches so other pages show updated data
+      queryClient.invalidateQueries({ queryKey: ['budget'] })
+      queryClient.invalidateQueries({ queryKey: ['month'] })
+      // Refetch migration status to show updated state (needed because enabled: false)
+      queryClient.invalidateQueries({ queryKey: ['settingsMigration'] })
+      onRefetch()
+    } catch (err) {
+      setMigrationResults([{
+        budgetId: '',
+        budgetName: 'Migration Error',
+        categoriesMigrated: 0,
+        accountsMigrated: 0,
+        accountGroupsMigrated: 0,
+        balancesCalculated: false,
+        error: err instanceof Error ? err.message : 'Migration failed',
+      }])
+    } finally {
+      setIsMigrating(false)
+    }
   }
 
-  if (isLoading) {
-    return (
-      <div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <h2 style={{ marginTop: 0 }}>Data Migrations</h2>
-        <p style={{ opacity: 0.7 }}>Checking migration status...</p>
-      </div>
-    )
+  // Delete future months that are more than 2 months from now
+  async function cleanupFutureMonths() {
+    if (!currentUser) return
+    if (futureMonthsToDelete.length === 0) return
+
+    setIsCleaningFutureMonths(true)
+    setFutureMonthsCleanupResult(null)
+
+    let deleted = 0
+    const errors: string[] = []
+
+    for (const monthInfo of futureMonthsToDelete) {
+      try {
+        await deleteDocByPath(
+          'months',
+          monthInfo.docId,
+          `settings cleanup: deleting future month ${monthInfo.year}-${monthInfo.month}`
+        )
+        deleted++
+      } catch (err) {
+        errors.push(`Failed to delete ${monthInfo.docId}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
+    }
+
+    setFutureMonthsCleanupResult({ deleted, errors })
+    setIsCleaningFutureMonths(false)
+
+    // Refresh status to show updated count
+    queryClient.invalidateQueries({ queryKey: ['settingsMigration'] })
+    queryClient.invalidateQueries({ queryKey: ['month'] })
+    onRefetch()
   }
 
-  return (
-    <div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0 }}>Data Migrations</h2>
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing || isMigrating}
-          style={{
-            background: '#646cff',
-            color: 'white',
-            border: 'none',
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            cursor: isRefreshing || isMigrating ? 'not-allowed' : 'pointer',
-            fontWeight: 500,
-            opacity: isRefreshing || isMigrating ? 0.7 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            minWidth: '130px',
-            minHeight: '36px',
-          }}
-        >
-          <span style={{ width: '18px', height: '18px', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-            {isRefreshing ? <Spinner noMargin /> : '🔄'}
-          </span>
-          Refresh All
-        </button>
-      </div>
-      <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-        Run migrations to update your budget data structure. Status is cached and won't auto-refresh.
-        <span style={{ display: 'block', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-          {!hasData ? (
-            <span style={{ color: '#a5b4fc' }}>Status: Unknown (click Refresh to check)</span>
-          ) : isStale ? (
-            <span style={{ color: '#fbbf24' }}>⚠️ Status may be stale — Last checked: {lastUpdated}</span>
-          ) : (
-            <span>Last checked: {lastUpdated}</span>
-          )}
-        </span>
-      </p>
-
-      <MigrationStatusCard
-        title="Migrate Data to Map Structure"
-        description="Converts categories, accounts, and account groups from array format to map structure. This improves performance and enables direct lookup by ID."
-        isComplete={hasData ? !needsMigration : false}
-        isMigrating={isMigrating}
-        needsMigration={hasData ? needsMigration : false}
-        totalBudgetsToMigrate={totalBudgetsToMigrate}
-        budgetsToMigrateCategories={migrationStatus.budgetsToMigrateCategories}
-        budgetsToMigrateAccounts={migrationStatus.budgetsToMigrateAccounts}
-        onRunMigration={runMigration}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-        disabled={!current_user}
-        isUnknown={!hasData}
-      >
-        {migrationResults && <MigrationResults results={migrationResults} />}
-      </MigrationStatusCard>
-
-      {/* Info about migration scope */}
-      <div style={{
-        background: 'color-mix(in srgb, currentColor 3%, transparent)',
-        padding: '1rem',
-        borderRadius: '8px',
-        fontSize: '0.85rem',
-      }}>
-        <p style={{ margin: 0, opacity: 0.7 }}>
-          <strong>Note:</strong> This migration will process <strong>all {hasData ? migrationStatus.totalBudgetsChecked : '?'} budgets</strong> in the system,
-          not just the ones you own or are invited to.
-        </p>
-      </div>
-    </div>
-  )
+  return {
+    isMigrating,
+    migrationResults,
+    isCleaningFutureMonths,
+    futureMonthsCleanupResult,
+    runMigration,
+    cleanupFutureMonths,
+  }
 }
 
-export default AdminMigration

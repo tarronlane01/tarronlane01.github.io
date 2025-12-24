@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
+import { PageContainer, BudgetNavBar } from '../../components/ui'
 import { BudgetCard } from '../../components/budget/Admin'
 
-function AdminMyBudgets() {
-  // Context: identifiers and budget management actions
+function MyBudgets() {
   const {
     selectedBudgetId,
     currentUserId,
@@ -15,7 +15,6 @@ function AdminMyBudgets() {
     isInitialized,
   } = useBudget()
 
-  // Hook: budget data and mutations
   const {
     budget: currentBudget,
     renameBudget,
@@ -113,7 +112,6 @@ function AdminMyBudgets() {
     }
   }
 
-  // Handle budget rename
   function startEditing(budgetId: string, name: string) {
     setEditName(name)
     setEditingBudgetId(budgetId)
@@ -144,19 +142,24 @@ function AdminMyBudgets() {
     }
   }
 
-  // Separate budgets into categories
   const acceptedBudgets = accessibleBudgets.filter(b => !b.isPending)
   const pendingBudgetsList = accessibleBudgets.filter(b => b.isPending)
 
   if (loading || !isInitialized) {
-    return <p>Loading your budgets...</p>
+    return (
+      <PageContainer>
+        <p>Loading your budgets...</p>
+      </PageContainer>
+    )
   }
 
   return (
-    <div>
-      <h2 style={{ marginTop: 0 }}>My Budgets</h2>
+    <PageContainer>
+      <BudgetNavBar title="My Budgets" />
+
+      <h1>My Budgets</h1>
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-        Manage your budgets, switch between them, and accept new invitations.
+        Switch between budgets, accept invitations, or join a budget by ID.
       </p>
 
       {error && (
@@ -436,8 +439,9 @@ function AdminMyBudgets() {
           </code>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }
 
-export default AdminMyBudgets
+export default MyBudgets
+

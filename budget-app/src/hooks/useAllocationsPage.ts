@@ -5,26 +5,40 @@ import { useBudgetData, useBudgetMonth } from './index'
 
 export function useAllocationsPage() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
+  const { categories, categoryBalancesSnapshot, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
   const {
     month: currentMonth,
     isLoading: monthLoading,
     previousMonthIncome,
     saveAllocations,
     finalizeAllocations,
+    deleteAllocations,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
   // Allocations state - track local edits before saving
   const [localAllocations, setLocalAllocations] = useState<Record<string, string>>({})
   const [isSavingAllocations, setIsSavingAllocations] = useState(false)
   const [isFinalizingAllocations, setIsFinalizingAllocations] = useState(false)
+  const [isDeletingAllocations, setIsDeletingAllocations] = useState(false)
   const [isEditingAppliedAllocations, setIsEditingAppliedAllocations] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Total finalized allocations - computed from balance on each category
+  // Total finalized allocations - computed from category balances snapshot
+  // Uses 'current' balance to match the Categories admin page calculation
+  // Note: We don't require the snapshot to match the viewed month because
+  // "Available Now" represents total unallocated funds, which is independent
+  // of which month you're viewing for allocations
   const totalFinalizedAllocations = useMemo(() => {
+    // If we have a valid (non-stale) snapshot, use its current balances
+    if (categoryBalancesSnapshot && !categoryBalancesSnapshot.is_stale) {
+      return Object.values(categoryBalancesSnapshot.balances).reduce(
+        (sum, bal) => sum + (bal?.current ?? 0),
+        0
+      )
+    }
+    // Fallback to stored category balances (less accurate, may be stale)
     return Object.values(categories).reduce((sum, cat) => sum + cat.balance, 0)
-  }, [categories])
+  }, [categories, categoryBalancesSnapshot])
 
   // Initialize local allocations when month changes (only for non-percentage categories)
   useEffect(() => {
@@ -150,11 +164,37 @@ export function useAllocationsPage() {
     }
   }, [saveAllocations, finalizeAllocations, buildAllocationsArray])
 
+  // Delete allocations (clear and unfinalize)
+  const handleDeleteAllocations = useCallback(async () => {
+    setError(null)
+    setIsDeletingAllocations(true)
+    try {
+      await deleteAllocations()
+      // Reset local allocations to defaults after deletion
+      const allocMap: Record<string, string> = {}
+      Object.entries(categories).forEach(([catId, cat]) => {
+        if (cat.default_monthly_type === 'percentage') return
+        if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
+          allocMap[catId] = cat.default_monthly_amount.toString()
+        } else {
+          allocMap[catId] = ''
+        }
+      })
+      setLocalAllocations(allocMap)
+      setIsEditingAppliedAllocations(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete allocations')
+    } finally {
+      setIsDeletingAllocations(false)
+    }
+  }, [deleteAllocations, categories])
+
   return {
     // State
     localAllocations,
     isSavingAllocations,
     isFinalizingAllocations,
+    isDeletingAllocations,
     isEditingAppliedAllocations,
     error,
     monthLoading,
@@ -173,6 +213,7 @@ export function useAllocationsPage() {
     resetAllocationsToSaved,
     handleSaveAllocations,
     handleFinalizeAllocations,
+    handleDeleteAllocations,
     setIsEditingAppliedAllocations,
     setError,
   }

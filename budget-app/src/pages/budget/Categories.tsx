@@ -15,6 +15,7 @@ import {
   CategoryGroupCard,
   UncategorizedSection,
 } from '../../components/budget/Categories'
+import { RecalculateAllButton } from '../../components/budget/Month'
 
 function Categories() {
   const {
@@ -29,10 +30,6 @@ function Categories() {
     error,
     setError,
     getOnBudgetTotal,
-    // Reconciliation
-    categoryBalanceMismatch,
-    checkCategoryBalanceMismatch,
-    recalculateAndSaveCategoryBalances,
     // Category handlers
     handleCreateCategory,
     handleUpdateCategory,
@@ -71,10 +68,6 @@ function Categories() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
 
-  // Reconciliation state
-  const [isCheckingMismatch, setIsCheckingMismatch] = useState(false)
-  const [isReconciling, setIsReconciling] = useState(false)
-
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
   }
@@ -94,114 +87,14 @@ function Categories() {
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Category Balance Reconciliation Warning */}
-      {categoryBalanceMismatch && Object.keys(categoryBalanceMismatch).length > 0 && (
-        <div style={{
-          background: 'color-mix(in srgb, #f59e0b 15%, transparent)',
-          border: '1px solid #f59e0b',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem',
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'flex-start' : 'center',
-          gap: '1rem',
-        }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontWeight: 600, color: '#f59e0b' }}>
-              ⚠️ Category Balance Mismatch Detected
-            </p>
-            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', opacity: 0.9 }}>
-              {Object.keys(categoryBalanceMismatch).length} categor{Object.keys(categoryBalanceMismatch).length !== 1 ? 'ies have' : 'y has'} balances that don't match the sum of allocations minus expenses.
-            </p>
-          </div>
-          <button
-            onClick={async () => {
-              setIsReconciling(true)
-              try {
-                await recalculateAndSaveCategoryBalances()
-              } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to reconcile')
-              } finally {
-                setIsReconciling(false)
-              }
-            }}
-            disabled={isReconciling}
-            style={{
-              background: '#f59e0b',
-              color: '#000',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '0.5rem 1rem',
-              fontWeight: 600,
-              cursor: isReconciling ? 'not-allowed' : 'pointer',
-              opacity: isReconciling ? 0.7 : 1,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {isReconciling ? '⏳ Reconciling...' : '🔄 Reconcile Now'}
-          </button>
-        </div>
-      )}
-
-      {/* Manual Reconcile Button (when no mismatch) */}
-      {!categoryBalanceMismatch && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginBottom: '1rem',
-          gap: '0.5rem',
-        }}>
-          <button
-            onClick={async () => {
-              setIsCheckingMismatch(true)
-              try {
-                await checkCategoryBalanceMismatch()
-              } finally {
-                setIsCheckingMismatch(false)
-              }
-            }}
-            disabled={isCheckingMismatch}
-            style={{
-              background: 'color-mix(in srgb, currentColor 10%, transparent)',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '0.5rem 0.75rem',
-              fontSize: '0.85rem',
-              cursor: isCheckingMismatch ? 'not-allowed' : 'pointer',
-              opacity: isCheckingMismatch ? 0.6 : 1,
-            }}
-            title="Check if category balances match allocation/expense history"
-          >
-            {isCheckingMismatch ? '⏳ Checking...' : '🔍 Check Balances'}
-          </button>
-          <button
-            onClick={async () => {
-              setIsReconciling(true)
-              try {
-                await recalculateAndSaveCategoryBalances()
-              } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to reconcile')
-              } finally {
-                setIsReconciling(false)
-              }
-            }}
-            disabled={isReconciling}
-            style={{
-              background: 'color-mix(in srgb, currentColor 10%, transparent)',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '0.5rem 0.75rem',
-              fontSize: '0.85rem',
-              cursor: isReconciling ? 'not-allowed' : 'pointer',
-              opacity: isReconciling ? 0.6 : 1,
-            }}
-            title="Recalculate all category balances from allocation/expense history"
-          >
-            {isReconciling ? '⏳ Reconciling...' : '🔄 Reconcile All'}
-          </button>
-        </div>
-      )}
+      {/* Recalculate All button - for syncing data during development */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        marginBottom: '1rem',
+      }}>
+        <RecalculateAllButton />
+      </div>
 
       {/* Stats Cards */}
       {(() => {

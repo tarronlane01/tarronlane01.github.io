@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import UserContext from "../contexts/user_context"
 import useFirebaseAuth from "../hooks/useFirebaseAuth"
+import { DropdownMenu, type MenuItem } from "../components/ui"
 
 export default function Account() {
     const user_context = useContext(UserContext)
@@ -29,6 +30,21 @@ export default function Account() {
 
     return (
         <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+            <nav style={{ marginBottom: '1rem', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Link to="/" style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none', padding: '0.25rem 0.5rem' }} title="Back to Home">←</Link>
+                </div>
+                <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }} title="Tarron Lane Home">
+                    <img src="/t-icon.svg" alt="Tarron Lane" style={{ width: '1.5rem', height: '1.5rem' }} />
+                    <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>Account</span>
+                </Link>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <DropdownMenu items={[
+                        { label: 'Budget', icon: '💰', to: '/budget' },
+                        { label: 'Account', icon: '👤', to: '/account' },
+                    ] as MenuItem[]} />
+                </div>
+            </nav>
             <h1>Account</h1>
             {
                 user_context.is_logged_in
@@ -42,7 +58,6 @@ export default function Account() {
                 )
                 : <LoginForm />
             }
-            <p><Link to="/">Back to Home</Link></p>
         </div>
     )
 }

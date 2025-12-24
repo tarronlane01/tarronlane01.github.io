@@ -14,12 +14,14 @@ import Budget from './pages/budget/Budget'
 import Analytics from './pages/budget/Analytics'
 import Accounts from './pages/budget/Accounts'
 import Categories from './pages/budget/Categories'
+import Settings from './pages/budget/Settings'
+import SettingsUsers from './pages/budget/SettingsUsers'
 import Admin from './pages/budget/Admin'
-import AdminUsers from './pages/budget/AdminUsers'
-import AdminMigration from './pages/budget/AdminMigration'
-import AdminFeedback from './pages/budget/AdminFeedback'
-import AdminTests from './pages/budget/AdminTests'
-import AdminMyBudgets from './pages/budget/AdminMyBudgets'
+import AdminBudget from './pages/budget/SettingsBudget'
+import AdminMigration from './pages/budget/SettingsMigration'
+import AdminFeedback from './pages/budget/SettingsFeedback'
+import AdminTests from './pages/budget/SettingsTests'
+import MyBudgets from './pages/budget/MyBudgets'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton } from './components/ui'
@@ -76,15 +78,20 @@ function App() {
                   <Route index element={<Budget />} />
                   <Route path=":year/:month/:tab" element={<Budget />} />
                   <Route path="analytics" element={<Analytics />} />
+                  <Route path="my-budgets" element={<MyBudgets />} />
 
-                  {/* Admin routes */}
-                  <Route path="admin" element={<Admin />}>
-                    <Route path="my-budgets" element={<AdminMyBudgets />} />
+                  {/* Budget Settings routes */}
+                  <Route path="settings" element={<Settings />}>
                     <Route path="accounts" element={<Accounts />} />
                     <Route path="categories" element={<Categories />} />
-                    <Route path="users" element={<AdminUsers />} />
-                    <Route path="migration" element={<AdminMigration />} />
+                    <Route path="users" element={<SettingsUsers />} />
+                  </Route>
+
+                  {/* Admin routes (admin-only) */}
+                  <Route path="admin" element={<Admin />}>
+                    <Route path="budget" element={<AdminBudget />} />
                     <Route path="feedback" element={<AdminFeedback />} />
+                    <Route path="migration" element={<AdminMigration />} />
                     <Route path="tests" element={<AdminTests />} />
                   </Route>
                 </Route>
