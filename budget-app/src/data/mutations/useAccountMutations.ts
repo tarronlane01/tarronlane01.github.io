@@ -62,7 +62,7 @@ export function useAccountMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before updating accounts (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -120,7 +120,7 @@ export function useAccountMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before updating account groups (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -178,7 +178,7 @@ export function useAccountMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        `reading budget before updating account balance (delta: ${delta})`
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {

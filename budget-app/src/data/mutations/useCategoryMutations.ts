@@ -79,7 +79,7 @@ export function useCategoryMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before updating categories (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -137,7 +137,7 @@ export function useCategoryMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before updating category groups (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -202,7 +202,7 @@ export function useCategoryMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before saving category balances snapshot'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -275,7 +275,7 @@ export function useCategoryMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before recalculating category balances'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {

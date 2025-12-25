@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useBudget } from '../../contexts/budget_context'
+import { useBudget, type BudgetTab } from '../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../hooks'
 import { PageContainer, ErrorAlert, BudgetNavBar, ContentContainer } from '../../components/ui'
 import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
 import {
   BudgetTabs,
-  type BudgetTab,
   MonthNavigation,
   IncomeSection,
   SpendSection,
@@ -38,8 +37,10 @@ function Budget() {
     selectedBudgetId,
     currentYear,
     currentMonthNumber,
+    lastActiveTab,
     setCurrentYear,
     setCurrentMonthNumber,
+    setLastActiveTab,
     goToPreviousMonth,
     goToNextMonth,
     hasPendingInvites,
@@ -62,11 +63,17 @@ function Budget() {
   const [error, setError] = useState<string | null>(null)
   const urlInitializedRef = useRef(false)
 
-  // Initialize from URL params on mount, default to 'balances'
-  const [activeTab, setActiveTab] = useState<BudgetTab>(() => {
+  // Initialize from URL params on mount, fallback to context's last active tab
+  const [activeTab, setActiveTabLocal] = useState<BudgetTab>(() => {
     const { tab } = parsePathParams(params)
-    return tab ?? 'balances'
+    return tab ?? lastActiveTab
   })
+
+  // Wrap setActiveTab to also update context
+  const setActiveTab = (tab: BudgetTab) => {
+    setActiveTabLocal(tab)
+    setLastActiveTab(tab)
+  }
 
   // Initialize year/month from URL on first render
   useEffect(() => {

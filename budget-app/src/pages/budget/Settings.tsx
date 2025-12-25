@@ -1,13 +1,14 @@
 import { useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
-import { useBudget } from '../../contexts/budget_context'
+import { useBudget, type SettingsTab } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
-import { SETTINGS_TAB_KEY, VALID_SETTINGS_TABS } from '@constants'
 import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
+
+const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
 
 function Settings() {
   // Context: identifiers and UI flags
-  const { selectedBudgetId, currentUserId } = useBudget()
+  const { selectedBudgetId, currentUserId, lastSettingsTab, setLastSettingsTab } = useBudget()
 
   // Hook: budget data
   const {
@@ -20,7 +21,7 @@ function Settings() {
   const isRootSettings = location.pathname === '/budget/settings'
 
   // Derive current tab from URL path
-  const currentTab = useMemo(() => {
+  const currentTab: SettingsTab = useMemo(() => {
     const path = location.pathname
     if (path.includes('/settings/accounts')) return 'accounts'
     if (path.includes('/settings/categories')) return 'categories'
@@ -31,28 +32,21 @@ function Settings() {
   // For permission checks
   const isUsersPage = currentTab === 'users'
 
-  // Save current settings tab to localStorage when it changes
+  // Save current settings tab to context when it changes
   useEffect(() => {
     if (isRootSettings) return // Don't save when at root (about to redirect)
-    localStorage.setItem(SETTINGS_TAB_KEY, currentTab)
-  }, [currentTab, isRootSettings])
+    setLastSettingsTab(currentTab)
+  }, [currentTab, isRootSettings, setLastSettingsTab])
 
   // Get the saved tab for redirect (with permission checks)
-  function getSavedSettingsTab(): string {
-    const saved = localStorage.getItem(SETTINGS_TAB_KEY)
-    // Type guard: check if saved is a valid settings tab
-    const isValidTab = saved && (VALID_SETTINGS_TABS as readonly string[]).includes(saved)
-    if (!isValidTab) return 'accounts'
-
-    // Handle legacy saved values that moved to Admin
-    if (saved === 'budget' || saved === 'migration' || saved === 'feedback' || saved === 'tests') {
-      return 'accounts'
-    }
+  function getSavedSettingsTab(): SettingsTab {
+    // Check if saved tab is valid
+    if (!VALID_SETTINGS_TABS.includes(lastSettingsTab)) return 'accounts'
 
     // Check permissions for restricted tabs
-    if (saved === 'users' && !isOwner) return 'accounts'
+    if (lastSettingsTab === 'users' && !isOwner) return 'accounts'
 
-    return saved
+    return lastSettingsTab
   }
 
   // Define settings tabs with permission-based visibility

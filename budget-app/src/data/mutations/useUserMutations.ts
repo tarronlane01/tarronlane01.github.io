@@ -152,7 +152,7 @@ export function useUserMutations() {
       const { data: userData } = await readDoc<UserDocument>(
         'users',
         userId,
-        'reading user document before accepting invite'
+        'PRE-EDIT-READ'
       )
 
       if (userData?.budget_ids?.includes(budgetId)) {
@@ -199,7 +199,7 @@ export function useUserMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before inviting user'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -256,7 +256,7 @@ export function useUserMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before revoking user access'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -311,7 +311,7 @@ export function useUserMutations() {
       const { exists, data: userData } = await readDoc<UserDocument>(
         'users',
         userId,
-        'reading user document before switching active budget'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !userData) {

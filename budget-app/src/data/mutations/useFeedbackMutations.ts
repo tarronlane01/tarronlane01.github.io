@@ -107,7 +107,7 @@ export function useFeedbackMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'feedback',
         item.doc_id,
-        'reading feedback document before toggling completion status'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
@@ -152,7 +152,7 @@ export function useFeedbackMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'feedback',
         docId,
-        'reading feedback document before updating sort order'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {

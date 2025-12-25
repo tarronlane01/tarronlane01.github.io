@@ -4,7 +4,7 @@
  * Shared utilities used across income, expense, and allocation mutations.
  */
 
-import type { MonthDocument, AccountsMap } from '../../types/budget'
+import type { MonthDocument, AccountsMap, CategoryAllocation, CategoryMonthBalance } from '../../types/budget'
 import {
   getMonthDocId,
   cleanIncomeForFirestore,
@@ -50,6 +50,7 @@ export async function saveMonthToFirestore(
   if (month.allocations) cleanedMonth.allocations = cleanAllocationsForFirestore(month.allocations)
   if (month.allocations_finalized !== undefined) cleanedMonth.allocations_finalized = month.allocations_finalized
   if (month.category_balances) cleanedMonth.category_balances = cleanCategoryBalancesForFirestore(month.category_balances)
+  if (month.category_balances_stale !== undefined) cleanedMonth.category_balances_stale = month.category_balances_stale
   if (month.account_balances_start) cleanedMonth.account_balances_start = month.account_balances_start
   if (month.account_balances_end) cleanedMonth.account_balances_end = month.account_balances_end
   if (month.previous_month_snapshot) cleanedMonth.previous_month_snapshot = month.previous_month_snapshot
@@ -138,6 +139,55 @@ export async function savePayeeIfNew(
 }
 
 // ============================================================================
+// CATEGORY BALANCES CALCULATION HELPER
+// ============================================================================
+
+/**
+ * Calculate category balances for a month given the allocations and finalized state.
+ * This allows us to compute fresh values inline during mutations instead of marking stale.
+ *
+ * @param monthData - The month document (needs previous_month_snapshot and expenses)
+ * @param categoryIds - List of all category IDs to calculate for
+ * @param allocations - The allocations to use (may be different from monthData.allocations)
+ * @param allocationsFinalized - Whether allocations are finalized
+ * @returns Calculated category balances array
+ */
+export function calculateCategoryBalancesForMonth(
+  monthData: MonthDocument,
+  categoryIds: string[],
+  allocations: CategoryAllocation[],
+  allocationsFinalized: boolean
+): CategoryMonthBalance[] {
+  const prevBalances = monthData.previous_month_snapshot?.category_balances_end ?? {}
+  const expenses = monthData.expenses ?? []
+
+  return categoryIds.map(catId => {
+    // Start balance comes from previous month's end balance
+    const startBalance = prevBalances[catId] ?? 0
+
+    // Allocated amount (only if finalized)
+    let allocated = 0
+    if (allocationsFinalized) {
+      const alloc = allocations.find(a => a.category_id === catId)
+      if (alloc) allocated = alloc.amount
+    }
+
+    // Sum expenses for this category
+    const spent = expenses
+      .filter(e => e.category_id === catId)
+      .reduce((sum, e) => sum + e.amount, 0)
+
+    return {
+      category_id: catId,
+      start_balance: startBalance,
+      allocated,
+      spent,
+      end_balance: startBalance + allocated - spent,
+    }
+  })
+}
+
+// ============================================================================
 // BUDGET-LEVEL CATEGORY BALANCES SNAPSHOT STALE HELPERS
 // ============================================================================
 
@@ -163,9 +213,21 @@ export function markCategoryBalancesSnapshotStaleInCache(budgetId: string): void
 /**
  * Mark budget snapshot stale in FIRESTORE only.
  * Use this in mutationFn. Only writes if not already stale.
+ *
+ * Optimization: First checks the React Query cache. If the cached budget
+ * already has is_stale = true, we skip the Firestore read/write entirely
+ * (assumes cache was recently updated by onMutate).
  */
 export async function markCategoryBalancesSnapshotStaleInFirestore(budgetId: string): Promise<void> {
   try {
+    // Check cache first - if already stale, skip Firestore operations
+    const budgetKey = queryKeys.budget(budgetId)
+    const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+    if (cachedBudget?.categoryBalancesSnapshot?.is_stale) {
+      // Cache shows stale, skip Firestore read/write
+      return
+    }
+
     const { exists, data } = await readDoc<FirestoreData>(
       'budgets',
       budgetId,
@@ -184,6 +246,16 @@ export async function markCategoryBalancesSnapshotStaleInFirestore(budgetId: str
         },
         'marking budget category balances snapshot as stale (expense or allocation changed)'
       )
+
+      // Update cache with stale flag
+      if (cachedBudget) {
+        queryClient.setQueryData<BudgetData>(budgetKey, {
+          ...cachedBudget,
+          categoryBalancesSnapshot: cachedBudget.categoryBalancesSnapshot
+            ? { ...cachedBudget.categoryBalancesSnapshot, is_stale: true }
+            : null,
+        })
+      }
     }
   } catch (err) {
     console.error('Error marking category balances snapshot stale in Firestore:', err)
@@ -223,32 +295,59 @@ export function markMonthCategoryBalancesStaleInCache(
 /**
  * Mark a specific month's category_balances as stale in FIRESTORE only.
  * Use this in mutationFn. Only writes if not already stale.
+ * Uses fetchQuery to leverage cache when available.
  */
 export async function markMonthCategoryBalancesStaleInFirestore(
   budgetId: string,
   year: number,
   month: number
 ): Promise<void> {
+  const monthKey = queryKeys.month(budgetId, year, month)
+  const monthDocId = getMonthDocId(budgetId, year, month)
+
   try {
-    const monthDocId = getMonthDocId(budgetId, year, month)
-    const { exists, data } = await readDoc<FirestoreData>(
+    const result = await queryClient.fetchQuery<MonthQueryData>({
+      queryKey: monthKey,
+      queryFn: async () => {
+        const { exists, data } = await readDoc<FirestoreData>(
+          'months',
+          monthDocId,
+          `checking if ${year}/${month} category balances need stale flag`
+        )
+        if (!exists || !data) {
+          throw new Error('MONTH_NOT_EXISTS')
+        }
+        return { month: data as MonthDocument }
+      },
+    })
+
+    // If already stale, nothing to do
+    if (result.month.category_balances_stale) {
+      return
+    }
+
+    // Not stale - mark it stale
+    await writeDoc(
       'months',
       monthDocId,
-      `checking if ${year}/${month} category balances need stale flag`
+      {
+        ...result.month,
+        category_balances_stale: true,
+      },
+      `marking ${year}/${month} category balances as stale`
     )
 
-    if (exists && data && !data.category_balances_stale) {
-      await writeDoc(
-        'months',
-        monthDocId,
-        {
-          ...data,
-          category_balances_stale: true,
-        },
-        `marking ${year}/${month} category balances as stale`
-      )
-    }
+    // Update cache with stale flag
+    queryClient.setQueryData<MonthQueryData>(monthKey, {
+      month: {
+        ...result.month,
+        category_balances_stale: true,
+      },
+    })
   } catch (err) {
+    if (err instanceof Error && err.message === 'MONTH_NOT_EXISTS') {
+      return // Month doesn't exist, nothing to mark
+    }
     console.error('Error marking month category balances stale in Firestore:', err)
   }
 }
@@ -298,6 +397,9 @@ export function markFutureMonthsCategoryBalancesStaleInCache(
 /**
  * Mark all future months' category_balances as stale in FIRESTORE only.
  * Use this in mutationFn. Only writes if not already stale.
+ *
+ * Optimization: First checks the React Query cache. If all cached future months
+ * are already stale, we skip the Firestore query entirely.
  */
 export async function markFutureMonthsCategoryBalancesStaleInFirestore(
   budgetId: string,
@@ -305,14 +407,54 @@ export async function markFutureMonthsCategoryBalancesStaleInFirestore(
   afterMonth: number
 ): Promise<void> {
   try {
+    // Check cache first - find any future months that aren't stale
+    const cache = queryClient.getQueryCache()
+    const monthQueries = cache.findAll({
+      predicate: (query) => {
+        const key = query.queryKey
+        return key[0] === 'month' && key[1] === budgetId
+      },
+    })
+
+    // Check if any cached future month is NOT stale
+    let hasUnstaleInCache = false
+    let hasFutureMonthsInCache = false
+    for (const query of monthQueries) {
+      const key = query.queryKey as readonly ['month', string, number, number]
+      const queryYear = key[2]
+      const queryMonth = key[3]
+
+      const isAfter = queryYear > afterYear ||
+        (queryYear === afterYear && queryMonth > afterMonth)
+
+      if (isAfter) {
+        hasFutureMonthsInCache = true
+        const monthData = queryClient.getQueryData<MonthQueryData>(key)
+        if (monthData?.month && !monthData.month.category_balances_stale) {
+          hasUnstaleInCache = true
+          break
+        }
+      }
+    }
+
+    // If we have future months in cache and all are already stale, skip Firestore
+    if (hasFutureMonthsInCache && !hasUnstaleInCache) {
+      return
+    }
+
+    // Query only months from afterYear onwards (reduces reads vs querying all months)
+    // We still filter in JS for the exact month comparison
     const monthsResult = await queryCollection<{
       year: number
       month: number
       category_balances_stale?: boolean
     }>(
       'months',
-      `finding months after ${afterYear}/${afterMonth} to mark category balances stale`,
-      [{ field: 'budget_id', op: '==', value: budgetId }]
+      `finding months >= ${afterYear} to mark category balances stale`,
+      [
+        { field: 'budget_id', op: '==', value: budgetId },
+        { field: 'year', op: '>=', value: afterYear },
+      ]
     )
 
     for (const doc of monthsResult.docs) {
@@ -334,6 +476,18 @@ export async function markFutureMonthsCategoryBalancesStaleInFirestore(
           },
           `marking ${docYear}/${docMonth} category balances as stale (earlier month was edited)`
         )
+
+        // Update cache with stale flag
+        const monthKey = queryKeys.month(budgetId, docYear, docMonth)
+        const cachedMonth = queryClient.getQueryData<MonthQueryData>(monthKey)
+        if (cachedMonth) {
+          queryClient.setQueryData<MonthQueryData>(monthKey, {
+            month: {
+              ...cachedMonth.month,
+              category_balances_stale: true,
+            },
+          })
+        }
       }
     }
   } catch (err) {

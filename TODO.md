@@ -4,4 +4,4 @@
 - [ ] admin.ts - why do admin pages need to avoid using query cache layer? L'ets see if we can consolidate to vaoid needing this
 - [ ] Have all read/write opertions have a desxritpion mandatory field that will get output to theconsole, to help with debugging to understand why each read/write is being made
 - [ ] Don't have the budget get loaded on the homepage, only when we're under budget. Do the same for the feedback button. It shouldn't show up on the homepage.
-- [x] Remove the double line in the budget settings underneath the tabs
+- [ ] When changing budget categories from the budget, mark current and all future months as stale if they aren't already marked as stale

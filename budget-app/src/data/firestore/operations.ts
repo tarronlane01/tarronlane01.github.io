@@ -40,10 +40,26 @@ import app from '../../firebase'
 import { featureFlags } from '../../constants/featureFlags'
 import type { AccountsMap, IncomeTransaction, CategoryAllocation, ExpenseTransaction, CategoryMonthBalance } from '../../types/budget'
 
-// Helper to conditionally log Firebase operations with source context
-function logFirebase(operation: string, path: string, source: string): void {
+// Helper to conditionally log Firebase operations with source context and document count
+function logFirebase(operation: string, path: string, source: string, docCount: number = 1): void {
   if (featureFlags.logFirebaseOperations) {
-    console.log(`[Firebase] ${operation}: ${path} ← ${source}`)
+    // Clean up the path for readability:
+    // - budgets/budget_xxx → budgets
+    // - months/budget_xxx_2025_12 → months/2025/12
+    let cleanPath = path
+    if (path.startsWith('budgets/')) {
+      cleanPath = 'budgets'
+    } else if (path.startsWith('months/')) {
+      // Extract year/month from doc ID (format: budgetId_YYYY_MM)
+      const docId = path.replace('months/', '')
+      const parts = docId.split('_')
+      if (parts.length >= 2) {
+        const month = parts[parts.length - 1]
+        const year = parts[parts.length - 2]
+        cleanPath = `months/${year}/${month}`
+      }
+    }
+    console.log(`[Firebase] ${operation}(${docCount}): ${cleanPath} ← ${source}`)
   }
 }
 
@@ -237,16 +253,6 @@ export async function queryCollection<T = FirestoreData>(
   const db = getDb()
   const collRef = collection(db, collectionPath)
 
-  // Build log description
-  let logDescription = collectionPath
-  if (whereClauses && whereClauses.length > 0) {
-    const clauseStr = whereClauses
-      .map(c => `${c.field} ${c.op} ${JSON.stringify(c.value)}`)
-      .join(', ')
-    logDescription += ` WHERE ${clauseStr}`
-  }
-  logFirebase('QUERY', logDescription, source)
-
   // Build and execute query
   let q: Query
   if (whereClauses && whereClauses.length > 0) {
@@ -257,6 +263,17 @@ export async function queryCollection<T = FirestoreData>(
   }
 
   const snapshot = await getDocs(q)
+
+  // Log AFTER query to show document count
+  let logDescription = collectionPath
+  if (whereClauses && whereClauses.length > 0) {
+    const clauseStr = whereClauses
+      .map(c => `${c.field} ${c.op} ${JSON.stringify(c.value)}`)
+      .join(', ')
+    logDescription += ` WHERE ${clauseStr}`
+  }
+  logFirebase('QUERY', logDescription, source, snapshot.docs.length)
+
   return {
     docs: snapshot.docs.map(docSnap => ({
       id: docSnap.id,

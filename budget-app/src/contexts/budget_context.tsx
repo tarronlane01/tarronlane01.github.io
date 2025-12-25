@@ -76,6 +76,11 @@ export type {
 // CONTEXT TYPE - Minimal: identifiers and UI state only
 // ============================================================================
 
+// Valid tabs for each section
+export type BudgetTab = 'income' | 'allocations' | 'spend' | 'balances'
+export type SettingsTab = 'accounts' | 'categories' | 'users'
+export type AdminTab = 'budget' | 'feedback' | 'migration' | 'tests'
+
 interface BudgetContextType {
   // Current user
   currentUserId: string | null
@@ -84,11 +89,17 @@ interface BudgetContextType {
   selectedBudgetId: string | null
   currentYear: number
   currentMonthNumber: number
+  lastActiveTab: BudgetTab
+  lastSettingsTab: SettingsTab
+  lastAdminTab: AdminTab
 
   // Selection setters
   setSelectedBudgetId: (id: string | null) => void
   setCurrentYear: (year: number) => void
   setCurrentMonthNumber: (month: number) => void
+  setLastActiveTab: (tab: BudgetTab) => void
+  setLastSettingsTab: (tab: SettingsTab) => void
+  setLastAdminTab: (tab: AdminTab) => void
 
   // UI/initialization state
   isInitialized: boolean
@@ -125,9 +136,15 @@ const defaultContextValue: BudgetContextType = {
   selectedBudgetId: null,
   currentYear: new Date().getFullYear(),
   currentMonthNumber: new Date().getMonth() + 1,
+  lastActiveTab: 'balances',
+  lastSettingsTab: 'accounts',
+  lastAdminTab: 'budget',
   setSelectedBudgetId: () => {},
   setCurrentYear: () => {},
   setCurrentMonthNumber: () => {},
+  setLastActiveTab: () => {},
+  setLastSettingsTab: () => {},
+  setLastAdminTab: () => {},
   isInitialized: false,
   needsFirstBudget: false,
   goToPreviousMonth: () => {},
@@ -157,6 +174,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
+  const [lastActiveTab, setLastActiveTab] = useState<BudgetTab>('balances')
+  const [lastSettingsTab, setLastSettingsTab] = useState<SettingsTab>('accounts')
+  const [lastAdminTab, setLastAdminTab] = useState<AdminTab>('budget')
 
   // UI state
   const [isInitialized, setIsInitialized] = useState(false)
@@ -289,9 +309,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     selectedBudgetId,
     currentYear,
     currentMonthNumber,
+    lastActiveTab,
+    lastSettingsTab,
+    lastAdminTab,
     setSelectedBudgetId,
     setCurrentYear,
     setCurrentMonthNumber,
+    setLastActiveTab,
+    setLastSettingsTab,
+    setLastAdminTab,
     isInitialized,
     needsFirstBudget,
     goToPreviousMonth,

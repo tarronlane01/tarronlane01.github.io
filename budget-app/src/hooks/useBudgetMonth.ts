@@ -62,7 +62,7 @@ interface UseBudgetMonthReturn {
 
   // Allocation mutations
   saveAllocations: (allocations: CategoryAllocation[]) => Promise<void>
-  finalizeAllocations: () => Promise<void>
+  finalizeAllocations: (allocations: CategoryAllocation[]) => Promise<void>
   unfinalizeAllocations: () => Promise<void>
   deleteAllocations: () => Promise<void>
 
@@ -277,16 +277,16 @@ export function useBudgetMonth(
     })
   }, [budgetId, year, month, monthMutations.saveAllocations])
 
-  const finalizeAllocations = useCallback(async () => {
-    if (!budgetId || !monthData) throw new Error('No budget or month loaded')
+  const finalizeAllocations = useCallback(async (allocations: CategoryAllocation[]) => {
+    if (!budgetId) throw new Error('No budget selected')
 
     await monthMutations.finalizeAllocations.mutateAsync({
       budgetId,
       year,
       month,
-      allocations: monthData.allocations || [],
+      allocations,
     })
-  }, [budgetId, monthData, year, month, monthMutations.finalizeAllocations])
+  }, [budgetId, year, month, monthMutations.finalizeAllocations])
 
   const unfinalizeAllocations = useCallback(async () => {
     if (!budgetId) throw new Error('No budget selected')

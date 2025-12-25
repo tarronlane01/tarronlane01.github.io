@@ -10,7 +10,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { queryCollection, readDoc, writeDoc, getMonthDocId, type FirestoreData } from '../firestore/operations'
+import { readDoc, getMonthDocId } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/useMonthQuery'
 import { markNextMonthSnapshotStaleInCache } from '../queries/useMonthQuery'
@@ -19,12 +19,12 @@ import type { MonthDocument, CategoriesMap } from '../../types/budget'
 import type { SaveAllocationsParams, FinalizeAllocationsParams, UnfinalizeAllocationsParams, DeleteAllocationsParams } from './monthMutationTypes'
 import {
   saveMonthToFirestore,
+  calculateCategoryBalancesForMonth,
   // Cache-only helpers (for onMutate)
   markMonthCategoryBalancesStaleInCache,
   markFutureMonthsCategoryBalancesStaleInCache,
   // Firestore-only helpers (for mutationFn)
   markCategoryBalancesSnapshotStaleInFirestore,
-  markMonthCategoryBalancesStaleInFirestore,
   markFutureMonthsCategoryBalancesStaleInFirestore,
 } from './monthMutationHelpers'
 
@@ -43,7 +43,7 @@ export function useAllocationMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before saving allocations (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
@@ -105,84 +105,40 @@ export function useAllocationMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before saving allocations (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
       }
 
+      // Get category IDs from existing month data for local calculation
+      const categoryIds = monthData.category_balances?.map(cb => cb.category_id)
+        ?? Object.keys(monthData.previous_month_snapshot?.category_balances_end ?? {})
+
+      // Calculate fresh category balances for this month
+      const categoryBalances = categoryIds.length > 0
+        ? calculateCategoryBalancesForMonth(monthData, categoryIds, allocations, true)
+        : monthData.category_balances
+
       const updatedMonth: MonthDocument = {
         ...monthData,
         allocations,
         allocations_finalized: true,
+        category_balances: categoryBalances,
+        category_balances_stale: false, // Fresh values, not stale
         updated_at: new Date().toISOString(),
       }
 
       await saveMonthToFirestore(budgetId, updatedMonth)
 
-      // Recalculate category balances on budget document
-      // Read budget from Firestore (server truth), not cache
-      const { exists: budgetExists, data: budgetData } = await readDoc<FirestoreData>(
-        'budgets',
-        budgetId,
-        'reading budget to recalculate category balances after finalizing allocations'
-      )
-      let updatedCategories: CategoriesMap | null = null
-
-      if (budgetExists && budgetData) {
-        // Sum allocations from all finalized months
-        const monthsResult = await queryCollection<{
-          allocations_finalized?: boolean
-          allocations?: Array<{ category_id: string; amount: number }>
-        }>(
-          'months',
-          'summing allocations from all finalized months to recalculate category balances',
-          [{ field: 'budget_id', op: '==', value: budgetId }]
-        )
-
-        const balances: Record<string, number> = {}
-        const existingCategories: CategoriesMap = budgetData.categories || {}
-        Object.keys(existingCategories).forEach(catId => { balances[catId] = 0 })
-
-        for (const docSnap of monthsResult.docs) {
-          const data = docSnap.data
-          if (data.allocations_finalized && data.allocations) {
-            for (const alloc of data.allocations) {
-              balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
-            }
-          }
-        }
-
-        // Update categories with new balances
-        const categoriesWithBalances: CategoriesMap = {}
-        Object.entries(existingCategories).forEach(([catId, cat]) => {
-          categoriesWithBalances[catId] = {
-            ...cat,
-            balance: balances[catId] ?? 0,
-          }
-        })
-        updatedCategories = categoriesWithBalances
-
-        // Save to budget document
-        await writeDoc(
-          'budgets',
-          budgetId,
-          {
-            ...budgetData,
-            categories: updatedCategories,
-          },
-          'saving recalculated category balances after finalizing allocations'
-        )
-      }
-
-      // Mark stale in Firestore: budget snapshot + this month + future months
-      // (Cache already updated in onMutate)
+      // Mark budget snapshot as stale (don't recalculate - lazy evaluation)
       await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
-      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+
+      // Mark future months as stale
       await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
-      return { updatedMonth, updatedCategories }
+      return { updatedMonth }
     },
     onMutate: async (params) => {
       const { budgetId, year, month, allocations } = params
@@ -250,19 +206,10 @@ export function useAllocationMutations() {
     onSuccess: (data, params) => {
       const { budgetId, year, month } = params
       const monthKey = queryKeys.month(budgetId, year, month)
-      const budgetKey = queryKeys.budget(budgetId)
 
       queryClient.setQueryData<MonthQueryData>(monthKey, { month: data.updatedMonth })
-
-      if (data.updatedCategories) {
-        const currentBudget = queryClient.getQueryData<BudgetData>(budgetKey)
-        if (currentBudget) {
-          queryClient.setQueryData<BudgetData>(budgetKey, {
-            ...currentBudget,
-            categories: data.updatedCategories,
-          })
-        }
-      }
+      // Note: Budget categories are updated optimistically in onMutate.
+      // Since snapshot is marked stale, accurate balances will be recalculated on demand.
     },
     onError: (_err, params, context) => {
       if (context?.previousMonth) {
@@ -286,25 +233,36 @@ export function useAllocationMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before saving allocations (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
       }
 
+      // Get category IDs from existing month data (no need to read budget)
+      const categoryIds = monthData.category_balances?.map(cb => cb.category_id)
+        ?? Object.keys(monthData.previous_month_snapshot?.category_balances_end ?? {})
+
+      // Calculate fresh category balances (keep allocations but unfinalized, so allocated = 0)
+      const categoryBalances = categoryIds.length > 0
+        ? calculateCategoryBalancesForMonth(monthData, categoryIds, monthData.allocations ?? [], false)
+        : monthData.category_balances
+
       const updatedMonth: MonthDocument = {
         ...monthData,
         allocations_finalized: false,
+        category_balances: categoryBalances,
+        category_balances_stale: false, // Fresh values, not stale
         updated_at: new Date().toISOString(),
       }
 
       await saveMonthToFirestore(budgetId, updatedMonth)
 
-      // Mark stale in Firestore: budget snapshot + this month + future months
-      // (Cache already updated in onMutate)
+      // Mark budget snapshot as stale
       await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
-      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+
+      // Mark future months as stale
       await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth }
@@ -392,26 +350,38 @@ export function useAllocationMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before deleting allocations (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
         throw new Error('Month data not found in Firestore')
       }
 
+      // Get category IDs from existing month data (no need to read budget)
+      // Use category_balances if available, otherwise from previous_month_snapshot
+      const categoryIds = monthData.category_balances?.map(cb => cb.category_id)
+        ?? Object.keys(monthData.previous_month_snapshot?.category_balances_end ?? {})
+
+      // Calculate fresh category balances (no allocations, unfinalized)
+      const categoryBalances = categoryIds.length > 0
+        ? calculateCategoryBalancesForMonth(monthData, categoryIds, [], false)
+        : monthData.category_balances
+
       const updatedMonth: MonthDocument = {
         ...monthData,
         allocations: [],
         allocations_finalized: false,
+        category_balances: categoryBalances,
+        category_balances_stale: false, // Fresh values, not stale
         updated_at: new Date().toISOString(),
       }
 
       await saveMonthToFirestore(budgetId, updatedMonth)
 
-      // Mark stale in Firestore: budget snapshot + this month + future months
-      // (Cache already updated in onMutate)
+      // Mark budget snapshot as stale
       await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
-      await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
+
+      // Mark future months as stale
       await markFutureMonthsCategoryBalancesStaleInFirestore(budgetId, year, month)
 
       return { updatedMonth }

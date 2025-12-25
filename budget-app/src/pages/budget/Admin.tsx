@@ -1,19 +1,20 @@
 import { useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
-import { useBudget } from '../../contexts/budget_context'
-import { ADMIN_TAB_KEY, VALID_ADMIN_TABS } from '@constants'
+import { useBudget, type AdminTab } from '../../contexts/budget_context'
 import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
+
+const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests']
 
 function Admin() {
   // Context: identifiers and UI flags
-  const { isAdmin, isTest } = useBudget()
+  const { isAdmin, isTest, lastAdminTab, setLastAdminTab } = useBudget()
 
   const location = useLocation()
 
   const isRootAdmin = location.pathname === '/budget/admin'
 
   // Derive current tab from URL path
-  const currentTab = useMemo(() => {
+  const currentTab: AdminTab = useMemo(() => {
     const path = location.pathname
     if (path.includes('/admin/budget')) return 'budget'
     if (path.includes('/admin/feedback')) return 'feedback'
@@ -25,23 +26,21 @@ function Admin() {
   // For permission checks
   const isTestsPage = currentTab === 'tests'
 
-  // Save current admin tab to localStorage when it changes
+  // Save current admin tab to context when it changes
   useEffect(() => {
     if (isRootAdmin) return // Don't save when at root (about to redirect)
-    localStorage.setItem(ADMIN_TAB_KEY, currentTab)
-  }, [currentTab, isRootAdmin])
+    setLastAdminTab(currentTab)
+  }, [currentTab, isRootAdmin, setLastAdminTab])
 
   // Get the saved tab for redirect (with permission checks)
-  function getSavedAdminTab(): string {
-    const saved = localStorage.getItem(ADMIN_TAB_KEY)
-    // Type guard: check if saved is a valid admin tab
-    const isValidTab = saved && (VALID_ADMIN_TABS as readonly string[]).includes(saved)
-    if (!isValidTab) return 'budget'
+  function getSavedAdminTab(): AdminTab {
+    // Check if saved tab is valid
+    if (!VALID_ADMIN_TABS.includes(lastAdminTab)) return 'budget'
 
     // Check permissions for restricted tabs
-    if (saved === 'tests' && !isTest) return 'budget'
+    if (lastAdminTab === 'tests' && !isTest) return 'budget'
 
-    return saved
+    return lastAdminTab
   }
 
   // Define admin tabs with permission-based visibility

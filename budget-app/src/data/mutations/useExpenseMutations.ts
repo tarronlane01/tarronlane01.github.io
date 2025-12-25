@@ -48,7 +48,7 @@ export function useExpenseMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before adding expense (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
@@ -198,7 +198,7 @@ export function useExpenseMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before updating expense (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
@@ -376,7 +376,7 @@ export function useExpenseMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before deleting expense (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {

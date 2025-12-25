@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
+import { type BudgetTab } from '../../../contexts/budget_context'
 import { TabNavigation, type Tab } from '../../ui'
 
-export type BudgetTab = 'income' | 'allocations' | 'spend' | 'balances'
+// Re-export for backward compatibility
+export type { BudgetTab }
 
 interface BudgetTabsProps {
   activeTab: BudgetTab

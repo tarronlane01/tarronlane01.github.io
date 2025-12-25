@@ -148,21 +148,19 @@ export function useAllocationsPage() {
     }
   }, [saveAllocations, buildAllocationsArray])
 
-  // Finalize allocations
+  // Finalize allocations (saves and finalizes in one operation)
   const handleFinalizeAllocations = useCallback(async () => {
     setError(null)
     setIsFinalizingAllocations(true)
     try {
-      // First save any pending changes (including percentage-based)
-      await saveAllocations(buildAllocationsArray())
-      // Then finalize
-      await finalizeAllocations()
+      // Pass allocations directly - no need to save first
+      await finalizeAllocations(buildAllocationsArray())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
     } finally {
       setIsFinalizingAllocations(false)
     }
-  }, [saveAllocations, finalizeAllocations, buildAllocationsArray])
+  }, [finalizeAllocations, buildAllocationsArray])
 
   // Delete allocations (clear and unfinalize)
   const handleDeleteAllocations = useCallback(async () => {

@@ -36,7 +36,7 @@ export function useIncomeMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before adding income (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
@@ -186,7 +186,7 @@ export function useIncomeMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before updating income (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {
@@ -358,7 +358,7 @@ export function useIncomeMutations() {
       const { exists, data: monthData } = await readDoc<MonthDocument>(
         'months',
         monthDocId,
-        'reading month before deleting income (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !monthData) {

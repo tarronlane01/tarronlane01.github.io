@@ -457,42 +457,56 @@ export async function markNextMonthSnapshotStaleInFirestore(
     nextYear += 1
   }
 
+  // Use fetchQuery to get next month data (returns cache if fresh, otherwise fetches)
+  const nextMonthKey = queryKeys.month(budgetId, nextYear, nextMonth)
   const nextMonthDocId = getMonthDocId(budgetId, nextYear, nextMonth)
 
-  // Check if next month exists and if it's already marked stale
-  const { exists, data } = await readDoc<FirestoreData>(
-    'months',
-    nextMonthDocId,
-    'checking if next month exists to mark its snapshot stale'
-  )
+  try {
+    const result = await queryClient.fetchQuery<MonthQueryData>({
+      queryKey: nextMonthKey,
+      queryFn: async () => {
+        const { exists, data } = await readDoc<FirestoreData>(
+          'months',
+          nextMonthDocId,
+          'checking if next month exists to mark its snapshot stale'
+        )
+        if (!exists || !data) {
+          throw new Error('MONTH_NOT_EXISTS')
+        }
+        return { month: data as MonthDocument }
+      },
+    })
 
-  if (exists && data) {
-    // Only write if not already stale (avoid double writes)
-    if (!data.previous_month_snapshot_stale) {
-      await writeDoc(
-        'months',
-        nextMonthDocId,
-        {
-          ...data,
-          previous_month_snapshot_stale: true,
-          updated_at: new Date().toISOString(),
-        },
-        'marking next month snapshot as stale (previous month was edited)'
-      )
-
-      // Also update cache
-      const nextMonthKey = queryKeys.month(budgetId, nextYear, nextMonth)
-      const cachedNextMonth = queryClient.getQueryData<MonthQueryData>(nextMonthKey)
-      if (cachedNextMonth) {
-        queryClient.setQueryData<MonthQueryData>(nextMonthKey, {
-          month: {
-            ...cachedNextMonth.month,
-            previous_month_snapshot_stale: true,
-          },
-        })
-      }
+    // If already stale, nothing to do
+    if (result.month.previous_month_snapshot_stale) {
+      return
     }
+
+    // Not stale - mark it stale (we just confirmed the state via fresh cache or Firestore read)
+    await writeDoc(
+      'months',
+      nextMonthDocId,
+      {
+        ...result.month,
+        previous_month_snapshot_stale: true,
+        updated_at: new Date().toISOString(),
+      },
+      'marking next month snapshot as stale (previous month was edited)'
+    )
+
+    // Update cache with stale flag
+    queryClient.setQueryData<MonthQueryData>(nextMonthKey, {
+      month: {
+        ...result.month,
+        previous_month_snapshot_stale: true,
+      },
+    })
+  } catch (err) {
+    // Month doesn't exist yet - no need to mark stale
+    // It will get a fresh snapshot when created
+    if (err instanceof Error && err.message === 'MONTH_NOT_EXISTS') {
+      return
+    }
+    throw err
   }
-  // If next month doesn't exist yet, no need to mark stale
-  // It will get a fresh snapshot when created
 }

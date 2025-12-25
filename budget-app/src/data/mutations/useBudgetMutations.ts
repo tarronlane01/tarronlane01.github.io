@@ -48,7 +48,7 @@ export function useBudgetMutations() {
       const { exists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        'reading budget before renaming (need current state)'
+        'PRE-EDIT-READ'
       )
 
       if (!exists || !data) {
