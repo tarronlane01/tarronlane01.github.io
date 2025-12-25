@@ -35,7 +35,217 @@ export function Spinner({ noMargin }: { noMargin?: boolean } = {}) {
   )
 }
 
-// Migration status card for a single migration type
+// =============================================================================
+// COMMON MIGRATION CARD - Base component for all migration cards
+// =============================================================================
+
+export type MigrationCardStatus = 'unknown' | 'clean' | 'needs-action' | 'complete'
+
+interface MigrationCardProps {
+  /** Card title (with emoji if desired) */
+  title: string
+  /** Description of what this migration does */
+  description: string
+  /** Current status of this migration */
+  status: MigrationCardStatus
+  /** Optional custom status text (defaults based on status) */
+  statusText?: string
+  /** Handler for refresh button */
+  onRefresh: () => void
+  /** Whether the card is currently refreshing */
+  isRefreshing: boolean
+  /** Whether the card is busy with an action (disables refresh) */
+  isBusy?: boolean
+  /** Content to display in the card body */
+  children?: ReactNode
+}
+
+/**
+ * Common migration card component that provides consistent structure for all migrations
+ */
+export function MigrationCard({
+  title,
+  description,
+  status,
+  statusText,
+  onRefresh,
+  isRefreshing,
+  isBusy = false,
+  children,
+}: MigrationCardProps) {
+  const getStatusStyle = () => {
+    switch (status) {
+      case 'unknown':
+        return { color: '#9ca3af', text: statusText ?? 'Unknown' }
+      case 'clean':
+      case 'complete':
+        return { color: '#22c55e', text: statusText ?? '✓ Clean' }
+      case 'needs-action':
+        return { color: '#f59e0b', text: statusText ?? 'Action Needed' }
+    }
+  }
+
+  const statusStyle = getStatusStyle()
+  const isDisabled = isRefreshing || isBusy
+
+  return (
+    <div style={{
+      background: 'color-mix(in srgb, currentColor 5%, transparent)',
+      borderRadius: '12px',
+      padding: '1.5rem',
+      marginBottom: '1rem',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: '0 0 0.5rem 0' }}>{title}</h3>
+          <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem' }}>
+            {description}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+          {status !== 'unknown' && (
+            <span style={{ color: statusStyle.color, fontWeight: 600, fontSize: '0.9rem' }}>
+              {statusStyle.text}
+            </span>
+          )}
+          <button
+            onClick={onRefresh}
+            disabled={isDisabled}
+            style={{
+              background: 'color-mix(in srgb, currentColor 10%, transparent)',
+              color: 'inherit',
+              border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+              padding: '0.35rem 0.65rem',
+              borderRadius: '6px',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              fontSize: '0.85rem',
+              opacity: isDisabled ? 0.6 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+            }}
+            title="Refresh status"
+          >
+            {isRefreshing ? <Spinner noMargin /> : '🔄'} Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {children}
+    </div>
+  )
+}
+
+// =============================================================================
+// STANDARDIZED CONTENT COMPONENTS - Use these inside MigrationCard
+// =============================================================================
+
+type StatusBoxType = 'unknown' | 'clean' | 'warning' | 'running' | 'success'
+
+const statusBoxStyles: Record<StatusBoxType, { bg: string; border: string; color: string }> = {
+  unknown: {
+    bg: 'rgba(100, 100, 100, 0.1)',
+    border: 'rgba(100, 100, 100, 0.3)',
+    color: '#9ca3af',
+  },
+  clean: {
+    bg: 'rgba(34, 197, 94, 0.1)',
+    border: 'rgba(34, 197, 94, 0.3)',
+    color: '#4ade80',
+  },
+  warning: {
+    bg: 'rgba(245, 158, 11, 0.1)',
+    border: 'rgba(245, 158, 11, 0.3)',
+    color: '#fbbf24',
+  },
+  running: {
+    bg: 'rgba(100, 108, 255, 0.1)',
+    border: 'rgba(100, 108, 255, 0.3)',
+    color: '#a5b4fc',
+  },
+  success: {
+    bg: 'rgba(34, 197, 94, 0.1)',
+    border: 'rgba(34, 197, 94, 0.3)',
+    color: '#4ade80',
+  },
+}
+
+/** Standardized status message box */
+export function StatusBox({
+  type,
+  children,
+}: {
+  type: StatusBoxType
+  children: ReactNode
+}) {
+  const style = statusBoxStyles[type]
+  return (
+    <div style={{
+      background: style.bg,
+      border: `1px solid ${style.border}`,
+      color: style.color,
+      padding: '0.75rem 1rem',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'center',
+    }}>
+      {children}
+    </div>
+  )
+}
+
+/** Standardized action button */
+export function ActionButton({
+  onClick,
+  disabled,
+  isBusy,
+  busyText,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  isBusy?: boolean
+  busyText?: string
+  children: ReactNode
+}) {
+  const isDisabled = disabled || isBusy
+  return (
+    <button
+      onClick={onClick}
+      disabled={isDisabled}
+      style={{
+        marginTop: '1rem',
+        background: '#646cff',
+        color: 'white',
+        border: 'none',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '8px',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        fontWeight: 500,
+        opacity: isDisabled ? 0.7 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+      }}
+    >
+      {isBusy ? (
+        <>
+          <Spinner noMargin /> {busyText ?? 'Running...'}
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  )
+}
+
+// =============================================================================
+// DATA MIGRATION CARD - Uses MigrationCard for array-to-map migrations
+// =============================================================================
+
 interface MigrationStatusCardProps {
   title: string
   description: string
@@ -46,8 +256,8 @@ interface MigrationStatusCardProps {
   budgetsToMigrateCategories: number
   budgetsToMigrateAccounts: number
   onRunMigration: () => void
-  onRefresh?: () => void
-  isRefreshing?: boolean
+  onRefresh: () => void
+  isRefreshing: boolean
   disabled: boolean
   isUnknown?: boolean
   children?: ReactNode
@@ -69,153 +279,65 @@ export function MigrationStatusCard({
   isUnknown,
   children,
 }: MigrationStatusCardProps) {
-  // Determine badge style and text
-  const getBadgeStyle = () => {
-    if (isUnknown) {
-      return { background: 'rgba(100, 100, 100, 0.2)', color: '#9ca3af' }
-    }
-    if (isComplete) {
-      return { background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80' }
-    }
-    return { background: 'rgba(100, 108, 255, 0.2)', color: '#a5b4fc' }
+  const getStatus = (): MigrationCardStatus => {
+    if (isUnknown) return 'unknown'
+    if (isComplete) return 'complete'
+    if (needsMigration) return 'needs-action'
+    return 'clean'
   }
 
-  const getBadgeText = () => {
+  const getStatusText = (): string => {
     if (isUnknown) return 'Unknown'
-    if (isComplete) return 'Complete'
-    return 'Required'
+    if (isComplete) return '✓ Complete'
+    if (needsMigration) return 'Required'
+    return '✓ Clean'
   }
-
-  const badgeStyle = getBadgeStyle()
 
   return (
-    <div style={{
-      background: 'color-mix(in srgb, currentColor 5%, transparent)',
-      padding: '1.5rem',
-      borderRadius: '8px',
-      marginBottom: '1.5rem',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{
-            background: badgeStyle.background,
-            color: badgeStyle.color,
-            padding: '0.15rem 0.5rem',
-            borderRadius: '4px',
-            fontSize: '0.7rem',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-          }}>
-            {getBadgeText()}
-          </span>
-          {title}
-        </h3>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing || isMigrating}
-            title="Refresh status"
-            style={{
-              background: 'transparent',
-              border: '1px solid color-mix(in srgb, currentColor 30%, transparent)',
-              color: 'inherit',
-              padding: '0.35rem 0.6rem',
-              borderRadius: '6px',
-              cursor: isRefreshing || isMigrating ? 'not-allowed' : 'pointer',
-              opacity: isRefreshing || isMigrating ? 0.5 : 0.7,
-              fontSize: '0.8rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              minWidth: '85px',
-              minHeight: '28px',
-            }}
-          >
-            <span style={{ width: '16px', height: '16px', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-              {isRefreshing ? <Spinner noMargin /> : '🔄'}
-            </span>
-            Refresh
-          </button>
-        )}
-      </div>
-      <p style={{ opacity: 0.7, marginBottom: '1rem' }}>
-        {description}
-      </p>
-
+    <MigrationCard
+      title={title}
+      description={description}
+      status={getStatus()}
+      statusText={getStatusText()}
+      onRefresh={onRefresh}
+      isRefreshing={isRefreshing}
+      isBusy={isMigrating}
+    >
       {isMigrating ? (
-        <div style={{
-          background: 'rgba(100, 108, 255, 0.1)',
-          border: '1px solid rgba(100, 108, 255, 0.3)',
-          color: '#a5b4fc',
-          padding: '0.75rem 1rem',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-        }}>
+        <StatusBox type="running">
           <Spinner /> Running migration across all budgets...
-        </div>
+        </StatusBox>
       ) : isUnknown ? (
-        <div style={{
-          background: 'rgba(100, 100, 100, 0.1)',
-          border: '1px solid rgba(100, 100, 100, 0.3)',
-          color: '#9ca3af',
-          padding: '0.75rem 1rem',
-          borderRadius: '8px',
-        }}>
+        <StatusBox type="unknown">
           ❓ Status unknown — click Refresh to check migration status
-        </div>
+        </StatusBox>
       ) : isComplete ? (
-        <div style={{
-          background: 'rgba(34, 197, 94, 0.1)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          color: '#4ade80',
-          padding: '0.75rem 1rem',
-          borderRadius: '8px',
-        }}>
+        <StatusBox type="clean">
           ✅ All budgets are using the new map structure
-        </div>
+        </StatusBox>
       ) : needsMigration ? (
         <>
-          <div style={{
-            background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            color: '#fbbf24',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            marginBottom: '1rem',
-          }}>
-            <div style={{ marginBottom: '0.5rem' }}>⚠️ Found {totalBudgetsToMigrate} budget(s) needing migration:</div>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.9rem' }}>
-              {budgetsToMigrateCategories > 0 && (
-                <li>{budgetsToMigrateCategories} with categories to migrate</li>
-              )}
-              {budgetsToMigrateAccounts > 0 && (
-                <li>{budgetsToMigrateAccounts} with accounts to migrate</li>
-              )}
-            </ul>
-          </div>
-
-          <button
-            onClick={onRunMigration}
-            disabled={disabled}
-            style={{
-              background: '#646cff',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              fontWeight: 500,
-              opacity: disabled ? 0.7 : 1,
-            }}
-          >
+          <StatusBox type="warning">
+            <div>
+              <div style={{ marginBottom: '0.5rem' }}>⚠️ Found {totalBudgetsToMigrate} budget(s) needing migration:</div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.9rem' }}>
+                {budgetsToMigrateCategories > 0 && (
+                  <li>{budgetsToMigrateCategories} with categories to migrate</li>
+                )}
+                {budgetsToMigrateAccounts > 0 && (
+                  <li>{budgetsToMigrateAccounts} with accounts to migrate</li>
+                )}
+              </ul>
+            </div>
+          </StatusBox>
+          <ActionButton onClick={onRunMigration} disabled={disabled}>
             Migrate All Budgets
-          </button>
+          </ActionButton>
         </>
       ) : null}
 
       {children}
-    </div>
+    </MigrationCard>
   )
 }
 

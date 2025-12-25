@@ -8,5 +8,4 @@ export { usePayeesQuery } from './usePayeesQuery'
 export { useUserQuery } from './useUserQuery'
 export { useAccessibleBudgetsQuery } from './useAccessibleBudgetsQuery'
 export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type FeedbackData } from './useFeedbackQuery'
-export { useSettingsMigrationQuery } from './useSettingsMigrationQuery'
 

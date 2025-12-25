@@ -238,13 +238,17 @@ export function useUserMutations() {
 
       return { previousData }
     },
+    onSuccess: (_, { budgetId }) => {
+      // Cache already updated optimistically in onMutate - just confirm it
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), currentData)
+      }
+    },
     onError: (_err, { budgetId }, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
       }
-    },
-    onSettled: (_data, _error, { budgetId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) })
     },
   })
 
@@ -293,13 +297,17 @@ export function useUserMutations() {
 
       return { previousData }
     },
+    onSuccess: (_, { budgetId }) => {
+      // Cache already updated optimistically in onMutate - just confirm it
+      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+      if (currentData) {
+        queryClient.setQueryData(queryKeys.budget(budgetId), currentData)
+      }
+    },
     onError: (_err, { budgetId }, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
       }
-    },
-    onSettled: (_data, _error, { budgetId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) })
     },
   })
 
@@ -346,13 +354,17 @@ export function useUserMutations() {
 
       return { previousData }
     },
+    onSuccess: (_, { userId }) => {
+      // Cache already updated optimistically in onMutate - just confirm it
+      const currentData = queryClient.getQueryData<UserDocument>(queryKeys.user(userId))
+      if (currentData) {
+        queryClient.setQueryData(queryKeys.user(userId), currentData)
+      }
+    },
     onError: (_err, { userId }, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(queryKeys.user(userId), context.previousData)
       }
-    },
-    onSettled: (_data, _error, { userId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.user(userId) })
     },
   })
 

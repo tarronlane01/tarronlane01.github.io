@@ -53,8 +53,17 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
     if (item.hidden) return false
     if (!item.to) return true
 
-    // For exact paths like /budget, /account - only hide on exact match
-    if (item.to === '/budget' || item.to === '/account') {
+    // For /budget, hide on exact match OR on budget months page (/budget/:year/:month/:tab)
+    if (item.to === '/budget') {
+      // Hide if exactly /budget or if it looks like /budget/2024/12/tab (year/month/tab pattern)
+      if (currentPath === '/budget') return false
+      const budgetMonthPattern = /^\/budget\/\d{4}\/\d{1,2}\/\w+$/
+      if (budgetMonthPattern.test(currentPath)) return false
+      return true
+    }
+
+    // For exact paths like /account or / - only hide on exact match
+    if (item.to === '/account' || item.to === '/') {
       return currentPath !== item.to
     }
 

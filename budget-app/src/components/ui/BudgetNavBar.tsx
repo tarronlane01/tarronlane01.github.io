@@ -20,9 +20,9 @@ export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }:
 
   const menuItems: MenuItem[] = [
     { label: 'Budget', icon: '💰', to: '/budget' },
+    { label: 'Budget Settings', icon: '⚙️', to: '/budget/settings' },
     { label: 'Analytics', icon: '📊', to: '/budget/analytics' },
     ...(isAdmin ? [{ label: 'Admin', icon: '🛡️', to: '/budget/admin' }] : []),
-    { label: 'Budget Settings', icon: '⚙️', to: '/budget/settings' },
     { label: 'Switch Budgets', icon: '🗂️', to: '/budget/my-budgets' },
     { divider: true, label: '' },
     { label: 'Exit Budget App', icon: '🏠', to: '/' },
@@ -35,16 +35,18 @@ export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }:
       gridTemplateColumns: '1fr auto 1fr',
       alignItems: 'center',
     }}>
-      {/* Left: Icon or back arrow */}
-      {showBackArrow ? (
-        <Link to="/" style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none' }} title="Back to Home">
-          ←
-        </Link>
-      ) : (
-        <Link to="/budget" title="Budget Home">
-          <img src="/budget-icon.svg" alt="Budget" style={{ width: '1.5rem', height: '1.5rem' }} />
-        </Link>
-      )}
+      {/* Left: Icon or back arrow (wrapped in div to prevent link stretching across full 1fr column) */}
+      <div>
+        {showBackArrow ? (
+          <Link to="/" style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none' }} title="Back to Home">
+            ←
+          </Link>
+        ) : (
+          <Link to="/budget" title="Budget Home">
+            <img src="/budget-icon.svg" alt="Budget" style={{ width: '1.5rem', height: '1.5rem' }} />
+          </Link>
+        )}
+      </div>
 
       {/* Center: Title */}
       <span style={{ fontWeight: 600, fontSize: '1.1rem', textAlign: 'center' }}>

@@ -40,27 +40,23 @@ function SettingsFeedback() {
 
   const allFeedback = feedbackQuery.data?.items || []
 
-  async function handleAddFeedback(e: FormEvent) {
+  function handleAddFeedback(e: FormEvent) {
     e.preventDefault()
     if (!newFeedbackText.trim() || !userContext.username || !currentUser) return
 
-    setError(null)
+    // Fire mutation and close optimistically - the item appears immediately via onMutate
+    feedbackMutations.submitFeedback.mutate({
+      userId: currentUser.uid,
+      userEmail: userContext.username,
+      text: newFeedbackText.trim(),
+      feedbackType: newFeedbackType,
+      currentPath: '/settings/feedback',
+    })
 
-    try {
-      await feedbackMutations.submitFeedback.mutateAsync({
-        userId: currentUser.uid,
-        userEmail: userContext.username,
-        text: newFeedbackText.trim(),
-        feedbackType: newFeedbackType,
-        currentPath: '/settings/feedback',
-      })
-
-      setNewFeedbackText('')
-      setNewFeedbackType('bug')
-      setShowAddForm(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add feedback')
-    }
+    // Close immediately
+    setNewFeedbackText('')
+    setNewFeedbackType('bug')
+    setShowAddForm(false)
   }
 
   function handleToggleDone(item: FlattenedFeedbackItem) {
@@ -268,7 +264,7 @@ function SettingsFeedback() {
             required
           />
           <FormButtonGroup>
-            <Button type="submit" isLoading={feedbackMutations.submitFeedback.isPending} disabled={!newFeedbackText.trim()}>
+            <Button type="submit" disabled={!newFeedbackText.trim()}>
               Add Feedback
             </Button>
             <Button type="button" variant="secondary" onClick={() => { setShowAddForm(false); setNewFeedbackText(''); setNewFeedbackType('bug') }}>

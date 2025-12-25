@@ -113,18 +113,34 @@ export interface WhereClause {
 }
 
 /**
+ * Check if a value is a Firestore field transform sentinel (arrayUnion, serverTimestamp, etc.)
+ * These have a special internal structure with _methodName that must not be modified
+ */
+function isFirestoreSentinel(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return false
+  // Firestore sentinels have an internal _methodName property
+  return '_methodName' in (value as Record<string, unknown>)
+}
+
+/**
  * Strip undefined values from an object (Firestore doesn't allow undefined)
  * Recursively removes undefined from nested objects and arrays
+ * Preserves Firestore field transform sentinels (arrayUnion, serverTimestamp, etc.)
  */
 export function stripUndefined<T extends FirestoreData>(obj: T): T {
   const result: FirestoreData = {}
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    // Preserve Firestore sentinels (arrayUnion, serverTimestamp, increment, etc.) unchanged
+    if (isFirestoreSentinel(value)) {
+      result[key] = value
+    } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
       result[key] = stripUndefined(value)
     } else if (Array.isArray(value)) {
       result[key] = value.map(item =>
-        item !== null && typeof item === 'object' ? stripUndefined(item) : item
+        item !== null && typeof item === 'object' && !isFirestoreSentinel(item)
+          ? stripUndefined(item)
+          : item
       )
     } else {
       result[key] = value

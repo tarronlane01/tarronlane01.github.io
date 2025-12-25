@@ -1,7 +1,33 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useBudget } from '../contexts/budget_context'
-import type { CategoryAllocation, Category } from '../types/budget'
+import type { CategoryAllocation, Category, CategoriesMap, MonthDocument } from '../types/budget'
 import { useBudgetData, useBudgetMonth } from './index'
+
+// Helper to compute allocations map from month and categories
+function computeAllocationsMap(
+  currentMonth: MonthDocument | null,
+  categories: CategoriesMap
+): Record<string, string> {
+  if (!currentMonth) return {}
+
+  const allocMap: Record<string, string> = {}
+  Object.entries(categories).forEach(([catId, cat]) => {
+    // Skip percentage-based categories - they're auto-calculated
+    if (cat.default_monthly_type === 'percentage') {
+      return
+    }
+
+    const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
+    if (existingAlloc) {
+      allocMap[catId] = existingAlloc.amount.toString()
+    } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
+      allocMap[catId] = cat.default_monthly_amount.toString()
+    } else {
+      allocMap[catId] = ''
+    }
+  })
+  return allocMap
+}
 
 export function useAllocationsPage() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
@@ -15,13 +41,22 @@ export function useAllocationsPage() {
     deleteAllocations,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
-  // Allocations state - track local edits before saving
-  const [localAllocations, setLocalAllocations] = useState<Record<string, string>>({})
+  // Compute initial allocations from cached data (avoids flash on navigation)
+  const initialAllocations = useMemo(
+    () => computeAllocationsMap(currentMonth, categories),
+    [currentMonth, categories]
+  )
+
+  // Allocations state - initialized from cached data if available
+  const [localAllocations, setLocalAllocations] = useState<Record<string, string>>(initialAllocations)
   const [isSavingAllocations, setIsSavingAllocations] = useState(false)
   const [isFinalizingAllocations, setIsFinalizingAllocations] = useState(false)
   const [isDeletingAllocations, setIsDeletingAllocations] = useState(false)
   const [isEditingAppliedAllocations, setIsEditingAppliedAllocations] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Track which month we've synced to (to avoid re-syncing on every render)
+  const syncedMonthRef = useRef<string | null>(null)
 
   // Total finalized allocations - computed from category balances snapshot
   // Uses 'current' balance to match the Categories admin page calculation
@@ -40,27 +75,15 @@ export function useAllocationsPage() {
     return Object.values(categories).reduce((sum, cat) => sum + cat.balance, 0)
   }, [categories, categoryBalancesSnapshot])
 
-  // Initialize local allocations when month changes (only for non-percentage categories)
+  // Sync local allocations when month changes (only if different from current sync)
   useEffect(() => {
     if (!currentMonth) return
 
-    const allocMap: Record<string, string> = {}
-    Object.entries(categories).forEach(([catId, cat]) => {
-      // Skip percentage-based categories - they're auto-calculated
-      if (cat.default_monthly_type === 'percentage') {
-        return
-      }
+    const monthKey = `${currentMonth.year}-${currentMonth.month}`
+    if (syncedMonthRef.current === monthKey) return
 
-      const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
-      if (existingAlloc) {
-        allocMap[catId] = existingAlloc.amount.toString()
-      } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
-        allocMap[catId] = cat.default_monthly_amount.toString()
-      } else {
-        allocMap[catId] = ''
-      }
-    })
-    setLocalAllocations(allocMap)
+    setLocalAllocations(computeAllocationsMap(currentMonth, categories))
+    syncedMonthRef.current = monthKey
   }, [currentMonth, categories])
 
   // Helper to get allocation amount for a category (handles percentage-based)
@@ -155,6 +178,7 @@ export function useAllocationsPage() {
     try {
       // Pass allocations directly - no need to save first
       await finalizeAllocations(buildAllocationsArray())
+      setIsEditingAppliedAllocations(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
     } finally {

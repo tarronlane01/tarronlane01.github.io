@@ -1,32 +1,95 @@
-import { useState } from 'react'
-// Settings migrations need raw Firestore access to query ALL budgets system-wide
-// and perform one-off data structure migrations. These are admin-only operations
-// that run across all users' data, not suitable for React Query caching.
-// eslint-disable-next-line no-restricted-imports
-import { readDoc, writeDoc, queryCollection, deleteDocByPath, type FirestoreData } from '../data/firestore/operations'
-import { queryClient } from '../data'
-import type { FutureMonthInfo } from '../data/queries/useSettingsMigrationQuery'
-import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../types/budget'
-import type { BudgetMigrationResult } from '../components/budget/Admin'
+/**
+ * Budget Data Migration Hook
+ *
+ * Migrates budget data from array format to map structure:
+ * - categories: array -> CategoriesMap
+ * - accounts: array -> AccountsMap
+ * - account_groups: array -> AccountGroupsMap
+ *
+ * Also calculates category balances from finalized months.
+ *
+ * All operations go directly to Firestore - no React Query caching.
+ */
 
-interface UseMigrationActionsOptions {
-  currentUser: unknown
-  futureMonthsToDelete: FutureMonthInfo[]
-  onRefetch: () => void
+import { useState } from 'react'
+// eslint-disable-next-line no-restricted-imports
+import { readDoc, writeDoc, queryCollection, type FirestoreData } from '../../data/firestore/operations'
+import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../types/budget'
+import type { BudgetMigrationResult } from '../../components/budget/Admin'
+
+export interface DataMigrationStatus {
+  categoriesArrayMigrationNeeded: boolean
+  accountsArrayMigrationNeeded: boolean
+  budgetsToMigrateCategories: number
+  budgetsToMigrateAccounts: number
+  budgetsNeedingCategoryBalance: number
+  totalBudgetsChecked: number
 }
 
-export function useMigrationActions({
-  currentUser,
-  futureMonthsToDelete,
-  onRefetch,
-}: UseMigrationActionsOptions) {
+interface UseBudgetDataMigrationOptions {
+  currentUser: unknown
+  onComplete?: () => void
+}
+
+export function useBudgetDataMigration({ currentUser, onComplete }: UseBudgetDataMigrationOptions) {
   const [isMigrating, setIsMigrating] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
   const [migrationResults, setMigrationResults] = useState<BudgetMigrationResult[] | null>(null)
-  const [isCleaningFutureMonths, setIsCleaningFutureMonths] = useState(false)
-  const [futureMonthsCleanupResult, setFutureMonthsCleanupResult] = useState<{
-    deleted: number
-    errors: string[]
-  } | null>(null)
+  const [status, setStatus] = useState<DataMigrationStatus | null>(null)
+
+  // Scan to check migration status (direct Firestore, no caching)
+  async function scanStatus(): Promise<void> {
+    if (!currentUser) return
+
+    setIsScanning(true)
+
+    try {
+      const budgetsResult = await queryCollection<{
+        categories?: unknown
+        accounts?: unknown
+      }>(
+        'budgets',
+        'budget data migration: scanning all budgets for migration status'
+      )
+
+      let budgetsToMigrateCategories = 0
+      let budgetsToMigrateAccounts = 0
+      let budgetsNeedingCategoryBalance = 0
+
+      for (const budgetDoc of budgetsResult.docs) {
+        const budgetData = budgetDoc.data
+
+        if (Array.isArray(budgetData.categories)) {
+          budgetsToMigrateCategories++
+        }
+
+        if (Array.isArray(budgetData.accounts)) {
+          budgetsToMigrateAccounts++
+        }
+
+        if (budgetData.categories && typeof budgetData.categories === 'object' && !Array.isArray(budgetData.categories)) {
+          const categories = budgetData.categories as Record<string, unknown>
+          const needsBalance = Object.values(categories).some(cat => (cat as Record<string, unknown>).balance === undefined)
+          if (needsBalance) {
+            budgetsNeedingCategoryBalance++
+          }
+        }
+      }
+
+      setStatus({
+        categoriesArrayMigrationNeeded: budgetsToMigrateCategories > 0,
+        accountsArrayMigrationNeeded: budgetsToMigrateAccounts > 0,
+        budgetsToMigrateCategories,
+        budgetsToMigrateAccounts,
+        budgetsNeedingCategoryBalance,
+        totalBudgetsChecked: budgetsResult.docs.length,
+      })
+    } catch (err) {
+      console.error('Failed to scan migration status:', err)
+    } finally {
+      setIsScanning(false)
+    }
+  }
 
   // Calculate category balances from finalized months
   async function calculateCategoryBalances(budgetId: string, categoryIds: string[]): Promise<Record<string, number>> {
@@ -39,7 +102,7 @@ export function useMigrationActions({
         allocations?: Array<{ category_id: string; amount: number }>
       }>(
         'months',
-        `settings migration: calculating category balances for budget ${budgetId}`,
+        `budget data migration: calculating category balances for budget ${budgetId}`,
         [{ field: 'budget_id', op: '==', value: budgetId }]
       )
 
@@ -63,7 +126,7 @@ export function useMigrationActions({
       const { exists: budgetExists, data } = await readDoc<FirestoreData>(
         'budgets',
         budgetId,
-        `settings migration: reading budget to check if migration needed`
+        `budget data migration: reading budget to check if migration needed`
       )
 
       if (!budgetExists || !data) {
@@ -235,7 +298,7 @@ export function useMigrationActions({
           accounts: updatedAccounts,
           account_groups: updatedAccountGroups,
         },
-        `settings migration: saving migrated budget data (categories: ${categoriesMigrated}, accounts: ${accountsMigrated}, groups: ${accountGroupsMigrated})`
+        `budget data migration: saving migrated budget data (categories: ${categoriesMigrated}, accounts: ${accountsMigrated}, groups: ${accountGroupsMigrated})`
       )
 
       return {
@@ -272,7 +335,7 @@ export function useMigrationActions({
       // Query ALL budgets in the system (no filter)
       const budgetsResult = await queryCollection<{ name?: string }>(
         'budgets',
-        'settings migration: listing all budgets in system to migrate'
+        'budget data migration: listing all budgets in system to migrate'
       )
 
       if (budgetsResult.docs.length === 0) {
@@ -288,12 +351,7 @@ export function useMigrationActions({
       }
 
       setMigrationResults(results)
-      // Invalidate all budget-related caches so other pages show updated data
-      queryClient.invalidateQueries({ queryKey: ['budget'] })
-      queryClient.invalidateQueries({ queryKey: ['month'] })
-      // Refetch migration status to show updated state (needed because enabled: false)
-      queryClient.invalidateQueries({ queryKey: ['settingsMigration'] })
-      onRefetch()
+      onComplete?.()
     } catch (err) {
       setMigrationResults([{
         budgetId: '',
@@ -309,46 +367,15 @@ export function useMigrationActions({
     }
   }
 
-  // Delete future months that are more than 2 months from now
-  async function cleanupFutureMonths() {
-    if (!currentUser) return
-    if (futureMonthsToDelete.length === 0) return
-
-    setIsCleaningFutureMonths(true)
-    setFutureMonthsCleanupResult(null)
-
-    let deleted = 0
-    const errors: string[] = []
-
-    for (const monthInfo of futureMonthsToDelete) {
-      try {
-        await deleteDocByPath(
-          'months',
-          monthInfo.docId,
-          `settings cleanup: deleting future month ${monthInfo.year}-${monthInfo.month}`
-        )
-        deleted++
-      } catch (err) {
-        errors.push(`Failed to delete ${monthInfo.docId}: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      }
-    }
-
-    setFutureMonthsCleanupResult({ deleted, errors })
-    setIsCleaningFutureMonths(false)
-
-    // Refresh status to show updated count
-    queryClient.invalidateQueries({ queryKey: ['settingsMigration'] })
-    queryClient.invalidateQueries({ queryKey: ['month'] })
-    onRefetch()
-  }
-
   return {
+    // Status
+    status,
+    isScanning,
+    scanStatus,
+    // Migration
     isMigrating,
     migrationResults,
-    isCleaningFutureMonths,
-    futureMonthsCleanupResult,
     runMigration,
-    cleanupFutureMonths,
   }
 }
 

@@ -91,7 +91,7 @@ function Settings() {
         mode="link"
         linkPrefix="/budget/settings"
         tabs={settingsTabs}
-        activeTab={currentTab}
+        activeTab={isRootSettings ? getSavedSettingsTab() : currentTab}
       />
 
       {/* Redirect to saved tab (or accounts by default), or show nested route */}

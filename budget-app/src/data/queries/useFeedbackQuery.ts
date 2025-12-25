@@ -31,11 +31,33 @@ export interface FeedbackData {
 }
 
 /**
+ * Extract items from a document's items field, handling both normal arrays
+ * and corrupted arrayUnion sentinels ({_methodName: "arrayUnion", vc: [...]})
+ */
+function extractItems(rawItems: unknown): FeedbackItem[] {
+  // Normal case: items is an array
+  if (Array.isArray(rawItems)) {
+    return rawItems
+  }
+
+  // Corrupted case: items is a broken arrayUnion sentinel
+  if (rawItems && typeof rawItems === 'object' && !Array.isArray(rawItems)) {
+    const obj = rawItems as Record<string, unknown>
+    if (obj._methodName === 'arrayUnion' && Array.isArray(obj.vc)) {
+      console.warn('[useFeedbackQuery] Found corrupted arrayUnion in feedback document - extracting items from vc')
+      return obj.vc as FeedbackItem[]
+    }
+  }
+
+  return []
+}
+
+/**
  * Fetch all feedback from the collection
  */
 async function fetchAllFeedback(): Promise<FeedbackData> {
   const result = await queryCollection<{
-    items?: FeedbackItem[]
+    items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
     user_email?: string
   }>(
     'feedback',
@@ -45,7 +67,8 @@ async function fetchAllFeedback(): Promise<FeedbackData> {
   const flattened: FlattenedFeedbackItem[] = []
 
   for (const docSnap of result.docs) {
-    const items = docSnap.data.items || []
+    // Extract items, handling both normal arrays and corrupted arrayUnion
+    const items = extractItems(docSnap.data.items)
     const userEmail = docSnap.data.user_email || docSnap.id
 
     items.forEach((item: FeedbackItem) => {
@@ -71,7 +94,6 @@ export function useFeedbackQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.feedback(),
     queryFn: fetchAllFeedback,
     enabled: options?.enabled !== false,
-    staleTime: 60 * 1000, // 1 minute
   })
 }
 

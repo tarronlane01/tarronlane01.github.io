@@ -26,6 +26,7 @@ function Categories() {
     categoriesByGroup,
     sortedGroups,
     categoryBalances,
+    isLoading,
     loadingBalances,
     error,
     setError,
@@ -70,6 +71,27 @@ function Categories() {
 
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
+  }
+
+  // Show clean loading state with just heading and centered spinner
+  if (isLoading) {
+    return (
+      <div>
+        <h2 style={{ marginTop: 0 }}>Categories & Groups</h2>
+        <p style={pageSubtitle}>
+          Organize your spending categories into groups.
+        </p>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '200px',
+          opacity: 0.7,
+        }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 
@@ -82,6 +82,7 @@ function App() {
 
                   {/* Budget Settings routes */}
                   <Route path="settings" element={<Settings />}>
+                    <Route index element={<Navigate to="categories" replace />} />
                     <Route path="accounts" element={<Accounts />} />
                     <Route path="categories" element={<Categories />} />
                     <Route path="users" element={<SettingsUsers />} />

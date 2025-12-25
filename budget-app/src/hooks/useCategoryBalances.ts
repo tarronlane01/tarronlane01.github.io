@@ -7,7 +7,7 @@
  * Extracted from useCategoriesPage to reduce file size.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type { CategoriesMap, CategoryBalancesSnapshot } from '../types/budget'
 import { calculateCategoryBalances } from '../data'
 
@@ -45,16 +45,6 @@ export function useCategoryBalances({
   saveCategoryBalancesSnapshot,
   recalculateCategoryBalancesMutation,
 }: UseCategoryBalancesParams) {
-  // State
-  const [categoryBalances, setCategoryBalances] = useState<Record<string, CategoryBalance>>({})
-  const [loadingBalances, setLoadingBalances] = useState(false)
-  const [categoryBalanceMismatch, setCategoryBalanceMismatch] = useState<
-    Record<string, { stored: number; calculated: number }> | null
-  >(null)
-
-  // Track if we've already loaded for this budget/month combination
-  const loadedForRef = useRef<string | null>(null)
-
   // Check if the snapshot is valid for the current context
   const isSnapshotValid = useCallback((snapshot: CategoryBalancesSnapshot | null): boolean => {
     if (!snapshot) return false
@@ -64,6 +54,32 @@ export function useCategoryBalances({
     }
     return true
   }, [currentYear, currentMonth])
+
+  // Compute initial balances from snapshot if valid (avoids flash on navigation)
+  const initialBalances = useMemo(() => {
+
+    if (!isSnapshotValid(categoryBalancesSnapshot)) return {}
+
+    const balances: Record<string, CategoryBalance> = {}
+
+    Object.keys(categories).forEach(catId => {
+      const snapshotBal = categoryBalancesSnapshot!.balances[catId]
+      balances[catId] = snapshotBal || { current: 0, total: 0 }
+    })
+
+    return balances
+
+}, [categoryBalancesSnapshot, categories, isSnapshotValid])
+
+  // State - initialized from snapshot if available
+  const [categoryBalances, setCategoryBalances] = useState<Record<string, CategoryBalance>>(initialBalances)
+  const [loadingBalances, setLoadingBalances] = useState(false)
+  const [categoryBalanceMismatch, setCategoryBalanceMismatch] = useState<
+    Record<string, { stored: number; calculated: number }> | null
+  >(null)
+
+  // Track if we've already loaded for this budget/month combination
+  const loadedForRef = useRef<string | null>(null)
 
   // Load category balances - uses snapshot if valid, otherwise recalculates
   useEffect(() => {

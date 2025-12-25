@@ -32,7 +32,14 @@ export function useAllocationMutations() {
   const queryClient = useQueryClient()
 
   /**
-   * Save allocations (draft)
+   * Save allocations (draft only - does NOT affect category balances)
+   *
+   * Draft allocations are stored in the same `allocations` array but with
+   * `allocations_finalized = false`. When calculating category balances,
+   * allocations are only counted if `allocations_finalized` is true.
+   *
+   * This mutation does NOT mark next month as stale since drafts don't affect
+   * any balances or snapshots.
    */
   const saveAllocations = useMutation({
     mutationFn: async (params: SaveAllocationsParams) => {
@@ -56,7 +63,8 @@ export function useAllocationMutations() {
         updated_at: new Date().toISOString(),
       }
 
-      await saveMonthToFirestore(budgetId, updatedMonth)
+      // Skip marking next month stale - draft allocations don't affect any balances
+      await saveMonthToFirestore(budgetId, updatedMonth, { skipNextMonthStale: true })
 
       return { updatedMonth }
     },
@@ -77,8 +85,8 @@ export function useAllocationMutations() {
         })
       }
 
-      // CROSS-MONTH: Mark next month as stale in cache immediately
-      markNextMonthSnapshotStaleInCache(budgetId, year, month)
+      // NOTE: We intentionally don't mark next month as stale here.
+      // Draft allocations don't affect category balances or snapshots.
 
       return { previousMonth }
     },

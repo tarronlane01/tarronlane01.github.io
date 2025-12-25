@@ -11,6 +11,12 @@ export { useAccountsPage, type AccountWithId } from './useAccountsPage'
 export { useAllocationsPage } from './useAllocationsPage'
 export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
 
-// Settings/Admin hooks
-export { useMigrationActions } from './useMigrationActions'
+// Migration hooks
+export {
+  useBudgetDataMigration,
+  useFutureMonthsCleanup,
+  useFeedbackMigration,
+  type FutureMonthsCleanupResult,
+  type FeedbackMigrationResult,
+} from './migrations'
 

@@ -12,7 +12,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { readDoc, writeDoc, arrayUnion, type FirestoreData } from '../firestore/operations'
 import { queryKeys } from '../queryClient'
-import type { FlattenedFeedbackItem, FeedbackItem } from '../queries/useFeedbackQuery'
+import type { FlattenedFeedbackItem, FeedbackItem, FeedbackData } from '../queries/useFeedbackQuery'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
 
@@ -41,6 +41,11 @@ export function useFeedbackMutations() {
 
   /**
    * Submit new feedback
+   * Uses optimistic updates for instant UI feedback
+   *
+   * Note: The optimistic item in cache may have a different ID than the final item
+   * stored in Firestore. This is acceptable since both are valid unique IDs, and
+   * the cache will be reconciled on the next full refresh if needed.
    */
   const submitFeedback = useMutation({
     mutationFn: async ({ userId, userEmail, text, feedbackType, currentPath }: SubmitFeedbackParams) => {
@@ -49,7 +54,7 @@ export function useFeedbackMutations() {
 
       const newFeedbackItem: FeedbackItem = {
         id: `feedback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: `[${feedbackType.toUpperCase()}] ${text}\n\n(Submitted from: ${currentPath})`,
+        text: `${text}\n\n(Submitted from: ${currentPath})`,
         created_at: new Date().toISOString(),
         is_done: false,
         completed_at: null,
@@ -91,16 +96,59 @@ export function useFeedbackMutations() {
         )
       }
 
-      return { feedbackItem: newFeedbackItem }
+      return { feedbackItem: newFeedbackItem, docId: feedbackDocId }
     },
-    onSuccess: () => {
-      // Invalidate feedback query so admin page refreshes
-      queryClient.invalidateQueries({ queryKey: queryKeys.feedback() })
+    onMutate: async ({ userId, userEmail, text, feedbackType, currentPath }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
+      const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
+
+      // Create optimistic feedback item
+      const feedbackDocId = userEmail || userId
+      const optimisticItem: FlattenedFeedbackItem = {
+        id: `feedback_optimistic_${Date.now()}`,
+        text: `${text}\n\n(Submitted from: ${currentPath})`,
+        created_at: new Date().toISOString(),
+        is_done: false,
+        completed_at: null,
+        sort_order: Date.now(),
+        feedback_type: feedbackType,
+        doc_id: feedbackDocId,
+        user_email: userEmail,
+      }
+
+      // Optimistically add to cache
+      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
+        if (!oldData) {
+          return { items: [optimisticItem] }
+        }
+        return { items: [...oldData.items, optimisticItem] }
+      })
+
+      return { previousData, optimisticItemId: optimisticItem.id }
+    },
+    onSuccess: (result, _variables, context) => {
+      // Replace optimistic item with real item from server
+      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
+        if (!oldData) return oldData
+        return {
+          items: oldData.items.map((item) =>
+            item.id === context?.optimisticItemId
+              ? { ...result.feedbackItem, doc_id: result.docId, user_email: _variables.userEmail }
+              : item
+          ),
+        }
+      })
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
+      }
     },
   })
 
   /**
    * Toggle feedback completion status
+   * Uses optimistic updates for instant UI feedback
    */
   const toggleFeedback = useMutation({
     mutationFn: async ({ item }: ToggleFeedbackParams) => {
@@ -111,20 +159,37 @@ export function useFeedbackMutations() {
       )
 
       if (!exists || !data) {
-        throw new Error('Feedback document not found')
+        throw new Error(`Feedback document not found: ${item.doc_id}`)
       }
 
+      const newIsDone = !item.is_done
+      const completedAt = newIsDone ? new Date().toISOString() : null
+
       const items = data.items || []
+
+      // Track if we found and updated the item
+      let itemFound = false
       const updatedItems = items.map((i: FeedbackItem) => {
         if (i.id === item.id) {
+          itemFound = true
           return {
             ...i,
-            is_done: !i.is_done,
-            completed_at: !i.is_done ? new Date().toISOString() : null,
+            is_done: newIsDone,
+            completed_at: completedAt,
           }
         }
         return i
       })
+
+      if (!itemFound) {
+        // Log for debugging - helps identify doc_id mismatches
+        console.error('[toggleFeedback] Item not found in document', {
+          searchingFor: item.id,
+          inDocument: item.doc_id,
+          availableIds: items.map((i: FeedbackItem) => i.id),
+        })
+        throw new Error(`Feedback item not found in document. Item ID: ${item.id}, Doc ID: ${item.doc_id}`)
+      }
 
       await writeDoc(
         'feedback',
@@ -134,18 +199,46 @@ export function useFeedbackMutations() {
           items: updatedItems,
           updated_at: new Date().toISOString(),
         },
-        `marking feedback item as ${!item.is_done ? 'done' : 'not done'}`
+        `marking feedback item as ${newIsDone ? 'done' : 'not done'}`
       )
 
-      return { itemId: item.id, isDone: !item.is_done }
+      return { itemId: item.id, isDone: newIsDone, completedAt }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.feedback() })
+    onMutate: async ({ item }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
+
+      // Snapshot previous value for rollback
+      const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
+
+      // Optimistically update cache immediately
+      const newIsDone = !item.is_done
+      const completedAt = newIsDone ? new Date().toISOString() : null
+
+      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
+        if (!oldData) return oldData
+        return {
+          items: oldData.items.map((i) =>
+            i.id === item.id
+              ? { ...i, is_done: newIsDone, completed_at: completedAt }
+              : i
+          ),
+        }
+      })
+
+      return { previousData }
+    },
+    onError: (_err, _variables, context) => {
+      // Roll back to previous state on error
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
+      }
     },
   })
 
   /**
    * Update sort order of feedback items in a document
+   * Uses optimistic updates for instant UI feedback
    */
   const updateSortOrder = useMutation({
     mutationFn: async ({ docId, items }: UpdateSortOrderParams) => {
@@ -170,10 +263,39 @@ export function useFeedbackMutations() {
         'saving reordered feedback items'
       )
 
-      return { docId }
+      return { docId, items }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.feedback() })
+    onMutate: async ({ docId, items }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
+      const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
+
+      // Optimistically update the sort order in cache
+      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
+        if (!oldData) return oldData
+
+        // Build a map of new sort orders from the items array
+        const sortOrderMap = new Map<string, number>()
+        items.forEach((item) => {
+          sortOrderMap.set(item.id, item.sort_order)
+        })
+
+        // Update sort orders for items in this document
+        return {
+          items: oldData.items.map((item) => {
+            if (item.doc_id === docId && sortOrderMap.has(item.id)) {
+              return { ...item, sort_order: sortOrderMap.get(item.id)! }
+            }
+            return item
+          }),
+        }
+      })
+
+      return { previousData }
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
+      }
     },
   })
 

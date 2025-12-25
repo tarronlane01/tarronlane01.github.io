@@ -37,7 +37,6 @@ export { usePayeesQuery } from './queries/usePayeesQuery'
 export { useUserQuery } from './queries/useUserQuery'
 export { useAccessibleBudgetsQuery } from './queries/useAccessibleBudgetsQuery'
 export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type FeedbackData } from './queries/useFeedbackQuery'
-export { useSettingsMigrationQuery } from './queries/useSettingsMigrationQuery'
 
 // ============================================================================
 // MUTATION HOOKS (for all writes)

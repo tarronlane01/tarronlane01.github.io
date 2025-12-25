@@ -277,11 +277,11 @@ function AllocationStatus({
         {allocationsFinalized ? (
           isEditingAppliedAllocations ? (
             <>
-              <Button onClick={onCancel} disabled={isSavingAllocations || isDeletingAllocations || monthLoading} variant="secondary">
+              <Button onClick={onCancel} disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading} variant="secondary">
                 Cancel
               </Button>
-              <Button onClick={onSave} disabled={isSavingAllocations || isDeletingAllocations || monthLoading}>
-                {isSavingAllocations ? '⏳ Saving...' : '💾 Save Changes'}
+              <Button onClick={onFinalize} disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading}>
+                {isFinalizingAllocations ? '⏳ Saving...' : '💾 Save Changes'}
               </Button>
             </>
           ) : (
@@ -301,7 +301,7 @@ function AllocationStatus({
         ) : (
           <>
             <Button onClick={onSave} disabled={isSavingAllocations || monthLoading} variant="secondary">
-              {isSavingAllocations ? '⏳ Saving...' : '💾 Save Draft'}
+              {isSavingAllocations ? '⏳ Saving...' : '💾 Save Allocation Draft'}
             </Button>
             <Button onClick={onFinalize} disabled={isFinalizingAllocations || monthLoading}>
               {isFinalizingAllocations ? '⏳ Applying...' : '✓ Save & Apply'}

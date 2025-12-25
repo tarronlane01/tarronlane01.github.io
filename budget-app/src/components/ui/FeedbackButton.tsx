@@ -6,8 +6,7 @@ import { useFeedbackMutations } from '../../data'
 import { colors } from '../../styles/shared'
 import { Button } from './Button'
 import { Modal } from './Modal'
-import { TextAreaInput } from './FormElements'
-import { FormButtonGroup } from './FormElements'
+import { TextAreaInput, FormButtonGroup } from './FormElements'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
 
@@ -23,8 +22,6 @@ export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug')
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const userContext = useContext(UserContext)
   const firebase_auth_hook = useFirebaseAuth()
@@ -37,31 +34,23 @@ export function FeedbackButton() {
   if (isOnFeedbackPage) return null
   if (!userContext.is_logged_in) return null
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!feedbackText.trim() || !userContext.username || !currentUser) return
 
-    setError(null)
+    // Fire mutation and close optimistically - the item appears immediately via onMutate
+    feedbackMutations.submitFeedback.mutate({
+      userId: currentUser.uid,
+      userEmail: userContext.username,
+      text: feedbackText.trim(),
+      feedbackType,
+      currentPath: location.pathname,
+    })
 
-    try {
-      await feedbackMutations.submitFeedback.mutateAsync({
-        userId: currentUser.uid,
-        userEmail: userContext.username,
-        text: feedbackText.trim(),
-        feedbackType,
-        currentPath: location.pathname,
-      })
-
-      setFeedbackText('')
-      setFeedbackType('bug')
-      setSubmitSuccess(true)
-      setTimeout(() => {
-        setSubmitSuccess(false)
-        setIsOpen(false)
-      }, 1500)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit feedback')
-    }
+    // Close immediately
+    setFeedbackText('')
+    setFeedbackType('bug')
+    setIsOpen(false)
   }
 
   return (
@@ -101,79 +90,66 @@ export function FeedbackButton() {
       </button>
 
       <Modal isOpen={isOpen} onClose={() => { setIsOpen(false); setFeedbackType('bug') }} title="Send Feedback">
-        {submitSuccess ? (
-          <div style={{ textAlign: 'center', padding: '2rem 0', color: colors.success }}>
-            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>✓</span>
-            Feedback submitted!
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', paddingBottom: '1rem', flexWrap: 'wrap' }}>
+            {(['critical_bug', 'bug', 'new_feature', 'core_feature', 'qol'] as FeedbackType[]).map((type) => {
+              const config = feedbackTypeConfig[type]
+              const isSelected = feedbackType === type
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFeedbackType(type)}
+                  style={{
+                    flex: 1,
+                    padding: '0.6rem 0.5rem',
+                    border: `2px solid ${config.color}`,
+                    borderRadius: '0.5rem',
+                    background: isSelected ? config.bgColor : 'transparent',
+                    color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer',
+                    fontWeight: isSelected ? 600 : 400,
+                    fontSize: '0.8rem',
+                    transition: 'all 0.15s ease',
+                    opacity: isSelected ? 1 : 0.5,
+                    boxShadow: isSelected ? `0 0 12px ${config.bgColor}` : 'none',
+                    position: 'relative',
+                  }}
+                >
+                  {config.label}
+                  {isSelected && (
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '-14px',
+                      left: '10%',
+                      right: '10%',
+                      height: '3px',
+                      background: 'white',
+                      borderRadius: '2px',
+                    }} />
+                  )}
+                </button>
+              )
+            })}
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', paddingBottom: '1rem', flexWrap: 'wrap' }}>
-              {(['critical_bug', 'bug', 'new_feature', 'core_feature', 'qol'] as FeedbackType[]).map((type) => {
-                const config = feedbackTypeConfig[type]
-                const isSelected = feedbackType === type
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFeedbackType(type)}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem 0.5rem',
-                      border: `2px solid ${config.color}`,
-                      borderRadius: '0.5rem',
-                      background: isSelected ? config.bgColor : 'transparent',
-                      color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
-                      cursor: 'pointer',
-                      fontWeight: isSelected ? 600 : 400,
-                      fontSize: '0.8rem',
-                      transition: 'all 0.15s ease',
-                      opacity: isSelected ? 1 : 0.5,
-                      boxShadow: isSelected ? `0 0 12px ${config.bgColor}` : 'none',
-                      position: 'relative',
-                    }}
-                  >
-                    {config.label}
-                    {isSelected && (
-                      <span style={{
-                        position: 'absolute',
-                        bottom: '-14px',
-                        left: '10%',
-                        right: '10%',
-                        height: '3px',
-                        background: 'white',
-                        borderRadius: '2px',
-                      }} />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            <TextAreaInput
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder="Share your feedback, bug reports, or feature requests..."
-              minHeight="8rem"
-              autoFocus
-              required
-            />
+          <TextAreaInput
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            placeholder="Share your feedback, bug reports, or feature requests..."
+            minHeight="8rem"
+            autoFocus
+            required
+          />
 
-            {error && (
-              <p style={{ color: colors.error, fontSize: '0.85rem', margin: '0.5rem 0' }}>
-                {error}
-              </p>
-            )}
-
-            <FormButtonGroup>
-              <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
-                Cancel
-              </Button>
-              <Button type="submit" isLoading={feedbackMutations.submitFeedback.isPending} disabled={!feedbackText.trim()}>
-                Submit
-              </Button>
-            </FormButtonGroup>
-          </form>
-        )}
+          <FormButtonGroup>
+            <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!feedbackText.trim()}>
+              Submit
+            </Button>
+          </FormButtonGroup>
+        </form>
       </Modal>
     </>
   )
