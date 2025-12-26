@@ -1,6 +1,6 @@
 /**
  * Autocomplete Components
- * 
+ *
  * PayeeAutocomplete - fuzzy search for payee names
  * CategoryAutocomplete - fuzzy search for categories with grouping
  */

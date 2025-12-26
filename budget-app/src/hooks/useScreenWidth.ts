@@ -1,6 +1,6 @@
 /**
  * useScreenWidth Hook
- * 
+ *
  * Detects screen width and provides breakpoint flags for responsive layouts.
  */
 

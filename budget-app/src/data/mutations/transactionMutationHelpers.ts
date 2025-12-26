@@ -1,6 +1,6 @@
 /**
  * Transaction Mutation Helpers
- * 
+ *
  * Shared utilities for expense and income mutations to reduce code duplication.
  */
 
@@ -67,12 +67,12 @@ export function markAllBalancesStaleInCache(
   options: { includeCategoryBalances?: boolean } = {}
 ): void {
   const { includeCategoryBalances = true } = options
-  
+
   markNextMonthSnapshotStaleInCache(budgetId, year, month)
   markAccountBalancesSnapshotStaleInCache(budgetId)
   markMonthAccountBalancesStaleInCache(budgetId, year, month)
   markFutureMonthsAccountBalancesStaleInCache(budgetId, year, month)
-  
+
   if (includeCategoryBalances) {
     markCategoryBalancesSnapshotStaleInCache(budgetId)
     markMonthCategoryBalancesStaleInCache(budgetId, year, month)
@@ -90,11 +90,11 @@ export async function markAllBalancesStaleInFirestore(
   options: { includeCategoryBalances?: boolean } = {}
 ): Promise<void> {
   const { includeCategoryBalances = true } = options
-  
+
   await markAccountBalancesSnapshotStaleInFirestore(budgetId)
   await markMonthAccountBalancesStaleInFirestore(budgetId, year, month)
   await markFutureMonthsAccountBalancesStaleInFirestore(budgetId, year, month)
-  
+
   if (includeCategoryBalances) {
     await markCategoryBalancesSnapshotStaleInFirestore(budgetId)
     await markMonthCategoryBalancesStaleInFirestore(budgetId, year, month)
@@ -140,10 +140,10 @@ export function handleAccountChangeInCache(
   isIncome: boolean
 ): void {
   if (!previousBudget) return
-  
+
   const updatedAccounts = { ...previousBudget.accounts }
   const sign = isIncome ? 1 : -1
-  
+
   if (newAccountId !== oldAccountId) {
     // Different accounts - reverse old, apply new
     if (updatedAccounts[oldAccountId]) {
@@ -165,7 +165,7 @@ export function handleAccountChangeInCache(
       balance: updatedAccounts[newAccountId].balance + ((newAmount - oldAmount) * sign),
     }
   }
-  
+
   queryClient.setQueryData<BudgetData>(budgetKey, {
     ...previousBudget,
     accounts: updatedAccounts,
@@ -181,7 +181,7 @@ export function updateAccountsFromServer(
   updatedAccounts: AccountsMap | null
 ): void {
   if (!updatedAccounts) return
-  
+
   const budgetKey = queryKeys.budget(budgetId)
   const currentBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (currentBudget) {

@@ -1,6 +1,6 @@
 /**
  * Account Balances View Components
- * 
+ *
  * Components for displaying account balances by month in the Balances tab.
  */
 

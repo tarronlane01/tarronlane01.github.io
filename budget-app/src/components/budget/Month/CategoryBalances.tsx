@@ -1,6 +1,6 @@
 /**
  * Category Balances View Components
- * 
+ *
  * Components for displaying category balances and allocation editing in the Balances tab.
  */
 
