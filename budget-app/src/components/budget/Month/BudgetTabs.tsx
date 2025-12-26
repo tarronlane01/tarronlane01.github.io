@@ -15,12 +15,11 @@ export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: Bu
   const tabs: Tab[] = useMemo(() => [
     { id: 'income', label: 'Income' },
     {
-      id: 'allocations',
-      label: 'Allocations',
+      id: 'balances',
+      label: 'Balances',
       checkmark: allocationsFinalized,
     },
     { id: 'spend', label: 'Spend' },
-    { id: 'balances', label: 'Balances' },
   ], [allocationsFinalized])
 
   return (

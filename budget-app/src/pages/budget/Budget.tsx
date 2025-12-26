@@ -9,11 +9,10 @@ import {
   MonthNavigation,
   IncomeSection,
   SpendSection,
-  AllocationsSection,
   BalancesSection,
 } from '../../components/budget/Month'
 
-const VALID_TABS: BudgetTab[] = ['income', 'allocations', 'spend', 'balances']
+const VALID_TABS: BudgetTab[] = ['income', 'balances', 'spend']
 
 function parsePathParams(params: { year?: string; month?: string; tab?: string }) {
   const year = params.year ? parseInt(params.year, 10) : null
@@ -168,9 +167,8 @@ function Budget() {
         />
 
         {activeTab === 'income' && <IncomeSection />}
-        {activeTab === 'allocations' && <AllocationsSection />}
-        {activeTab === 'spend' && <SpendSection />}
         {activeTab === 'balances' && <BalancesSection />}
+        {activeTab === 'spend' && <SpendSection />}
       </ContentContainer>
     </PageContainer>
   )

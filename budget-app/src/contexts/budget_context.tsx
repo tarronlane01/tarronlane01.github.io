@@ -77,9 +77,10 @@ export type {
 // ============================================================================
 
 // Valid tabs for each section
-export type BudgetTab = 'income' | 'allocations' | 'spend' | 'balances'
+export type BudgetTab = 'income' | 'balances' | 'spend'
 export type SettingsTab = 'accounts' | 'categories' | 'users'
 export type AdminTab = 'budget' | 'feedback' | 'migration' | 'tests'
+export type BalancesView = 'categories' | 'accounts'
 
 interface BudgetContextType {
   // Current user
@@ -92,6 +93,7 @@ interface BudgetContextType {
   lastActiveTab: BudgetTab
   lastSettingsTab: SettingsTab
   lastAdminTab: AdminTab
+  lastBalancesView: BalancesView
 
   // Selection setters
   setSelectedBudgetId: (id: string | null) => void
@@ -100,6 +102,7 @@ interface BudgetContextType {
   setLastActiveTab: (tab: BudgetTab) => void
   setLastSettingsTab: (tab: SettingsTab) => void
   setLastAdminTab: (tab: AdminTab) => void
+  setLastBalancesView: (view: BalancesView) => void
 
   // UI/initialization state
   isInitialized: boolean
@@ -137,14 +140,16 @@ const defaultContextValue: BudgetContextType = {
   currentYear: new Date().getFullYear(),
   currentMonthNumber: new Date().getMonth() + 1,
   lastActiveTab: 'balances',
-  lastSettingsTab: 'accounts',
+  lastSettingsTab: 'categories',
   lastAdminTab: 'budget',
+  lastBalancesView: 'categories',
   setSelectedBudgetId: () => {},
   setCurrentYear: () => {},
   setCurrentMonthNumber: () => {},
   setLastActiveTab: () => {},
   setLastSettingsTab: () => {},
   setLastAdminTab: () => {},
+  setLastBalancesView: () => {},
   isInitialized: false,
   needsFirstBudget: false,
   goToPreviousMonth: () => {},
@@ -175,8 +180,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
   const [lastActiveTab, setLastActiveTab] = useState<BudgetTab>('balances')
-  const [lastSettingsTab, setLastSettingsTab] = useState<SettingsTab>('accounts')
+  const [lastSettingsTab, setLastSettingsTab] = useState<SettingsTab>('categories')
   const [lastAdminTab, setLastAdminTab] = useState<AdminTab>('budget')
+  const [lastBalancesView, setLastBalancesView] = useState<BalancesView>('categories')
 
   // UI state
   const [isInitialized, setIsInitialized] = useState(false)
@@ -185,11 +191,13 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // User query - for admin flags and budget access
   const userQuery = useUserQuery(current_user?.uid || null, current_user?.email || null)
 
-  // Accessible budgets query - for onboarding/routing
+  // Accessible budgets query - LAZY: only runs for new users (no budget_ids)
+  // For existing users, this query is triggered manually when visiting MyBudgets page
+  const userHasNoBudgets = userQuery.data && userQuery.data.budget_ids.length === 0
   const accessibleBudgetsQuery = useAccessibleBudgetsQuery(
     current_user?.uid || null,
     userQuery.data || null,
-    { enabled: !!current_user?.uid && !!userQuery.data }
+    { enabled: !!current_user?.uid && !!userQuery.data && userHasNoBudgets }
   )
 
   // Derive user flags
@@ -208,27 +216,33 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!current_user) return
     if (isInitialized) return
-    if (userQuery.isLoading || accessibleBudgetsQuery.isLoading) return
+    if (userQuery.isLoading) return
 
     const userData = userQuery.data
-    const budgetsData = accessibleBudgetsQuery.data
 
     // Still loading
     if (!userData && !userQuery.isError) return
 
     // Determine which budget to load (initialization pattern - setState is intentional)
     if (userData && userData.budget_ids.length > 0) {
+      // User has budgets - select the first one, no need to wait for accessibleBudgetsQuery
       setSelectedBudgetId(userData.budget_ids[0]) // eslint-disable-line react-hooks/set-state-in-effect
       setNeedsFirstBudget(false)
-    } else if (budgetsData?.pendingInvites && budgetsData.pendingInvites.length > 0) {
-      // Has pending invites but no budgets
-      setNeedsFirstBudget(false)
+      setIsInitialized(true)
     } else {
-      // New user, needs to create first budget
-      setNeedsFirstBudget(true)
-    }
+      // User has no budgets - wait for accessibleBudgetsQuery to check for pending invites
+      if (accessibleBudgetsQuery.isLoading) return
 
-    setIsInitialized(true)
+      const budgetsData = accessibleBudgetsQuery.data
+      if (budgetsData?.pendingInvites && budgetsData.pendingInvites.length > 0) {
+        // Has pending invites but no budgets
+        setNeedsFirstBudget(false)
+      } else {
+        // New user, needs to create first budget
+        setNeedsFirstBudget(true)
+      }
+      setIsInitialized(true)
+    }
   }, [current_user, isInitialized, userQuery.data, userQuery.isLoading, userQuery.isError, accessibleBudgetsQuery.data, accessibleBudgetsQuery.isLoading])
 
   // ==========================================================================
@@ -312,12 +326,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     lastActiveTab,
     lastSettingsTab,
     lastAdminTab,
+    lastBalancesView,
     setSelectedBudgetId,
     setCurrentYear,
     setCurrentMonthNumber,
     setLastActiveTab,
     setLastSettingsTab,
     setLastAdminTab,
+    setLastBalancesView,
     isInitialized,
     needsFirstBudget,
     goToPreviousMonth,

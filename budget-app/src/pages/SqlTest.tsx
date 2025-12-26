@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { DropdownMenu, type MenuItem } from '../components/ui'
+import { pageContainer } from '../styles/shared'
 
 function SqlTest() {
   const setupCode = `ALTER TABLE shippings
@@ -22,7 +23,7 @@ INSERT INTO orders (order_id, item, amount, customer_id)
 VALUES (6, "Monitor", 800, 5);`
 
   return (
-    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+    <div style={pageContainer}>
       <nav style={{ marginBottom: '1rem', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Link to="/" style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none', padding: '0.25rem 0.5rem' }} title="Back to Home">←</Link>

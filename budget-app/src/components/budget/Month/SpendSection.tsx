@@ -4,9 +4,9 @@ import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import type { FinancialAccount } from '../../../types/budget'
-import { Button, formatCurrency } from '../../ui'
-import { colors, listContainer } from '../../../styles/shared'
-import { ExpenseForm, ExpenseItem } from '../Spend'
+import { Button, formatCurrency, SectionTotalHeader } from '../../ui'
+import { colors } from '../../../styles/shared'
+import { ExpenseForm, ExpenseItem, ExpenseTableHeader } from '../Spend'
 
 export function SpendSection() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
@@ -55,18 +55,18 @@ export function SpendSection() {
   const totalMonthlyExpenses = currentMonth?.expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0
 
   // Handle expense operations
-  function handleAddExpense(amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string) {
+  function handleAddExpense(amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
     setShowAddExpense(false)
-    addExpense(amount, categoryId, accountId, date, payee, description).catch(err => {
+    addExpense(amount, categoryId, accountId, date, payee, description, cleared).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to add expense')
     })
   }
 
-  function handleUpdateExpense(expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string) {
+  function handleUpdateExpense(expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
     setEditingExpenseId(null)
-    updateExpense(expenseId, amount, categoryId, accountId, date, payee, description).catch(err => {
+    updateExpense(expenseId, amount, categoryId, accountId, date, payee, description, cleared).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to update expense')
     })
   }
@@ -102,28 +102,14 @@ export function SpendSection() {
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        justifyContent: 'space-between',
-        alignItems: isMobile ? 'stretch' : 'center',
-        gap: isMobile ? '0.75rem' : '1rem',
-        marginBottom: '1rem',
-        paddingBottom: '0.75rem',
-        borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-      }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Total Expenses</h3>
-          <p style={{
-            margin: '0.25rem 0 0 0',
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: totalMonthlyExpenses > 0 ? colors.error : 'inherit',
-          }}>
+      <SectionTotalHeader
+        label="Total Expenses"
+        value={
+          <span style={{ color: totalMonthlyExpenses > 0 ? colors.error : 'inherit' }}>
             {totalMonthlyExpenses > 0 ? '-' : ''}{formatCurrency(totalMonthlyExpenses)}
-          </p>
-        </div>
-        {!showAddExpense && (
+          </span>
+        }
+        action={!showAddExpense && (
           <Button
             onClick={() => setShowAddExpense(true)}
             disabled={expenseAccounts.length === 0 || Object.keys(categories).length === 0}
@@ -131,7 +117,7 @@ export function SpendSection() {
             + Add Expense
           </Button>
         )}
-      </div>
+      />
 
       {expenseAccounts.length === 0 && (
         <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1rem' }}>
@@ -174,28 +160,39 @@ export function SpendSection() {
       )}
 
       {/* Expenses List - sorted by date */}
-      <div style={listContainer}>
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 3%, transparent)',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        marginBottom: '1rem',
+      }}>
+        {/* Table header - only show on desktop when there are items */}
+        {!isMobile && currentMonth?.expenses && currentMonth.expenses.length > 0 && (
+          <ExpenseTableHeader />
+        )}
+
         {currentMonth?.expenses
           ?.slice()
           .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
           .map(expense => (
             editingExpenseId === expense.id ? (
-              <ExpenseForm
-                key={expense.id}
-                accounts={expenseAccounts}
-                accountGroups={accountGroups}
-                categories={categories}
-                categoryGroups={categoryGroups}
-                payees={payees}
-                initialData={expense}
-                onSubmit={(amount, categoryId, accountId, date, payee, description) =>
-                  handleUpdateExpense(expense.id, amount, categoryId, accountId, date, payee, description)
-                }
-                onCancel={() => setEditingExpenseId(null)}
-                onDelete={() => handleDeleteExpense(expense.id)}
-                submitLabel="Save"
-                isMobile={isMobile}
-              />
+              <div key={expense.id} style={{ padding: '0.5rem' }}>
+                <ExpenseForm
+                  accounts={expenseAccounts}
+                  accountGroups={accountGroups}
+                  categories={categories}
+                  categoryGroups={categoryGroups}
+                  payees={payees}
+                  initialData={expense}
+                  onSubmit={(amount, categoryId, accountId, date, payee, description, cleared) =>
+                    handleUpdateExpense(expense.id, amount, categoryId, accountId, date, payee, description, cleared)
+                  }
+                  onCancel={() => setEditingExpenseId(null)}
+                  onDelete={() => handleDeleteExpense(expense.id)}
+                  submitLabel="Save"
+                  isMobile={isMobile}
+                />
+              </div>
             ) : (
               <ExpenseItem
                 key={expense.id}
@@ -215,7 +212,7 @@ export function SpendSection() {
           ))}
 
         {(!currentMonth?.expenses || currentMonth.expenses.length === 0) && !showAddExpense && (
-          <p style={{ opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
+          <p style={{ opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', padding: '1.5rem' }}>
             No expenses recorded for this month
           </p>
         )}

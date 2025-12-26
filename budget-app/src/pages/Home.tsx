@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
+import { pageContainer } from '../styles/shared'
 
 function Home() {
   return (
-    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+    <div style={pageContainer}>
       <nav style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center' }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center' }} title="Tarron Lane Home">
           <img src="/t-icon.svg" alt="Tarron Lane Home" style={{ width: '2rem', height: '2rem' }} />

@@ -6,6 +6,7 @@ import UserContext from './contexts/user_context'
 import { QueryProvider } from './data'
 import { BudgetProvider } from './contexts/budget_context'
 import useFirebaseAuth from './hooks/useFirebaseAuth'
+import { pageContainer } from './styles/shared'
 
 import Home from './pages/Home'
 import SqlTest from './pages/SqlTest'
@@ -56,7 +57,7 @@ function App() {
 
   if (!user_context.is_auth_checked) {
     return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={pageContainer}>
         <p>Loading...</p>
       </div>
     )

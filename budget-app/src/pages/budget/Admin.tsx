@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget, type AdminTab } from '../../contexts/budget_context'
 import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
+import { pageContainer } from '../../styles/shared'
 
 const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests']
 
@@ -54,7 +55,7 @@ function Admin() {
   // Non-admins cannot access admin pages at all
   if (!isAdmin) {
     return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={pageContainer}>
         <BudgetNavBar title="Budget Admin" />
         <h1>Access Denied</h1>
         <p style={{ opacity: 0.7 }}>
@@ -72,7 +73,7 @@ function Admin() {
   // Test-only pages
   if (!isTest && isTestsPage) {
     return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={pageContainer}>
         <BudgetNavBar title="Budget Admin" />
         <h1>Access Denied</h1>
         <p style={{ opacity: 0.7 }}>
@@ -88,7 +89,7 @@ function Admin() {
   }
 
   return (
-    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+    <div style={pageContainer}>
       <BudgetNavBar title="Budget Admin" />
       <TabNavigation
         mode="link"

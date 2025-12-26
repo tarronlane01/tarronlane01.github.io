@@ -8,9 +8,11 @@ interface AllocationRowProps {
   onChange: (value: string) => void
   previousMonthIncome: number
   disabled?: boolean
+  readOnly?: boolean
+  index?: number
 }
 
-export function AllocationRow({ category, value, onChange, previousMonthIncome, disabled }: AllocationRowProps) {
+export function AllocationRow({ category, value, onChange, previousMonthIncome, disabled, readOnly, index = 0 }: AllocationRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
 
   // For percentage-based categories, calculate the amount
@@ -23,10 +25,68 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
     ? calculatedAmount.toFixed(2)
     : value
 
+  // The actual amount to display
+  const amount = isPercentageBased ? calculatedAmount : (parseFloat(value) || 0)
+
   // Calculate the suggested amount display (only for fixed-amount categories)
   let suggestedDisplay: string | null = null
   if (!isPercentageBased && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0) {
     suggestedDisplay = formatCurrency(category.default_monthly_amount)
+  }
+
+  // Condensed read-only view when finalized OR for percentage-based categories (always show equation style)
+  if (readOnly || isPercentageBased) {
+    const isEven = index % 2 === 0
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          padding: '0.5rem 0.5rem',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          background: isEven ? 'transparent' : 'color-mix(in srgb, currentColor 3%, transparent)',
+          borderBottom: '1px solid color-mix(in srgb, currentColor 8%, transparent)',
+        }}
+      >
+        <span style={{
+          flex: '1 1 auto',
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontSize: '0.9rem',
+          opacity: 0.9,
+        }}>
+          {category.name}
+        </span>
+        <span style={{
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+        }}>
+          {isPercentageBased && (
+            <span style={{
+              fontSize: '0.75rem',
+              opacity: 0.5,
+              fontWeight: 400,
+            }}>
+              {formatCurrency(previousMonthIncome)} × {category.default_monthly_amount}% =
+            </span>
+          )}
+          <span style={{
+            fontWeight: 500,
+            color: readOnly ? colors.success : colors.primary,
+            fontSize: '0.9rem',
+          }}>
+            {formatCurrency(amount)}
+          </span>
+        </span>
+      </div>
+    )
   }
 
   return (
@@ -37,28 +97,15 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
         justifyContent: 'space-between',
         gap: '0.75rem',
         padding: '0.6rem 0.75rem',
-        background: isPercentageBased
-          ? 'color-mix(in srgb, currentColor 3%, transparent)'
-          : 'color-mix(in srgb, currentColor 5%, transparent)',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
         borderRadius: '8px',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        opacity: isPercentageBased ? 0.8 : 1,
       }}
     >
       <div style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden' }}>
         <span style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.name}</span>
-        {isPercentageBased ? (
-          <span style={{
-            fontSize: '0.7rem',
-            opacity: 0.6,
-            display: 'block',
-            marginTop: '0.15rem',
-            color: colors.primary,
-          }}>
-            {category.default_monthly_amount}% of prev month income
-          </span>
-        ) : suggestedDisplay && (
+        {suggestedDisplay && (
           <span style={{
             fontSize: '0.7rem',
             opacity: 0.5,
@@ -70,51 +117,29 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
         )}
       </div>
       <div style={{ flexShrink: 0, width: '110px' }}>
-        {isPercentageBased ? (
-          // Read-only display for percentage-based
-          <div
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.6rem',
-              borderRadius: '6px',
-              border: '1px dashed color-mix(in srgb, currentColor 15%, transparent)',
-              background: 'color-mix(in srgb, currentColor 3%, transparent)',
-              fontSize: '0.9rem',
-              color: 'inherit',
-              boxSizing: 'border-box',
-              textAlign: 'right',
-              opacity: 0.9,
-            }}
-            title="Auto-calculated from previous month's income"
-          >
-            {formatCurrency(calculatedAmount)}
-          </div>
-        ) : (
-          // Editable input for manual categories
-          <input
-            type="text"
-            inputMode="decimal"
-            value={displayValue ? `$${displayValue}` : ''}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^\d.]/g, '')
-              onChange(raw)
-            }}
-            placeholder="$0.00"
-            disabled={disabled}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.6rem',
-              borderRadius: '6px',
-              border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-              background: 'color-mix(in srgb, currentColor 5%, transparent)',
-              fontSize: '0.9rem',
-              color: 'inherit',
-              boxSizing: 'border-box',
-              opacity: disabled ? 0.6 : 1,
-              cursor: disabled ? 'not-allowed' : 'text',
-            }}
-          />
-        )}
+        <input
+          type="text"
+          inputMode="decimal"
+          value={displayValue ? `$${displayValue}` : ''}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^\d.]/g, '')
+            onChange(raw)
+          }}
+          placeholder="$0.00"
+          disabled={disabled}
+          style={{
+            width: '100%',
+            padding: '0.5rem 0.6rem',
+            borderRadius: '6px',
+            border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+            background: 'color-mix(in srgb, currentColor 5%, transparent)',
+            fontSize: '0.9rem',
+            color: 'inherit',
+            boxSizing: 'border-box',
+            opacity: disabled ? 0.6 : 1,
+            cursor: disabled ? 'not-allowed' : 'text',
+          }}
+        />
       </div>
     </div>
   )

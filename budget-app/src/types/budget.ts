@@ -100,6 +100,41 @@ export interface CategoryBalancesSnapshot {
   }>
 }
 
+/**
+ * Snapshot of account balances stored on the budget document.
+ * Similar to CategoryBalancesSnapshot but for accounts.
+ *
+ * Snapshot is considered stale if:
+ * - is_stale === true (explicitly marked after month edits)
+ * - computed_for_year/month doesn't match current year/month
+ * - snapshot doesn't exist
+ */
+export interface AccountBalancesSnapshot {
+  /** When this snapshot was last computed */
+  computed_at: string
+
+  /** The "current month" this was computed for */
+  computed_for_year: number
+  computed_for_month: number
+
+  /** Explicit stale flag - set to true when months are edited */
+  is_stale: boolean
+
+  /** Balances per account for the given month */
+  balances: Record<string, {
+    /** Balance at start of month */
+    start: number
+    /** Total income for the month */
+    income: number
+    /** Total expenses for the month */
+    expenses: number
+    /** Net change (income - expenses) */
+    net_change: number
+    /** Balance at end of month */
+    end: number
+  }>
+}
+
 // Income transaction for a month
 export interface IncomeTransaction {
   id: string
@@ -120,6 +155,7 @@ export interface ExpenseTransaction {
   date: string // YYYY-MM-DD format
   payee?: string
   description?: string
+  cleared?: boolean // Whether this transaction has appeared in the bank account
   created_at: string
 }
 
@@ -130,6 +166,16 @@ export interface CategoryMonthBalance {
   allocated: number // Allocations this month
   spent: number // Total spend this month
   end_balance: number // start + allocated - spent
+}
+
+// Account balance tracking for a month
+export interface AccountMonthBalance {
+  account_id: string
+  start_balance: number // Balance at start of month (end of previous month)
+  income: number // Total income deposited to this account this month
+  expenses: number // Total expenses from this account this month
+  net_change: number // income - expenses
+  end_balance: number // start + income - expenses
 }
 
 // Payees document structure (one per budget)
@@ -188,6 +234,15 @@ export interface MonthDocument {
    * When true, we need to walk backwards to find a valid starting point.
    */
   category_balances_stale?: boolean
+
+  /**
+   * True if this month's account balances need recalculation.
+   * Set to true when:
+   * - Income or expenses are added/edited/deleted in THIS month
+   * - ANY PREVIOUS month is edited (since this month's start_balance depends on it)
+   * When true, we need to recalculate account balances from previous month's end.
+   */
+  account_balances_stale?: boolean
 
   /**
    * Snapshot of previous month's data (carry-forward pattern).

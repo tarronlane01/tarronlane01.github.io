@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "months",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "budget_id", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+

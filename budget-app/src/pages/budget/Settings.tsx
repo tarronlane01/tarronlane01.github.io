@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget, type SettingsTab } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
+import { pageContainer } from '../../styles/shared'
 
 const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
 
@@ -26,7 +27,7 @@ function Settings() {
     if (path.includes('/settings/accounts')) return 'accounts'
     if (path.includes('/settings/categories')) return 'categories'
     if (path.includes('/settings/users')) return 'users'
-    return 'accounts'
+    return 'categories'
   }, [location.pathname])
 
   // For permission checks
@@ -41,10 +42,10 @@ function Settings() {
   // Get the saved tab for redirect (with permission checks)
   function getSavedSettingsTab(): SettingsTab {
     // Check if saved tab is valid
-    if (!VALID_SETTINGS_TABS.includes(lastSettingsTab)) return 'accounts'
+    if (!VALID_SETTINGS_TABS.includes(lastSettingsTab)) return 'categories'
 
     // Check permissions for restricted tabs
-    if (lastSettingsTab === 'users' && !isOwner) return 'accounts'
+    if (lastSettingsTab === 'users' && !isOwner) return 'categories'
 
     return lastSettingsTab
   }
@@ -58,7 +59,7 @@ function Settings() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={pageContainer}>
         <p>Loading...</p>
       </div>
     )
@@ -69,15 +70,15 @@ function Settings() {
 
   if (!isOwner && isOwnerOnlyPage) {
     return (
-      <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={pageContainer}>
         <BudgetNavBar title="Budget Settings" />
         <h1>Access Denied</h1>
         <p style={{ opacity: 0.7 }}>
           Only the budget owner can access this section.
         </p>
         <p style={{ marginTop: '1rem' }}>
-          <Link to="/budget/settings/accounts" style={{ color: '#646cff' }}>
-            Go to Accounts →
+          <Link to="/budget/settings/categories" style={{ color: '#646cff' }}>
+            Go to Categories →
           </Link>
         </p>
       </div>
@@ -85,7 +86,7 @@ function Settings() {
   }
 
   return (
-    <div style={{ maxWidth: '60rem', margin: '0 auto', padding: '2rem' }}>
+    <div style={pageContainer}>
       <BudgetNavBar title="Budget Settings" />
       <TabNavigation
         mode="link"

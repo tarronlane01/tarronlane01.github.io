@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes, type ReactNode } from 'react'
-import { formGroup, label as labelStyle, input as inputStyle, select as selectStyle, form as formStyle, buttonGroupForm, colors } from '../../styles/shared'
+import { formGroup, label as labelStyle, input as inputStyle, select as selectStyle, form as formStyle, buttonGroupForm } from '../../styles/shared'
 
-// Form wrapper
+// Re-export autocomplete components from their own file
+export { PayeeAutocomplete, CategoryAutocomplete } from './Autocomplete'
+
+// =============================================================================
+// FORM WRAPPER
+// =============================================================================
+
 interface FormWrapperProps {
   children: ReactNode
   onSubmit: (e: React.FormEvent) => void
@@ -15,7 +21,10 @@ export function FormWrapper({ children, onSubmit }: FormWrapperProps) {
   )
 }
 
-// Form field with label
+// =============================================================================
+// FORM FIELD
+// =============================================================================
+
 interface FormFieldProps {
   label: string
   htmlFor: string
@@ -39,12 +48,87 @@ export function FormField({ label, htmlFor, children, hint }: FormFieldProps) {
   )
 }
 
-// Text input
+// =============================================================================
+// TEXT INPUT
+// =============================================================================
+
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input style={inputStyle} {...props} />
 }
 
-// Number input
+// =============================================================================
+// DATE INPUT
+// =============================================================================
+
+interface DateInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
+  value?: string // YYYY-MM-DD format
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+}
+
+// Format date string (YYYY-MM-DD) to readable format (Dec 1)
+function formatDateDisplay(dateString: string | undefined): string {
+  if (!dateString) return ''
+  try {
+    // Add time component to avoid timezone issues
+    const date = new Date(dateString + 'T00:00:00')
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  } catch {
+    return dateString
+  }
+}
+
+export function DateInput({ value, onChange, style, ...props }: DateInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const displayValue = formatDateDisplay(value)
+
+  // Open the date picker when clicking anywhere in the field
+  function handleClick() {
+    inputRef.current?.showPicker?.()
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Hidden native date input for picker functionality */}
+      <input
+        ref={inputRef}
+        type="date"
+        value={value || ''}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0,
+          cursor: 'pointer',
+        }}
+        {...props}
+      />
+      {/* Visible display showing formatted date */}
+      <div
+        onClick={handleClick}
+        style={{
+          ...inputStyle,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: '0.85rem',
+          fontFamily: 'monospace',
+          color: value ? 'inherit' : 'color-mix(in srgb, currentColor 50%, transparent)',
+          ...style,
+        }}
+      >
+        {displayValue || 'Select date'}
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// NUMBER INPUT
+// =============================================================================
+
 interface NumberInputProps extends InputHTMLAttributes<HTMLInputElement> {
   step?: string
 }
@@ -53,7 +137,10 @@ export function NumberInput({ step = '0.01', ...props }: NumberInputProps) {
   return <input type="number" step={step} style={inputStyle} {...props} />
 }
 
-// Select dropdown
+// =============================================================================
+// SELECT INPUT
+// =============================================================================
+
 interface SelectInputProps extends SelectHTMLAttributes<HTMLSelectElement> {
   children: ReactNode
 }
@@ -66,7 +153,10 @@ export function SelectInput({ children, ...props }: SelectInputProps) {
   )
 }
 
-// Textarea input
+// =============================================================================
+// TEXTAREA INPUT
+// =============================================================================
+
 interface TextAreaInputProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   minHeight?: string
 }
@@ -88,7 +178,10 @@ export function TextAreaInput({ minHeight = '6rem', style, ...props }: TextAreaI
   )
 }
 
-// Form button group
+// =============================================================================
+// FORM BUTTON GROUP
+// =============================================================================
+
 interface FormButtonGroupProps {
   children: ReactNode
 }
@@ -97,7 +190,10 @@ export function FormButtonGroup({ children }: FormButtonGroupProps) {
   return <div style={buttonGroupForm}>{children}</div>
 }
 
-// Currency Input with auto-formatting (dollar sign and commas)
+// =============================================================================
+// CURRENCY INPUT
+// =============================================================================
+
 interface CurrencyInputProps {
   id?: string
   value: string
@@ -188,162 +284,3 @@ export function CurrencyInput({ id, value, onChange, placeholder = '$0.00', requ
     />
   )
 }
-
-// Payee Autocomplete with fuzzy search
-interface PayeeAutocompleteProps {
-  id?: string
-  value: string
-  onChange: (value: string) => void
-  payees: string[]
-  placeholder?: string
-}
-
-// Fuzzy search - matches if all characters appear in order (case insensitive)
-// Also matches if query appears anywhere in the string
-function fuzzyMatch(query: string, target: string): { match: boolean; score: number } {
-  const lowerQuery = query.toLowerCase()
-  const lowerTarget = target.toLowerCase()
-
-  // Direct substring match (highest priority)
-  if (lowerTarget.includes(lowerQuery)) {
-    const index = lowerTarget.indexOf(lowerQuery)
-    // Prefer matches at word boundaries
-    const atWordStart = index === 0 || /\s/.test(lowerTarget[index - 1])
-    return { match: true, score: atWordStart ? 100 : 90 }
-  }
-
-  // Fuzzy match - characters in order
-  let queryIndex = 0
-  let score = 0
-  let consecutiveMatches = 0
-
-  for (let i = 0; i < lowerTarget.length && queryIndex < lowerQuery.length; i++) {
-    if (lowerTarget[i] === lowerQuery[queryIndex]) {
-      queryIndex++
-      consecutiveMatches++
-      score += consecutiveMatches * 2 // Reward consecutive matches
-    } else {
-      consecutiveMatches = 0
-    }
-  }
-
-  if (queryIndex === lowerQuery.length) {
-    return { match: true, score }
-  }
-
-  return { match: false, score: 0 }
-}
-
-export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = 'Enter payee name' }: PayeeAutocompleteProps) {
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  // Get filtered and sorted suggestions
-  const suggestions = value.trim()
-    ? payees
-        .map(payee => ({ payee, ...fuzzyMatch(value, payee) }))
-        .filter(item => item.match)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 8)
-        .map(item => item.payee)
-    : []
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (!showSuggestions || suggestions.length === 0) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.min(prev + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.max(prev - 1, -1))
-    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-      e.preventDefault()
-      onChange(suggestions[highlightedIndex])
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-    }
-  }
-
-  function selectSuggestion(payee: string) {
-    onChange(payee)
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-    inputRef.current?.focus()
-  }
-
-  return (
-    <div ref={wrapperRef} style={{ position: 'relative' }}>
-      <input
-        ref={inputRef}
-        id={id}
-        type="text"
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value)
-          setShowSuggestions(true)
-          setHighlightedIndex(-1)
-        }}
-        onFocus={() => setShowSuggestions(true)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        autoComplete="off"
-        style={inputStyle}
-      />
-      {showSuggestions && suggestions.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          marginTop: '4px',
-          background: 'var(--background, #1a1a1a)',
-          border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-          borderRadius: '6px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          zIndex: 1000,
-          maxHeight: '200px',
-          overflowY: 'auto',
-        }}>
-          {suggestions.map((payee, index) => (
-            <div
-              key={payee}
-              onClick={() => selectSuggestion(payee)}
-              style={{
-                padding: '0.6rem 0.8rem',
-                cursor: 'pointer',
-                background: index === highlightedIndex
-                  ? `color-mix(in srgb, ${colors.primary} 20%, transparent)`
-                  : 'transparent',
-                borderBottom: index < suggestions.length - 1
-                  ? '1px solid color-mix(in srgb, currentColor 10%, transparent)'
-                  : 'none',
-                transition: 'background 0.1s',
-              }}
-              onMouseEnter={() => setHighlightedIndex(index)}
-            >
-              {payee}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-

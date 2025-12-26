@@ -20,6 +20,7 @@ import type {
   CategoriesMap,
   CategoryGroup,
   CategoryBalancesSnapshot,
+  AccountBalancesSnapshot,
   FinancialAccount,
   AccountGroup,
   Category,
@@ -37,6 +38,7 @@ interface BudgetDocument {
   categories: FirestoreData
   category_groups: FirestoreData[]
   category_balances_snapshot?: FirestoreData
+  account_balances_snapshot?: FirestoreData
   created_at?: string
   updated_at?: string
 }
@@ -49,6 +51,7 @@ export interface BudgetData {
   categories: CategoriesMap
   categoryGroups: CategoryGroup[]
   categoryBalancesSnapshot: CategoryBalancesSnapshot | null
+  accountBalancesSnapshot: AccountBalancesSnapshot | null
 }
 
 /**
@@ -149,6 +152,32 @@ function parseCategoryBalancesSnapshot(snapshotData: FirestoreData | undefined):
 }
 
 /**
+ * Parse raw Firestore account balances snapshot into typed AccountBalancesSnapshot
+ */
+function parseAccountBalancesSnapshot(snapshotData: FirestoreData | undefined): AccountBalancesSnapshot | null {
+  if (!snapshotData) return null
+
+  // Validate required fields exist
+  if (
+    typeof snapshotData.computed_at !== 'string' ||
+    typeof snapshotData.computed_for_year !== 'number' ||
+    typeof snapshotData.computed_for_month !== 'number' ||
+    typeof snapshotData.is_stale !== 'boolean' ||
+    !snapshotData.balances
+  ) {
+    return null
+  }
+
+  return {
+    computed_at: snapshotData.computed_at,
+    computed_for_year: snapshotData.computed_for_year,
+    computed_for_month: snapshotData.computed_for_month,
+    is_stale: snapshotData.is_stale,
+    balances: snapshotData.balances,
+  }
+}
+
+/**
  * Fetch budget document from Firestore
  */
 async function fetchBudget(budgetId: string): Promise<BudgetData> {
@@ -176,6 +205,7 @@ async function fetchBudget(budgetId: string): Promise<BudgetData> {
     categories: parseCategories(data.categories),
     categoryGroups: parseCategoryGroups(data.category_groups),
     categoryBalancesSnapshot: parseCategoryBalancesSnapshot(data.category_balances_snapshot),
+    accountBalancesSnapshot: parseAccountBalancesSnapshot(data.account_balances_snapshot),
   }
 }
 

@@ -1,4 +1,4 @@
-import { useState, useContext, type FormEvent } from 'react'
+import { useState, useContext, useEffect, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import UserContext from '../../contexts/user_context'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
@@ -9,6 +9,8 @@ import { Modal } from './Modal'
 import { TextAreaInput, FormButtonGroup } from './FormElements'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
+
+const CONFIRMATION_TIMEOUT_MS = 2000
 
 const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
   critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
@@ -22,6 +24,7 @@ export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug')
+  const [showConfirmation, setShowConfirmation] = useState(false)
 
   const userContext = useContext(UserContext)
   const firebase_auth_hook = useFirebaseAuth()
@@ -29,8 +32,16 @@ export function FeedbackButton() {
   const location = useLocation()
   const feedbackMutations = useFeedbackMutations()
 
+  // Auto-hide confirmation after timeout
+  useEffect(() => {
+    if (showConfirmation) {
+      const timer = setTimeout(() => setShowConfirmation(false), CONFIRMATION_TIMEOUT_MS)
+      return () => clearTimeout(timer)
+    }
+  }, [showConfirmation])
+
   // Hide on feedback admin page since it has its own form
-  const isOnFeedbackPage = location.pathname.includes('/settings/feedback')
+  const isOnFeedbackPage = location.pathname.includes('/admin/feedback')
   if (isOnFeedbackPage) return null
   if (!userContext.is_logged_in) return null
 
@@ -47,14 +58,41 @@ export function FeedbackButton() {
       currentPath: location.pathname,
     })
 
-    // Close immediately
+    // Close and show confirmation
     setFeedbackText('')
     setFeedbackType('bug')
     setIsOpen(false)
+    setShowConfirmation(true)
   }
 
   return (
     <>
+      {/* Confirmation toast */}
+      {showConfirmation && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '5rem',
+            right: '1.5rem',
+            background: 'rgba(46, 213, 115, 0.95)',
+            color: 'white',
+            padding: '0.75rem 1rem',
+            borderRadius: '0.5rem',
+            fontSize: '0.9rem',
+            fontWeight: 500,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            animation: 'fadeInUp 0.2s ease-out',
+          }}
+        >
+          <span>✓</span>
+          <span>Feedback submitted!</span>
+        </div>
+      )}
+
       <button
         onClick={() => setIsOpen(true)}
         style={{

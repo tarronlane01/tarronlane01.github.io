@@ -16,11 +16,11 @@ export const colors = {
   warning: '#facc15',
 }
 
-// Layout styles
+// Layout styles - uses CSS variables from index.css for easy customization
 export const pageContainer: CSSProperties = {
-  maxWidth: '60rem',
+  maxWidth: 'var(--page-max-width, 85rem)',
   margin: '0 auto',
-  padding: '2rem',
+  padding: 'var(--page-padding, 2rem)',
 }
 
 export const navBar: CSSProperties = {

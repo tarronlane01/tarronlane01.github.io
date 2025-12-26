@@ -1,8 +1,7 @@
+/* Note: Page layout is controlled by CSS variables in index.css */
+/* Individual pages use pageContainer style from shared.ts */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  /* Remove default Vite constraints - let pages control their own width */
 }
 
 .logo {

@@ -1,25 +1,23 @@
 import type { CSSProperties, ReactNode } from 'react'
 
-const MAX_WIDTH = '900px'
-
-interface ContentContainerProps {
+interface TabContentContainerProps {
   children: ReactNode
   style?: CSSProperties
 }
 
 /**
- * A container component that ensures consistent width for page content.
- * Use this to wrap related content (navigation, tabs, sections) to ensure
- * they all share the same max-width and stay aligned.
+ * A container component for tab content that ensures consistent width.
+ * Use this to wrap tab content to ensure alignment with tab navigation.
  *
  * Takes up full width up to a max size, and centers on wider screens.
+ * Width is controlled by --content-max-width CSS variable in index.css.
  */
-export function ContentContainer({ children, style }: ContentContainerProps) {
+export function TabContentContainer({ children, style }: TabContentContainerProps) {
   return (
     <div
       style={{
         width: '100%',
-        maxWidth: MAX_WIDTH,
+        maxWidth: 'var(--content-max-width, 900px)',
         marginLeft: 'auto',
         marginRight: 'auto',
         ...style,

@@ -11,6 +11,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Layout - change these to adjust page width site-wide */
+  --page-max-width: 90rem; /* ~1440px - outer page area */
+  --page-padding: 2rem;
+  --content-max-width: 80rem; /* ~1280px - content containers */
 }
 
 html {
@@ -69,8 +74,19 @@ button:focus-visible {
   }
 }
 
+/* Responsive width adjustments */
+@media (max-width: 1400px) {
+  :root {
+    --content-max-width: 100%; /* Full width on medium-large screens */
+  }
+}
+
 /* Mobile-friendly styles */
 @media (max-width: 640px) {
+  :root {
+    --page-padding: 1rem;
+  }
+
   body {
     min-width: 280px;
   }

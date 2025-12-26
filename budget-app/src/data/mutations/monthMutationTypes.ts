@@ -58,6 +58,7 @@ export interface AddExpenseParams {
   date: string
   payee?: string
   description?: string
+  cleared?: boolean
 }
 
 export interface UpdateExpenseParams {
@@ -71,6 +72,7 @@ export interface UpdateExpenseParams {
   date: string
   payee?: string
   description?: string
+  cleared?: boolean
   oldAmount: number
   oldAccountId: string
 }

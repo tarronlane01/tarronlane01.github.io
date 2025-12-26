@@ -211,6 +211,9 @@ export function useAllocationsPage() {
     }
   }, [deleteAllocations, categories])
 
+  // Change from currently saved allocations (positive = allocating more, negative = allocating less)
+  const draftChangeAmount = currentDraftTotal - currentMonthFinalizedTotal
+
   return {
     // State
     localAllocations,
@@ -225,6 +228,7 @@ export function useAllocationsPage() {
     onBudgetTotal,
     availableNow,
     currentDraftTotal,
+    draftChangeAmount,
     availableAfterApply,
     previousMonthIncome,
     allocationsFinalized: currentMonth?.allocations_finalized ?? false,

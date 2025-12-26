@@ -4,7 +4,7 @@
  * Shared utilities used across income, expense, and allocation mutations.
  */
 
-import type { MonthDocument, AccountsMap, CategoryAllocation, CategoryMonthBalance } from '../../types/budget'
+import type { MonthDocument, AccountsMap, CategoryAllocation, CategoryMonthBalance, AccountMonthBalance } from '../../types/budget'
 import {
   getMonthDocId,
   cleanIncomeForFirestore,
@@ -192,6 +192,65 @@ export function calculateCategoryBalancesForMonth(
       end_balance: startBalance + allocated - spent,
     }
   })
+}
+
+// ============================================================================
+// ACCOUNT BALANCES CALCULATION HELPER
+// ============================================================================
+
+/**
+ * Calculate account balances for a month based on income and expenses.
+ *
+ * @param monthData - The month document (needs previous_month_snapshot, income, expenses)
+ * @param accountIds - List of all account IDs to calculate for
+ * @param accountCurrentBalances - Current account balances (fallback for first month)
+ * @returns Object with account_balances_end map and AccountMonthBalance array
+ */
+export function calculateAccountBalancesForMonth(
+  monthData: MonthDocument,
+  accountIds: string[],
+  accountCurrentBalances: Record<string, number>
+): {
+  accountBalancesEnd: Record<string, number>
+  accountMonthBalances: AccountMonthBalance[]
+} {
+  const prevBalances = monthData.previous_month_snapshot?.account_balances_end ?? {}
+  const income = monthData.income ?? []
+  const expenses = monthData.expenses ?? []
+
+  const accountBalancesEnd: Record<string, number> = {}
+  const accountMonthBalances: AccountMonthBalance[] = []
+
+  accountIds.forEach(accountId => {
+    // Start balance from previous month's end, or current balance if first month
+    const startBalance = prevBalances[accountId] ?? accountCurrentBalances[accountId] ?? 0
+
+    // Sum income for this account
+    const incomeTotal = income
+      .filter(i => i.account_id === accountId)
+      .reduce((sum, i) => sum + i.amount, 0)
+
+    // Sum expenses for this account
+    const expensesTotal = expenses
+      .filter(e => e.account_id === accountId)
+      .reduce((sum, e) => sum + e.amount, 0)
+
+    const netChange = incomeTotal - expensesTotal
+    const endBalance = startBalance + netChange
+
+    accountBalancesEnd[accountId] = endBalance
+
+    accountMonthBalances.push({
+      account_id: accountId,
+      start_balance: startBalance,
+      income: incomeTotal,
+      expenses: expensesTotal,
+      net_change: netChange,
+      end_balance: endBalance,
+    })
+  })
+
+  return { accountBalancesEnd, accountMonthBalances }
 }
 
 // ============================================================================

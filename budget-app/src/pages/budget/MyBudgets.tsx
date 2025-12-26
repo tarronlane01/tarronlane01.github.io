@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 import { PageContainer, BudgetNavBar } from '../../components/ui'
@@ -14,6 +14,13 @@ function MyBudgets() {
     checkBudgetInvite,
     isInitialized,
   } = useBudget()
+
+  // Load accessible budgets when page mounts (query is lazy, only runs here)
+  useEffect(() => {
+    if (isInitialized) {
+      loadAccessibleBudgets()
+    }
+  }, [isInitialized, loadAccessibleBudgets])
 
   const {
     budget: currentBudget,

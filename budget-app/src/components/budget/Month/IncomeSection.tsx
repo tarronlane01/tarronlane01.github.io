@@ -4,9 +4,9 @@ import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import type { FinancialAccount } from '../../../types/budget'
-import { Button, formatCurrency, getBalanceColor } from '../../ui'
-import { colors, listContainer } from '../../../styles/shared'
-import { IncomeForm, IncomeItem } from '../Income'
+import { Button, formatCurrency, getBalanceColor, SectionTotalHeader } from '../../ui'
+import { colors } from '../../../styles/shared'
+import { IncomeForm, IncomeItem, IncomeTableHeader } from '../Income'
 
 export function IncomeSection() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
@@ -102,33 +102,15 @@ export function IncomeSection() {
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        justifyContent: 'space-between',
-        alignItems: isMobile ? 'stretch' : 'center',
-        gap: isMobile ? '0.75rem' : '1rem',
-        marginBottom: '1rem',
-        paddingBottom: '0.75rem',
-        borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-      }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Total</h3>
-          <p style={{
-            margin: '0.25rem 0 0 0',
-            fontSize: '1.25rem',
-            fontWeight: 600,
-            color: getBalanceColor(totalMonthlyIncome),
-          }}>
-            {formatCurrency(totalMonthlyIncome)}
-          </p>
-        </div>
-        {!showAddIncome && (
+      <SectionTotalHeader
+        label="Total"
+        value={<span style={{ color: getBalanceColor(totalMonthlyIncome) }}>{formatCurrency(totalMonthlyIncome)}</span>}
+        action={!showAddIncome && (
           <Button onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0}>
             + Add Income
           </Button>
         )}
-      </div>
+      />
 
       {incomeAccounts.length === 0 && (
         <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1rem' }}>
@@ -160,26 +142,37 @@ export function IncomeSection() {
       )}
 
       {/* Income List - sorted by date */}
-      <div style={listContainer}>
+      <div style={{
+        background: 'color-mix(in srgb, currentColor 3%, transparent)',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        marginBottom: '1rem',
+      }}>
+        {/* Table header - only show on desktop when there are items */}
+        {!isMobile && currentMonth?.income && currentMonth.income.length > 0 && (
+          <IncomeTableHeader />
+        )}
+
         {currentMonth?.income
           .slice()
           .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
           .map(income => (
             editingIncomeId === income.id ? (
-              <IncomeForm
-                key={income.id}
-                accounts={incomeAccounts}
-                accountGroups={accountGroups}
-                payees={payees}
-                initialData={income}
-                onSubmit={(amount, accountId, date, payee, description) =>
-                  handleUpdateIncome(income.id, amount, accountId, date, payee, description)
-                }
-                onCancel={() => setEditingIncomeId(null)}
-                onDelete={() => handleDeleteIncome(income.id)}
-                submitLabel="Save"
-                isMobile={isMobile}
-              />
+              <div key={income.id} style={{ padding: '0.5rem' }}>
+                <IncomeForm
+                  accounts={incomeAccounts}
+                  accountGroups={accountGroups}
+                  payees={payees}
+                  initialData={income}
+                  onSubmit={(amount, accountId, date, payee, description) =>
+                    handleUpdateIncome(income.id, amount, accountId, date, payee, description)
+                  }
+                  onCancel={() => setEditingIncomeId(null)}
+                  onDelete={() => handleDeleteIncome(income.id)}
+                  submitLabel="Save"
+                  isMobile={isMobile}
+                />
+              </div>
             ) : (
               <IncomeItem
                 key={income.id}
@@ -198,7 +191,7 @@ export function IncomeSection() {
           ))}
 
         {(!currentMonth?.income || currentMonth.income.length === 0) && !showAddIncome && (
-          <p style={{ opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
+          <p style={{ opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', padding: '1.5rem' }}>
             No income recorded for this month
           </p>
         )}

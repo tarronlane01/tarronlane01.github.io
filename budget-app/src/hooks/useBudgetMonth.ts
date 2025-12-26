@@ -56,8 +56,8 @@ interface UseBudgetMonthReturn {
   deleteIncome: (incomeId: string) => Promise<void>
 
   // Expense mutations
-  addExpense: (amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string) => Promise<void>
-  updateExpense: (expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string) => Promise<void>
+  addExpense: (amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
+  updateExpense: (expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
   deleteExpense: (expenseId: string) => Promise<void>
 
   // Allocation mutations
@@ -197,7 +197,8 @@ export function useBudgetMonth(
     accountId: string,
     date: string,
     payee?: string,
-    description?: string
+    description?: string,
+    cleared?: boolean
   ) => {
     if (!budgetId) throw new Error('No budget selected')
 
@@ -213,6 +214,7 @@ export function useBudgetMonth(
       date,
       payee,
       description,
+      cleared,
     })
   }, [budgetId, monthMutations.addExpense])
 
@@ -223,7 +225,8 @@ export function useBudgetMonth(
     accountId: string,
     date: string,
     payee?: string,
-    description?: string
+    description?: string,
+    cleared?: boolean
   ) => {
     if (!budgetId || !monthData) throw new Error('No budget or month loaded')
 
@@ -241,6 +244,7 @@ export function useBudgetMonth(
       date,
       payee,
       description,
+      cleared,
       oldAmount: oldExpense.amount,
       oldAccountId: oldExpense.account_id,
     })
