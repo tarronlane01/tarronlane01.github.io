@@ -30,11 +30,12 @@ interface FormFieldProps {
   htmlFor: string
   children: ReactNode
   hint?: ReactNode
+  style?: React.CSSProperties
 }
 
-export function FormField({ label, htmlFor, children, hint }: FormFieldProps) {
+export function FormField({ label, htmlFor, children, hint, style }: FormFieldProps) {
   return (
-    <div style={formGroup}>
+    <div style={{ ...formGroup, ...style }}>
       <label htmlFor={htmlFor} style={labelStyle}>
         {label}
       </label>
@@ -101,7 +102,7 @@ export function DateInput({ value, onChange, style, ...props }: DateInputProps) 
           width: '100%',
           height: '100%',
           opacity: 0,
-          cursor: 'pointer',
+          pointerEvents: 'none',
         }}
         {...props}
       />

@@ -1,4 +1,4 @@
-import type { Category } from '../../../types/budget'
+import type { Category } from '@types'
 import { formatCurrency } from '../../ui'
 import { colors } from '../../../styles/shared'
 

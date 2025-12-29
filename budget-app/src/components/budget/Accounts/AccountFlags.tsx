@@ -1,4 +1,4 @@
-import type { FinancialAccount } from '../../../types/budget'
+import type { FinancialAccount } from '@types'
 import type { GroupWithId } from './AccountForm'
 import { AccountBadge } from './AccountBadge'
 

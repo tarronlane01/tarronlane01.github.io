@@ -13,7 +13,7 @@
 
 import { useState } from 'react'
 import { useBudget } from '../contexts/budget_context'
-import type { Category, CategoriesMap, CategoryGroup } from '../types/budget'
+import type { Category, CategoriesMap, CategoryGroup } from '@types'
 import { useBudgetData } from './useBudgetData'
 import { useCategoryBalances } from './useCategoryBalances'
 import { useCategoryDragDrop } from './useCategoryDragDrop'
@@ -38,15 +38,12 @@ export function useCategoriesPage() {
     budget: currentBudget,
     categories,
     categoryGroups,
-    categoryBalancesSnapshot,
     isLoading,
     saveCategories,
     saveCategoryGroups,
     saveCategoriesAndGroups,
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
-    saveCategoryBalancesSnapshot: saveCategoryBalancesSnapshotMutation,
-    recalculateCategoryBalances: recalculateCategoryBalancesMutation,
     getOnBudgetTotal,
   } = useBudgetData(selectedBudgetId, currentUserId)
 
@@ -62,11 +59,9 @@ export function useCategoriesPage() {
   } = useCategoryBalances({
     budgetId: selectedBudgetId,
     categories,
-    categoryBalancesSnapshot,
     currentYear,
     currentMonth: currentMonthNumber,
-    saveCategoryBalancesSnapshot: saveCategoryBalancesSnapshotMutation,
-    recalculateCategoryBalancesMutation,
+    updateCategoriesWithBalances: saveCategories,
   })
 
   // Hook: drag and drop
@@ -101,11 +96,11 @@ export function useCategoriesPage() {
     const newCategoryId = `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newCategory: Category = {
       name: formData.name,
-      description: formData.description,
+      description: formData.description ?? '',
       category_group_id: effectiveGroupId,
       sort_order: maxSortOrder + 1,
-      default_monthly_amount: formData.default_monthly_amount,
-      default_monthly_type: formData.default_monthly_type,
+      default_monthly_amount: formData.default_monthly_amount ?? 0,
+      default_monthly_type: formData.default_monthly_type ?? 'fixed',
       balance: 0,
     }
 
@@ -150,11 +145,11 @@ export function useCategoriesPage() {
         [categoryId]: {
           ...category,
           name: formData.name,
-          description: formData.description,
+          description: formData.description ?? '',
           category_group_id: newGroupId,
           sort_order: newSortOrder,
-          default_monthly_amount: formData.default_monthly_amount,
-          default_monthly_type: formData.default_monthly_type,
+          default_monthly_amount: formData.default_monthly_amount ?? 0,
+          default_monthly_type: formData.default_monthly_type ?? 'fixed',
         },
       }
       setCategoriesOptimistic(newCategories)

@@ -7,7 +7,7 @@ import {
   FormButtonGroup,
   Button,
 } from '../../ui'
-import type { ExpectedBalanceType } from '../../../types/budget'
+import type { ExpectedBalanceType } from '@types'
 import { ThreeStateCheckbox } from './ThreeStateCheckbox'
 
 export interface GroupFormData {

@@ -4,7 +4,7 @@
  * Components for displaying category balances and allocation editing in the Balances tab.
  */
 
-import type { Category, CategoryMonthBalance } from '../../../types/budget'
+import type { Category, CategoryMonthBalance } from '@types'
 import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 
@@ -45,7 +45,7 @@ export function AllocationStatus({
         </p>
       </div>
       <Button onClick={onFinalize} disabled={isFinalizingAllocations || monthLoading}>
-        {isFinalizingAllocations ? '⏳ Applying...' : '✓ Save & Apply'}
+        {isFinalizingAllocations ? '⏳ Applying...' : '✓ Apply Allocations'}
       </Button>
     </div>
   )
@@ -104,7 +104,7 @@ export function DraftEquation({
       </span>
       <span style={{ opacity: 0.4 }}>=</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-        <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>If Applied</span>
+        <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>Available After</span>
         <span style={{ color: getBalanceColor(availableAfterApply), fontWeight: 600 }}>{formatCurrency(availableAfterApply)}</span>
       </span>
     </div>
@@ -246,6 +246,9 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
   const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
   const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
 
+  // Show inline input in draft mode for non-percentage categories
+  const showInlineInput = isDraftMode && !isPercentageBased
+
   return (
     <div style={{
       background: 'color-mix(in srgb, currentColor 5%, transparent)',
@@ -272,9 +275,33 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Alloc</span>
-          <span style={{ color: balance.allocated > 0 ? colors.success : 'inherit' }}>
-            {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
-          </span>
+          {showInlineInput ? (
+            <input
+              type="text"
+              inputMode="decimal"
+              value={displayValue ? `$${displayValue}` : ''}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/[^\d.]/g, '')
+                onAllocationChange(raw)
+              }}
+              placeholder="$0"
+              style={{
+                width: '100%',
+                maxWidth: '80px',
+                padding: '0.25rem 0.35rem',
+                borderRadius: '4px',
+                border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                background: 'color-mix(in srgb, currentColor 8%, transparent)',
+                fontSize: '0.8rem',
+                color: 'inherit',
+                boxSizing: 'border-box',
+              }}
+            />
+          ) : (
+            <span style={{ color: balance.allocated > 0 ? colors.success : 'inherit' }}>
+              {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+            </span>
+          )}
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Spent</span>
@@ -290,41 +317,15 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
         </div>
       </div>
 
-      {/* Allocation input row - only in draft mode */}
-      {isDraftMode && (
+      {/* Percentage equation - only in draft mode for percentage-based categories */}
+      {isDraftMode && isPercentageBased && (
         <div style={{ marginTop: '0.5rem' }}>
-          {isPercentageBased ? (
-            <span style={{ fontSize: '0.8rem' }}>
-              <span style={{ opacity: 0.6 }}>{formatCurrency(previousMonthIncome)} × </span>
-              <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
-              <span style={{ opacity: 0.6 }}> = </span>
-              <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
-            </span>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>Allocate:</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={displayValue ? `$${displayValue}` : ''}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/[^\d.]/g, '')
-                  onAllocationChange(raw)
-                }}
-                placeholder="$0"
-                style={{
-                  width: '100px',
-                  padding: '0.35rem 0.5rem',
-                  borderRadius: '4px',
-                  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
-                  fontSize: '0.85rem',
-                  color: 'inherit',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          )}
+          <span style={{ fontSize: '0.8rem' }}>
+            <span style={{ opacity: 0.6 }}>{formatCurrency(previousMonthIncome)} × </span>
+            <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+            <span style={{ opacity: 0.6 }}> = </span>
+            <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+          </span>
         </div>
       )}
     </div>

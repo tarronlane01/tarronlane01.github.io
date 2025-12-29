@@ -6,7 +6,7 @@
 
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '../../../types/budget'
+import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, getBalanceColor } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 

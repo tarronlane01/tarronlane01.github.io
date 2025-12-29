@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useBudget } from '../contexts/budget_context'
 import { useBudgetData } from './useBudgetData'
-import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '../types/budget'
+import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '@types'
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'
 import type { GroupFormData } from '../components/budget/Accounts/GroupForm'
 
@@ -58,13 +58,14 @@ export function useAccountsPage() {
     const newAccountId = `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newAccount: FinancialAccount = {
       nickname: formData.nickname,
+      description: '',
       balance: 0,
       account_group_id: forGroupId === 'ungrouped' ? null : forGroupId,
       sort_order: maxSortOrder + 1,
-      is_income_account: formData.is_income_account,
-      is_income_default: formData.is_income_default,
-      is_outgo_account: formData.is_outgo_account,
-      is_outgo_default: formData.is_outgo_default,
+      is_income_account: formData.is_income_account ?? false,
+      is_income_default: formData.is_income_default ?? false,
+      is_outgo_account: formData.is_outgo_account ?? false,
+      is_outgo_default: formData.is_outgo_default ?? false,
       on_budget: formData.on_budget !== false,
       is_active: formData.is_active !== false,
     }
@@ -118,10 +119,10 @@ export function useAccountsPage() {
           nickname: formData.nickname,
           account_group_id: newGroupId,
           sort_order: newSortOrder,
-          is_income_account: formData.is_income_account,
-          is_income_default: formData.is_income_default,
-          is_outgo_account: formData.is_outgo_account,
-          is_outgo_default: formData.is_outgo_default,
+          is_income_account: formData.is_income_account ?? false,
+          is_income_default: formData.is_income_default ?? false,
+          is_outgo_account: formData.is_outgo_account ?? false,
+          is_outgo_default: formData.is_outgo_default ?? false,
           on_budget: formData.on_budget !== false,
           is_active: formData.is_active !== false,
         }

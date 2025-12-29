@@ -26,7 +26,7 @@ import MyBudgets from './pages/budget/MyBudgets'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton } from './components/ui'
-import type { type_user_context } from './types/type_user_context'
+import type { type_user_context } from '@types'
 
 const initial_user_context: type_user_context = {
   is_logged_in: false,

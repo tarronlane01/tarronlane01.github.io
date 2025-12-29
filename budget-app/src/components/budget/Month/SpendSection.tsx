@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
-import type { FinancialAccount } from '../../../types/budget'
+import { usePayeesQuery } from '../../../data'
+import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, SectionTotalHeader } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { ExpenseForm, ExpenseItem, ExpenseTableHeader } from '../Spend'
@@ -14,7 +15,6 @@ export function SpendSection() {
   const {
     month: currentMonth,
     isLoading: monthLoading,
-    payees,
     addExpense,
     updateExpense,
     deleteExpense,
@@ -24,6 +24,11 @@ export function SpendSection() {
   const [error, setError] = useState<string | null>(null)
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
+
+  // Only fetch payees when a form is open (lazy loading)
+  const isFormOpen = showAddExpense || editingExpenseId !== null
+  const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen })
+  const payees = payeesQuery.data || []
 
   // Helper to get effective is_active value considering group overrides
   function getEffectiveActive(account: FinancialAccount): boolean {

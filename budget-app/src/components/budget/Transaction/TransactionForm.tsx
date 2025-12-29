@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import type { FinancialAccount, AccountGroupsMap, CategoriesMap, CategoryGroup } from '../../../types/budget'
+import type { FinancialAccount, AccountGroupsMap, CategoriesMap, CategoryGroup } from '@types'
 import {
   FormWrapper,
   FormField,
@@ -227,11 +227,16 @@ export function TransactionForm({
   const hasCategory = showCategory && categories && categoryGroups
   const inputStyle = { fontSize: '0.85rem', padding: '0.5rem' }
 
-  // Medium layout (two rows)
+  // Medium layout (two rows) - use same grid for both rows to align columns
   if (isMedium) {
+    // With category: 4 columns (Date | Payee | Category | Account)
+    // Without category: 3 columns (Date | Payee | Account)
+    const mediumCols = hasCategory ? '6rem 1fr 1fr 1fr' : '6rem 1fr 1fr'
+    const descriptionSpan = hasCategory ? 2 : 1 // Description spans Category + Account columns (minus Clr/buttons)
+
     return (
       <FormWrapper onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: hasCategory ? '6rem 1fr 1fr 1fr' : '6rem 1fr 1fr', gap: '0.75rem', alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: mediumCols, gap: '0.75rem', alignItems: 'end' }}>
           <FormField label="Date" htmlFor="txn-date">
             <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
           </FormField>
@@ -241,15 +246,17 @@ export function TransactionForm({
           {categoryField}
           <FormField label={accountLabel} htmlFor="txn-account">{accountSelect}</FormField>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: showCleared ? '7rem 1fr auto auto' : '7rem 1fr auto', gap: '0.75rem', alignItems: 'end', marginTop: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: mediumCols, gap: '0.75rem', alignItems: 'end', marginTop: '0.75rem' }}>
           <FormField label="Amount" htmlFor="txn-amount">
             <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
           </FormField>
-          <FormField label="Description" htmlFor="txn-description">
+          <FormField label="Description" htmlFor="txn-description" style={{ gridColumn: `span ${descriptionSpan}` }}>
             <TextInput id="txn-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={descriptionPlaceholder} style={inputStyle} />
           </FormField>
-          {clearedCheckbox}
-          {inlineActionButtons}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end', justifyContent: 'flex-end' }}>
+            {clearedCheckbox}
+            {inlineActionButtons}
+          </div>
         </div>
         {extraContent}
       </FormWrapper>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { ExpenseTransaction } from '../../../types/budget'
+import type { ExpenseTransaction } from '@types'
 import { formatCurrency } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { BREAKPOINTS } from '@constants'

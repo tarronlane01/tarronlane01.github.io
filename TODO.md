@@ -1,13 +1,24 @@
-- [ ] Use vite path aliases and barrel files to reduce import complexity
-- [ ] Migraiont so all ID's have some human readable pattern to them, to help with tracking down issues
+# Vibe Coding rules
+- Check and understand code after each atomic change, to ensure we aren't creating tech debt or following anti patterns
+- See `CHORE.md` for AI-assisted code maintenance prompts and patterns
+
+# Current Chain
+- What happens when we load account and the account flag is stale?
+- [ ] Explain how budget recalculation flow is working, fix if needed
+    - Also, have month recalculation do the same walk to get redone
+
+# To do
+- Move settingsMigration to an Admin subfolder, clean up the page files to be under folders per sub-page
+- Prevent users from creating months too far into the future
+- [ ] Migration so all ID's have some human readable pattern to them, to help with tracking down issues
 - [ ] Check difference between hooks in data and hooks in hooks
-- [ ] admin.ts - why do admin pages need to avoid using query cache layer? L'ets see if we can consolidate to vaoid needing this
-- [ ] Have all read/write opertions have a desxritpion mandatory field that will get output to theconsole, to help with debugging to understand why each read/write is being made
+- [ ] admin.ts - why do admin pages need to avoid using query cache layer? Let's see if we can consolidate to avoid needing this
+- [ ] Have all read/write operations have a description mandatory field that will get output to the console, to help with debugging to understand why each read/write is being made
 - [ ] Don't have the budget get loaded on the homepage, only when we're under budget. Do the same for the feedback button. It shouldn't show up on the homepage.
 - [ ] When changing budget categories from the budget, mark current and all future months as stale if they aren't already marked as stale
 - [ ] Go through the flow when changing the date of a transaction to a different month (for income / spend)
-
-# Code Maintenance AI chore Notes
-- [ ] You're an expert front-end javascript / react / front-end / firebase engineer. Review this project and identify any design flaws applicable to low-user count architecture (max 1-5 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues.
-- [ ] You're a react expert who specializes in organizing react projects to stay under the recommended line counts for their files. Where can this project improve to break things into more modular files without balooning complexity or traceability? Where can we make use of shareable components to reduce repeition? How can we organize our CSS and styles better to consolidate our styles?
-- [ ] You're a UI expert. How can we improve the usabiily of this website. What elements are unusual and clunky? What changes can we make to have the site behavor how a user will want/expecdt it to behave?
+- [ ] Re-order balances page to have start, then allocations, even while editing
+- [ ] Multiple reads when going to a next month after editing spend in previous
+- [ ] Add a check to delete future months (over 2 into future) if they don't have any data associated with them (spends, allocations, income, anything not calculated from previous months etc)
+- Have the website output user actions to the console so it's an easy copy-paste to the AI to troubleshoot what happened before error or issue showed up.
+- [ ] Drop max file size down to 400

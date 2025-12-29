@@ -8,7 +8,7 @@
  */
 
 import { useState, type DragEvent } from 'react'
-import type { CategoriesMap, CategoryGroup, Budget } from '../types/budget'
+import type { CategoriesMap, CategoryGroup, Budget } from '@types'
 
 type DragType = 'category' | 'group' | null
 

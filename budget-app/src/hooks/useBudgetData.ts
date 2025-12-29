@@ -15,20 +15,31 @@
 import { useCallback, useMemo } from 'react'
 import {
   useBudgetQuery,
-  useBudgetMutations,
-  useUserMutations,
   queryClient,
   queryKeys,
   type BudgetData,
 } from '../data'
+import {
+  useUpdateAccounts,
+  useUpdateAccountGroups,
+  useUpdateCategories,
+  useUpdateCategoryGroups,
+  useRenameBudget,
+} from '../data/mutations/budget'
+import {
+  useCreateBudget,
+  useAcceptInvite,
+  useInviteUser,
+  useRevokeUser,
+} from '../data/mutations/user'
 import type {
   AccountsMap,
   AccountGroupsMap,
   CategoriesMap,
   CategoryGroup,
-  CategoryBalancesSnapshot,
+  CategoryGroupWithId,
   Budget,
-} from '../types/budget'
+} from '@types'
 
 interface UseBudgetDataReturn {
   // Query state
@@ -41,8 +52,7 @@ interface UseBudgetDataReturn {
   accounts: AccountsMap
   accountGroups: AccountGroupsMap
   categories: CategoriesMap
-  categoryGroups: CategoryGroup[]
-  categoryBalancesSnapshot: CategoryBalancesSnapshot | null
+  categoryGroups: CategoryGroupWithId[]
 
   // Derived values
   isOwner: boolean
@@ -64,16 +74,11 @@ interface UseBudgetDataReturn {
   revokeUser: (userId: string) => Promise<void>
   acceptInvite: (budgetId: string) => Promise<void>
 
-  // Snapshot mutations
-  saveCategoryBalancesSnapshot: (balances: Record<string, { current: number; total: number }>, year: number, month: number) => Promise<void>
-  recalculateCategoryBalances: (categories: CategoriesMap, balances: Record<string, { current: number; total: number }>, year: number, month: number) => Promise<void>
-
   // Cache utilities
   setAccountsOptimistic: (accounts: AccountsMap) => void
   setAccountGroupsOptimistic: (groups: AccountGroupsMap) => void
   setCategoriesOptimistic: (categories: CategoriesMap) => void
   setCategoryGroupsOptimistic: (groups: CategoryGroup[]) => void
-  setCategoryBalancesSnapshotOptimistic: (snapshot: CategoryBalancesSnapshot | null) => void
   refreshBudget: () => Promise<void>
 
   // Computed helpers
@@ -87,9 +92,18 @@ export function useBudgetData(
   // Query
   const budgetQuery = useBudgetQuery(budgetId)
 
-  // Mutations
-  const budgetMutations = useBudgetMutations()
-  const userMutations = useUserMutations()
+  // Budget mutations
+  const { updateAccounts } = useUpdateAccounts()
+  const { updateAccountGroups } = useUpdateAccountGroups()
+  const { updateCategories } = useUpdateCategories()
+  const { updateCategoryGroups } = useUpdateCategoryGroups()
+  const { renameBudget: renameBudgetOp } = useRenameBudget()
+
+  // User mutations
+  const { createBudget: createBudgetOp } = useCreateBudget()
+  const { acceptInvite: acceptInviteOp } = useAcceptInvite()
+  const { inviteUser: inviteUserOp } = useInviteUser()
+  const { revokeUser: revokeUserOp } = useRevokeUser()
 
   // Extract data from query with stable references
   const budgetData = budgetQuery.data
@@ -98,7 +112,6 @@ export function useBudgetData(
   const accountGroups = useMemo(() => budgetData?.accountGroups || {}, [budgetData?.accountGroups])
   const categories = useMemo(() => budgetData?.categories || {}, [budgetData?.categories])
   const categoryGroups = useMemo(() => budgetData?.categoryGroups || [], [budgetData?.categoryGroups])
-  const categoryBalancesSnapshot = budgetData?.categoryBalancesSnapshot || null
 
   // Derived values
   const isOwner = budget?.owner_id === currentUserId
@@ -111,56 +124,56 @@ export function useBudgetData(
 
   const saveAccounts = useCallback(async (newAccounts: AccountsMap) => {
     if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.updateAccounts.mutateAsync({
+    await updateAccounts.mutateAsync({
       budgetId,
       accounts: newAccounts,
     })
-  }, [budgetId, budgetMutations.updateAccounts])
+  }, [budgetId, updateAccounts])
 
   const saveAccountGroups = useCallback(async (newGroups: AccountGroupsMap) => {
     if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.updateAccountGroups.mutateAsync({
+    await updateAccountGroups.mutateAsync({
       budgetId,
       accountGroups: newGroups,
     })
-  }, [budgetId, budgetMutations.updateAccountGroups])
+  }, [budgetId, updateAccountGroups])
 
   const saveCategories = useCallback(async (newCategories: CategoriesMap) => {
     if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.updateCategories.mutateAsync({
+    await updateCategories.mutateAsync({
       budgetId,
       categories: newCategories,
     })
-  }, [budgetId, budgetMutations.updateCategories])
+  }, [budgetId, updateCategories])
 
   const saveCategoryGroups = useCallback(async (newGroups: CategoryGroup[]) => {
     if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.updateCategoryGroups.mutateAsync({
+    await updateCategoryGroups.mutateAsync({
       budgetId,
       categoryGroups: newGroups,
     })
-  }, [budgetId, budgetMutations.updateCategoryGroups])
+  }, [budgetId, updateCategoryGroups])
 
   const saveAccountsAndGroups = useCallback(async (newAccounts: AccountsMap, newGroups: AccountGroupsMap) => {
     if (!budgetId) throw new Error('No budget selected')
     await Promise.all([
-      budgetMutations.updateAccounts.mutateAsync({ budgetId, accounts: newAccounts }),
-      budgetMutations.updateAccountGroups.mutateAsync({ budgetId, accountGroups: newGroups }),
+      updateAccounts.mutateAsync({ budgetId, accounts: newAccounts }),
+      updateAccountGroups.mutateAsync({ budgetId, accountGroups: newGroups }),
     ])
-  }, [budgetId, budgetMutations])
+  }, [budgetId, updateAccounts, updateAccountGroups])
 
   const saveCategoriesAndGroups = useCallback(async (newCategories: CategoriesMap, newGroups: CategoryGroup[]) => {
     if (!budgetId) throw new Error('No budget selected')
     await Promise.all([
-      budgetMutations.updateCategories.mutateAsync({ budgetId, categories: newCategories }),
-      budgetMutations.updateCategoryGroups.mutateAsync({ budgetId, categoryGroups: newGroups }),
+      updateCategories.mutateAsync({ budgetId, categories: newCategories }),
+      updateCategoryGroups.mutateAsync({ budgetId, categoryGroups: newGroups }),
     ])
-  }, [budgetId, budgetMutations])
+  }, [budgetId, updateCategories, updateCategoryGroups])
 
   const renameBudget = useCallback(async (newName: string) => {
     if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.renameBudget.mutateAsync({ budgetId, newName })
-  }, [budgetId, budgetMutations.renameBudget])
+    await renameBudgetOp.mutateAsync({ budgetId, newName })
+  }, [budgetId, renameBudgetOp])
 
   // ==========================================================================
   // USER/INVITE MUTATIONS
@@ -168,65 +181,31 @@ export function useBudgetData(
 
   const createBudget = useCallback(async (name: string) => {
     if (!currentUserId) throw new Error('Not authenticated')
-    const result = await userMutations.createBudget.mutateAsync({
+    const result = await createBudgetOp.mutateAsync({
       name: name.trim() || 'My Budget',
       userId: currentUserId,
       userEmail: null, // Will be filled by mutation if available
     })
     return result
-  }, [currentUserId, userMutations.createBudget])
+  }, [currentUserId, createBudgetOp])
 
   const inviteUser = useCallback(async (userId: string) => {
     if (!budgetId) throw new Error('No budget selected')
-    await userMutations.inviteUser.mutateAsync({ budgetId, userId })
-  }, [budgetId, userMutations.inviteUser])
+    await inviteUserOp.mutateAsync({ budgetId, userId })
+  }, [budgetId, inviteUserOp])
 
   const revokeUser = useCallback(async (userId: string) => {
     if (!budgetId) throw new Error('No budget selected')
-    await userMutations.revokeUser.mutateAsync({ budgetId, userId })
-  }, [budgetId, userMutations.revokeUser])
+    await revokeUserOp.mutateAsync({ budgetId, userId })
+  }, [budgetId, revokeUserOp])
 
   const acceptInvite = useCallback(async (targetBudgetId: string) => {
     if (!currentUserId) throw new Error('Not authenticated')
-    await userMutations.acceptInvite.mutateAsync({
+    await acceptInviteOp.mutateAsync({
       budgetId: targetBudgetId,
       userId: currentUserId,
     })
-  }, [currentUserId, userMutations.acceptInvite])
-
-  // ==========================================================================
-  // SNAPSHOT MUTATIONS
-  // ==========================================================================
-
-  const saveCategoryBalancesSnapshot = useCallback(async (
-    balances: Record<string, { current: number; total: number }>,
-    year: number,
-    month: number
-  ) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.saveCategoryBalancesSnapshot.mutateAsync({
-      budgetId,
-      balances,
-      year,
-      month,
-    })
-  }, [budgetId, budgetMutations.saveCategoryBalancesSnapshot])
-
-  const recalculateCategoryBalances = useCallback(async (
-    newCategories: CategoriesMap,
-    balances: Record<string, { current: number; total: number }>,
-    year: number,
-    month: number
-  ) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await budgetMutations.recalculateCategoryBalances.mutateAsync({
-      budgetId,
-      categories: newCategories,
-      balances,
-      year,
-      month,
-    })
-  }, [budgetId, budgetMutations.recalculateCategoryBalances])
+  }, [currentUserId, acceptInviteOp])
 
   // ==========================================================================
   // CACHE UTILITIES (for optimistic updates)
@@ -276,17 +255,6 @@ export function useBudgetData(
     }
   }, [budgetId])
 
-  const setCategoryBalancesSnapshotOptimistic = useCallback((newSnapshot: CategoryBalancesSnapshot | null) => {
-    if (!budgetId) return
-    const cachedData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-    if (cachedData) {
-      queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-        ...cachedData,
-        categoryBalancesSnapshot: newSnapshot,
-      })
-    }
-  }, [budgetId])
-
   const refreshBudget = useCallback(async () => {
     if (!budgetId) return
     await queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) })
@@ -319,7 +287,6 @@ export function useBudgetData(
     accountGroups,
     categories,
     categoryGroups,
-    categoryBalancesSnapshot,
 
     // Derived
     isOwner,
@@ -338,19 +305,15 @@ export function useBudgetData(
     inviteUser,
     revokeUser,
     acceptInvite,
-    saveCategoryBalancesSnapshot,
-    recalculateCategoryBalances,
 
     // Cache utilities
     setAccountsOptimistic,
     setAccountGroupsOptimistic,
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
-    setCategoryBalancesSnapshotOptimistic,
     refreshBudget,
 
     // Computed
     getOnBudgetTotal,
   }
 }
-

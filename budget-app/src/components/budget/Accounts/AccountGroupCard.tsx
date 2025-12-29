@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react'
-import type { ExpectedBalanceType } from '../../../types/budget'
+import type { ExpectedBalanceType } from '@types'
 import {
   Button,
   DraggableCard,

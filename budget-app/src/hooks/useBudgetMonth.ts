@@ -1,8 +1,8 @@
 /**
  * useBudgetMonth Hook
  *
- * Provides month-level data and mutations for income, expenses, allocations.
- * Components import this hook directly instead of going through context.
+ * Provides month-level data and mutations for income and expenses.
+ * Allocation mutations are handled directly in useAllocationsPage.
  *
  * Usage:
  *   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
@@ -12,22 +12,26 @@
  *   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
  */
 
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import {
   useMonthQuery,
-  useMonthMutations,
-  usePayeesQuery,
   queryClient,
   queryKeys,
-  type MonthQueryData,
 } from '../data'
+import {
+  useAddIncome,
+  useUpdateIncome,
+  useDeleteIncome,
+  useAddExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+} from '../data/mutations/month'
 import type {
   MonthDocument,
   IncomeTransaction,
   ExpenseTransaction,
-  CategoryAllocation,
   CategoryMonthBalance,
-} from '../types/budget'
+} from '@types'
 
 interface UseBudgetMonthReturn {
   // Query state
@@ -39,16 +43,11 @@ interface UseBudgetMonthReturn {
   month: MonthDocument | null
   income: IncomeTransaction[]
   expenses: ExpenseTransaction[]
-  allocations: CategoryAllocation[]
   categoryBalances: CategoryMonthBalance[]
   totalIncome: number
   totalExpenses: number
-  allocationsFinalized: boolean
+  areAllocationsFinalized: boolean
   previousMonthIncome: number
-
-  // Payees
-  payees: string[]
-  payeesLoading: boolean
 
   // Income mutations
   addIncome: (amount: number, accountId: string, date: string, payee?: string, description?: string) => Promise<void>
@@ -59,12 +58,6 @@ interface UseBudgetMonthReturn {
   addExpense: (amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
   updateExpense: (expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
   deleteExpense: (expenseId: string) => Promise<void>
-
-  // Allocation mutations
-  saveAllocations: (allocations: CategoryAllocation[]) => Promise<void>
-  finalizeAllocations: (allocations: CategoryAllocation[]) => Promise<void>
-  unfinalizeAllocations: () => Promise<void>
-  deleteAllocations: () => Promise<void>
 
   // Cache/refresh
   refreshMonth: () => Promise<void>
@@ -77,44 +70,26 @@ export function useBudgetMonth(
 ): UseBudgetMonthReturn {
   // Queries
   const monthQuery = useMonthQuery(budgetId, year, month, { enabled: !!budgetId })
-  const payeesQuery = usePayeesQuery(budgetId, { enabled: !!budgetId })
 
   // Mutations
-  const monthMutations = useMonthMutations()
+  const { addIncome: addIncomeOp } = useAddIncome()
+  const { updateIncome: updateIncomeOp } = useUpdateIncome()
+  const { deleteIncome: deleteIncomeOp } = useDeleteIncome()
+  const { addExpense: addExpenseOp } = useAddExpense()
+  const { updateExpense: updateExpenseOp } = useUpdateExpense()
+  const { deleteExpense: deleteExpenseOp } = useDeleteExpense()
 
   // Extract data
   const monthData = monthQuery.data?.month || null
   const income = monthData?.income || []
   const expenses = monthData?.expenses || []
-  const allocations = monthData?.allocations || []
   const categoryBalances = monthData?.category_balances || []
   const totalIncome = monthData?.total_income || 0
   const totalExpenses = monthData?.total_expenses || 0
-  const allocationsFinalized = monthData?.allocations_finalized || false
+  const areAllocationsFinalized = monthData?.are_allocations_finalized || false
 
-  // Previous month income from snapshot
-  const previousMonthIncome = useMemo(() => {
-    if (monthData?.previous_month_snapshot?.total_income !== undefined) {
-      return monthData.previous_month_snapshot.total_income
-    }
-
-    // Fallback: try cache for backwards compatibility
-    if (!budgetId) return 0
-    let prevYear = year
-    let prevMonth = month - 1
-    if (prevMonth < 1) {
-      prevMonth = 12
-      prevYear -= 1
-    }
-
-    const cachedPrevMonth = queryClient.getQueryData<MonthQueryData>(
-      queryKeys.month(budgetId, prevYear, prevMonth)
-    )
-    return cachedPrevMonth?.month?.total_income || 0
-  }, [monthData, budgetId, year, month])
-
-  // Payees
-  const payees = payeesQuery.data || []
+  // Previous month income is stored directly on the month document
+  const previousMonthIncome = monthData?.previous_month_income ?? 0
 
   // ==========================================================================
   // INCOME MUTATIONS
@@ -131,17 +106,17 @@ export function useBudgetMonth(
 
     const [incomeYear, incomeMonth] = date.split('-').map(Number)
 
-    await monthMutations.addIncome.mutateAsync({
+    await addIncomeOp(
       budgetId,
-      year: incomeYear,
-      month: incomeMonth,
+      incomeYear,
+      incomeMonth,
       amount,
       accountId,
       date,
       payee,
-      description,
-    })
-  }, [budgetId, monthMutations.addIncome])
+      description
+    )
+  }, [budgetId, addIncomeOp])
 
   const updateIncome = useCallback(async (
     incomeId: string,
@@ -151,12 +126,9 @@ export function useBudgetMonth(
     payee?: string,
     description?: string
   ) => {
-    if (!budgetId || !monthData) throw new Error('No budget or month loaded')
+    if (!budgetId) throw new Error('No budget selected')
 
-    const oldIncome = monthData.income.find(i => i.id === incomeId)
-    if (!oldIncome) throw new Error('Income not found')
-
-    await monthMutations.updateIncome.mutateAsync({
+    await updateIncomeOp(
       budgetId,
       year,
       month,
@@ -165,27 +137,15 @@ export function useBudgetMonth(
       accountId,
       date,
       payee,
-      description,
-      oldAmount: oldIncome.amount,
-      oldAccountId: oldIncome.account_id,
-    })
-  }, [budgetId, monthData, year, month, monthMutations.updateIncome])
+      description
+    )
+  }, [budgetId, year, month, updateIncomeOp])
 
   const deleteIncome = useCallback(async (incomeId: string) => {
-    if (!budgetId || !monthData) throw new Error('No budget or month loaded')
+    if (!budgetId) throw new Error('No budget selected')
 
-    const incomeItem = monthData.income.find(i => i.id === incomeId)
-    if (!incomeItem) throw new Error('Income not found')
-
-    await monthMutations.deleteIncome.mutateAsync({
-      budgetId,
-      year,
-      month,
-      incomeId,
-      amount: incomeItem.amount,
-      accountId: incomeItem.account_id,
-    })
-  }, [budgetId, monthData, year, month, monthMutations.deleteIncome])
+    await deleteIncomeOp(budgetId, year, month, incomeId)
+  }, [budgetId, year, month, deleteIncomeOp])
 
   // ==========================================================================
   // EXPENSE MUTATIONS
@@ -204,19 +164,19 @@ export function useBudgetMonth(
 
     const [expenseYear, expenseMonth] = date.split('-').map(Number)
 
-    await monthMutations.addExpense.mutateAsync({
+    await addExpenseOp(
       budgetId,
-      year: expenseYear,
-      month: expenseMonth,
+      expenseYear,
+      expenseMonth,
       amount,
       categoryId,
       accountId,
       date,
       payee,
       description,
-      cleared,
-    })
-  }, [budgetId, monthMutations.addExpense])
+      cleared
+    )
+  }, [budgetId, addExpenseOp])
 
   const updateExpense = useCallback(async (
     expenseId: string,
@@ -228,12 +188,9 @@ export function useBudgetMonth(
     description?: string,
     cleared?: boolean
   ) => {
-    if (!budgetId || !monthData) throw new Error('No budget or month loaded')
+    if (!budgetId) throw new Error('No budget selected')
 
-    const oldExpense = monthData.expenses?.find(e => e.id === expenseId)
-    if (!oldExpense) throw new Error('Expense not found')
-
-    await monthMutations.updateExpense.mutateAsync({
+    await updateExpenseOp(
       budgetId,
       year,
       month,
@@ -244,73 +201,15 @@ export function useBudgetMonth(
       date,
       payee,
       description,
-      cleared,
-      oldAmount: oldExpense.amount,
-      oldAccountId: oldExpense.account_id,
-    })
-  }, [budgetId, monthData, year, month, monthMutations.updateExpense])
+      cleared
+    )
+  }, [budgetId, year, month, updateExpenseOp])
 
   const deleteExpense = useCallback(async (expenseId: string) => {
-    if (!budgetId || !monthData) throw new Error('No budget or month loaded')
-
-    const expense = monthData.expenses?.find(e => e.id === expenseId)
-    if (!expense) throw new Error('Expense not found')
-
-    await monthMutations.deleteExpense.mutateAsync({
-      budgetId,
-      year,
-      month,
-      expenseId,
-      amount: expense.amount,
-      accountId: expense.account_id,
-    })
-  }, [budgetId, monthData, year, month, monthMutations.deleteExpense])
-
-  // ==========================================================================
-  // ALLOCATION MUTATIONS
-  // ==========================================================================
-
-  const saveAllocations = useCallback(async (newAllocations: CategoryAllocation[]) => {
     if (!budgetId) throw new Error('No budget selected')
 
-    await monthMutations.saveAllocations.mutateAsync({
-      budgetId,
-      year,
-      month,
-      allocations: newAllocations,
-    })
-  }, [budgetId, year, month, monthMutations.saveAllocations])
-
-  const finalizeAllocations = useCallback(async (allocations: CategoryAllocation[]) => {
-    if (!budgetId) throw new Error('No budget selected')
-
-    await monthMutations.finalizeAllocations.mutateAsync({
-      budgetId,
-      year,
-      month,
-      allocations,
-    })
-  }, [budgetId, year, month, monthMutations.finalizeAllocations])
-
-  const unfinalizeAllocations = useCallback(async () => {
-    if (!budgetId) throw new Error('No budget selected')
-
-    await monthMutations.unfinalizeAllocations.mutateAsync({
-      budgetId,
-      year,
-      month,
-    })
-  }, [budgetId, year, month, monthMutations.unfinalizeAllocations])
-
-  const deleteAllocations = useCallback(async () => {
-    if (!budgetId) throw new Error('No budget selected')
-
-    await monthMutations.deleteAllocations.mutateAsync({
-      budgetId,
-      year,
-      month,
-    })
-  }, [budgetId, year, month, monthMutations.deleteAllocations])
+    await deleteExpenseOp(budgetId, year, month, expenseId)
+  }, [budgetId, year, month, deleteExpenseOp])
 
   // ==========================================================================
   // CACHE/REFRESH
@@ -331,16 +230,11 @@ export function useBudgetMonth(
     month: monthData,
     income,
     expenses,
-    allocations,
     categoryBalances,
     totalIncome,
     totalExpenses,
-    allocationsFinalized,
+    areAllocationsFinalized,
     previousMonthIncome,
-
-    // Payees
-    payees,
-    payeesLoading: payeesQuery.isLoading,
 
     // Mutations
     addIncome,
@@ -349,13 +243,8 @@ export function useBudgetMonth(
     addExpense,
     updateExpense,
     deleteExpense,
-    saveAllocations,
-    finalizeAllocations,
-    unfinalizeAllocations,
-    deleteAllocations,
 
     // Cache
     refreshMonth,
   }
 }
-

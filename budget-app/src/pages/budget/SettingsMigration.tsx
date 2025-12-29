@@ -1,68 +1,67 @@
+import { useState } from 'react'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useBudgetDataMigration, useFutureMonthsCleanup, useFeedbackMigration } from '../../hooks'
-import { queryClient } from '../../data'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '../../hooks'
 import {
-  MigrationStatusCard,
-  MigrationResults,
   Spinner,
-  FutureMonthsCleanupCard,
+  DatabaseCleanupCard,
   FeedbackMigrationCard,
+  DeleteAllMonthsCard,
 } from '../../components/budget/Admin'
+import { Modal } from '../../components/ui'
 
 /**
  * Clear ALL React Query caches (in-memory and localStorage) and reload page.
  * This ensures the app fetches fresh data from Firestore for everything.
+ *
+ * IMPORTANT: We clear localStorage FIRST and reload immediately.
+ * Do NOT call queryClient.clear() before reload - the async persister might
+ * write back to localStorage after we clear it, creating a race condition.
  */
 function handleClearAllCachesAndReload() {
-  // Clear all queries from in-memory cache
-  queryClient.clear()
-
-  // Clear localStorage persistence entirely
+  // Clear localStorage persistence FIRST (before any async operations)
   try {
     localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
-    console.log('[Cache] Cleared all React Query caches from memory and localStorage')
+    console.log('[Cache] Cleared React Query cache from localStorage')
   } catch (err) {
     console.warn('Failed to clear localStorage cache:', err)
   }
 
-  // Reload page to get fresh data
+  // Reload immediately - in-memory cache is cleared on reload anyway
   window.location.reload()
 }
 
 function SettingsMigration() {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
+  const [showReloadModal, setShowReloadModal] = useState(false)
 
-  // Individual migration hooks - each manages its own status via direct Firestore calls
-  const budgetDataMigration = useBudgetDataMigration({
+  // Database cleanup - consolidated migration for budget/month schema validation
+  const databaseCleanup = useDatabaseCleanup({
     currentUser: current_user,
   })
 
-  const futureMonthsCleanup = useFutureMonthsCleanup({
-    currentUser: current_user,
-  })
-
+  // Feedback migration - special case for email document IDs
   const feedbackMigration = useFeedbackMigration({
     currentUser: current_user,
   })
 
-  // Compute derived state from hooks
-  const needsMigration = budgetDataMigration.status?.categoriesArrayMigrationNeeded || budgetDataMigration.status?.accountsArrayMigrationNeeded
-  const totalBudgetsToMigrate = Math.max(
-    budgetDataMigration.status?.budgetsToMigrateCategories ?? 0,
-    budgetDataMigration.status?.budgetsToMigrateAccounts ?? 0
-  )
+  // Delete all months - destructive utility
+  // Opens reload modal automatically when deletion completes successfully
+  const deleteAllMonths = useDeleteAllMonths({
+    currentUser: current_user,
+    onComplete: () => setShowReloadModal(true),
+  })
 
   // Scanning state for all
-  const isAnyScanning = budgetDataMigration.isScanning || futureMonthsCleanup.isScanning || feedbackMigration.isScanning
-  const isAnyMigrating = budgetDataMigration.isMigrating || futureMonthsCleanup.isCleaningFutureMonths || feedbackMigration.isMigratingFeedback
+  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning
+  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting
 
   // Refresh all - scans all migration statuses
   const handleRefreshAll = async () => {
     await Promise.all([
-      budgetDataMigration.scanStatus(),
-      futureMonthsCleanup.scanStatus(),
+      databaseCleanup.scanStatus(),
       feedbackMigration.scanStatus(),
+      deleteAllMonths.scanStatus(),
     ])
   }
 
@@ -73,16 +72,16 @@ function SettingsMigration() {
         <h2 style={{ margin: 0 }}>Data Migrations</h2>
         <button
           onClick={handleRefreshAll}
-          disabled={isAnyScanning || isAnyMigrating}
+          disabled={isAnyScanning || isAnyRunning}
           style={{
             background: '#646cff',
             color: 'white',
             border: 'none',
             padding: '0.5rem 1rem',
             borderRadius: '6px',
-            cursor: isAnyScanning || isAnyMigrating ? 'not-allowed' : 'pointer',
+            cursor: isAnyScanning || isAnyRunning ? 'not-allowed' : 'pointer',
             fontWeight: 500,
-            opacity: isAnyScanning || isAnyMigrating ? 0.7 : 1,
+            opacity: isAnyScanning || isAnyRunning ? 0.7 : 1,
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
@@ -97,37 +96,20 @@ function SettingsMigration() {
         </button>
       </div>
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-        Run migrations to update your budget data structure. Click "Refresh All" to scan Firestore directly.
+        Run migrations to validate and fix your database. Click "Refresh All" to scan Firestore directly.
       </p>
 
-      <MigrationStatusCard
-        title="Migrate Data to Map Structure"
-        description="Converts categories, accounts, and account groups from array format to map structure. This improves performance and enables direct lookup by ID."
-        isComplete={budgetDataMigration.status ? !needsMigration : false}
-        isMigrating={budgetDataMigration.isMigrating}
-        needsMigration={budgetDataMigration.status ? !!needsMigration : false}
-        totalBudgetsToMigrate={totalBudgetsToMigrate}
-        budgetsToMigrateCategories={budgetDataMigration.status?.budgetsToMigrateCategories ?? 0}
-        budgetsToMigrateAccounts={budgetDataMigration.status?.budgetsToMigrateAccounts ?? 0}
-        onRunMigration={budgetDataMigration.runMigration}
-        onRefresh={budgetDataMigration.scanStatus}
-        isRefreshing={budgetDataMigration.isScanning}
+      <DatabaseCleanupCard
+        hasData={!!databaseCleanup.status}
+        status={databaseCleanup.status}
+        hasIssues={databaseCleanup.hasIssues}
+        totalIssues={databaseCleanup.totalIssues}
+        isRunning={databaseCleanup.isRunning}
+        result={databaseCleanup.result}
+        onRunCleanup={databaseCleanup.runCleanup}
+        onRefresh={databaseCleanup.scanStatus}
+        isRefreshing={databaseCleanup.isScanning}
         disabled={!current_user}
-        isUnknown={!budgetDataMigration.status}
-      >
-        {budgetDataMigration.migrationResults && <MigrationResults results={budgetDataMigration.migrationResults} />}
-      </MigrationStatusCard>
-
-      <FutureMonthsCleanupCard
-        hasData={!!futureMonthsCleanup.status}
-        futureMonthsCount={futureMonthsCleanup.status?.futureMonthsCount ?? 0}
-        futureMonthsToDelete={futureMonthsCleanup.status?.futureMonthsToDelete ?? []}
-        isCleaningFutureMonths={futureMonthsCleanup.isCleaningFutureMonths}
-        onCleanup={futureMonthsCleanup.cleanupFutureMonths}
-        onRefresh={futureMonthsCleanup.scanStatus}
-        isRefreshing={futureMonthsCleanup.isScanning}
-        disabled={!current_user}
-        cleanupResult={futureMonthsCleanup.futureMonthsCleanupResult}
       />
 
       <FeedbackMigrationCard
@@ -141,6 +123,19 @@ function SettingsMigration() {
         migrationResult={feedbackMigration.feedbackMigrationResult}
       />
 
+      <DeleteAllMonthsCard
+        hasData={!!deleteAllMonths.status}
+        monthsCount={deleteAllMonths.status?.monthsCount ?? 0}
+        budgetCount={deleteAllMonths.status?.budgetCount ?? 0}
+        monthsToDelete={deleteAllMonths.status?.monthsToDelete ?? []}
+        isDeleting={deleteAllMonths.isDeleting}
+        onDelete={deleteAllMonths.deleteAllMonths}
+        onRefresh={deleteAllMonths.scanStatus}
+        isRefreshing={deleteAllMonths.isScanning}
+        disabled={!current_user}
+        deleteResult={deleteAllMonths.deleteResult}
+      />
+
       {/* Info about migration scope */}
       <div style={{
         background: 'color-mix(in srgb, currentColor 3%, transparent)',
@@ -149,7 +144,7 @@ function SettingsMigration() {
         fontSize: '0.85rem',
       }}>
         <p style={{ margin: 0, opacity: 0.7 }}>
-          <strong>Note:</strong> This migration will process <strong>all {budgetDataMigration.status?.totalBudgetsChecked ?? '?'} budgets</strong> in the system,
+          <strong>Note:</strong> These migrations will process <strong>all budgets and months</strong> in the system,
           not just the ones you own or are invited to.
         </p>
       </div>
@@ -169,7 +164,7 @@ function SettingsMigration() {
           </span>
         </p>
         <button
-          onClick={handleClearAllCachesAndReload}
+          onClick={() => setShowReloadModal(true)}
           style={{
             background: '#dc2626',
             color: 'white',
@@ -186,6 +181,48 @@ function SettingsMigration() {
           🔄 Clear All Caches & Reload
         </button>
       </div>
+
+      {/* Confirmation modal for clearing caches and reloading */}
+      <Modal
+        isOpen={showReloadModal}
+        onClose={() => setShowReloadModal(false)}
+        title="Clear Caches & Reload?"
+      >
+        <p style={{ margin: '0 0 1rem 0', opacity: 0.8 }}>
+          This will clear all cached data from localStorage and reload the page.
+          The app will fetch fresh data from Firestore for everything.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => setShowReloadModal(false)}
+            style={{
+              background: 'transparent',
+              color: 'inherit',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleClearAllCachesAndReload}
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            Clear & Reload
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

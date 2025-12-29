@@ -1,4 +1,4 @@
-import type { AccountGroup } from '../../../types/budget'
+import type { AccountGroup } from '@types'
 import { colors } from '../../../styles/shared'
 
 interface GroupOverrideFlagsProps {

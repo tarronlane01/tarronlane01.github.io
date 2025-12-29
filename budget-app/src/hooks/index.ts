@@ -14,10 +14,12 @@ export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type Catego
 
 // Migration hooks
 export {
-  useBudgetDataMigration,
-  useFutureMonthsCleanup,
+  useDatabaseCleanup,
   useFeedbackMigration,
-  type FutureMonthsCleanupResult,
+  useDeleteAllMonths,
+  type DatabaseCleanupStatus,
+  type DatabaseCleanupResult,
   type FeedbackMigrationResult,
+  type DeleteAllMonthsResult,
 } from './migrations'
 

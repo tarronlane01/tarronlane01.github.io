@@ -5,10 +5,9 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "budget_id", "order": "ASCENDING" },
-        { "fieldPath": "year", "order": "ASCENDING" }
+        { "fieldPath": "year_month_ordinal", "order": "ASCENDING" }
       ]
     }
   ],
   "fieldOverrides": []
 }
-

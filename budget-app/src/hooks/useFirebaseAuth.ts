@@ -1,6 +1,6 @@
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, type User } from "firebase/auth";
-import app from "../firebase";
-import type { type_firebase_auth_hook } from "../types/type_firebase_auth_hook"
+import app from '@firestore/app'
+import type { type_firebase_auth_hook } from '@types'
 
 export default function useFirebaseAuth() {
     const firebase_auth = getAuth(app);

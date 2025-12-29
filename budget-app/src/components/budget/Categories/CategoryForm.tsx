@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { CategoryGroup, DefaultAmountType } from '../../../types/budget'
+import type { CategoryGroup, DefaultAmountType } from '@types'
 import {
   Button,
   FormWrapper,

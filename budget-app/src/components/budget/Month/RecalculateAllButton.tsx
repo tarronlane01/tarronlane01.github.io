@@ -14,11 +14,11 @@
 import { useState } from 'react'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData } from '../../../hooks'
-import { queryClient, queryKeys } from '../../../data'
-import { saveMonthToFirestore } from '../../../data/mutations/monthMutationHelpers'
-// eslint-disable-next-line no-restricted-imports -- Recalculation needs to query all months
-import { queryCollection, readDoc, getMonthDocId, type FirestoreData } from '../../../data/firestore/operations'
-import type { CategoryMonthBalance, CategoriesMap, AccountsMap, MonthDocument } from '../../../types/budget'
+import { queryClient, queryKeys, getFutureMonths, writeMonthData } from '../../../data'
+// eslint-disable-next-line no-restricted-imports -- Recalculation needs direct Firestore access
+import { readDocByPath, queryCollection } from '@firestore'
+import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
+import type { CategoriesMap, AccountsMap, MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
 import { MONTH_NAMES } from '../../../constants'
 import { RecalculateModal, type RecalcResults } from './RecalculateModal'
 
@@ -37,7 +37,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
   const {
     categories,
     accounts,
-    recalculateCategoryBalances,
+    saveCategories,
     saveAccounts,
   } = useBudgetData(selectedBudgetId, currentUserId)
 
@@ -62,61 +62,21 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
       // Step 1: Find all months for this budget
       setResults({ status: 'finding_months' })
 
-      const monthsResult = await queryCollection<{
-        budget_id: string
-        year: number
-        month: number
-        income?: Array<{ id: string; amount: number; account_id: string; date: string; payee?: string; description?: string; created_at: string }>
-        total_income?: number
-        expenses?: Array<{ id: string; amount: number; category_id: string; account_id: string; date: string; payee?: string; description?: string; created_at: string }>
-        total_expenses?: number
-        allocations?: Array<{ category_id: string; amount: number }>
-        allocations_finalized?: boolean
-        category_balances?: CategoryMonthBalance[]
-        previous_month_snapshot?: {
-          total_income: number
-          account_balances_end: Record<string, number>
-          category_balances_end: Record<string, number>
-          snapshot_taken_at: string
-        }
-        created_at?: string
-        updated_at?: string
-      }>(
-        'months',
-        'recalculate: finding all months for budget',
-        [{ field: 'budget_id', op: '==', value: selectedBudgetId }]
-      )
-
-      // Sort months chronologically
-      const allMonths = monthsResult.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data,
-        }))
-        .sort((a, b) => {
-          if (a.year !== b.year) return a.year - b.year
-          return a.month - b.month
-        })
-
       // Determine starting month: use viewing month, or current calendar month if not set
       const now = new Date()
       const startYear = currentYear || now.getFullYear()
       const startMonth = currentMonthNumber || (now.getMonth() + 1)
 
-      // Filter to only process starting month and future months
-      const monthsToProcess = allMonths.filter(m => {
-        if (m.year > startYear) return true
-        if (m.year === startYear && m.month >= startMonth) return true
-        return false
-      })
+      // Get previous month info for starting balances
+      const { year: prevYear, month: prevMonth } = getPreviousMonth(startYear, startMonth)
+      const previousMonth = { year: prevYear, month: prevMonth }
 
-      // Find the month immediately before the starting month (to get starting balances)
-      const previousMonths = allMonths.filter(m => {
-        if (m.year < startYear) return true
-        if (m.year === startYear && m.month < startMonth) return true
-        return false
-      })
-      const previousMonth = previousMonths.length > 0 ? previousMonths[previousMonths.length - 1] : null
+      // Query future months (from startMonth onwards)
+      const monthsToProcess = await getFutureMonths(
+        selectedBudgetId,
+        prevYear,
+        prevMonth
+      )
 
       // Get category IDs from the budget
       const categoryIds = Object.keys(categories)
@@ -132,16 +92,18 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
       // Track cumulative balances for carry-forward
       const runningCategoryBalances: Record<string, number> = {}
 
-      // Initialize category balances from previous month's end balances (if exists)
-      if (previousMonth) {
-        const prevMonthDocId = getMonthDocId(selectedBudgetId, previousMonth.year, previousMonth.month)
-        const { exists, data: prevMonthData } = await readDoc<FirestoreData>(
-          'months',
-          prevMonthDocId,
-          `recalculate: reading previous month for starting balances`
-        )
-        if (exists && prevMonthData?.category_balances) {
-          for (const cb of prevMonthData.category_balances) {
+      // Read previous month data for starting balances
+      let previousMonthData: FirestoreData | null = null
+      const prevMonthDocId = getMonthDocId(selectedBudgetId, previousMonth.year, previousMonth.month)
+      const { exists: prevExists, data: prevData } = await readDocByPath<FirestoreData>(
+        'months',
+        prevMonthDocId,
+        `recalculate: reading previous month for starting balances`
+      )
+      if (prevExists && prevData) {
+        previousMonthData = prevData
+        if (prevData.category_balances) {
+          for (const cb of prevData.category_balances) {
             runningCategoryBalances[cb.category_id] = cb.end_balance ?? 0
           }
         }
@@ -170,7 +132,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
 
         // Fetch the full month document to ensure we have all data
         const monthDocId = getMonthDocId(selectedBudgetId, monthData.year, monthData.month)
-        const { exists, data: fullMonthData } = await readDoc<FirestoreData>(
+        const { exists, data: fullMonthData } = await readDocByPath<FirestoreData>(
           'months',
           monthDocId,
           `recalculate: reading full month data for ${monthLabel}`
@@ -184,8 +146,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
         // Recalculate totals
         const income = fullMonthData.income || []
         const expenses = fullMonthData.expenses || []
-        const allocations = fullMonthData.allocations || []
-        const allocationsFinalized = fullMonthData.allocations_finalized || false
+        const areAllocationsFinalized = fullMonthData.are_allocations_finalized || false
 
         const newTotalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0)
         const newTotalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0)
@@ -193,14 +154,22 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
         totalIncomeRecalculated += newTotalIncome
         totalExpensesRecalculated += newTotalExpenses
 
+        // Get existing allocations from category_balances (they're stored there now)
+        const existingCategoryBalances: Record<string, { allocated: number }> = {}
+        if (fullMonthData.category_balances) {
+          for (const cb of fullMonthData.category_balances) {
+            existingCategoryBalances[cb.category_id] = { allocated: cb.allocated ?? 0 }
+          }
+        }
+
         // Build category_balances using running balances for start
         const monthCategoryBalances: CategoryMonthBalance[] = categoryIds.map(catId => {
           const startBalance = runningCategoryBalances[catId] ?? 0
 
+          // Use existing allocation if finalized
           let allocated = 0
-          if (allocationsFinalized && allocations.length > 0) {
-            const alloc = allocations.find((a: { category_id: string }) => a.category_id === catId)
-            if (alloc) allocated = alloc.amount
+          if (areAllocationsFinalized && existingCategoryBalances[catId]) {
+            allocated = existingCategoryBalances[catId].allocated
           }
 
           let spent = 0
@@ -226,52 +195,70 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
           runningCategoryBalances[cb.category_id] = cb.end_balance
         })
 
-        // Update the month's previous_month_snapshot to reflect any corrections
-        let previousMonthSnapshot = fullMonthData.previous_month_snapshot
+        // Get previous month's income for this month's previous_month_income field
+        const prevMonthForIncome = i === 0 ? previousMonthData : monthsToProcess[i - 1]
+        const previousMonthIncome = prevMonthForIncome?.total_income ?? 0
 
-        // For the first month we're processing, use the actual previous month data
-        // For subsequent months, use the previous processed month
-        const prevMonthForSnapshot = i === 0 ? previousMonth : monthsToProcess[i - 1]
+        // Build account_balances (recalculate from income/expenses)
+        const accountIds = Object.keys(accounts)
+        const monthAccountBalances: AccountMonthBalance[] = accountIds.map(accountId => {
+          // For start balance, we'd need to track running account balances
+          // For now, just calculate income/expenses for this month
+          const accountIncome = income
+            .filter((inc: { account_id: string }) => inc.account_id === accountId)
+            .reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0)
 
-        if (prevMonthForSnapshot) {
-          const prevEndBalances: Record<string, number> = {}
+          const accountExpenses = expenses
+            .filter((exp: { account_id: string }) => exp.account_id === accountId)
+            .reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0)
 
-          // Use the start balances we calculated (which are the prev month's end balances)
-          monthCategoryBalances.forEach(cb => {
-            prevEndBalances[cb.category_id] = cb.start_balance
-          })
+          const netChange = accountIncome - accountExpenses
 
-          previousMonthSnapshot = {
-            ...(previousMonthSnapshot || {}),
-            total_income: prevMonthForSnapshot.total_income || 0,
-            account_balances_end: previousMonthSnapshot?.account_balances_end || {},
-            category_balances_end: prevEndBalances,
-            snapshot_taken_at: new Date().toISOString(),
+          // Get start balance from existing data or 0
+          let startBalance = 0
+          if (fullMonthData.account_balances) {
+            const existing = fullMonthData.account_balances.find(
+              (ab: { account_id: string }) => ab.account_id === accountId
+            )
+            if (existing) {
+              startBalance = existing.start_balance ?? 0
+            }
           }
-        }
+
+          return {
+            account_id: accountId,
+            start_balance: startBalance,
+            income: accountIncome,
+            expenses: accountExpenses,
+            net_change: netChange,
+            end_balance: startBalance + netChange,
+          }
+        })
 
         // Save updated month document
         const updatedMonth: MonthDocument = {
           budget_id: selectedBudgetId,
+          year_month_ordinal: getYearMonthOrdinal(monthData.year, monthData.month),
           year: monthData.year,
           month: monthData.month,
           income: income,
           total_income: newTotalIncome,
+          previous_month_income: previousMonthIncome,
           expenses: expenses,
           total_expenses: newTotalExpenses,
-          allocations: allocations,
-          allocations_finalized: allocationsFinalized,
+          account_balances: monthAccountBalances,
           category_balances: monthCategoryBalances,
-          category_balances_stale: false,
-          previous_month_snapshot: previousMonthSnapshot,
-          previous_month_snapshot_stale: false,
-          account_balances_start: fullMonthData.account_balances_start,
-          account_balances_end: fullMonthData.account_balances_end,
+          are_allocations_finalized: areAllocationsFinalized,
+          is_needs_recalculation: false,
           created_at: fullMonthData.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
 
-        await saveMonthToFirestore(selectedBudgetId, updatedMonth)
+        await writeMonthData({
+          budgetId: selectedBudgetId,
+          month: updatedMonth,
+          description: 'recalculate all months',
+        })
 
         // Small delay to allow UI to update
         await new Promise(resolve => setTimeout(resolve, 50))
@@ -286,13 +273,20 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
         accountBalances[accId] = 0
       })
 
+      // Query ALL months for this budget to calculate account balances
+      const allMonthsResult = await queryCollection<{ year: number; month: number }>(
+        'months',
+        'recalculate: querying all months for account balances',
+        [{ field: 'budget_id', op: '==', value: selectedBudgetId }]
+      )
+
       // Sum up income and expenses from ALL months
-      for (const monthData of allMonths) {
-        const monthDocId = getMonthDocId(selectedBudgetId, monthData.year, monthData.month)
-        const { exists, data: fullMonthData } = await readDoc<FirestoreData>(
+      for (const monthDoc of allMonthsResult.docs) {
+        const monthDocId = getMonthDocId(selectedBudgetId, monthDoc.data.year, monthDoc.data.month)
+        const { exists, data: fullMonthData } = await readDocByPath<FirestoreData>(
           'months',
           monthDocId,
-          `recalculate: reading month ${monthData.year}/${monthData.month} for account balances`
+          `recalculate: reading month ${monthDoc.data.year}/${monthDoc.data.month} for account balances`
         )
 
         if (!exists || !fullMonthData) continue
@@ -336,62 +330,6 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
         totalExpensesRecalculated,
       })
 
-      // Calculate "current" balances (up to current month) and "total" balances (including all future)
-      const currentMonthIdx = monthsToProcess.findIndex(m =>
-        m.year === currentYear && m.month === currentMonthNumber
-      )
-
-      // Recalculate current balances by walking to current month
-      const currentBalances: Record<string, number> = {}
-      const tempRunning: Record<string, number> = {}
-
-      // Initialize from previous month's end balances (same as we did for processing)
-      if (previousMonth) {
-        const prevMonthDocId = getMonthDocId(selectedBudgetId, previousMonth.year, previousMonth.month)
-        const { exists, data: prevMonthData } = await readDoc<FirestoreData>(
-          'months',
-          prevMonthDocId,
-          `recalculate: reading previous month for current balance calculation`
-        )
-        if (exists && prevMonthData?.category_balances) {
-          for (const cb of prevMonthData.category_balances) {
-            tempRunning[cb.category_id] = cb.end_balance ?? 0
-          }
-        }
-      }
-
-      // Ensure all categories have a value
-      categoryIds.forEach(catId => {
-        if (tempRunning[catId] === undefined) {
-          tempRunning[catId] = 0
-        }
-      })
-
-      // Walk through processed months to get current month's end balances
-      for (let i = 0; i <= currentMonthIdx && i < monthsToProcess.length; i++) {
-        const m = monthsToProcess[i]
-
-        categoryIds.forEach(catId => {
-          const start = tempRunning[catId] ?? 0
-          let allocated = 0
-          if (m.allocations_finalized && m.allocations) {
-            const alloc = m.allocations.find((a: { category_id: string }) => a.category_id === catId)
-            if (alloc) allocated = alloc.amount
-          }
-          let spent = 0
-          if (m.expenses) {
-            spent = m.expenses
-              .filter((e: { category_id: string }) => e.category_id === catId)
-              .reduce((sum: number, e: { amount: number }) => sum + e.amount, 0)
-          }
-          tempRunning[catId] = start + allocated - spent
-        })
-      }
-
-      categoryIds.forEach(catId => {
-        currentBalances[catId] = tempRunning[catId] ?? 0
-      })
-
       // Total balances = running balances after ALL months
       const totalBalances: Record<string, number> = { ...runningCategoryBalances }
 
@@ -404,22 +342,8 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
         }
       })
 
-      // Build balances record for snapshot
-      const balancesForSnapshot: Record<string, { current: number; total: number }> = {}
-      categoryIds.forEach(catId => {
-        balancesForSnapshot[catId] = {
-          current: currentBalances[catId] ?? 0,
-          total: totalBalances[catId] ?? 0,
-        }
-      })
-
       // Update budget document with recalculated category balances
-      await recalculateCategoryBalances(
-        updatedCategories,
-        balancesForSnapshot,
-        currentYear,
-        currentMonthNumber
-      )
+      await saveCategories(updatedCategories)
 
       // Invalidate all month query caches to refresh UI
       for (const m of monthsToProcess) {
@@ -481,4 +405,3 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
     </>
   )
 }
-

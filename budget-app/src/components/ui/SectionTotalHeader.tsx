@@ -32,7 +32,7 @@ export function SectionTotalHeader({ label, value, action, inlineAction, compact
             gap: '0.5rem',
             flexWrap: 'wrap',
           }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{label}:</h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{label}</h3>
             <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>{value}</span>
           </span>
           {action}

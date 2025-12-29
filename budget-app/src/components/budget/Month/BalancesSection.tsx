@@ -3,20 +3,19 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useBudget, type Category, type BalancesView } from '../../../contexts/budget_context'
 import { useBudgetData, useAllocationsPage, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
-import type { CategoryMonthBalance, AccountMonthBalance } from '../../../types/budget'
+import type { CategoryMonthBalance, AccountMonthBalance } from '@types'
 import {
   Button,
   formatCurrency,
   getBalanceColor,
   ErrorAlert,
-  SectionTotalHeader,
   LoadingOverlay,
   FourStatGrid,
   Modal,
 } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { AccountBalancesView } from './AccountBalances'
-import { AllocationStatus, BalanceGroupBlock, DraftEquation } from './CategoryBalances'
+import { BalanceGroupBlock } from './CategoryBalances'
 
 const VALID_VIEWS: BalancesView[] = ['categories', 'accounts']
 
@@ -65,7 +64,6 @@ export function BalancesSection() {
     isEditingAppliedAllocations,
     error,
     availableNow,
-    currentDraftTotal,
     draftChangeAmount,
     availableAfterApply,
     previousMonthIncome,
@@ -108,26 +106,26 @@ export function BalancesSection() {
 
   // Calculate live category balances that update as allocations change
   const liveCategoryBalances = useMemo(() => {
-    const prevBalances = currentMonth?.previous_month_snapshot?.category_balances_end ?? {}
+    // Build a map of existing category balances for quick lookup
+    const existingBalances: Record<string, CategoryMonthBalance> = {}
+    if (currentMonth?.category_balances) {
+      currentMonth.category_balances.forEach(cb => {
+        existingBalances[cb.category_id] = cb
+      })
+    }
 
     const balances: Record<string, CategoryMonthBalance> = {}
     Object.entries(categories).forEach(([catId, cat]) => {
-      const startBalance = prevBalances[catId] ?? 0
+      const existing = existingBalances[catId]
+      const startBalance = existing?.start_balance ?? 0
+      const spent = existing?.spent ?? 0
 
       // Use live draft allocation when in draft mode, otherwise use finalized
       let allocated = 0
       if (isDraftMode) {
         allocated = getAllocationAmount(catId, cat)
-      } else if (allocationsFinalized && currentMonth?.allocations) {
-        const alloc = currentMonth.allocations.find(a => a.category_id === catId)
-        if (alloc) allocated = alloc.amount
-      }
-
-      let spent = 0
-      if (currentMonth?.expenses) {
-        spent = currentMonth.expenses
-          .filter(e => e.category_id === catId)
-          .reduce((sum, e) => sum + e.amount, 0)
+      } else if (allocationsFinalized && existing) {
+        allocated = existing.allocated
       }
 
       balances[catId] = {
@@ -149,12 +147,19 @@ export function BalancesSection() {
 
   // Calculate account balances for this month
   const accountBalances = useMemo(() => {
-    const prevAccountBalances = currentMonth?.previous_month_snapshot?.account_balances_end ?? {}
+    // Build a map of existing account balances for quick lookup
+    const existingBalances: Record<string, AccountMonthBalance> = {}
+    if (currentMonth?.account_balances) {
+      currentMonth.account_balances.forEach(ab => {
+        existingBalances[ab.account_id] = ab
+      })
+    }
 
     const balances: Record<string, AccountMonthBalance> = {}
     Object.entries(accounts).forEach(([accountId, account]) => {
-      // Start balance from previous month's end, or account's current balance if first month
-      const startBalance = prevAccountBalances[accountId] ?? account.balance
+      const existing = existingBalances[accountId]
+      // Start balance from existing or account's current balance if first month
+      const startBalance = existing?.start_balance ?? account.balance
 
       // Calculate income deposited to this account this month
       let income = 0
@@ -225,20 +230,35 @@ export function BalancesSection() {
       <FourStatGrid
         items={currentView === 'categories' ? [
           {
-            label: 'Start of Month',
-            value: <span style={{ color: getBalanceColor(balanceTotals.start) }}>{formatCurrency(balanceTotals.start)}</span>,
+            label: 'Available Now',
+            value: <span style={{ color: getBalanceColor(availableNow) }}>{formatCurrency(availableNow)}</span>,
           },
           {
             label: isDraftMode ? 'Draft Allocations' : 'Allocated',
-            value: <span style={{ color: isDraftMode ? colors.primary : colors.success }}>+{formatCurrency(balanceTotals.allocated)}</span>,
+            value: isEditingAppliedAllocations ? (
+              <span>
+                <span style={{ color: colors.primary }}>+{formatCurrency(balanceTotals.allocated)}</span>
+                {draftChangeAmount !== 0 && (
+                  <span style={{
+                    marginLeft: '0.35rem',
+                    fontSize: '0.85em',
+                    color: draftChangeAmount > 0 ? colors.warning : colors.success
+                  }}>
+                    ({draftChangeAmount > 0 ? '+' : '−'}{formatCurrency(Math.abs(draftChangeAmount))})
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span style={{ color: isDraftMode ? colors.primary : colors.success }}>+{formatCurrency(balanceTotals.allocated)}</span>
+            ),
           },
           {
             label: 'Spent',
             value: <span style={{ color: colors.error }}>-{formatCurrency(balanceTotals.spent)}</span>,
           },
           {
-            label: 'End of Month',
-            value: <span style={{ color: getBalanceColor(balanceTotals.end) }}>{formatCurrency(balanceTotals.end)}</span>,
+            label: 'Available After',
+            value: <span style={{ color: getBalanceColor(availableAfterApply) }}>{formatCurrency(availableAfterApply)}</span>,
           },
         ] : [
           {
@@ -266,6 +286,7 @@ export function BalancesSection() {
         gap: '0.5rem',
         marginBottom: '1.5rem',
         flexWrap: 'wrap',
+        alignItems: 'center',
       }}>
         {/* View Toggle Button - always on the left */}
         <Button
@@ -276,6 +297,28 @@ export function BalancesSection() {
           {currentView === 'categories' ? '🏦 Switch to Account Balances' : '📊 Switch to Category Balances'}
         </Button>
 
+        {/* Save Draft & Apply Buttons - show for category view when in draft mode but not editing applied */}
+        {currentView === 'categories' && isDraftMode && !isEditingAppliedAllocations && (
+          <>
+            <Button
+              onClick={handleSaveAllocations}
+              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
+              variant="secondary"
+              style={{ fontSize: '0.85rem' }}
+            >
+              {isSavingAllocations ? '⏳...' : '💾 Save Draft'}
+            </Button>
+            <Button
+              onClick={handleFinalizeAllocations}
+              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
+              variant="secondary"
+              style={{ fontSize: '0.85rem' }}
+            >
+              {isFinalizingAllocations ? '⏳...' : '✓ Apply Allocations'}
+            </Button>
+          </>
+        )}
+
         {/* Edit Allocations Button - only show for category view when not in draft mode and allocations are finalized */}
         {currentView === 'categories' && !isDraftMode && allocationsFinalized && (
           <Button
@@ -285,6 +328,36 @@ export function BalancesSection() {
           >
             ✏️ Edit Allocations
           </Button>
+        )}
+
+        {/* Editing Allocations Buttons - show when editing applied allocations */}
+        {currentView === 'categories' && isEditingAppliedAllocations && (
+          <>
+            <Button
+              onClick={handleFinalizeAllocations}
+              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
+              variant="secondary"
+              style={{ fontSize: '0.85rem' }}
+            >
+              {isFinalizingAllocations ? '⏳...' : '✓ Apply Allocations'}
+            </Button>
+            <Button
+              onClick={resetAllocationsToSaved}
+              disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading}
+              variant="secondary"
+              style={{ fontSize: '0.85rem' }}
+            >
+              ✕ Cancel
+            </Button>
+            <Button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeletingAllocations || monthLoading}
+              variant="secondary"
+              style={{ fontSize: '0.85rem', color: colors.error }}
+            >
+              🗑️ Delete
+            </Button>
+          </>
         )}
       </div>
 
@@ -301,85 +374,7 @@ export function BalancesSection() {
       {/* Category Balances View */}
       {currentView === 'categories' && (
         <>
-          {/* Allocation Header - only show when in draft mode (editing or new) */}
-          {isDraftMode && (
-        <SectionTotalHeader
-          label={isEditingAppliedAllocations ? "Editing Allocations" : "Draft Allocations"}
-          value={null}
-          compact
-          action={
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <Button
-                onClick={isEditingAppliedAllocations ? handleFinalizeAllocations : handleSaveAllocations}
-                disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
-                variant="secondary"
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-              >
-                {isSavingAllocations || isFinalizingAllocations ? '⏳...' : isEditingAppliedAllocations ? '✓ Apply' : '💾 Save'}
-              </Button>
-              {allocationsFinalized && isEditingAppliedAllocations && (
-                <>
-                  <button
-                    onClick={resetAllocationsToSaved}
-                    disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: isFinalizingAllocations || isDeletingAllocations || monthLoading ? 'not-allowed' : 'pointer',
-                      padding: '0.25rem',
-                      opacity: isFinalizingAllocations || isDeletingAllocations || monthLoading ? 0.5 : 0.7,
-                      fontSize: '1rem',
-                      lineHeight: 1,
-                    }}
-                    title="Cancel Editing"
-                  >
-                    ✕
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isDeletingAllocations || monthLoading}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: isDeletingAllocations || monthLoading ? 'not-allowed' : 'pointer',
-                      padding: '0.25rem',
-                      opacity: isDeletingAllocations || monthLoading ? 0.5 : 0.7,
-                      fontSize: '1rem',
-                      lineHeight: 1,
-                      color: colors.error,
-                    }}
-                    title="Delete Allocations"
-                  >
-                    🗑️
-                  </button>
-                </>
-              )}
-            </div>
-          }
-        />
-      )}
-
-      {/* Draft Equation Section - Show available calculation when in draft mode */}
-      {isDraftMode && (
-        <DraftEquation
-          availableNow={availableNow}
-          currentDraftTotal={currentDraftTotal}
-          draftChangeAmount={draftChangeAmount}
-          availableAfterApply={availableAfterApply}
-          allocationsFinalized={allocationsFinalized}
-        />
-      )}
-
-      {/* Finalization Status - Only show when allocations not yet applied (not when editing applied) */}
-      {isDraftMode && !isEditingAppliedAllocations && (
-        <AllocationStatus
-          isFinalizingAllocations={isFinalizingAllocations}
-          monthLoading={monthLoading}
-          onFinalize={handleFinalizeAllocations}
-        />
-      )}
-
-      {/* Category Balances by Group */}
+          {/* Category Balances by Group */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {Object.keys(categories).length === 0 && (
           <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>

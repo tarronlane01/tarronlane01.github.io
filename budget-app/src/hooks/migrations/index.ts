@@ -7,7 +7,15 @@
  * All migrations use direct Firestore operations - no React Query caching.
  */
 
-export { useBudgetDataMigration, type DataMigrationStatus } from './useBudgetDataMigration'
-export { useFutureMonthsCleanup, type FutureMonthsCleanupResult, type FutureMonthsStatus, type FutureMonthInfo } from './useFutureMonthsCleanup'
+// Main database cleanup - consolidated migration for budget/month schema validation
+export {
+  useDatabaseCleanup,
+  type DatabaseCleanupStatus,
+  type DatabaseCleanupResult,
+  type FutureMonthInfo,
+} from './useDatabaseCleanup'
+
+// Special-purpose migrations
 export { useFeedbackMigration, type FeedbackMigrationResult, type FeedbackMigrationStatus } from './useFeedbackMigration'
+export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo } from './useDeleteAllMonths'
 

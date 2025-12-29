@@ -10,8 +10,8 @@
  *    - For non-React code: use cachedReads (fetchBudgetDocument, calculateCategoryBalances, etc.)
  *
  * 2. ALL WRITES should go through React Query mutations:
- *    - useBudgetMutations for budget-level changes
- *    - useMonthMutations for month-level changes (income, expenses, allocations)
+ *    - Budget mutations: import from './mutations/budget'
+ *    - Month mutations: import from './mutations/month'
  *    - useUserMutations for user document changes
  *    - useFeedbackMutations for feedback
  *
@@ -26,36 +26,32 @@ export { QueryProvider } from './QueryProvider'
 // ============================================================================
 // QUERY HOOKS (for React components)
 // ============================================================================
-export { useBudgetQuery, useBudgetDataQuery, type BudgetData } from './queries/useBudgetQuery'
-export {
-  useMonthQuery,
-  type MonthQueryData,
-  markNextMonthSnapshotStaleInCache,
-  markNextMonthSnapshotStaleInFirestore,
-} from './queries/useMonthQuery'
-export { usePayeesQuery } from './queries/usePayeesQuery'
-export { useUserQuery } from './queries/useUserQuery'
-export { useAccessibleBudgetsQuery } from './queries/useAccessibleBudgetsQuery'
-export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type FeedbackData } from './queries/useFeedbackQuery'
+export { useBudgetQuery, type BudgetData } from './queries/budget'
+export { useMonthQuery, type MonthQueryData } from './queries/month'
+export { usePayeesQuery } from './queries/payees'
+export { useUserQuery } from './queries/user'
+export { useAccessibleBudgetsQuery } from './queries/accessibleBudgets'
+export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type FeedbackData } from './queries/feedback'
 
 // ============================================================================
 // MUTATION HOOKS (for all writes)
 // ============================================================================
-export { useBudgetMutations } from './mutations/useBudgetMutations'
+// Import directly from mutation folders:
+// - Budget: import from './mutations/budget'
+// - Month: import from './mutations/month'
+// - User: import from './mutations/user'
+// - Feedback: import from './mutations/feedback'
+
+// ============================================================================
+// RECALCULATION
+// ============================================================================
 export {
-  useMonthMutations,
-  // Re-export helpers that are safe for external use
-  // Cache-only helpers (for onMutate)
-  markCategoryBalancesSnapshotStaleInCache,
-  markMonthCategoryBalancesStaleInCache,
-  markFutureMonthsCategoryBalancesStaleInCache,
-  // Firestore-only helpers (for mutationFn)
-  markCategoryBalancesSnapshotStaleInFirestore,
-  markMonthCategoryBalancesStaleInFirestore,
-  markFutureMonthsCategoryBalancesStaleInFirestore,
-} from './mutations/useMonthMutations'
-export { useUserMutations } from './mutations/useUserMutations'
-export { useFeedbackMutations } from './mutations/useFeedbackMutations'
+  // Main entry point - called when is_needs_recalculation is detected
+  triggerRecalculation,
+  // Marking as stale (when data changes) - used by writeMonthData
+  markBudgetNeedsRecalculation,
+  markFutureMonthsNeedRecalculation,
+} from './recalculation'
 
 // ============================================================================
 // CACHED READ FUNCTIONS (for non-React code that still needs caching)
@@ -70,19 +66,18 @@ export {
   type CategoryBalanceResult,
 } from './cachedReads'
 
+// Month read functions
+export { readMonth, readMonthForEdit, type ReadMonthOptions } from './queries/month'
+
+// Month write functions
+export { writeMonthData, type WriteMonthParams } from './mutations/month'
+
 // ============================================================================
 // UTILITIES (safe to use anywhere)
 // ============================================================================
 // These are pure functions that don't do I/O
-export {
-  getMonthDocId,
-  stripUndefined,
-  cleanAccountsForFirestore,
-  cleanIncomeForFirestore,
-  cleanAllocationsForFirestore,
-  cleanExpensesForFirestore,
-  cleanCategoryBalancesForFirestore,
-} from './firestore/operations'
+export { getMonthDocId } from '@utils'
+export { arrayUnion } from '@firestore'
 
-// Re-export arrayUnion for mutation params
-export { arrayUnion } from './firestore/operations'
+// Query helpers
+export { getFutureMonths } from './queries/month'

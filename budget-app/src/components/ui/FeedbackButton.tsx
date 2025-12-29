@@ -2,7 +2,7 @@ import { useState, useContext, useEffect, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import UserContext from '../../contexts/user_context'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useFeedbackMutations } from '../../data'
+import { useSubmitFeedback } from '../../data/mutations/feedback'
 import { colors } from '../../styles/shared'
 import { Button } from './Button'
 import { Modal } from './Modal'
@@ -30,7 +30,7 @@ export function FeedbackButton() {
   const firebase_auth_hook = useFirebaseAuth()
   const currentUser = firebase_auth_hook.get_current_firebase_user()
   const location = useLocation()
-  const feedbackMutations = useFeedbackMutations()
+  const { submitFeedback } = useSubmitFeedback()
 
   // Auto-hide confirmation after timeout
   useEffect(() => {
@@ -50,7 +50,7 @@ export function FeedbackButton() {
     if (!feedbackText.trim() || !userContext.username || !currentUser) return
 
     // Fire mutation and close optimistically - the item appears immediately via onMutate
-    feedbackMutations.submitFeedback.mutate({
+    submitFeedback.mutate({
       userId: currentUser.uid,
       userEmail: userContext.username,
       text: feedbackText.trim(),

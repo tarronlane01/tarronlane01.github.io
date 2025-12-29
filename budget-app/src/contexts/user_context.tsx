@@ -1,5 +1,5 @@
 import { createContext } from "react"
-import type { type_user_context } from "../types/type_user_context"
+import type { type_user_context } from '@types'
 
 const noop: React.Dispatch<React.SetStateAction<type_user_context>> = function (){}
 

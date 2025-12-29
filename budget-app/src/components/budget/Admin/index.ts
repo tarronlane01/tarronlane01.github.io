@@ -7,10 +7,13 @@ export {
   MigrationStatusCard,
   MigrationResults,
   Spinner,
+  StatusBox,
+  ActionButton,
   type MigrationCardStatus,
   type MigrationStatus,
   type BudgetMigrationResult,
 } from './MigrationComponents'
-export { FutureMonthsCleanupCard } from './FutureMonthsCleanupCard'
+export { DatabaseCleanupCard } from './DatabaseCleanupCard'
 export { FeedbackMigrationCard } from './FeedbackMigrationCard'
+export { DeleteAllMonthsCard } from './DeleteAllMonthsCard'
 

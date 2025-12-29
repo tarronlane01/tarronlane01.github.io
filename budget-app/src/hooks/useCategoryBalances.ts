@@ -1,14 +1,15 @@
 /**
  * useCategoryBalances Hook
  *
- * Handles category balance loading, caching, and reconciliation.
- * Uses an optimized walk-back/walk-forward approach instead of loading all months.
+ * Handles category balance loading and reconciliation.
+ * Uses the balance field directly from each category in the budget document.
+ * When budget.is_needs_recalculation is true, balances are recalculated.
  *
  * Extracted from useCategoriesPage to reduce file size.
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import type { CategoriesMap, CategoryBalancesSnapshot } from '../types/budget'
+import { useState, useCallback, useMemo } from 'react'
+import type { CategoriesMap } from '@types'
 import { calculateCategoryBalances } from '../data'
 
 // Balance object for each category showing current (spendable now) and total (including future)
@@ -20,136 +21,48 @@ export interface CategoryBalance {
 interface UseCategoryBalancesParams {
   budgetId: string | null
   categories: CategoriesMap
-  categoryBalancesSnapshot: CategoryBalancesSnapshot | null
   currentYear: number
   currentMonth: number
-  saveCategoryBalancesSnapshot: (
-    balances: Record<string, CategoryBalance>,
-    year: number,
-    month: number
-  ) => Promise<void>
-  recalculateCategoryBalancesMutation: (
-    categories: CategoriesMap,
-    balances: Record<string, CategoryBalance>,
-    year: number,
-    month: number
-  ) => Promise<void>
+  updateCategoriesWithBalances: (categories: CategoriesMap) => Promise<void>
 }
 
 export function useCategoryBalances({
   budgetId,
   categories,
-  categoryBalancesSnapshot,
   currentYear,
   currentMonth,
-  saveCategoryBalancesSnapshot,
-  recalculateCategoryBalancesMutation,
+  updateCategoriesWithBalances,
 }: UseCategoryBalancesParams) {
-  // Check if the snapshot is valid for the current context
-  const isSnapshotValid = useCallback((snapshot: CategoryBalancesSnapshot | null): boolean => {
-    if (!snapshot) return false
-    if (snapshot.is_stale) return false
-    if (snapshot.computed_for_year !== currentYear || snapshot.computed_for_month !== currentMonth) {
-      return false
-    }
-    return true
-  }, [currentYear, currentMonth])
-
-  // Compute initial balances from snapshot if valid (avoids flash on navigation)
-  const initialBalances = useMemo(() => {
-
-    if (!isSnapshotValid(categoryBalancesSnapshot)) return {}
-
+  // Compute category balances from the balance field on each category
+  const categoryBalances = useMemo(() => {
     const balances: Record<string, CategoryBalance> = {}
-
-    Object.keys(categories).forEach(catId => {
-      const snapshotBal = categoryBalancesSnapshot!.balances[catId]
-      balances[catId] = snapshotBal || { current: 0, total: 0 }
+    Object.entries(categories).forEach(([catId, cat]) => {
+      // For now, we treat the stored balance as "current" since we don't track future separately
+      // The balance field on the category is the running total
+      balances[catId] = {
+        current: cat.balance ?? 0,
+        total: cat.balance ?? 0,
+      }
     })
-
     return balances
+  }, [categories])
 
-}, [categoryBalancesSnapshot, categories, isSnapshotValid])
-
-  // State - initialized from snapshot if available
-  const [categoryBalances, setCategoryBalances] = useState<Record<string, CategoryBalance>>(initialBalances)
   const [loadingBalances, setLoadingBalances] = useState(false)
   const [categoryBalanceMismatch, setCategoryBalanceMismatch] = useState<
     Record<string, { stored: number; calculated: number }> | null
   >(null)
-
-  // Track if we've already loaded for this budget/month combination
-  const loadedForRef = useRef<string | null>(null)
-
-  // Load category balances - uses snapshot if valid, otherwise recalculates
-  useEffect(() => {
-    if (!budgetId || Object.keys(categories).length === 0) return
-
-    const loadKey = `${budgetId}_${currentYear}_${currentMonth}`
-
-    // Skip if we already loaded for this exact context (prevents duplicate loads/infinite loop)
-    if (loadedForRef.current === loadKey) return
-
-    // If snapshot is valid, use it immediately without recalculating
-    if (isSnapshotValid(categoryBalancesSnapshot)) {
-      const balances: Record<string, CategoryBalance> = {}
-      Object.keys(categories).forEach(catId => {
-        const snapshotBal = categoryBalancesSnapshot!.balances[catId]
-        balances[catId] = snapshotBal || { current: 0, total: 0 }
-      })
-      setCategoryBalances(balances)
-      loadedForRef.current = loadKey
-      return
-    }
-
-    const loadBalances = async () => {
-      setLoadingBalances(true)
-      try {
-        const categoryIds = Object.keys(categories)
-        // Use optimized walk-back/walk-forward calculation
-        // Pass budget snapshot so it can use it for "total" if still valid
-        const { current, total } = await calculateCategoryBalances(
-          budgetId,
-          categoryIds,
-          currentYear,
-          currentMonth,
-          categoryBalancesSnapshot
-        )
-
-        const balances: Record<string, CategoryBalance> = {}
-        categoryIds.forEach(catId => {
-          balances[catId] = {
-            current: current[catId] ?? 0,
-            total: total[catId] ?? 0,
-          }
-        })
-        setCategoryBalances(balances)
-        loadedForRef.current = loadKey
-
-        // Save the freshly calculated snapshot
-        await saveCategoryBalancesSnapshot(balances, currentYear, currentMonth)
-      } catch (err) {
-        console.error('Error loading category balances:', err)
-      } finally {
-        setLoadingBalances(false)
-      }
-    }
-
-    loadBalances()
-  }, [budgetId, categories, currentYear, currentMonth, categoryBalancesSnapshot, isSnapshotValid, saveCategoryBalancesSnapshot])
 
   // Check for category balance mismatches (compares stored balance vs calculated total)
   const checkCategoryBalanceMismatch = useCallback(async (): Promise<Record<string, { stored: number; calculated: number }> | null> => {
     if (!budgetId || Object.keys(categories).length === 0) return null
 
     const categoryIds = Object.keys(categories)
-    // Use optimized walk-back/walk-forward calculation (no snapshot - force recalc for accuracy)
+    // Use optimized walk-back/walk-forward calculation for accurate balances
     const { total: calculatedBalances } = await calculateCategoryBalances(
       budgetId,
       categoryIds,
       currentYear,
-      currentMonth,
-      null // Don't use snapshot - we want accurate calculation
+      currentMonth
     )
 
     const mismatches: Record<string, { stored: number; calculated: number }> = {}
@@ -168,23 +81,22 @@ export function useCategoryBalances({
     return result
   }, [budgetId, categories, currentYear, currentMonth])
 
-  // Recalculate and save category balances (also updates the cache)
+  // Recalculate and save category balances (also updates the categories on the budget)
   const recalculateAndSaveCategoryBalances = useCallback(async (): Promise<void> => {
     if (!budgetId || Object.keys(categories).length === 0) return
 
     setLoadingBalances(true)
     try {
       const categoryIds = Object.keys(categories)
-      // Use optimized calculation (no snapshot - force full recalc)
-      const { current, total } = await calculateCategoryBalances(
+      // Use optimized calculation for full recalculation
+      const { total } = await calculateCategoryBalances(
         budgetId,
         categoryIds,
         currentYear,
-        currentMonth,
-        null // Don't use snapshot - we want full recalculation
+        currentMonth
       )
 
-      // Update categories with recalculated total balances (stored balance is total)
+      // Update categories with recalculated total balances
       const updatedCategories: CategoriesMap = {}
       Object.entries(categories).forEach(([catId, cat]) => {
         updatedCategories[catId] = {
@@ -193,30 +105,14 @@ export function useCategoryBalances({
         }
       })
 
-      // Build the new balances for snapshot
-      const balances: Record<string, CategoryBalance> = {}
-      categoryIds.forEach(catId => {
-        balances[catId] = {
-          current: current[catId] ?? 0,
-          total: total[catId] ?? 0,
-        }
-      })
+      // Save updated categories to Firestore
+      await updateCategoriesWithBalances(updatedCategories)
 
-      // Mutation handles Firestore write and optimistic cache updates
-      await recalculateCategoryBalancesMutation(
-        updatedCategories,
-        balances,
-        currentYear,
-        currentMonth
-      )
-
-      // Update local state
-      setCategoryBalances(balances)
       setCategoryBalanceMismatch(null)
     } finally {
       setLoadingBalances(false)
     }
-  }, [budgetId, categories, recalculateCategoryBalancesMutation, currentYear, currentMonth])
+  }, [budgetId, categories, updateCategoriesWithBalances, currentYear, currentMonth])
 
   return {
     categoryBalances,
@@ -226,4 +122,3 @@ export function useCategoryBalances({
     recalculateAndSaveCategoryBalances,
   }
 }
-

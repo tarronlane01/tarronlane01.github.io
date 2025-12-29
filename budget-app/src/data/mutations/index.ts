@@ -1,28 +1,22 @@
 /**
  * Mutation Hooks Exports
+ *
+ * Mutations are organized by domain:
+ * - budget/ - Budget document mutations (accounts, categories, rename)
+ * - month/ - Month document mutations (income, expenses, allocations)
+ * - user/ - User-related mutations (budget creation, invites)
+ * - feedback/ - Feedback mutations
+ * - payees/ - Payee mutations
  */
 
-export { useBudgetMutations } from './useBudgetMutations'
-export { useMonthMutations } from './useMonthMutations'
-export { useUserMutations } from './useUserMutations'
-export { useFeedbackMutations } from './useFeedbackMutations'
-
-// Stale helpers
+// Month write operations
 export {
-  markCategoryBalancesSnapshotStaleInCache,
-  markCategoryBalancesSnapshotStaleInFirestore,
-  markMonthCategoryBalancesStaleInCache,
-  markMonthCategoryBalancesStaleInFirestore,
-  markFutureMonthsCategoryBalancesStaleInCache,
-  markFutureMonthsCategoryBalancesStaleInFirestore,
-} from './categoryBalanceStaleHelpers'
+  writeMonthData,
+  type WriteMonthParams,
+} from './month'
 
+// Recalculation helpers - re-exported from canonical location
 export {
-  markAccountBalancesSnapshotStaleInCache,
-  markAccountBalancesSnapshotStaleInFirestore,
-  markMonthAccountBalancesStaleInCache,
-  markMonthAccountBalancesStaleInFirestore,
-  markFutureMonthsAccountBalancesStaleInCache,
-  markFutureMonthsAccountBalancesStaleInFirestore,
-} from './accountBalanceStaleHelpers'
-
+  markBudgetNeedsRecalculation,
+  markFutureMonthsNeedRecalculation,
+} from '../recalculation'

@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 // eslint-disable-next-line no-restricted-imports
-import { readDoc, writeDoc, queryCollection, deleteDocByPath } from '../../data/firestore/operations'
+import { readDocByPath, writeDocByPath, queryCollection, deleteDocByPath } from '@firestore'
 
 // Types
 interface FeedbackItem {
@@ -217,7 +217,7 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
           const extractedItems = extractItemsFromCorrupted(docSnap.data.items as { _methodName: string; vc: FeedbackItem[] })
 
           try {
-            await writeDoc(
+            await writeDocByPath(
               'feedback',
               docSnap.id,
               {
@@ -244,7 +244,7 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
           const properEmailId = unsanitizeDocId(sanitizedId)
           const sanitizedItems = getItemsFromDoc(docSnap.data)
 
-          const { exists: properExists, data: properData } = await readDoc<{
+          const { exists: properExists, data: properData } = await readDocByPath<{
             items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
             user_email?: string
             created_at?: string
@@ -262,7 +262,7 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
 
             if (newItems.length > 0 || isCorruptedArrayUnion(properData.items)) {
               const mergedItems = [...existingItems, ...newItems]
-              await writeDoc(
+              await writeDocByPath(
                 'feedback',
                 properEmailId,
                 {
@@ -275,7 +275,7 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
               result.mergedItems += newItems.length
             }
           } else if (sanitizedItems.length > 0) {
-            await writeDoc(
+            await writeDocByPath(
               'feedback',
               properEmailId,
               {

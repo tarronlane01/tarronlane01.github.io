@@ -1,4 +1,4 @@
-import type { IncomeTransaction, FinancialAccount, AccountGroupsMap } from '../../../types/budget'
+import type { IncomeTransaction, FinancialAccount, AccountGroupsMap } from '@types'
 import { TransactionForm, type AccountEntry, type TransactionFormData } from '../Transaction'
 
 export type IncomeAccountEntry = [string, FinancialAccount]

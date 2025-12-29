@@ -1,7 +1,8 @@
 import { useState, useContext, type DragEvent, type FormEvent } from 'react'
 import UserContext from '../../contexts/user_context'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useFeedbackQuery, useFeedbackMutations, type FlattenedFeedbackItem, type FeedbackItem } from '../../data'
+import { useFeedbackQuery, type FlattenedFeedbackItem, type FeedbackItem } from '../../data'
+import { useSubmitFeedback, useToggleFeedback, useUpdateSortOrder } from '../../data/mutations/feedback'
 import {
   ErrorAlert,
   Button,
@@ -36,7 +37,9 @@ function SettingsFeedback() {
 
   // Use React Query for feedback data
   const feedbackQuery = useFeedbackQuery()
-  const feedbackMutations = useFeedbackMutations()
+  const { submitFeedback } = useSubmitFeedback()
+  const { toggleFeedback } = useToggleFeedback()
+  const { updateSortOrder } = useUpdateSortOrder()
 
   const allFeedback = feedbackQuery.data?.items || []
 
@@ -45,7 +48,7 @@ function SettingsFeedback() {
     if (!newFeedbackText.trim() || !userContext.username || !currentUser) return
 
     // Fire mutation and close optimistically - the item appears immediately via onMutate
-    feedbackMutations.submitFeedback.mutate({
+    submitFeedback.mutate({
       userId: currentUser.uid,
       userEmail: userContext.username,
       text: newFeedbackText.trim(),
@@ -71,7 +74,7 @@ function SettingsFeedback() {
 
   async function performToggleDone(item: FlattenedFeedbackItem) {
     try {
-      await feedbackMutations.toggleFeedback.mutateAsync({ item })
+      await toggleFeedback.mutateAsync({ item })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update feedback')
     }
@@ -113,7 +116,7 @@ function SettingsFeedback() {
         }
       })
 
-      await feedbackMutations.updateSortOrder.mutateAsync({
+      await updateSortOrder.mutateAsync({
         docId: editingTypeItem.doc_id,
         items: updatedItems,
       })
@@ -201,7 +204,7 @@ function SettingsFeedback() {
 
     try {
       for (const [docId, items] of byDocId) {
-        await feedbackMutations.updateSortOrder.mutateAsync({ docId, items })
+        await updateSortOrder.mutateAsync({ docId, items })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save order')

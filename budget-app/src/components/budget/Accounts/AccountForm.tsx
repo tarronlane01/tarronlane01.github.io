@@ -9,7 +9,7 @@ import {
   Checkbox,
 } from '../../ui'
 import { colors } from '../../../styles/shared'
-import type { AccountGroup } from '../../../types/budget'
+import type { AccountGroup } from '@types'
 
 // Type for account group with its ID (for passing to child components)
 export type GroupWithId = AccountGroup & { id: string }

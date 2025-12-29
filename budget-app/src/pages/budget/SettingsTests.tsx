@@ -3,7 +3,7 @@ import { useState } from 'react'
 // reads/writes are actually rejected by Firestore rules. Using React Query would
 // cache results and interfere with testing actual security behavior.
 // eslint-disable-next-line no-restricted-imports
-import { readDoc, updateDocByPath } from '../../data/firestore/operations'
+import { readDocByPath, updateDocByPath } from '@firestore'
 import { useBudget } from '../../contexts/budget_context'
 import { Button, ErrorAlert } from '../../components/ui'
 import { pageSubtitle, card, colors } from '../../styles/shared'
@@ -75,7 +75,7 @@ function SettingsTests() {
     await runTest('Read unauthorized budget', async () => {
       // Use a fake budget ID that the user shouldn't have access to
       const fakeBudgetId = 'unauthorized_budget_test_12345'
-      await readDoc('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
+      await readDocByPath('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
       return 'Was able to read budget (unexpected)'
     }, true)
 
@@ -83,7 +83,7 @@ function SettingsTests() {
     await runTest('Read another user\'s document', async () => {
       // Use a fake user ID
       const fakeUserId = 'another_user_test_12345'
-      await readDoc('users', fakeUserId, 'security test: attempting unauthorized user read')
+      await readDocByPath('users', fakeUserId, 'security test: attempting unauthorized user read')
       return 'Was able to read user document (unexpected)'
     }, true)
 
@@ -93,7 +93,7 @@ function SettingsTests() {
       // Month document IDs follow the format: {budgetId}_{year}_{month}
       const fakeBudgetId = 'unauthorized_budget_test_12345'
       const fakeMonthId = `${fakeBudgetId}_2024_01`
-      await readDoc('months', fakeMonthId, 'security test: attempting unauthorized month read')
+      await readDocByPath('months', fakeMonthId, 'security test: attempting unauthorized month read')
       return 'Was able to read month document for unauthorized budget (unexpected)'
     }, true)
 
@@ -101,7 +101,7 @@ function SettingsTests() {
     await runTest('Toggle is_admin in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       // First read current value
-      const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>(
+      const { data } = await readDocByPath<{ permission_flags?: { is_admin?: boolean } }>(
         'users',
         currentUserId,
         'security test: reading own user to get current is_admin value'
@@ -121,7 +121,7 @@ function SettingsTests() {
     await runTest('Toggle is_test in own permission_flags', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
       // First read current value
-      const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>(
+      const { data } = await readDocByPath<{ permission_flags?: { is_test?: boolean } }>(
         'users',
         currentUserId,
         'security test: reading own user to get current is_test value'
@@ -140,7 +140,7 @@ function SettingsTests() {
     // Test 6: Read own user document (should succeed)
     await runTest('Read own user document', async () => {
       if (!currentUserId) throw new Error('Not authenticated')
-      const { exists } = await readDoc('users', currentUserId, 'security test: reading own user document (should succeed)')
+      const { exists } = await readDocByPath('users', currentUserId, 'security test: reading own user document (should succeed)')
       if (exists) {
         return 'Successfully read own document'
       }
@@ -202,14 +202,14 @@ function SettingsTests() {
       case 'Read unauthorized budget':
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
-          await readDoc('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
+          await readDocByPath('budgets', fakeBudgetId, 'security test: attempting unauthorized budget read')
           return 'Was able to read budget (unexpected)'
         }, true)
         break
       case 'Read another user\'s document':
         await runTest(name, async () => {
           const fakeUserId = 'another_user_test_12345'
-          await readDoc('users', fakeUserId, 'security test: attempting unauthorized user read')
+          await readDocByPath('users', fakeUserId, 'security test: attempting unauthorized user read')
           return 'Was able to read user document (unexpected)'
         }, true)
         break
@@ -217,14 +217,14 @@ function SettingsTests() {
         await runTest(name, async () => {
           const fakeBudgetId = 'unauthorized_budget_test_12345'
           const fakeMonthId = `${fakeBudgetId}_2024_01`
-          await readDoc('months', fakeMonthId, 'security test: attempting unauthorized month read')
+          await readDocByPath('months', fakeMonthId, 'security test: attempting unauthorized month read')
           return 'Was able to read month document for unauthorized budget (unexpected)'
         }, true)
         break
       case 'Toggle is_admin in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { data } = await readDoc<{ permission_flags?: { is_admin?: boolean } }>(
+          const { data } = await readDocByPath<{ permission_flags?: { is_admin?: boolean } }>(
             'users',
             currentUserId,
             'security test: reading own user to get current is_admin value'
@@ -242,7 +242,7 @@ function SettingsTests() {
       case 'Toggle is_test in own permission_flags':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { data } = await readDoc<{ permission_flags?: { is_test?: boolean } }>(
+          const { data } = await readDocByPath<{ permission_flags?: { is_test?: boolean } }>(
             'users',
             currentUserId,
             'security test: reading own user to get current is_test value'
@@ -260,7 +260,7 @@ function SettingsTests() {
       case 'Read own user document':
         await runTest(name, async () => {
           if (!currentUserId) throw new Error('Not authenticated')
-          const { exists } = await readDoc('users', currentUserId, 'security test: reading own user document (should succeed)')
+          const { exists } = await readDocByPath('users', currentUserId, 'security test: reading own user document (should succeed)')
           if (exists) {
             return 'Successfully read own document'
           }

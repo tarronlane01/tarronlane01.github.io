@@ -12,12 +12,16 @@
 import { QueryClient } from '@tanstack/react-query'
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
+// Cache timing constants
+export const STALE_TIME = 5 * 60 * 1000        // 5 minutes - data considered fresh
+export const GC_TIME = 24 * 60 * 60 * 1000     // 24 hours - how long to keep unused data
+
 // Query client configuration per spec
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,        // 5 minutes - data considered fresh
-      gcTime: 24 * 60 * 60 * 1000,     // 24 hours - how long to keep unused data (was cacheTime in v4)
+      staleTime: STALE_TIME,
+      gcTime: GC_TIME,
       refetchOnWindowFocus: false,      // REQUIRED: Do not refetch on tab focus
       refetchOnReconnect: true,         // Refetch when network reconnects
       retry: 1,                         // Only retry once on failure

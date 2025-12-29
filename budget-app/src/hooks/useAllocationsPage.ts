@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useBudget } from '../contexts/budget_context'
-import type { CategoryAllocation, Category, CategoriesMap, MonthDocument } from '../types/budget'
+import type { Category, CategoriesMap, MonthDocument } from '@types'
 import { useBudgetData, useBudgetMonth } from './index'
+import {
+  useSaveDraftAllocations,
+  useFinalizeAllocations,
+  useDeleteAllocations,
+  type AllocationData,
+} from '../data/mutations/month/allocations'
 
 // Helper to compute allocations map from month and categories
 function computeAllocationsMap(
@@ -17,9 +23,10 @@ function computeAllocationsMap(
       return
     }
 
-    const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
-    if (existingAlloc) {
-      allocMap[catId] = existingAlloc.amount.toString()
+    // Get allocation from category_balances
+    const existingBalance = currentMonth.category_balances?.find(cb => cb.category_id === catId)
+    if (existingBalance && existingBalance.allocated > 0) {
+      allocMap[catId] = existingBalance.allocated.toString()
     } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
       allocMap[catId] = cat.default_monthly_amount.toString()
     } else {
@@ -31,15 +38,18 @@ function computeAllocationsMap(
 
 export function useAllocationsPage() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, categoryBalancesSnapshot, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
+  const { categories, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
   const {
     month: currentMonth,
     isLoading: monthLoading,
     previousMonthIncome,
-    saveAllocations,
-    finalizeAllocations,
-    deleteAllocations,
+    areAllocationsFinalized,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Allocation mutations
+  const { saveDraftAllocations } = useSaveDraftAllocations()
+  const { finalizeAllocations } = useFinalizeAllocations()
+  const { deleteAllocations } = useDeleteAllocations()
 
   // Compute initial allocations from cached data (avoids flash on navigation)
   const initialAllocations = useMemo(
@@ -58,22 +68,11 @@ export function useAllocationsPage() {
   // Track which month we've synced to (to avoid re-syncing on every render)
   const syncedMonthRef = useRef<string | null>(null)
 
-  // Total finalized allocations - computed from category balances snapshot
-  // Uses 'current' balance to match the Categories admin page calculation
-  // Note: We don't require the snapshot to match the viewed month because
-  // "Available Now" represents total unallocated funds, which is independent
-  // of which month you're viewing for allocations
+  // Total finalized allocations - computed from category balances on the budget
+  // Uses the balance field directly from each category
   const totalFinalizedAllocations = useMemo(() => {
-    // If we have a valid (non-stale) snapshot, use its current balances
-    if (categoryBalancesSnapshot && !categoryBalancesSnapshot.is_stale) {
-      return Object.values(categoryBalancesSnapshot.balances).reduce(
-        (sum, bal) => sum + (bal?.current ?? 0),
-        0
-      )
-    }
-    // Fallback to stored category balances (less accurate, may be stale)
-    return Object.values(categories).reduce((sum, cat) => sum + cat.balance, 0)
-  }, [categories, categoryBalancesSnapshot])
+    return Object.values(categories).reduce((sum, cat) => sum + (cat.balance ?? 0), 0)
+  }, [categories])
 
   // Sync local allocations when month changes (only if different from current sync)
   useEffect(() => {
@@ -106,8 +105,8 @@ export function useAllocationsPage() {
   const onBudgetTotal = getOnBudgetTotal()
 
   // Calculate current month's already-finalized allocation total
-  const currentMonthFinalizedTotal = currentMonth?.allocations_finalized
-    ? (currentMonth.allocations || []).reduce((sum, a) => sum + a.amount, 0)
+  const currentMonthFinalizedTotal = areAllocationsFinalized
+    ? (currentMonth?.category_balances || []).reduce((sum, cb) => sum + cb.allocated, 0)
     : 0
 
   // Available Now = on-budget total minus all finalized allocations
@@ -132,9 +131,9 @@ export function useAllocationsPage() {
     const allocMap: Record<string, string> = {}
     Object.entries(categories).forEach(([catId, cat]) => {
       if (cat.default_monthly_type === 'percentage') return
-      const existingAlloc = currentMonth.allocations?.find(a => a.category_id === catId)
-      if (existingAlloc) {
-        allocMap[catId] = existingAlloc.amount.toString()
+      const existingBalance = currentMonth.category_balances?.find(cb => cb.category_id === catId)
+      if (existingBalance && existingBalance.allocated > 0) {
+        allocMap[catId] = existingBalance.allocated.toString()
       } else if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
         allocMap[catId] = cat.default_monthly_amount.toString()
       } else {
@@ -145,53 +144,69 @@ export function useAllocationsPage() {
     setIsEditingAppliedAllocations(false)
   }, [currentMonth, categories])
 
-  // Build allocations array including percentage-based categories
-  const buildAllocationsArray = useCallback((): CategoryAllocation[] => {
-    const allocationsArr: CategoryAllocation[] = []
+  // Build allocations data including percentage-based categories
+  const buildAllocationsData = useCallback((): AllocationData => {
+    const allocations: AllocationData = {}
     Object.entries(categories).forEach(([catId, cat]) => {
       const amount = getAllocationAmount(catId, cat)
       if (amount > 0) {
-        allocationsArr.push({ category_id: catId, amount })
+        allocations[catId] = amount
       }
     })
-    return allocationsArr
+    return allocations
   }, [categories, getAllocationAmount])
 
   // Save allocations to database
   const handleSaveAllocations = useCallback(async () => {
+    if (!selectedBudgetId) return
     setError(null)
     setIsSavingAllocations(true)
     try {
-      await saveAllocations(buildAllocationsArray())
+      await saveDraftAllocations(
+        selectedBudgetId,
+        currentYear,
+        currentMonthNumber,
+        buildAllocationsData()
+      )
       setIsEditingAppliedAllocations(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save allocations')
     } finally {
       setIsSavingAllocations(false)
     }
-  }, [saveAllocations, buildAllocationsArray])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, saveDraftAllocations, buildAllocationsData])
 
   // Finalize allocations (saves and finalizes in one operation)
   const handleFinalizeAllocations = useCallback(async () => {
+    if (!selectedBudgetId) return
     setError(null)
     setIsFinalizingAllocations(true)
     try {
-      // Pass allocations directly - no need to save first
-      await finalizeAllocations(buildAllocationsArray())
+      await finalizeAllocations({
+        budgetId: selectedBudgetId,
+        year: currentYear,
+        month: currentMonthNumber,
+        allocations: buildAllocationsData(),
+      })
       setIsEditingAppliedAllocations(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
     } finally {
       setIsFinalizingAllocations(false)
     }
-  }, [finalizeAllocations, buildAllocationsArray])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, finalizeAllocations, buildAllocationsData])
 
   // Delete allocations (clear and unfinalize)
   const handleDeleteAllocations = useCallback(async () => {
+    if (!selectedBudgetId) return
     setError(null)
     setIsDeletingAllocations(true)
     try {
-      await deleteAllocations()
+      await deleteAllocations({
+        budgetId: selectedBudgetId,
+        year: currentYear,
+        month: currentMonthNumber,
+      })
       // Reset local allocations to defaults after deletion
       const allocMap: Record<string, string> = {}
       Object.entries(categories).forEach(([catId, cat]) => {
@@ -209,7 +224,7 @@ export function useAllocationsPage() {
     } finally {
       setIsDeletingAllocations(false)
     }
-  }, [deleteAllocations, categories])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, deleteAllocations, categories])
 
   // Change from currently saved allocations (positive = allocating more, negative = allocating less)
   const draftChangeAmount = currentDraftTotal - currentMonthFinalizedTotal
@@ -231,7 +246,7 @@ export function useAllocationsPage() {
     draftChangeAmount,
     availableAfterApply,
     previousMonthIncome,
-    allocationsFinalized: currentMonth?.allocations_finalized ?? false,
+    allocationsFinalized: areAllocationsFinalized,
 
     // Functions
     getAllocationAmount,
@@ -244,4 +259,3 @@ export function useAllocationsPage() {
     setError,
   }
 }
-

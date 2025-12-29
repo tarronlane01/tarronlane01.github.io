@@ -9,6 +9,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@constants': path.resolve(__dirname, './src/constants'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@firestore': path.resolve(__dirname, './src/data/firestore'),
+      '@queries': path.resolve(__dirname, './src/data/queries'),
+      '@data': path.resolve(__dirname, './src/data'),
+      '@types': path.resolve(__dirname, './src/types'),
     },
   },
   build: {

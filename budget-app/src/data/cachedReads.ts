@@ -8,9 +8,11 @@
  * Use these instead of direct Firestore calls for reads.
  */
 
-import { queryClient, queryKeys } from './queryClient'
-import { readDoc, type FirestoreData } from './firestore/operations'
-import { parseMonthData, type MonthQueryData } from './queries/useMonthQuery'
+import { queryClient, queryKeys, STALE_TIME } from './queryClient'
+import { readDocByPath } from '@firestore'
+import type { FirestoreData } from '@types'
+import { readMonth } from './queries/month'
+import { getPreviousMonth, getNextMonth } from '@utils'
 
 /**
  * Fetch a budget document - uses React Query cache
@@ -25,14 +27,14 @@ export async function fetchBudgetDocument(budgetId: string): Promise<FirestoreDa
   return queryClient.fetchQuery({
     queryKey: [...queryKeys.budget(budgetId), 'raw'] as const,
     queryFn: async () => {
-      const { exists, data } = await readDoc<FirestoreData>(
+      const { exists, data } = await readDocByPath<FirestoreData>(
         'budgets',
         budgetId,
         'fetching raw budget document (React Query cache miss)'
       )
       return exists ? data : null
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME,
   })
 }
 
@@ -47,7 +49,7 @@ export async function fetchBudgetInviteStatus(
   return queryClient.fetchQuery({
     queryKey: ['budgetInvite', budgetId, userId] as const,
     queryFn: async () => {
-      const { exists, data } = await readDoc<{
+      const { exists, data } = await readDocByPath<{
         user_ids?: string[]
         accepted_user_ids?: string[]
         name?: string
@@ -75,8 +77,7 @@ export async function fetchBudgetInviteStatus(
 // CATEGORY BALANCE CALCULATION (optimized walk-back/walk-forward)
 // ============================================================================
 
-import type { CategoryMonthBalance, MonthDocument } from '../types/budget'
-import { getMonthDocId } from './firestore/operations'
+import type { CategoryMonthBalance } from '@types'
 
 /** Result of category balance calculation */
 export interface CategoryBalanceResult {
@@ -91,90 +92,47 @@ interface MonthBalanceData {
   year: number
   month: number
   category_balances?: CategoryMonthBalance[]
-  category_balances_stale?: boolean
-  allocations_finalized?: boolean
-  allocations?: Array<{ category_id: string; amount: number }>
+  is_needs_recalculation?: boolean
+  are_allocations_finalized?: boolean
   expenses?: Array<{ category_id: string; amount: number }>
 }
 
 /**
  * Fetch a single month document for balance calculations
- * Uses React Query cache via the existing month query
+ * Uses readMonth which handles caching and stale resolution.
  *
- * When fetching from Firestore, also caches the full month document
- * so navigation to that month won't require another Firebase read.
+ * Note: Uses resolveStale: true (default) so stale snapshots are resolved on read.
+ * This ensures balance calculations use accurate data.
  */
 async function fetchMonthForBalances(
   budgetId: string,
   year: number,
   month: number
 ): Promise<MonthBalanceData | null> {
-  const monthDocId = getMonthDocId(budgetId, year, month)
+  // Use readMonth which handles caching and resolves stale snapshots
+  const monthDoc = await readMonth(budgetId, year, month, {
+    description: `fetching month for balance calculation (walking ${year}/${month})`,
+  })
 
-  // Try to get from cache first
-  const cached = queryClient.getQueryData<{ month: MonthDocument }>(queryKeys.month(budgetId, year, month))
-  if (cached?.month) {
-    return {
-      year: cached.month.year,
-      month: cached.month.month,
-      category_balances: cached.month.category_balances,
-      category_balances_stale: cached.month.category_balances_stale,
-      allocations_finalized: cached.month.allocations_finalized,
-      allocations: cached.month.allocations,
-      expenses: cached.month.expenses,
-    }
-  }
-
-  // Fetch from Firestore
-  const { exists, data } = await readDoc<FirestoreData>(
-    'months',
-    monthDocId,
-    `fetching month for balance calculation (not in cache, walking ${year}/${month})`
-  )
-
-  if (!exists || !data) {
+  if (!monthDoc) {
     return null
   }
 
-  // Parse and cache the full month document so navigation to this month
-  // won't require another Firebase read
-  const parsedMonth = parseMonthData(data, budgetId, year, month)
-  queryClient.setQueryData<MonthQueryData>(
-    queryKeys.month(budgetId, year, month),
-    { month: parsedMonth }
-  )
-
   // Return just the data needed for balance calculations
   return {
-    year: parsedMonth.year,
-    month: parsedMonth.month,
-    category_balances: parsedMonth.category_balances,
-    category_balances_stale: parsedMonth.category_balances_stale,
-    allocations_finalized: parsedMonth.allocations_finalized,
-    allocations: parsedMonth.allocations,
-    expenses: parsedMonth.expenses,
+    year: monthDoc.year,
+    month: monthDoc.month,
+    category_balances: monthDoc.category_balances,
+    is_needs_recalculation: monthDoc.is_needs_recalculation,
+    are_allocations_finalized: monthDoc.are_allocations_finalized,
+    expenses: monthDoc.expenses,
   }
-}
-
-/**
- * Get previous month's year and month
- */
-function getPreviousMonth(year: number, month: number): { year: number; month: number } {
-  if (month === 1) {
-    return { year: year - 1, month: 12 }
-  }
-  return { year, month: month - 1 }
 }
 
 /**
  * Get next month's year and month
  */
-function getNextMonth(year: number, month: number): { year: number; month: number } {
-  if (month === 12) {
-    return { year: year + 1, month: 1 }
-  }
-  return { year, month: month + 1 }
-}
+// getNextMonth is imported from constants/date
 
 /**
  * Calculate "current" category balances by walking backwards to find a valid starting point.
@@ -204,7 +162,7 @@ export async function calculateCurrentBalances(
   // Step 1: Check current month
   const currentMonthData = await fetchMonthForBalances(budgetId, currentYear, currentMonth)
 
-  if (currentMonthData?.category_balances && !currentMonthData.category_balances_stale) {
+  if (currentMonthData?.category_balances && !currentMonthData.is_needs_recalculation) {
     // Use cached balances directly
     for (const bal of currentMonthData.category_balances) {
       if (categoryIds.includes(bal.category_id)) {
@@ -239,7 +197,7 @@ export async function calculateCurrentBalances(
     if (!prevMonthData) {
       // No more months - start from zero
       foundValidStart = true
-    } else if (prevMonthData.category_balances && !prevMonthData.category_balances_stale) {
+    } else if (prevMonthData.category_balances && !prevMonthData.is_needs_recalculation) {
       // Found a valid month - use its end_balance as our starting point
       foundValidStart = true
       for (const bal of prevMonthData.category_balances) {
@@ -261,11 +219,11 @@ export async function calculateCurrentBalances(
   Object.assign(balances, startingBalances)
 
   for (const monthData of monthsToCompute) {
-    // Add allocations if finalized
-    if (monthData.allocations_finalized && monthData.allocations) {
-      for (const alloc of monthData.allocations) {
-        if (categoryIds.includes(alloc.category_id)) {
-          balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
+    // Add allocations if finalized (from category_balances)
+    if (monthData.are_allocations_finalized && monthData.category_balances) {
+      for (const cb of monthData.category_balances) {
+        if (categoryIds.includes(cb.category_id)) {
+          balances[cb.category_id] = (balances[cb.category_id] || 0) + cb.allocated
         }
       }
     }
@@ -325,11 +283,11 @@ export async function calculateTotalBalances(
       break
     }
 
-    // Add allocations if finalized
-    if (nextMonthData.allocations_finalized && nextMonthData.allocations) {
-      for (const alloc of nextMonthData.allocations) {
-        if (categoryIds.includes(alloc.category_id)) {
-          balances[alloc.category_id] = (balances[alloc.category_id] || 0) + alloc.amount
+    // Add allocations if finalized (from category_balances)
+    if (nextMonthData.are_allocations_finalized && nextMonthData.category_balances) {
+      for (const cb of nextMonthData.category_balances) {
+        if (categoryIds.includes(cb.category_id)) {
+          balances[cb.category_id] = (balances[cb.category_id] || 0) + cb.allocated
         }
       }
     }
@@ -350,50 +308,26 @@ export async function calculateTotalBalances(
 /**
  * Calculate both current and total category balances efficiently.
  *
- * Uses the budget-level snapshot for "total" if available and not stale.
- * Otherwise falls back to walk-forward calculation.
+ * Uses walk-back/walk-forward approach to calculate accurate balances.
  *
  * @param budgetId - Budget to calculate for
  * @param categoryIds - Categories to include
  * @param currentYear - Current year
  * @param currentMonth - Current month (1-12)
- * @param budgetSnapshot - Budget-level snapshot (if available)
+ * @param _unused - Deprecated parameter, kept for backward compatibility
  * @returns { current, total } balances
  */
 export async function calculateCategoryBalances(
   budgetId: string,
   categoryIds: string[],
   currentYear: number,
-  currentMonth: number,
-  budgetSnapshot?: {
-    is_stale: boolean
-    computed_for_year: number
-    computed_for_month: number
-    balances: Record<string, { current: number; total: number }>
-  } | null
+  currentMonth: number
 ): Promise<CategoryBalanceResult> {
   // Calculate current balances (walk backwards if needed)
   const current = await calculateCurrentBalances(budgetId, categoryIds, currentYear, currentMonth)
 
-  // For total: try to use budget snapshot first
-  let total: Record<string, number>
-
-  const snapshotValid = budgetSnapshot &&
-    !budgetSnapshot.is_stale &&
-    budgetSnapshot.computed_for_year === currentYear &&
-    budgetSnapshot.computed_for_month === currentMonth
-
-  if (snapshotValid) {
-    // Use snapshot for total balances
-    total = {}
-    categoryIds.forEach(id => {
-      total[id] = budgetSnapshot.balances[id]?.total ?? current[id] ?? 0
-    })
-  } else {
-    // Walk forward to calculate total
-    total = await calculateTotalBalances(budgetId, categoryIds, current, currentYear, currentMonth)
-  }
+  // Walk forward to calculate total
+  const total = await calculateTotalBalances(budgetId, categoryIds, current, currentYear, currentMonth)
 
   return { current, total }
 }
-

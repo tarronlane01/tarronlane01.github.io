@@ -163,7 +163,7 @@ function Budget() {
         <BudgetTabs
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          allocationsFinalized={currentMonth?.allocations_finalized}
+          allocationsFinalized={currentMonth?.are_allocations_finalized}
         />
 
         {activeTab === 'income' && <IncomeSection />}

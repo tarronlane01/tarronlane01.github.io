@@ -20,7 +20,17 @@
     "baseUrl": ".",
     "paths": {
       "@constants": ["src/constants"],
-      "@constants/*": ["src/constants/*"]
+      "@constants/*": ["src/constants/*"],
+      "@utils": ["src/utils"],
+      "@utils/*": ["src/utils/*"],
+      "@firestore": ["src/data/firestore"],
+      "@firestore/*": ["src/data/firestore/*"],
+      "@queries": ["src/data/queries"],
+      "@queries/*": ["src/data/queries/*"],
+      "@data": ["src/data"],
+      "@data/*": ["src/data/*"],
+      "@types": ["src/types"],
+      "@types/*": ["src/types/*"]
     },
 
     /* Linting */

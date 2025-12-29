@@ -398,8 +398,8 @@ export function CategoryAutocomplete({
           maxHeight: '250px',
           overflowY: 'auto',
         }}>
-          {groupedSuggestions.map((group) => (
-            <div key={group.groupId || 'ungrouped'}>
+          {groupedSuggestions.map((group, groupIndex) => (
+            <div key={`group-${groupIndex}`}>
               {group.groupName && (
                 <div style={{
                   padding: '0.4rem 0.8rem',

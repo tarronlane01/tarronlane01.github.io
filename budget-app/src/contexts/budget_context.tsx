@@ -20,7 +20,6 @@ import useFirebaseAuth from '../hooks/useFirebaseAuth'
 import {
   useUserQuery,
   useAccessibleBudgetsQuery,
-  queryClient,
   fetchBudgetInviteStatus,
 } from '../data'
 
@@ -40,13 +39,13 @@ import type {
   IncomeTransaction,
   ExpenseTransaction,
   PayeesDocument,
-  CategoryAllocation,
   CategoryMonthBalance,
+  AccountMonthBalance,
   MonthDocument,
   Budget,
   BudgetInvite,
   BudgetSummary,
-} from '../types/budget'
+} from '@types'
 
 // Re-export all types so existing imports continue to work
 export type {
@@ -64,8 +63,8 @@ export type {
   IncomeTransaction,
   ExpenseTransaction,
   PayeesDocument,
-  CategoryAllocation,
   CategoryMonthBalance,
+  AccountMonthBalance,
   MonthDocument,
   Budget,
   BudgetInvite,
@@ -309,8 +308,10 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // CACHE UTILITIES
   // ==========================================================================
 
+  // Clear localStorage cache - should be followed by page reload
+  // Note: Don't call queryClient.clear() first - the async persister may write back
+  // to localStorage after we clear it. Just clear localStorage and reload.
   const clearCache = useCallback(() => {
-    queryClient.clear()
     localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
   }, [])
 

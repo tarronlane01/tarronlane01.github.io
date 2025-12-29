@@ -1,0 +1,50 @@
+/**
+ * Month Mutations
+ *
+ * Centralized month mutation operations organized by feature:
+ * - allocations/ - Allocation operations (save draft, finalize, delete)
+ * - income/ - Income transaction operations (add, update, delete)
+ * - expenses/ - Expense transaction operations (add, update, delete)
+ *
+ * Core utilities:
+ * - useWriteMonthData - Core hook for writing month documents
+ * - writeMonthData - Utility function for non-React contexts
+ */
+
+// ============================================================================
+// CORE UTILITIES
+// ============================================================================
+
+// Utility functions (for non-React contexts like inside mutationFns)
+export { writeMonthData } from './useWriteMonthData'
+
+// Core hook
+export { useWriteMonthData, type WriteMonthParams } from './useWriteMonthData'
+
+// Month creation (called when viewing a month for the first time)
+export { createMonth } from './createMonth'
+
+// ============================================================================
+// FEATURE MUTATIONS
+// ============================================================================
+
+// Allocation mutations
+export {
+  useSaveDraftAllocations,
+  useFinalizeAllocations,
+  useDeleteAllocations,
+} from './allocations'
+
+// Income mutations
+export {
+  useAddIncome,
+  useUpdateIncome,
+  useDeleteIncome,
+} from './income'
+
+// Expense mutations
+export {
+  useAddExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+} from './expenses'
