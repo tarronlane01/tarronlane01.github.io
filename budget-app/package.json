@@ -10,7 +10,7 @@
     "lint:file-length": "bash scripts/check-file-length.sh",
     "precommit": "npm run lint:file-length && npm run lint",
     "preview": "vite preview",
-    "publish": "f() { if [ \"$1\" = \"-m\" ]; then shift; fi; msg=\"$*\"; if [ -z \"$msg\" ]; then echo 'Error: Please provide a commit message. Usage: npm run publish -- -m \"your message\"' && exit 1; fi; npm run precommit && npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m \"$msg\") && git push; }; f"
+    "publish": "echo 'Use: ./scripts/publish.sh \"your message\"' && exit 1"
   },
   "dependencies": {
     "@tanstack/query-async-storage-persister": "^5.90.14",
