@@ -7,21 +7,18 @@
  * Handles:
  * - Cache-first reads (React Query cache)
  * - Firestore fetches when not cached
- * - Automatic triggering of recalculation when is_needs_recalculation is true
  *
- * RECALCULATION:
- * When a month has is_needs_recalculation = true and triggerRecalc is enabled,
- * this module calls triggerRecalculation which handles the full walk-back/walk-forward
- * process to ensure all affected months are properly recalculated.
+ * NOTE: Recalculation is NOT triggered by this module.
+ * Recalculation is only triggered when viewing the Balances tab,
+ * which shows the BalancesSection component.
  *
- * See: recalculation/triggerRecalculation.ts
+ * See: components/budget/Month/BalancesSection.tsx
  */
 
 import type { MonthDocument, FirestoreData } from '@types'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { queryClient, queryKeys, STALE_TIME } from '@data/queryClient'
-import { triggerRecalculation } from '@data/recalculation/triggerRecalculation'
 
 // ============================================================================
 // TYPES
@@ -35,9 +32,7 @@ export interface ReadMonthOptions {
   /** Description for logging */
   description?: string
   /**
-   * Whether to trigger recalculation if is_needs_recalculation is true.
-   * Default: true
-   * Set to false when calling from within recalculation logic to avoid infinite loops.
+   * @deprecated No longer used - recalculation is handled by BalancesSection
    */
   triggerRecalc?: boolean
 }
@@ -77,13 +72,7 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
  * Read a month document.
  *
  * This is the main entry point for all month reads.
- * - Uses React Query's fetchQuery (automatic cache check + fetch)
- * - Automatically triggers recalculation if is_needs_recalculation is true
- *
- * When recalculation is triggered, this function will:
- * 1. Call triggerRecalculation with the target month ordinal
- * 2. Re-read the month from cache (which should now be recalculated)
- * 3. Return the recalculated month
+ * Uses React Query's fetchQuery (automatic cache check + fetch).
  *
  * @param budgetId - Budget ID
  * @param year - Year
@@ -97,7 +86,6 @@ export async function readMonth(
   month: number,
   options?: ReadMonthOptions
 ): Promise<MonthDocument | null> {
-  const opts: ReadMonthOptions = { triggerRecalc: true, ...options }
   const monthDocId = getMonthDocId(budgetId, year, month)
 
   // Use React Query's fetchQuery - automatically checks cache and fetches if needed
@@ -109,7 +97,7 @@ export async function readMonth(
       const { exists, data } = await readDocByPath<FirestoreData>(
         'months',
         monthDocId,
-        opts.description ?? `reading month ${year}/${month}`
+        options?.description ?? `reading month ${year}/${month}`
       )
 
       if (!exists || !data) {
@@ -122,32 +110,6 @@ export async function readMonth(
     staleTime: STALE_TIME,
   })
 
-  const monthDoc = result?.month ?? null
-
-  if (!monthDoc) {
-    return null
-  }
-
-  // If month needs recalculation and triggering is enabled, run the recalculation flow
-  if (opts.triggerRecalc && monthDoc.is_needs_recalculation) {
-    const monthOrdinal = getYearMonthOrdinal(year, month)
-
-    console.log(`[readMonth] Month ${monthOrdinal} needs recalculation, triggering...`)
-
-    // Trigger recalculation for this specific month
-    // This will recalculate from the last valid month up to this month
-    await triggerRecalculation(budgetId, { targetMonthOrdinal: monthOrdinal })
-
-    // Re-read from cache - should now be recalculated
-    // Use triggerRecalc: false to avoid infinite loop
-    const recalculated = await readMonth(budgetId, year, month, {
-      triggerRecalc: false,
-      description: 'reading recalculated month',
-    })
-
-    return recalculated
-  }
-
-  return monthDoc
+  return result?.month ?? null
 }
 

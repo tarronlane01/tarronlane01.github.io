@@ -10,6 +10,8 @@ import { queryKeys, readMonthForEdit } from '@data'
 import type { MonthDocument, ExpenseTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
 import { useWriteMonthData } from '..'
+import { retotalMonth } from '../retotalMonth'
+import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 
 export function useAddExpense() {
   const queryClient = useQueryClient()
@@ -42,14 +44,18 @@ export function useAddExpense() {
     if (cleared !== undefined) newExpense.cleared = cleared
 
     const updatedExpenses = [...(monthData.expenses || []), newExpense]
-    const updatedMonth: MonthDocument = {
+
+    // Re-total to update all derived values (totals, account_balances, category spent, etc.)
+    const updatedMonth: MonthDocument = retotalMonth({
       ...monthData,
       expenses: updatedExpenses,
-      total_expenses: updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0),
       updated_at: new Date().toISOString(),
-    }
+    })
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'add expense' })
+
+    // Update budget's account balance (expense decreases balance)
+    await updateBudgetAccountBalances(budgetId, [{ accountId, delta: -amount }])
 
     // Save payee if new
     if (payee?.trim()) {

@@ -10,6 +10,8 @@ import { queryKeys, readMonthForEdit } from '@data'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
 import { useWriteMonthData } from '..'
+import { retotalMonth } from '../retotalMonth'
+import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 
 export function useUpdateIncome() {
   const queryClient = useQueryClient()
@@ -28,6 +30,11 @@ export function useUpdateIncome() {
   ) => {
     const monthData = await readMonthForEdit(budgetId, year, month, 'update income')
 
+    // Find old income to calculate delta
+    const oldIncome = (monthData.income || []).find(i => i.id === incomeId)
+    const oldAmount = oldIncome?.amount ?? 0
+    const oldAccountId = oldIncome?.account_id ?? accountId
+
     const updatedIncome: IncomeTransaction = {
       id: incomeId,
       amount,
@@ -40,14 +47,26 @@ export function useUpdateIncome() {
 
     const updatedIncomeList = (monthData.income || []).map(inc => inc.id === incomeId ? updatedIncome : inc)
 
-    const updatedMonth: MonthDocument = {
+    // Re-total to update all derived values (totals, account_balances, etc.)
+    const updatedMonth: MonthDocument = retotalMonth({
       ...monthData,
       income: updatedIncomeList,
-      total_income: updatedIncomeList.reduce((sum, inc) => sum + inc.amount, 0),
       updated_at: new Date().toISOString(),
-    }
+    })
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update income' })
+
+    // Update budget's account balance
+    // If account changed: remove from old, add to new
+    // If same account: apply delta
+    if (oldAccountId === accountId) {
+      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount - oldAmount }])
+    } else {
+      await updateBudgetAccountBalances(budgetId, [
+        { accountId: oldAccountId, delta: -oldAmount },
+        { accountId, delta: amount },
+      ])
+    }
 
     // Save payee if new
     if (payee?.trim()) {

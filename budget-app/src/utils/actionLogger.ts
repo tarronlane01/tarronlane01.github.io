@@ -10,7 +10,7 @@
 
 import { featureFlags } from '@constants/featureFlags'
 
-type ActionType = 'CLICK' | 'CHANGE' | 'SUBMIT' | 'SELECT' | 'TOGGLE' | 'EXPAND' | 'COLLAPSE' | 'NAVIGATE' | 'OPEN' | 'CLOSE'
+type ActionType = 'CLICK' | 'CHANGE' | 'SUBMIT' | 'SELECT' | 'TOGGLE' | 'EXPAND' | 'COLLAPSE' | 'NAVIGATE' | 'OPEN' | 'CLOSE' | 'DRAG_START' | 'DRAG_END'
 
 interface ActionContext {
   /** The new value (for form changes) */

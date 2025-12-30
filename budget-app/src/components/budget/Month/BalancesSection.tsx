@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useBudget, type Category, type BalancesView } from '../../../contexts/budget_context'
 import { useBudgetData, useAllocationsPage, useBudgetMonth } from '../../../hooks'
@@ -16,6 +16,8 @@ import {
 import { colors } from '../../../styles/shared'
 import { AccountBalancesView } from './AccountBalances'
 import { BalanceGroupBlock } from './CategoryBalances'
+import { triggerRecalculation } from '../../../data/recalculation/triggerRecalculation'
+import { queryClient, queryKeys } from '../../../data/queryClient'
 
 const VALID_VIEWS: BalancesView[] = ['categories', 'accounts']
 
@@ -25,6 +27,42 @@ export function BalancesSection() {
   const { month: currentMonth, isLoading: monthLoading } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Recalculation state
+  const [isRecalculating, setIsRecalculating] = useState(false)
+  const hasTriggeredRecalc = useRef(false)
+
+  // Trigger recalculation when viewing Balances tab and month needs it
+  useEffect(() => {
+    if (!selectedBudgetId || !currentMonth) return
+    if (!currentMonth.is_needs_recalculation) {
+      hasTriggeredRecalc.current = false
+      return
+    }
+    if (hasTriggeredRecalc.current || isRecalculating) return
+
+    // Trigger full budget recalculation starting from the current month
+    hasTriggeredRecalc.current = true
+    setIsRecalculating(true)
+
+    // Build ordinal for the current month (YYYYMM format)
+    const triggeringMonthOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
+    console.log(`[BalancesSection] Month needs recalculation, triggering from ${triggeringMonthOrdinal}...`)
+
+    triggerRecalculation(selectedBudgetId, { triggeringMonthOrdinal })
+      .then(() => {
+        // Invalidate month query to refetch fresh data
+        queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
+        // Also invalidate budget query for updated account balances
+        queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
+      })
+      .catch((err) => {
+        console.error('[BalancesSection] Recalculation failed:', err)
+      })
+      .finally(() => {
+        setIsRecalculating(false)
+      })
+  }, [selectedBudgetId, currentMonth?.is_needs_recalculation, currentYear, currentMonthNumber, isRecalculating])
 
   // Get initial view: URL takes precedence, then context's last view
   const getInitialView = (): BalancesView => {
@@ -67,6 +105,7 @@ export function BalancesSection() {
     draftChangeAmount,
     availableAfterApply,
     previousMonthIncome,
+    currentMonthIncome,
     allocationsFinalized,
     getAllocationAmount,
     handleAllocationChange,
@@ -98,8 +137,13 @@ export function BalancesSection() {
     return result
   }, [categories])
 
-  // Show full-page overlay when saving or deleting allocations
-  const showLoadingOverlay = isFinalizingAllocations || isDeletingAllocations
+  // Show full-page overlay when saving, deleting allocations, or recalculating
+  const showLoadingOverlay = isFinalizingAllocations || isDeletingAllocations || isRecalculating
+  const loadingMessage = isRecalculating
+    ? 'Recalculating balances...'
+    : isFinalizingAllocations
+    ? 'Applying allocations...'
+    : 'Deleting allocations...'
 
   // Determine if we're in draft mode (not finalized, or editing applied allocations)
   const isDraftMode = !allocationsFinalized || isEditingAppliedAllocations
@@ -221,7 +265,7 @@ export function BalancesSection() {
     }}>
       <LoadingOverlay
         isVisible={showLoadingOverlay}
-        message={isDeletingAllocations ? 'Deleting allocations...' : 'Saving allocations...'}
+        message={loadingMessage}
       />
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
@@ -230,8 +274,10 @@ export function BalancesSection() {
       <FourStatGrid
         items={currentView === 'categories' ? [
           {
-            label: 'Available Now',
-            value: <span style={{ color: getBalanceColor(availableNow) }}>{formatCurrency(availableNow)}</span>,
+            label: isDraftMode ? 'Available Now' : 'Month Income',
+            value: isDraftMode
+              ? <span style={{ color: getBalanceColor(availableNow) }}>{formatCurrency(availableNow)}</span>
+              : <span style={{ color: colors.success }}>+{formatCurrency(currentMonthIncome)}</span>,
           },
           {
             label: isDraftMode ? 'Draft Allocations' : 'Allocated',
@@ -257,8 +303,10 @@ export function BalancesSection() {
             value: <span style={{ color: colors.error }}>-{formatCurrency(balanceTotals.spent)}</span>,
           },
           {
-            label: 'Available After',
-            value: <span style={{ color: getBalanceColor(availableAfterApply) }}>{formatCurrency(availableAfterApply)}</span>,
+            label: isDraftMode ? 'Available If Applied' : 'Net Change',
+            value: isDraftMode
+              ? <span style={{ color: getBalanceColor(availableAfterApply) }}>{formatCurrency(availableAfterApply)}</span>
+              : <span style={{ color: getBalanceColor(balanceTotals.allocated - balanceTotals.spent) }}>{formatCurrency(balanceTotals.allocated - balanceTotals.spent)}</span>,
           },
         ] : [
           {

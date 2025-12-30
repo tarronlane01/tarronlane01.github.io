@@ -6,12 +6,15 @@
  *
  * Uses writeMonthData which automatically marks future months and budget
  * as needing recalculation.
+ *
+ * Also updates budget's category balances and total_available for immediate UI feedback.
  */
 
 import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
 import { calculateCategoryBalancesForMonth, type AllocationData } from '.'
+import { updateBudgetCategoryBalances } from '../../budget/categories'
 
 export interface FinalizeAllocationsParams {
   budgetId: string
@@ -31,6 +34,14 @@ export function useFinalizeAllocations() {
     // Get category IDs from existing balances or allocations
     const categoryIds = monthData.category_balances?.map(cb => cb.category_id)
       ?? Object.keys(allocations)
+
+    // Calculate how much was already allocated (if previously finalized)
+    const previousAllocations: Record<string, number> = {}
+    if (monthData.are_allocations_finalized && monthData.category_balances) {
+      for (const cb of monthData.category_balances) {
+        previousAllocations[cb.category_id] = cb.allocated
+      }
+    }
 
     const categoryBalances = categoryIds.length > 0
       ? calculateCategoryBalancesForMonth(monthData, categoryIds, allocations, true)
@@ -54,6 +65,16 @@ export function useFinalizeAllocations() {
       month: updatedMonth,
       description: 'finalize allocations',
     })
+
+    // Calculate deltas for budget category balances
+    // delta = newAllocation - previousAllocation
+    const categoryDeltas = categoryIds.map(catId => ({
+      categoryId: catId,
+      delta: (allocations[catId] ?? 0) - (previousAllocations[catId] ?? 0),
+    }))
+
+    // Update budget's category balances and total_available for immediate UI feedback
+    await updateBudgetCategoryBalances(budgetId, categoryDeltas)
 
     return { updatedMonth }
   }

@@ -104,7 +104,7 @@ export function DraftEquation({
       </span>
       <span style={{ opacity: 0.4 }}>=</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-        <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>Available After</span>
+        <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>{allocationsFinalized ? 'Available After' : 'If Applied'}</span>
         <span style={{ color: getBalanceColor(availableAfterApply), fontWeight: 600 }}>{formatCurrency(availableAfterApply)}</span>
       </span>
     </div>
@@ -189,8 +189,17 @@ export function BalanceGroupBlock({
           letterSpacing: '0.05em',
         }}>
           <span>Category</span>
-          <span style={{ textAlign: isDraftMode ? 'center' : 'right' }}>Allocated</span>
-          <span style={{ textAlign: 'right' }}>Start</span>
+          {isDraftMode ? (
+            <>
+              <span style={{ textAlign: 'center' }}>Allocated</span>
+              <span style={{ textAlign: 'right' }}>Start</span>
+            </>
+          ) : (
+            <>
+              <span style={{ textAlign: 'right' }}>Start</span>
+              <span style={{ textAlign: 'right' }}>Allocated</span>
+            </>
+          )}
           <span style={{ textAlign: 'right' }}>Spent</span>
           <span style={{ textAlign: 'right' }}>End</span>
         </div>
@@ -364,54 +373,60 @@ function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIn
         )}
       </div>
 
-      {/* Allocation column */}
+      {/* Draft mode: Allocated then Start. Finalized mode: Start then Allocated */}
       {isDraftMode ? (
-        <div>
-          {isPercentageBased ? (
-            <div style={{ textAlign: 'center', fontSize: '0.8rem' }}>
-              <span style={{ opacity: 0.5 }}>{formatCurrency(previousMonthIncome)} × </span>
-              <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
-              <span style={{ display: 'block', marginTop: '0.15rem' }}>
-                <span style={{ opacity: 0.5 }}>= </span>
-                <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
-              </span>
-            </div>
-          ) : (
-            <input
-              type="text"
-              inputMode="decimal"
-              value={displayValue ? `$${displayValue}` : ''}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d.]/g, '')
-                onAllocationChange(raw)
-              }}
-              placeholder="$0.00"
-              style={{
-                width: '100%',
-                padding: '0.4rem 0.5rem',
-                borderRadius: '4px',
-                border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-                background: 'color-mix(in srgb, currentColor 5%, transparent)',
-                fontSize: '0.9rem',
-                color: 'inherit',
-                boxSizing: 'border-box',
-              }}
-            />
-          )}
-        </div>
+        <>
+          <div>
+            {isPercentageBased ? (
+              <div style={{ textAlign: 'center', fontSize: '0.8rem' }}>
+                <span style={{ opacity: 0.5 }}>{formatCurrency(previousMonthIncome)} × </span>
+                <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+                <span style={{ display: 'block', marginTop: '0.15rem' }}>
+                  <span style={{ opacity: 0.5 }}>= </span>
+                  <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+                </span>
+              </div>
+            ) : (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayValue ? `$${displayValue}` : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^\d.]/g, '')
+                  onAllocationChange(raw)
+                }}
+                placeholder="$0.00"
+                style={{
+                  width: '100%',
+                  padding: '0.4rem 0.5rem',
+                  borderRadius: '4px',
+                  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
+                  fontSize: '0.9rem',
+                  color: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+            )}
+          </div>
+          <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
+            {formatCurrency(balance.start_balance)}
+          </span>
+        </>
       ) : (
-        <span style={{
-          textAlign: 'right',
-          fontSize: '0.9rem',
-          color: balance.allocated > 0 ? colors.success : 'inherit',
-        }}>
-          {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
-        </span>
+        <>
+          <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
+            {formatCurrency(balance.start_balance)}
+          </span>
+          <span style={{
+            textAlign: 'right',
+            fontSize: '0.9rem',
+            color: balance.allocated > 0 ? colors.success : 'inherit',
+          }}>
+            {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+          </span>
+        </>
       )}
-
-      <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
-        {formatCurrency(balance.start_balance)}
-      </span>
       <span style={{
         textAlign: 'right',
         fontSize: '0.9rem',

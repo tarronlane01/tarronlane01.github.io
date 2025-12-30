@@ -57,10 +57,36 @@ function Budget() {
   const {
     month: currentMonth,
     isLoading: monthLoading,
+    error: monthError,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
   const [error, setError] = useState<string | null>(null)
   const urlInitializedRef = useRef(false)
+
+  // Handle "month too far in future" error - auto-navigate to max allowed month
+  useEffect(() => {
+    if (!monthError) return
+
+    const errorMsg = monthError.message || ''
+    if (errorMsg.includes('months in the future') || errorMsg.includes('Refusing to create month')) {
+      console.log('[Budget] Month too far in future, navigating to max allowed month')
+
+      // Calculate max allowed month (3 months from now)
+      const now = new Date()
+      let maxYear = now.getFullYear()
+      let maxMonth = now.getMonth() + 1 + 3 // 3 months ahead
+
+      while (maxMonth > 12) {
+        maxMonth -= 12
+        maxYear += 1
+      }
+
+      // Navigate to max allowed month
+      setCurrentYear(maxYear)
+      setCurrentMonthNumber(maxMonth)
+      setError(`Cannot navigate to ${currentYear}/${currentMonthNumber} - redirected to ${maxYear}/${maxMonth}`)
+    }
+  }, [monthError, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber])
 
   // Initialize from URL params on mount, fallback to context's last active tab
   const [activeTab, setActiveTabLocal] = useState<BudgetTab>(() => {

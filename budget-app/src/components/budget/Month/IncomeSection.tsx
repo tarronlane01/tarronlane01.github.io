@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
@@ -11,7 +11,7 @@ import { IncomeForm, IncomeItem, IncomeTableHeader } from '../Income'
 import { logUserAction } from '@utils'
 
 export function IncomeSection() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
+  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups } = useBudgetData(selectedBudgetId, currentUserId)
   const {
     month: currentMonth,
@@ -25,6 +25,19 @@ export function IncomeSection() {
   const [error, setError] = useState<string | null>(null)
   const [showAddIncome, setShowAddIncome] = useState(false)
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+
+  // Track previous month to detect navigation
+  const prevMonthRef = useRef({ year: currentYear, month: currentMonthNumber })
+
+  // Close any open forms when navigating to a different month
+  useEffect(() => {
+    const prev = prevMonthRef.current
+    if (prev.year !== currentYear || prev.month !== currentMonthNumber) {
+      setShowAddIncome(false)
+      setEditingIncomeId(null)
+      prevMonthRef.current = { year: currentYear, month: currentMonthNumber }
+    }
+  }, [currentYear, currentMonthNumber])
 
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddIncome || editingIncomeId !== null
@@ -64,9 +77,21 @@ export function IncomeSection() {
   function handleAddIncome(amount: number, accountId: string, date: string, payee?: string, description?: string) {
     setError(null)
     setShowAddIncome(false)
-    addIncome(amount, accountId, date, payee, description).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to add income')
-    })
+
+    // Parse the date to determine which month this income belongs to
+    const [incomeYear, incomeMonth] = date.split('-').map(Number)
+
+    addIncome(amount, accountId, date, payee, description)
+      .then(() => {
+        // Navigate to the target month if different from current view
+        if (incomeYear !== currentYear || incomeMonth !== currentMonthNumber) {
+          setCurrentYear(incomeYear)
+          setCurrentMonthNumber(incomeMonth)
+        }
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to add income')
+      })
   }
 
   function handleUpdateIncome(incomeId: string, amount: number, accountId: string, date: string, payee?: string, description?: string) {

@@ -97,7 +97,7 @@ export function TransactionForm({
   initialData, defaultAccountId, defaultDate, config,
   onSubmit, onCancel, onDelete, extraContent,
 }: TransactionFormProps) {
-  const { isMedium, isMobile } = useScreenWidth()
+  const { isWide } = useScreenWidth()
   const {
     showCategory = false, showCleared = false,
     accountLabel = 'Account', payeePlaceholder = 'Payee name',
@@ -183,7 +183,7 @@ export function TransactionForm({
     </div>
   )
 
-  const mobileButtonGroup = (
+  const stackedButtonGroup = (
     <FormButtonGroup>
       <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
       <Button type="button" variant="secondary" actionName="Cancel Transaction Form" onClick={onCancel}>Cancel</Button>
@@ -191,8 +191,11 @@ export function TransactionForm({
     </FormButtonGroup>
   )
 
-  // Mobile layout
-  if (isMobile) {
+  const hasCategory = showCategory && categories && categoryGroups
+  const inputStyle = { fontSize: '0.85rem', padding: '0.5rem' }
+
+  // Stacked layout (default) - one field per line, clean and predictable
+  if (!isWide) {
     return (
       <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -214,64 +217,30 @@ export function TransactionForm({
           </FormField>
           {showCleared && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Checkbox id="txn-cleared-mobile" checked={cleared} onChange={(e) => setCleared(e.target.checked)} />
-              <label htmlFor="txn-cleared-mobile" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>Cleared (appeared in bank account)</label>
+              <Checkbox id="txn-cleared-stacked" checked={cleared} onChange={(e) => setCleared(e.target.checked)} />
+              <label htmlFor="txn-cleared-stacked" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>Cleared (appeared in bank account)</label>
             </div>
           )}
           {extraContent}
         </div>
-        {mobileButtonGroup}
+        {stackedButtonGroup}
       </FormWrapper>
     )
   }
 
-  const hasCategory = showCategory && categories && categoryGroups
-  const inputStyle = { fontSize: '0.85rem', padding: '0.5rem' }
-
-  // Medium layout (two rows) - use same grid for both rows to align columns
-  if (isMedium) {
-    // With category: 4 columns (Date | Payee | Category | Account)
-    // Without category: 3 columns (Date | Payee | Account)
-    const mediumCols = hasCategory ? '6rem 1fr 1fr 1fr' : '6rem 1fr 1fr'
-    const descriptionSpan = hasCategory ? 2 : 1 // Description spans Category + Account columns (minus Clr/buttons)
-
-    return (
-      <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: mediumCols, gap: '0.75rem', alignItems: 'end' }}>
-          <FormField label="Date" htmlFor="txn-date">
-            <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
-          </FormField>
-          <FormField label="Payee" htmlFor="txn-payee">
-            <PayeeAutocomplete id="txn-payee" value={payee} onChange={setPayee} payees={payees} placeholder={payeePlaceholder} />
-          </FormField>
-          {categoryField}
-          <FormField label={accountLabel} htmlFor="txn-account">{accountSelect}</FormField>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: mediumCols, gap: '0.75rem', alignItems: 'end', marginTop: '0.75rem' }}>
-          <FormField label="Amount" htmlFor="txn-amount">
-            <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
-          </FormField>
-          <FormField label="Description" htmlFor="txn-description" style={{ gridColumn: `span ${descriptionSpan}` }}>
-            <TextInput id="txn-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={descriptionPlaceholder} style={inputStyle} />
-          </FormField>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end', justifyContent: 'flex-end' }}>
-            {clearedCheckbox}
-            {inlineActionButtons}
-          </div>
-        </div>
-        {extraContent}
-      </FormWrapper>
-    )
-  }
-
-  // Wide layout (single row)
+  // Wide layout (single row) - only when there's plenty of room (>= 1400px)
+  // Use minmax() for consistent column sizing
   const wideGridCols = hasCategory
-    ? (showCleared ? '6rem 1fr 1fr 1fr 6rem 1fr auto auto' : '6rem 1fr 1fr 1fr 6rem 1fr auto')
-    : (showCleared ? '6rem 1fr 1fr 6rem 1fr auto auto' : '6rem 1fr 1fr 6rem 1fr auto')
+    ? (showCleared
+        ? '6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 6rem minmax(10rem, 2fr) auto auto'
+        : '6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 6rem minmax(10rem, 2fr) auto')
+    : (showCleared
+        ? '6rem minmax(10rem, 1fr) minmax(10rem, 1fr) 6rem minmax(12rem, 2fr) auto auto'
+        : '6rem minmax(10rem, 1fr) minmax(10rem, 1fr) 6rem minmax(12rem, 2fr) auto')
 
   return (
     <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
-      <div style={{ display: 'grid', gridTemplateColumns: wideGridCols, gap: '0.75rem', alignItems: 'end' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: wideGridCols, gap: '1rem', alignItems: 'end' }}>
         <FormField label="Date" htmlFor="txn-date">
           <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
         </FormField>

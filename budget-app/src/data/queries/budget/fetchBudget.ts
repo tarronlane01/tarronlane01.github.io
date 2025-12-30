@@ -36,6 +36,7 @@ interface BudgetDocument {
   account_groups: FirestoreData
   categories: FirestoreData
   category_groups: FirestoreData[]
+  total_available?: number
   is_needs_recalculation?: boolean
   created_at?: string
   updated_at?: string
@@ -182,6 +183,22 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
   const categories = parseCategories(data.categories)
   const categoryGroups = parseCategoryGroups(data.category_groups)
 
+  // Get total_available - either from Firestore (after recalc) or calculate it
+  // After recalculation, updatedData should have it. Otherwise use data value.
+  let totalAvailable = data.total_available ?? 0
+
+  // If we just recalculated, re-read to get the updated total_available
+  if (isNeedsRecalculation) {
+    const { data: finalData } = await readDocByPath<BudgetDocument>(
+      'budgets',
+      budgetId,
+      'reading budget total_available after recalculation'
+    )
+    if (finalData?.total_available !== undefined) {
+      totalAvailable = finalData.total_available
+    }
+  }
+
   return {
     budget: {
       id: budgetId,
@@ -194,6 +211,7 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
       account_groups: accountGroups,
       categories,
       category_groups: categoryGroups,
+      total_available: totalAvailable,
       is_needs_recalculation: false,
     },
     accounts,

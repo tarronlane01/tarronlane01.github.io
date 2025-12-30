@@ -187,7 +187,7 @@ function SettingsTests() {
   }
 
   async function runSingleTest(name: string) {
-    logUserAction('CLICK', 'Run Security Test', { testName: name })
+    logUserAction('CLICK', 'Run Security Test', { details: name })
     const existingTest = testResults.find(t => t.name === name)
     if (!existingTest) {
       // Add it to results if not present

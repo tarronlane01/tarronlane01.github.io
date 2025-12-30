@@ -63,7 +63,7 @@ function SettingsUsers() {
       ? 'Are you sure you want to revoke this user\'s access? They will lose access to this budget.'
       : 'Are you sure you want to cancel this invitation?'
 
-    logUserAction('CLICK', hasAccepted ? 'Revoke User Access' : 'Cancel User Invite', { userId: userIdToRevoke })
+    logUserAction('CLICK', hasAccepted ? 'Revoke User Access' : 'Cancel User Invite', { details: `userId: ${userIdToRevoke}` })
     if (!confirm(message)) return
 
     setError(null)

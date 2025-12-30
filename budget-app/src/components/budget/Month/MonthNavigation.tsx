@@ -12,16 +12,43 @@ interface MonthNavigationProps {
   onNextMonth: () => void
 }
 
+/**
+ * Get the maximum allowed month (3 months from now)
+ */
+function getMaxAllowedMonth(): { year: number; month: number } {
+  const now = new Date()
+  let year = now.getFullYear()
+  let month = now.getMonth() + 1 + 3 // 3 months ahead
+
+  while (month > 12) {
+    month -= 12
+    year += 1
+  }
+
+  return { year, month }
+}
+
 export function MonthNavigation({
   isLoading,
   onPreviousMonth,
   onNextMonth,
 }: MonthNavigationProps) {
-  const { currentYear, currentMonthNumber, isAdmin, selectedBudgetId, currentUserId } = useBudget()
+  const {
+    currentYear,
+    currentMonthNumber,
+    isAdmin,
+    selectedBudgetId,
+    currentUserId,
+    setCurrentYear,
+    setCurrentMonthNumber,
+  } = useBudget()
   const { budget: currentBudget } = useBudgetData(selectedBudgetId, currentUserId)
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
   const [showMonthMenu, setShowMonthMenu] = useState(false)
+  const [showMonthPicker, setShowMonthPicker] = useState(false)
+  const [pickerYear, setPickerYear] = useState(currentYear)
+  const [pickerMonth, setPickerMonth] = useState(currentMonthNumber)
   const monthMenuRef = useRef<HTMLDivElement>(null)
 
   // Close month menu when clicking outside
@@ -30,11 +57,44 @@ export function MonthNavigation({
     function handleClickOutside(e: MouseEvent) {
       if (monthMenuRef.current && !monthMenuRef.current.contains(e.target as Node)) {
         setShowMonthMenu(false)
+        setShowMonthPicker(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showMonthMenu])
+
+  // Reset picker values when opening
+  useEffect(() => {
+    if (showMonthPicker) {
+      setPickerYear(currentYear)
+      setPickerMonth(currentMonthNumber)
+    }
+  }, [showMonthPicker, currentYear, currentMonthNumber])
+
+  function handleGoToMonth() {
+    const maxAllowed = getMaxAllowedMonth()
+    let targetYear = pickerYear
+    let targetMonth = pickerMonth
+
+    // Check if selected month is too far in the future
+    const selectedMonthsFromNow = (targetYear - new Date().getFullYear()) * 12 +
+      (targetMonth - (new Date().getMonth() + 1))
+    const maxMonthsFromNow = 3
+
+    if (selectedMonthsFromNow > maxMonthsFromNow) {
+      // Clamp to max allowed
+      targetYear = maxAllowed.year
+      targetMonth = maxAllowed.month
+      console.log(`[MonthNavigation] Clamping to max allowed month: ${targetYear}/${targetMonth}`)
+    }
+
+    logUserAction('NAVIGATE', 'Go to Month', { details: `${targetYear}/${targetMonth}` })
+    setCurrentYear(targetYear)
+    setCurrentMonthNumber(targetMonth)
+    setShowMonthPicker(false)
+    setShowMonthMenu(false)
+  }
 
   function handleDownloadJson() {
     if (!currentMonth || !currentBudget) return
@@ -154,7 +214,132 @@ export function MonthNavigation({
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             }}
           >
-            <RecalculateAllButton isDisabled={isLoading} />
+            <RecalculateAllButton isDisabled={isLoading} onCloseMenu={() => setShowMonthMenu(false)} />
+
+            {/* Go to Month button */}
+            <button
+              onClick={() => setShowMonthPicker(!showMonthPicker)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.5rem 0.75rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                color: 'inherit',
+                textAlign: 'left',
+                transition: 'background 0.15s',
+              }}
+              title="Jump to a specific month"
+            >
+              📅 Go to Month
+            </button>
+
+            {/* Month picker */}
+            {showMonthPicker && (
+              <div style={{
+                padding: '0.75rem',
+                borderTop: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
+                marginTop: '0.25rem',
+              }}>
+                {/* Year selector */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <button
+                    onClick={() => setPickerYear(y => y - 1)}
+                    style={{
+                      background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '0.25rem 0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span style={{ flex: 1, textAlign: 'center', fontSize: '0.9rem', fontWeight: 500 }}>
+                    {pickerYear}
+                  </span>
+                  <button
+                    onClick={() => setPickerYear(y => y + 1)}
+                    style={{
+                      background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '0.25rem 0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    →
+                  </button>
+                </div>
+
+                {/* Month grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '0.25rem',
+                  marginBottom: '0.5rem',
+                }}>
+                  {MONTH_NAMES.map((name, idx) => {
+                    const monthNum = idx + 1
+                    const isSelected = monthNum === pickerMonth
+                    const isCurrent = pickerYear === currentYear && monthNum === currentMonthNumber
+                    const maxAllowed = getMaxAllowedMonth()
+                    const isTooFar = (pickerYear > maxAllowed.year) ||
+                      (pickerYear === maxAllowed.year && monthNum > maxAllowed.month)
+
+                    return (
+                      <button
+                        key={monthNum}
+                        onClick={() => setPickerMonth(monthNum)}
+                        disabled={isTooFar}
+                        style={{
+                          background: isSelected
+                            ? colors.primary
+                            : 'color-mix(in srgb, currentColor 8%, transparent)',
+                          border: isCurrent ? `1px solid ${colors.primary}` : '1px solid transparent',
+                          borderRadius: '4px',
+                          padding: '0.35rem 0.25rem',
+                          cursor: isTooFar ? 'not-allowed' : 'pointer',
+                          fontSize: '0.7rem',
+                          color: isSelected ? '#fff' : 'inherit',
+                          opacity: isTooFar ? 0.3 : 1,
+                          transition: 'background 0.15s',
+                        }}
+                        title={isTooFar ? 'Cannot navigate more than 3 months in the future' : name}
+                      >
+                        {name.slice(0, 3)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Go button */}
+                <button
+                  onClick={handleGoToMonth}
+                  style={{
+                    width: '100%',
+                    background: colors.primary,
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    color: '#fff',
+                    fontWeight: 500,
+                  }}
+                >
+                  Go to {MONTH_NAMES[pickerMonth - 1]} {pickerYear}
+                </button>
+              </div>
+            )}
+
             {/* Admin-only: Download month data */}
             {isAdmin && currentMonth && (
               <button

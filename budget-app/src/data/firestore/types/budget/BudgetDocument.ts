@@ -18,6 +18,13 @@ export interface Budget {
   categories: CategoriesMap
   category_groups: CategoryGroup[]
 
+  /**
+   * Pre-calculated total available amount (on-budget account balances - category balances).
+   * Updated during recalculation. Use this value for display when budget doesn't need recalculation.
+   * When editing (is_needs_recalculation = true), adjust locally based on pending changes.
+   */
+  total_available: number
+
   is_needs_recalculation: boolean
 
   created_at?: string

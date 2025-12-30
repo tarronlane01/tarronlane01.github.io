@@ -80,4 +80,9 @@ export const queryKeys = {
 
   // Feedback collection (admin only)
   feedback: () => ['feedback'] as const,
+
+  // Future month IDs cache (for avoiding repeated getFutureMonths queries)
+  // Stores just the list of month identifiers, not the full data
+  futureMonthIds: (budgetId: string, afterOrdinal: string) =>
+    ['futureMonthIds', budgetId, afterOrdinal] as const,
 }

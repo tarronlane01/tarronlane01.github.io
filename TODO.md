@@ -19,6 +19,9 @@
 - [ ] Go through the flow when changing the date of a transaction to a different month (for income / spend)
 - [ ] Re-order balances page to have start, then allocations, even while editing
 - [ ] Multiple reads when going to a next month after editing spend in previous
-- [ ] Add a check to delete future months (over 2 into future) if they don't have any data associated with them (spends, allocations, income, anything not calculated from previous months etc)
-- Have the website output user actions to the console so it's an easy copy-paste to the AI to troubleshoot what happened before error or issue showed up.
 - [ ] Drop max file size down to 400
+
+- [ ] To cut down on writes, maintain a month list with needs-recalculation flags on the budget document itself. that way we always have a month index we can reference instead of doing batch read/writes to know what months we have and to mark them as stale.
+
+- Tracking negative balances, and how does that work. Overspending in a budget, which rduces the total vailable, but ideally we would just reduce the allocated to that category until it's out of the hole.
+    - Have a "Debt" note, and highlight that field. to explain how debt allocations work (reduce debt but doesn't reduce total available to spend, unless greaterthan the debt)

@@ -83,6 +83,8 @@ export const input: CSSProperties = {
   background: 'color-mix(in srgb, currentColor 5%, transparent)',
   fontSize: '1rem',
   color: 'inherit',
+  width: '100%',
+  boxSizing: 'border-box',
 }
 
 export const select: CSSProperties = {

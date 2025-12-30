@@ -24,9 +24,10 @@ import { RecalculateModal, type RecalcResults } from './RecalculateModal'
 
 interface RecalculateAllButtonProps {
   isDisabled?: boolean
+  onCloseMenu?: () => void
 }
 
-export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) {
+export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAllButtonProps) {
   const {
     selectedBudgetId,
     currentUserId,
@@ -375,6 +376,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
     logUserAction('CLOSE', 'Recalculate Modal')
     setShowModal(false)
     setResults(null)
+    onCloseMenu?.()
   }
 
   return (

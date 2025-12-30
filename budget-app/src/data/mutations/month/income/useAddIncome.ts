@@ -10,6 +10,8 @@ import { queryKeys, readMonthForEdit } from '@data'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
 import { useWriteMonthData } from '..'
+import { retotalMonth } from '../retotalMonth'
+import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 
 export function useAddIncome() {
   const queryClient = useQueryClient()
@@ -39,14 +41,17 @@ export function useAddIncome() {
 
     const updatedIncome = [...(monthData.income || []), newIncome]
 
-    const updatedMonth: MonthDocument = {
+    // Re-total to update all derived values (totals, account_balances, etc.)
+    const updatedMonth: MonthDocument = retotalMonth({
       ...monthData,
       income: updatedIncome,
-      total_income: updatedIncome.reduce((sum, inc) => sum + inc.amount, 0),
       updated_at: new Date().toISOString(),
-    }
+    })
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'add income' })
+
+    // Update budget's account balance (income increases balance)
+    await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
 
     // Save payee if new
     if (payee?.trim()) {

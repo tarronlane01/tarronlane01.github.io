@@ -36,10 +36,10 @@ import {
 interface TriggerRecalculationOptions {
   /**
    * Month ordinal (YYYYMM format) that triggered this recalculation.
-   * If provided, only recalculate up to this month.
-   * If not provided, this was triggered from the budget view - recalculate all months.
+   * Used to optimize the query - we only fetch months from this point forward.
+   * If not provided, defaults to current calendar month.
    */
-  targetMonthOrdinal?: string
+  triggeringMonthOrdinal?: string
 }
 
 interface RecalculationResult {
@@ -62,6 +62,7 @@ interface BudgetDocument {
   account_groups: FirestoreData
   categories: FirestoreData
   category_groups: FirestoreData[]
+  total_available?: number
   is_needs_recalculation?: boolean
   created_at?: string
   updated_at?: string
@@ -79,11 +80,51 @@ function toOrdinal(year: number, month: number): string {
 }
 
 /**
- * Fetch all months for a budget by using getFutureMonths with a very early start date.
+ * Parse an ordinal string (YYYYMM) into year and month.
  */
-async function getAllMonths(budgetId: string): Promise<MonthWithId[]> {
-  // Use year 1900 to ensure we get all months
-  return getFutureMonths(budgetId, 1900, 1)
+function parseOrdinal(ordinal: string): { year: number; month: number } {
+  const year = parseInt(ordinal.slice(0, 4), 10)
+  const month = parseInt(ordinal.slice(4, 6), 10)
+  return { year, month }
+}
+
+/**
+ * Go back N months from a given year/month.
+ */
+function goBackMonths(year: number, month: number, count: number): { year: number; month: number } {
+  let y = year
+  let m = month - count
+  while (m < 1) {
+    m += 12
+    y -= 1
+  }
+  return { year: y, month: m }
+}
+
+/**
+ * Fetch relevant months for a budget for recalculation.
+ * Queries from 12 months BEFORE the triggering month to ensure we capture
+ * any month that might have been edited and marked for recalculation.
+ * Uses skipCache to ensure we get fresh data from Firestore during recalculation.
+ *
+ * @param budgetId - The budget ID
+ * @param triggeringMonthOrdinal - The month that triggered recalc (YYYYMM format)
+ */
+async function getMonthsForRecalc(
+  budgetId: string,
+  triggeringMonthOrdinal: string
+): Promise<MonthWithId[]> {
+  // Parse the triggering month and go back 12 months to ensure we capture
+  // any month that was edited and needs recalculation.
+  // Example: If viewing December 2025 and November 2025 was edited,
+  // we need to include November in the query results.
+  const { year, month } = parseOrdinal(triggeringMonthOrdinal)
+  const lookback = goBackMonths(year, month, 12)
+
+  console.log(`[Recalculation] Querying months from ${lookback.year}/${lookback.month} forward`)
+
+  // skipCache: true ensures we read fresh data, not stale cached values
+  return getFutureMonths(budgetId, lookback.year, lookback.month, { skipCache: true })
 }
 
 /**
@@ -115,58 +156,31 @@ export async function triggerRecalculation(
   budgetId: string,
   options: TriggerRecalculationOptions = {}
 ): Promise<RecalculationResult> {
-  const { targetMonthOrdinal } = options
-  const isBudgetTriggered = !targetMonthOrdinal
+  // Determine the starting point for the query
+  // If no triggering month provided, use current calendar month
+  const now = new Date()
+  const currentOrdinal = toOrdinal(now.getFullYear(), now.getMonth() + 1)
+  const triggeringOrdinal = options.triggeringMonthOrdinal || currentOrdinal
 
   console.log(`[Recalculation] Starting for budget ${budgetId}`, {
-    trigger: isBudgetTriggered ? 'budget' : `month ${targetMonthOrdinal}`,
+    triggeringMonth: triggeringOrdinal,
   })
 
-  // Step 1: Fetch all months for this budget
-  const allMonths = await getAllMonths(budgetId)
+  // Step 1: Fetch months from the triggering month forward
+  const allMonths = await getMonthsForRecalc(budgetId, triggeringOrdinal)
 
   if (allMonths.length === 0) {
     console.log('[Recalculation] No months found, nothing to recalculate')
-    // If budget-triggered, clear the budget's recalc flag
-    if (isBudgetTriggered) {
-      await clearBudgetRecalcFlag(budgetId)
-    }
-    return { monthsRecalculated: 0, budgetUpdated: isBudgetTriggered }
+    await clearBudgetRecalcFlag(budgetId)
+    return { monthsRecalculated: 0, budgetUpdated: true }
   }
 
   // Step 2: Find the starting point - last month that does NOT need recalculation
   const startingPointIndex = findStartingPointIndex(allMonths)
 
-  // Step 3: Validate - if month-triggered, starting point must not be before target
-  if (targetMonthOrdinal) {
-    const startingOrdinal = startingPointIndex >= 0
-      ? toOrdinal(allMonths[startingPointIndex].year, allMonths[startingPointIndex].month)
-      : '000000' // Before everything
-
-    if (startingOrdinal > targetMonthOrdinal) {
-      // This shouldn't happen if markFutureMonthsNeedRecalculation is working correctly
-      throw new Error(
-        `[Recalculation] Bug detected: Starting point (${startingOrdinal}) is after ` +
-        `target month (${targetMonthOrdinal}). This indicates markFutureMonthsNeedRecalculation ` +
-        `may have an issue - months before the target are marked as needing recalculation.`
-      )
-    }
-  }
-
-  // Step 4: Determine which months to recalculate
+  // Step 3: Determine which months to recalculate
   const firstRecalcIndex = startingPointIndex + 1 // Start after the valid month
-
-  // Determine end index
-  let lastRecalcIndex = allMonths.length - 1 // Default: all remaining months
-  if (targetMonthOrdinal) {
-    // Find the target month index
-    const targetIndex = allMonths.findIndex(m =>
-      toOrdinal(m.year, m.month) === targetMonthOrdinal
-    )
-    if (targetIndex >= 0) {
-      lastRecalcIndex = targetIndex
-    }
-  }
+  const lastRecalcIndex = allMonths.length - 1 // All remaining months
 
   // Get the starting snapshot
   let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
@@ -174,12 +188,17 @@ export async function triggerRecalculation(
     prevSnapshot = extractSnapshotFromMonth(allMonths[startingPointIndex])
   }
 
-  console.log(`[Recalculation] Recalculating months ${firstRecalcIndex} to ${lastRecalcIndex}`, {
-    totalMonths: allMonths.length,
-    startingFrom: startingPointIndex >= 0
-      ? toOrdinal(allMonths[startingPointIndex].year, allMonths[startingPointIndex].month)
-      : 'beginning',
-  })
+  // Check if there are actually months to recalculate
+  if (firstRecalcIndex > lastRecalcIndex) {
+    console.log(`[Recalculation] No months need recalculation (all months are valid)`)
+  } else {
+    console.log(`[Recalculation] Recalculating months ${firstRecalcIndex} to ${lastRecalcIndex}`, {
+      totalMonths: allMonths.length,
+      startingFrom: startingPointIndex >= 0
+        ? toOrdinal(allMonths[startingPointIndex].year, allMonths[startingPointIndex].month)
+        : 'beginning',
+    })
+  }
 
   // Step 5: Walk forward and recalculate each month
   let monthsRecalculated = 0
@@ -206,31 +225,33 @@ export async function triggerRecalculation(
     console.log(`[Recalculation] Completed ${month.year}/${month.month}`)
   }
 
-  // Step 6: Update budget if this was budget-triggered
-  let budgetUpdated = false
+  // Step 6: Always update budget with final balances and clear recalc flag
   let finalAccountBalances: Record<string, number> | undefined
+  let finalCategoryBalances: Record<string, number> | undefined
 
-  if (isBudgetTriggered) {
-    // Get final account balances from the last recalculated month
-    // (or starting point if nothing was recalculated)
-    const finalMonthIndex = monthsRecalculated > 0 ? lastRecalcIndex : startingPointIndex
-    if (finalMonthIndex >= 0) {
-      finalAccountBalances = prevSnapshot.accountEndBalances
-    }
-
-    // Update budget with final balances and clear recalc flag
-    await updateBudgetBalances(budgetId, finalAccountBalances || {})
-    budgetUpdated = true
+  // Get final account and category balances from the last recalculated month
+  // (or starting point if nothing was recalculated)
+  const finalMonthIndex = monthsRecalculated > 0 ? lastRecalcIndex : startingPointIndex
+  if (finalMonthIndex >= 0) {
+    finalAccountBalances = prevSnapshot.accountEndBalances
+    finalCategoryBalances = prevSnapshot.categoryEndBalances
   }
+
+  // Update budget with final balances and clear recalc flag
+  await updateBudgetBalances(
+    budgetId,
+    finalAccountBalances || {},
+    finalCategoryBalances || {}
+  )
 
   console.log(`[Recalculation] Complete`, {
     monthsRecalculated,
-    budgetUpdated,
+    budgetUpdated: true,
   })
 
   return {
     monthsRecalculated,
-    budgetUpdated,
+    budgetUpdated: true,
     finalAccountBalances,
   }
 }
@@ -240,11 +261,12 @@ export async function triggerRecalculation(
 // ============================================================================
 
 /**
- * Update budget with final account balances and clear recalc flag.
+ * Update budget with final account/category balances, total_available, and clear recalc flag.
  */
 async function updateBudgetBalances(
   budgetId: string,
-  accountBalances: Record<string, number>
+  accountBalances: Record<string, number>,
+  categoryBalances: Record<string, number>
 ): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>(
     'budgets',
@@ -268,21 +290,56 @@ async function updateBudgetBalances(
     }
   }
 
+  // Update category balances in the categories map
+  const updatedCategories = { ...data.categories }
+  for (const [categoryId, balance] of Object.entries(categoryBalances)) {
+    if (updatedCategories[categoryId]) {
+      updatedCategories[categoryId] = {
+        ...updatedCategories[categoryId],
+        balance,
+      }
+    }
+  }
+
+  // Calculate total_available = sum of on-budget account balances - sum of category balances
+  const accountGroups = data.account_groups || {}
+  const onBudgetAccountTotal = Object.entries(updatedAccounts).reduce((sum, [, account]) => {
+    // Get the account group if any
+    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
+    // Determine effective on_budget and is_active (group overrides account if set)
+    const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
+    const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
+    // Only sum if on_budget and active
+    if (effectiveOnBudget && effectiveActive) {
+      return sum + (account.balance ?? 0)
+    }
+    return sum
+  }, 0)
+
+  const totalCategoryBalances = Object.values(updatedCategories).reduce(
+    (sum, cat) => sum + (cat.balance ?? 0),
+    0
+  )
+
+  const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
+
   await writeDocByPath(
     'budgets',
     budgetId,
     {
       ...data,
       accounts: updatedAccounts,
+      categories: updatedCategories,
+      total_available: totalAvailable,
       is_needs_recalculation: false,
       updated_at: new Date().toISOString(),
     },
-    'saving recalculated account balances'
+    'saving recalculated balances and total_available'
   )
 }
 
 /**
- * Clear the budget's recalc flag without updating balances.
+ * Clear the budget's recalc flag and recalculate total_available from current balances.
  */
 async function clearBudgetRecalcFlag(budgetId: string): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>(
@@ -295,15 +352,38 @@ async function clearBudgetRecalcFlag(budgetId: string): Promise<void> {
     return
   }
 
+  // Calculate total_available from current balances
+  const accounts = data.accounts || {}
+  const categories = data.categories || {}
+  const accountGroups = data.account_groups || {}
+
+  const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
+    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
+    const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
+    const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
+    if (effectiveOnBudget && effectiveActive) {
+      return sum + (account.balance ?? 0)
+    }
+    return sum
+  }, 0)
+
+  const totalCategoryBalances = Object.values(categories).reduce(
+    (sum, cat) => sum + ((cat as { balance?: number }).balance ?? 0),
+    0
+  )
+
+  const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
+
   await writeDocByPath(
     'budgets',
     budgetId,
     {
       ...data,
+      total_available: totalAvailable,
       is_needs_recalculation: false,
       updated_at: new Date().toISOString(),
     },
-    'clearing budget recalc flag (no months to recalculate)'
+    'clearing budget recalc flag and updating total_available (no months to recalculate)'
   )
 }
 

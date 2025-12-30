@@ -80,13 +80,14 @@ export function IncomeItem({ income, accountName, accountGroupName, onEdit, onDe
   }
 
   // Wide desktop: Full table row with all columns
+  // Use fixed column widths so rows align (each row is a separate grid)
   if (isWide) {
     return (
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '5rem 1fr 8rem 6rem 1fr 4rem',
-          gap: '0.75rem',
+          gridTemplateColumns: '4.5rem 10rem 16rem 7rem 1fr 3rem',
+          gap: '1rem',
           padding: '0.625rem 1rem',
           alignItems: 'center',
           borderBottom: '1px solid color-mix(in srgb, currentColor 8%, transparent)',
@@ -101,11 +102,15 @@ export function IncomeItem({ income, accountName, accountGroupName, onEdit, onDe
         </span>
 
         {/* Payee */}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontWeight: 500, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {income.payee || '—'}
-          </span>
-        </div>
+        <span style={{
+          fontWeight: 500,
+          fontSize: '0.9rem',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {income.payee || '—'}
+        </span>
 
         {/* Account */}
         <span style={{
@@ -135,6 +140,7 @@ export function IncomeItem({ income, accountName, accountGroupName, onEdit, onDe
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          minWidth: 0,
         }}>
           {income.description || '—'}
         </span>
@@ -284,8 +290,8 @@ export function IncomeTableHeader() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '5rem 1fr 8rem 6rem 1fr 4rem',
-          gap: '0.75rem',
+          gridTemplateColumns: '4.5rem 10rem 16rem 7rem 1fr 3rem',
+          gap: '1rem',
           padding: '0.5rem 1rem',
           borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
           fontSize: '0.75rem',

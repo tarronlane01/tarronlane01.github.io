@@ -19,13 +19,31 @@ import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromM
  * @param year - Year
  * @param month - Month (1-12)
  * @returns The created month document
+ * @throws Error if the month is more than 3 months in the future
  */
 export async function createMonth(
   budgetId: string,
   year: number,
   month: number
 ): Promise<MonthDocument> {
-  const now = new Date().toISOString()
+  // Safeguard: Prevent creating months more than 3 months in the future
+  // This catches bugs like double-incrementing the year during navigation
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1 // 1-12
+
+  // Calculate months from now (positive = future, negative = past)
+  const monthsFromNow = (year - currentYear) * 12 + (month - currentMonth)
+
+  if (monthsFromNow > 3) {
+    const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
+      `it's ${monthsFromNow} months in the future (max allowed: 3). ` +
+      `This likely indicates a bug in month navigation.`
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+
+  const nowIso = now.toISOString()
   const monthDocId = getMonthDocId(budgetId, year, month)
 
   let previousMonthIncome = 0
@@ -110,8 +128,8 @@ export async function createMonth(
     category_balances: categoryBalances,
     are_allocations_finalized: false,
     is_needs_recalculation: false,
-    created_at: now,
-    updated_at: now,
+    created_at: nowIso,
+    updated_at: nowIso,
   }
 
   // Build clean document for Firestore
@@ -129,8 +147,8 @@ export async function createMonth(
     category_balances: categoryBalances,
     are_allocations_finalized: false,
     is_needs_recalculation: false,
-    created_at: now,
-    updated_at: now,
+    created_at: nowIso,
+    updated_at: nowIso,
   }
 
   await writeDocByPath(
@@ -145,6 +163,14 @@ export async function createMonth(
     queryKeys.month(budgetId, year, month),
     { month: newMonth }
   )
+
+  // Invalidate all futureMonthIds caches for this budget
+  // This ensures getFutureMonths will re-query to discover this new month
+  queryClient.invalidateQueries({
+    predicate: (query) =>
+      query.queryKey[0] === 'futureMonthIds' &&
+      query.queryKey[1] === budgetId,
+  })
 
   return newMonth
 }

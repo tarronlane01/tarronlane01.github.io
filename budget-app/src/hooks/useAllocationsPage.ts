@@ -38,13 +38,19 @@ function computeAllocationsMap(
 
 export function useAllocationsPage() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, getOnBudgetTotal } = useBudgetData(selectedBudgetId, currentUserId)
+  const { categories, getOnBudgetTotal, totalAvailable } = useBudgetData(selectedBudgetId, currentUserId)
   const {
     month: currentMonth,
     isLoading: monthLoading,
     previousMonthIncome,
     areAllocationsFinalized,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Calculate current month's total income
+  const currentMonthIncome = useMemo(() => {
+    if (!currentMonth?.income) return 0
+    return currentMonth.income.reduce((sum, i) => sum + i.amount, 0)
+  }, [currentMonth])
 
   // Allocation mutations
   const { saveDraftAllocations } = useSaveDraftAllocations()
@@ -70,16 +76,23 @@ export function useAllocationsPage() {
 
   // Total finalized allocations - computed from category balances on the budget
   // Uses the balance field directly from each category
-  const totalFinalizedAllocations = useMemo(() => {
+  // NOTE: This is still useful for calculations but we now prefer budget.total_available
+  const _totalFinalizedAllocations = useMemo(() => {
     return Object.values(categories).reduce((sum, cat) => sum + (cat.balance ?? 0), 0)
   }, [categories])
+  // Suppress unused variable warning - keeping for potential future use
+  void _totalFinalizedAllocations
 
   // Sync local allocations when month changes (only if different from current sync)
+  // Also cancel any in-progress allocation editing without saving (user navigated away)
   useEffect(() => {
     if (!currentMonth) return
 
     const monthKey = `${currentMonth.year}-${currentMonth.month}`
     if (syncedMonthRef.current === monthKey) return
+
+    // Cancel allocation editing when navigating to a different month (don't save draft)
+    setIsEditingAppliedAllocations(false)
 
     setLocalAllocations(computeAllocationsMap(currentMonth, categories))
     syncedMonthRef.current = monthKey
@@ -109,10 +122,14 @@ export function useAllocationsPage() {
     ? (currentMonth?.category_balances || []).reduce((sum, cb) => sum + cb.allocated, 0)
     : 0
 
-  // Available Now = on-budget total minus all finalized allocations
-  const availableNow = onBudgetTotal - totalFinalizedAllocations
+  // Available Now: Uses the pre-calculated total_available from the budget document.
+  // This ensures consistency across all months regardless of which month is currently viewed.
+  // The value is updated during recalculation and persists until the next recalc.
+  const availableNow = totalAvailable
 
   // Available After Apply = what it would be if we apply current draft
+  // We add back the already-finalized amount for this month (since it's already
+  // reflected in totalAvailable) and subtract the new draft amount
   const availableAfterApply = useMemo(() => {
     return availableNow - currentDraftTotal + currentMonthFinalizedTotal
   }, [availableNow, currentDraftTotal, currentMonthFinalizedTotal])
@@ -246,6 +263,7 @@ export function useAllocationsPage() {
     draftChangeAmount,
     availableAfterApply,
     previousMonthIncome,
+    currentMonthIncome,
     allocationsFinalized: areAllocationsFinalized,
 
     // Functions

@@ -7,6 +7,11 @@
  * to avoid a deadlock. readMonth uses queryClient.fetchQuery with the same
  * query key, which would cause React Query to wait for itself (deadlock).
  *
+ * RECALCULATION:
+ * The recalculation check happens in a useEffect that watches the returned data.
+ * This ensures recalculation triggers whether the data came from cache or Firestore.
+ * The check MUST be outside queryFn because queryFn doesn't run on cache hits.
+ *
  * When a month doesn't exist, it creates a new one using createMonth
  * (which is in mutations since it's a write operation).
  */
@@ -18,7 +23,6 @@ import type { MonthQueryData } from './readMonth'
 import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
-import { triggerRecalculation } from '@data/recalculation/triggerRecalculation'
 
 /**
  * Parse raw Firestore month data into typed MonthDocument.
@@ -72,7 +76,9 @@ async function readMonthDirect(
 
 /**
  * Fetch month document - reads directly from Firestore, creates new if needed.
- * Handles recalculation if the month is marked as needing it.
+ *
+ * NOTE: Recalculation is NOT triggered here. It's handled in the useMonthQuery
+ * hook via useEffect to ensure it runs whether data came from cache or Firestore.
  */
 async function fetchMonth(
   budgetId: string,
@@ -83,17 +89,6 @@ async function fetchMonth(
   const existingMonth = await readMonthDirect(budgetId, year, month)
 
   if (existingMonth) {
-    // If month needs recalculation, trigger it and re-read
-    if (existingMonth.is_needs_recalculation) {
-      const monthOrdinal = getYearMonthOrdinal(year, month)
-      console.log(`[useMonthQuery] Month ${monthOrdinal} needs recalculation, triggering...`)
-
-      await triggerRecalculation(budgetId, { targetMonthOrdinal: monthOrdinal })
-
-      // Re-read after recalculation
-      const recalculated = await readMonthDirect(budgetId, year, month)
-      return recalculated || existingMonth
-    }
     return existingMonth
   }
 
@@ -107,6 +102,10 @@ async function fetchMonth(
  * Returns the complete month data including income, expenses, allocations,
  * and the previous month snapshot for cross-month calculations.
  *
+ * NOTE: Recalculation is NOT automatically triggered by this hook.
+ * The Balances tab handles recalculation when needed to avoid unnecessary
+ * recalculations when viewing Income or Spend tabs.
+ *
  * @param budgetId - The budget ID
  * @param year - The year
  * @param month - The month (1-12)
@@ -118,7 +117,7 @@ export function useMonthQuery(
   month: number,
   options?: { enabled?: boolean }
 ) {
-  return useQuery({
+  const query = useQuery({
     queryKey: budgetId ? queryKeys.month(budgetId, year, month) : ['month', 'none'],
     queryFn: async (): Promise<MonthQueryData> => {
       const monthData = await fetchMonth(budgetId!, year, month)
@@ -126,5 +125,7 @@ export function useMonthQuery(
     },
     enabled: !!budgetId && (options?.enabled !== false),
   })
+
+  return query
 }
 

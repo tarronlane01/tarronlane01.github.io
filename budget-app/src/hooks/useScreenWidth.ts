@@ -25,7 +25,8 @@ export function useScreenWidth() {
   return {
     width,
     isWide: width >= BREAKPOINTS.wide,
-    isMedium: width >= BREAKPOINTS.mobile && width < BREAKPOINTS.wide,
+    isMedium: width >= BREAKPOINTS.tablet && width < BREAKPOINTS.wide,
+    isNarrowMedium: width >= BREAKPOINTS.mobile && width < BREAKPOINTS.tablet,
     isMobile: width < BREAKPOINTS.mobile,
   }
 }

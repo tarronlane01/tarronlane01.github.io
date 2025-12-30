@@ -58,6 +58,12 @@ interface UseBudgetDataReturn {
   isOwner: boolean
   budgetUserIds: string[]
   acceptedUserIds: string[]
+  /**
+   * Pre-calculated total available from the budget document.
+   * This value is calculated during recalculation and persists across month views.
+   * Use this value when the budget doesn't need recalculation.
+   */
+  totalAvailable: number
 
   // Budget mutations
   saveAccounts: (accounts: AccountsMap) => Promise<void>
@@ -117,6 +123,7 @@ export function useBudgetData(
   const isOwner = budget?.owner_id === currentUserId
   const budgetUserIds = useMemo(() => budget?.user_ids || [], [budget?.user_ids])
   const acceptedUserIds = useMemo(() => budget?.accepted_user_ids || [], [budget?.accepted_user_ids])
+  const totalAvailable = budget?.total_available ?? 0
 
   // ==========================================================================
   // BUDGET MUTATIONS
@@ -292,6 +299,7 @@ export function useBudgetData(
     isOwner,
     budgetUserIds,
     acceptedUserIds,
+    totalAvailable,
 
     // Mutations
     saveAccounts,

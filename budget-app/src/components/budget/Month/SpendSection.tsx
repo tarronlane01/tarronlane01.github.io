@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
@@ -11,7 +11,7 @@ import { ExpenseForm, ExpenseItem, ExpenseTableHeader } from '../Spend'
 import { logUserAction } from '@utils'
 
 export function SpendSection() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
+  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups, categories, categoryGroups } = useBudgetData(selectedBudgetId, currentUserId)
   const {
     month: currentMonth,
@@ -25,6 +25,19 @@ export function SpendSection() {
   const [error, setError] = useState<string | null>(null)
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
+
+  // Track previous month to detect navigation
+  const prevMonthRef = useRef({ year: currentYear, month: currentMonthNumber })
+
+  // Close any open forms when navigating to a different month
+  useEffect(() => {
+    const prev = prevMonthRef.current
+    if (prev.year !== currentYear || prev.month !== currentMonthNumber) {
+      setShowAddExpense(false)
+      setEditingExpenseId(null)
+      prevMonthRef.current = { year: currentYear, month: currentMonthNumber }
+    }
+  }, [currentYear, currentMonthNumber])
 
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddExpense || editingExpenseId !== null
@@ -64,9 +77,21 @@ export function SpendSection() {
   function handleAddExpense(amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
     setShowAddExpense(false)
-    addExpense(amount, categoryId, accountId, date, payee, description, cleared).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to add expense')
-    })
+
+    // Parse the date to determine which month this expense belongs to
+    const [expenseYear, expenseMonth] = date.split('-').map(Number)
+
+    addExpense(amount, categoryId, accountId, date, payee, description, cleared)
+      .then(() => {
+        // Navigate to the target month if different from current view
+        if (expenseYear !== currentYear || expenseMonth !== currentMonthNumber) {
+          setCurrentYear(expenseYear)
+          setCurrentMonthNumber(expenseMonth)
+        }
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to add expense')
+      })
   }
 
   function handleUpdateExpense(expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {

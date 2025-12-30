@@ -246,27 +246,27 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
   // ==========================================================================
   // MONTH NAVIGATION - Just changes identifiers
+  // Note: Don't nest setState calls inside updater functions - React Strict Mode
+  // can run updaters twice, causing double increments.
   // ==========================================================================
 
   const goToPreviousMonth = useCallback(() => {
-    setCurrentMonthNumber(prev => {
-      if (prev === 1) {
-        setCurrentYear(y => y - 1)
-        return 12
-      }
-      return prev - 1
-    })
-  }, [])
+    if (currentMonthNumber === 1) {
+      setCurrentYear(y => y - 1)
+      setCurrentMonthNumber(12)
+    } else {
+      setCurrentMonthNumber(m => m - 1)
+    }
+  }, [currentMonthNumber])
 
   const goToNextMonth = useCallback(() => {
-    setCurrentMonthNumber(prev => {
-      if (prev === 12) {
-        setCurrentYear(y => y + 1)
-        return 1
-      }
-      return prev + 1
-    })
-  }, [])
+    if (currentMonthNumber === 12) {
+      setCurrentYear(y => y + 1)
+      setCurrentMonthNumber(1)
+    } else {
+      setCurrentMonthNumber(m => m + 1)
+    }
+  }, [currentMonthNumber])
 
   // ==========================================================================
   // BUDGET MANAGEMENT UTILITIES

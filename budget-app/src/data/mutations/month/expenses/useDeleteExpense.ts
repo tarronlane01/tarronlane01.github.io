@@ -8,6 +8,8 @@
 import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
+import { retotalMonth } from '../retotalMonth'
+import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 
 export function useDeleteExpense() {
   const { writeData } = useWriteMonthData()
@@ -20,16 +22,26 @@ export function useDeleteExpense() {
   ) => {
     const monthData = await readMonthForEdit(budgetId, year, month, 'delete expense')
 
+    // Find expense being deleted to get amount and account
+    const deletedExpense = (monthData.expenses || []).find(exp => exp.id === expenseId)
+    const deletedAmount = deletedExpense?.amount ?? 0
+    const deletedAccountId = deletedExpense?.account_id
+
     const updatedExpensesList = (monthData.expenses || []).filter(exp => exp.id !== expenseId)
 
-    const updatedMonth: MonthDocument = {
+    // Re-total to update all derived values (totals, account_balances, category spent, etc.)
+    const updatedMonth: MonthDocument = retotalMonth({
       ...monthData,
       expenses: updatedExpensesList,
-      total_expenses: updatedExpensesList.reduce((sum, exp) => sum + exp.amount, 0),
       updated_at: new Date().toISOString(),
-    }
+    })
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'delete expense' })
+
+    // Update budget's account balance (deleting expense increases balance)
+    if (deletedAccountId && deletedAmount > 0) {
+      await updateBudgetAccountBalances(budgetId, [{ accountId: deletedAccountId, delta: deletedAmount }])
+    }
 
     return { updatedMonth }
   }
