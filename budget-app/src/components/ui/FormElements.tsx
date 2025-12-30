@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes, type ReactNode } from 'react'
 import { formGroup, label as labelStyle, input as inputStyle, select as selectStyle, form as formStyle, buttonGroupForm } from '../../styles/shared'
+import { logUserAction } from '@utils'
 
 // Re-export autocomplete components from their own file
 export { PayeeAutocomplete, CategoryAutocomplete } from './Autocomplete'
@@ -11,11 +12,23 @@ export { PayeeAutocomplete, CategoryAutocomplete } from './Autocomplete'
 interface FormWrapperProps {
   children: ReactNode
   onSubmit: (e: React.FormEvent) => void
+  /**
+   * Name for action logging. When provided, form submissions are logged
+   * to console for AI-assisted debugging.
+   */
+  actionName?: string
 }
 
-export function FormWrapper({ children, onSubmit }: FormWrapperProps) {
+export function FormWrapper({ children, onSubmit, actionName }: FormWrapperProps) {
+  function handleSubmit(e: React.FormEvent) {
+    if (actionName) {
+      logUserAction('SUBMIT', actionName)
+    }
+    onSubmit(e)
+  }
+
   return (
-    <form onSubmit={onSubmit} style={formStyle}>
+    <form onSubmit={handleSubmit} style={formStyle}>
       {children}
     </form>
   )

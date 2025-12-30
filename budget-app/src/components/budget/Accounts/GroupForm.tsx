@@ -34,7 +34,7 @@ export function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: Grou
   }
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper actionName={submitLabel === 'Create Account Type' ? 'Create Account Type' : 'Update Account Type'} onSubmit={handleSubmit}>
       <FormField label="Account Type Name" htmlFor="group-name">
         <TextInput
           id="group-name"
@@ -89,8 +89,8 @@ export function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: Grou
       </div>
 
       <FormButtonGroup>
-        <Button type="submit">{submitLabel}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
+        <Button type="button" variant="secondary" actionName="Cancel Account Type Form" onClick={onCancel}>Cancel</Button>
       </FormButtonGroup>
     </FormWrapper>
   )

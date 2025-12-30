@@ -261,7 +261,7 @@ function Accounts() {
           submitLabel="Create Account Type"
         />
       ) : (
-        <Button variant="primary-large" onClick={() => setShowCreateGroupForm(true)}>
+        <Button variant="primary-large" actionName="Open Add Account Type Form" onClick={() => setShowCreateGroupForm(true)}>
           + Add Account Type
         </Button>
       )}

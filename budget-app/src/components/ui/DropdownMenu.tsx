@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { logUserAction } from '@utils'
 
 export interface MenuItem {
   label: string
@@ -74,7 +75,11 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const newState = !isOpen
+          logUserAction(newState ? 'OPEN' : 'CLOSE', 'Navigation Menu')
+          setIsOpen(newState)
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -162,7 +167,10 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
                   style={itemStyle}
                   onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    logUserAction('NAVIGATE', `Menu: ${item.label}`)
+                    setIsOpen(false)
+                  }}
                 >
                   {content}
                 </Link>
@@ -173,6 +181,7 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
               <button
                 key={index}
                 onClick={() => {
+                  logUserAction('CLICK', `Menu: ${item.label}`)
                   item.onClick?.()
                   setIsOpen(false)
                 }}

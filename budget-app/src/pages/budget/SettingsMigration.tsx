@@ -7,7 +7,8 @@ import {
   FeedbackMigrationCard,
   DeleteAllMonthsCard,
 } from '../../components/budget/Admin'
-import { Modal } from '../../components/ui'
+import { Modal, Button } from '../../components/ui'
+import { logUserAction } from '@utils/actionLogger'
 
 /**
  * Clear ALL React Query caches (in-memory and localStorage) and reload page.
@@ -58,6 +59,7 @@ function SettingsMigration() {
 
   // Refresh all - scans all migration statuses
   const handleRefreshAll = async () => {
+    logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
       databaseCleanup.scanStatus(),
       feedbackMigration.scanStatus(),
@@ -163,23 +165,18 @@ function SettingsMigration() {
             If you're seeing stale data after running migrations, clear all cached data and reload to fetch fresh data from Firestore.
           </span>
         </p>
-        <button
+        <Button
+          variant="danger"
+          actionName="Open Clear Caches Modal"
           onClick={() => setShowReloadModal(true)}
           style={{
-            background: '#dc2626',
-            color: 'white',
-            border: 'none',
-            padding: '0.5rem 1rem',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 500,
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
           }}
         >
           🔄 Clear All Caches & Reload
-        </button>
+        </Button>
       </div>
 
       {/* Confirmation modal for clearing caches and reloading */}
@@ -193,34 +190,20 @@ function SettingsMigration() {
           The app will fetch fresh data from Firestore for everything.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <button
+          <Button
+            variant="secondary"
+            actionName="Cancel Clear Caches"
             onClick={() => setShowReloadModal(false)}
-            style={{
-              background: 'transparent',
-              color: 'inherit',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
+            actionName="Confirm Clear Caches & Reload"
             onClick={handleClearAllCachesAndReload}
-            style={{
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
           >
             Clear & Reload
-          </button>
+          </Button>
         </div>
       </Modal>
     </div>

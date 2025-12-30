@@ -15,6 +15,7 @@ import {
 } from '../../ui'
 import { useScreenWidth } from '../../../hooks'
 import { colors } from '../../../styles/shared'
+import { logUserAction } from '@utils'
 
 export type AccountEntry = [string, FinancialAccount]
 
@@ -176,24 +177,24 @@ export function TransactionForm({
       <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 500 }}>&nbsp;</span>
       <div style={{ display: 'flex', gap: '0.25rem' }}>
         <button type="submit" title={submitLabel} style={submitBtnStyle}>✓</button>
-        <button type="button" onClick={onCancel} title="Cancel" style={cancelBtnStyle}>✕</button>
-        {onDelete && <button type="button" onClick={onDelete} title="Delete" style={deleteBtnStyle}>🗑</button>}
+        <button type="button" onClick={() => { logUserAction('CLICK', 'Cancel Transaction Form'); onCancel() }} title="Cancel" style={cancelBtnStyle}>✕</button>
+        {onDelete && <button type="button" onClick={() => { logUserAction('CLICK', 'Delete Transaction'); onDelete() }} title="Delete" style={deleteBtnStyle}>🗑</button>}
       </div>
     </div>
   )
 
   const mobileButtonGroup = (
     <FormButtonGroup>
-      <Button type="submit">{submitLabel}</Button>
-      <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-      {onDelete && <Button type="button" variant="danger" onClick={onDelete}>🗑️ Delete</Button>}
+      <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
+      <Button type="button" variant="secondary" actionName="Cancel Transaction Form" onClick={onCancel}>Cancel</Button>
+      {onDelete && <Button type="button" variant="danger" actionName="Delete Transaction" onClick={onDelete}>🗑️ Delete</Button>}
     </FormButtonGroup>
   )
 
   // Mobile layout
   if (isMobile) {
     return (
-      <FormWrapper onSubmit={handleSubmit}>
+      <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <FormField label="Date" htmlFor="txn-date">
@@ -235,7 +236,7 @@ export function TransactionForm({
     const descriptionSpan = hasCategory ? 2 : 1 // Description spans Category + Account columns (minus Clr/buttons)
 
     return (
-      <FormWrapper onSubmit={handleSubmit}>
+      <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
         <div style={{ display: 'grid', gridTemplateColumns: mediumCols, gap: '0.75rem', alignItems: 'end' }}>
           <FormField label="Date" htmlFor="txn-date">
             <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
@@ -269,7 +270,7 @@ export function TransactionForm({
     : (showCleared ? '6rem 1fr 1fr 6rem 1fr auto auto' : '6rem 1fr 1fr 6rem 1fr auto')
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
       <div style={{ display: 'grid', gridTemplateColumns: wideGridCols, gap: '0.75rem', alignItems: 'end' }}>
         <FormField label="Date" htmlFor="txn-date">
           <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />

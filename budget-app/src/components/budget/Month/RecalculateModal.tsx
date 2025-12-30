@@ -60,10 +60,10 @@ export function RecalculateModal({ isOpen, onClose, onProceed, results }: Recalc
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" actionName="Cancel Recalculation" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={onProceed}>
+              <Button actionName="Proceed with Recalculation" onClick={onProceed}>
                 Proceed
               </Button>
             </div>
@@ -137,7 +137,7 @@ export function RecalculateModal({ isOpen, onClose, onProceed, results }: Recalc
             {/* Close button when done/error */}
             {(results?.status === 'done' || results?.status === 'error') && (
               <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                <Button onClick={onClose}>
+                <Button actionName="Close Recalculation Modal" onClick={onClose}>
                   Done
                 </Button>
               </div>

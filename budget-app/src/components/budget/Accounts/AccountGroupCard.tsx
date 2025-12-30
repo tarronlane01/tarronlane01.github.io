@@ -21,6 +21,7 @@ import { AccountFlags } from './AccountFlags'
 import { GroupOverrideFlags } from './GroupOverrideFlags'
 import { AccountEndDropZone } from './AccountEndDropZone'
 import type { AccountFormData, GroupFormData, GroupWithId, AccountWithId } from '../../../hooks/useAccountsPage'
+import { logUserAction } from '@utils'
 
 // Helper to check if a balance is unexpected
 function hasUnexpectedBalance(balance: number, expectedBalance?: ExpectedBalanceType): boolean {
@@ -236,7 +237,7 @@ export function AccountGroupCard({
 
             {isMobile && (
               <div style={{ marginBottom: '0.5rem' }}>
-                <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                <Button variant="small" actionName={`Open Add Account Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                   + Account
                 </Button>
               </div>
@@ -277,8 +278,14 @@ export function AccountGroupCard({
                     onDragLeave={onDragLeave}
                     onDragEnd={onDragEnd}
                     onDrop={(e) => onAccountDrop(e, account.id, group.id)}
-                    onEdit={() => setEditingAccountId(account.id)}
-                    onDelete={() => onDeleteAccount(account.id)}
+                    onEdit={() => {
+                      logUserAction('CLICK', 'Edit Account', { details: account.nickname })
+                      setEditingAccountId(account.id)
+                    }}
+                    onDelete={() => {
+                      logUserAction('CLICK', 'Delete Account', { details: account.nickname })
+                      onDeleteAccount(account.id)
+                    }}
                     onMoveUp={() => onMoveAccount(account.id, 'up')}
                     onMoveDown={() => onMoveAccount(account.id, 'down')}
                     canMoveUp={idx > 0}
@@ -347,7 +354,7 @@ export function AccountGroupCard({
 
             {createForGroupId !== group.id && (
               <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-                <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                <Button variant="small" actionName={`Open Add Account Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                   + Add Account
                 </Button>
               </div>
@@ -420,14 +427,14 @@ function GroupHeader({
       </h3>
       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
         {!isMobile && (
-          <Button variant="small" onClick={onAddAccount} disabled={createForGroupId !== null}>
+          <Button variant="small" actionName={`Open Add Account Form (${group.name})`} onClick={onAddAccount} disabled={createForGroupId !== null}>
             + Account
           </Button>
         )}
-        <button onClick={onEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }} title="Edit account type">
+        <button onClick={() => { logUserAction('CLICK', 'Edit Account Type', { details: group.name }); onEdit() }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }} title="Edit account type">
           ✏️
         </button>
-        <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }} title="Delete account type">
+        <button onClick={() => { logUserAction('CLICK', 'Delete Account Type', { details: group.name }); onDelete() }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }} title="Delete account type">
           🗑️
         </button>
         <div style={reorderButtonGroup}>

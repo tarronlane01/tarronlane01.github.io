@@ -8,6 +8,7 @@ import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, SectionTotalHeader } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { ExpenseForm, ExpenseItem, ExpenseTableHeader } from '../Spend'
+import { logUserAction } from '@utils'
 
 export function SpendSection() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
@@ -116,6 +117,7 @@ export function SpendSection() {
         }
         action={!showAddExpense && (
           <Button
+            actionName="Open Add Expense Form"
             onClick={() => setShowAddExpense(true)}
             disabled={expenseAccounts.length === 0 || Object.keys(categories).length === 0}
           >
@@ -209,7 +211,10 @@ export function SpendSection() {
                     ? accountGroups[accounts[expense.account_id]!.account_group_id!]?.name
                     : undefined
                 }
-                onEdit={() => setEditingExpenseId(expense.id)}
+                onEdit={() => {
+                  logUserAction('CLICK', 'Edit Expense', { details: expense.payee || `$${expense.amount}` })
+                  setEditingExpenseId(expense.id)
+                }}
                 onDelete={() => handleDeleteExpense(expense.id)}
                 isMobile={isMobile}
               />

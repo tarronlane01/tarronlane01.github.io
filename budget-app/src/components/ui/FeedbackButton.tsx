@@ -7,6 +7,7 @@ import { colors } from '../../styles/shared'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import { TextAreaInput, FormButtonGroup } from './FormElements'
+import { logUserAction } from '@utils'
 
 type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
 
@@ -94,7 +95,7 @@ export function FeedbackButton() {
       )}
 
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => { logUserAction('OPEN', 'Feedback Modal'); setIsOpen(true) }}
         style={{
           position: 'fixed',
           bottom: '1.5rem',
@@ -137,7 +138,7 @@ export function FeedbackButton() {
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setFeedbackType(type)}
+                  onClick={() => { logUserAction('SELECT', 'Feedback Type', { value: config.label }); setFeedbackType(type) }}
                   style={{
                     flex: 1,
                     padding: '0.6rem 0.5rem',
@@ -180,10 +181,10 @@ export function FeedbackButton() {
           />
 
           <FormButtonGroup>
-            <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
+            <Button type="button" variant="secondary" actionName="Cancel Feedback" onClick={() => { setIsOpen(false); setFeedbackType('bug') }}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!feedbackText.trim()}>
+            <Button type="submit" actionName="Submit Feedback" disabled={!feedbackText.trim()}>
               Submit
             </Button>
           </FormButtonGroup>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { logUserAction } from '@utils'
 
 interface ModalProps {
   isOpen: boolean
@@ -10,6 +11,11 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children, width = '28rem' }: ModalProps) {
   if (!isOpen) return null
+
+  function handleClose() {
+    logUserAction('CLOSE', `${title} Modal`)
+    onClose()
+  }
 
   return (
     <div
@@ -23,7 +29,7 @@ export function Modal({ isOpen, onClose, title, children, width = '28rem' }: Mod
         zIndex: 1001,
         padding: '1rem',
       }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         style={{
@@ -42,7 +48,7 @@ export function Modal({ isOpen, onClose, title, children, width = '28rem' }: Mod
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{title}</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'transparent',
               border: 'none',

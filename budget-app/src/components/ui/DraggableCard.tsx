@@ -13,6 +13,7 @@ import {
 } from '../../styles/shared'
 import { Button } from './Button'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { logUserAction } from '@utils/actionLogger'
 
 interface DraggableCardProps {
   children: ReactNode
@@ -29,6 +30,7 @@ interface DraggableCardProps {
   onMoveDown?: () => void
   canMoveUp?: boolean
   canMoveDown?: boolean
+  itemName?: string  // For logging context
 }
 
 export function DraggableCard({
@@ -46,6 +48,7 @@ export function DraggableCard({
   onMoveDown,
   canMoveUp = true,
   canMoveDown = true,
+  itemName,
 }: DraggableCardProps) {
   const isMobile = useIsMobile()
   const showReorderButtons = onMoveUp || onMoveDown
@@ -82,8 +85,14 @@ export function DraggableCard({
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.75rem', minWidth: 0 }}>
           <span
             draggable
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
+            onDragStart={(e) => {
+              logUserAction('DRAG_START', itemName || 'Item')
+              onDragStart(e)
+            }}
+            onDragEnd={() => {
+              logUserAction('DRAG_END', itemName || 'Item')
+              onDragEnd()
+            }}
             style={{
               ...dragHandle,
               fontSize: isMobile ? '0.9rem' : undefined,
@@ -106,7 +115,7 @@ export function DraggableCard({
             // Mobile: Icon buttons
             <>
               <button
-                onClick={onEdit}
+                onClick={() => { logUserAction('CLICK', `Edit ${itemName || 'Item'}`); onEdit() }}
                 style={iconButton}
                 title="Edit"
                 aria-label="Edit"
@@ -114,7 +123,7 @@ export function DraggableCard({
                 ✏️
               </button>
               <button
-                onClick={onDelete}
+                onClick={() => { logUserAction('CLICK', `Delete ${itemName || 'Item'}`); onDelete() }}
                 style={iconButtonDanger}
                 title="Delete"
                 aria-label="Delete"
@@ -125,10 +134,10 @@ export function DraggableCard({
           ) : (
             // Desktop: Full text buttons
             <>
-              <Button variant="secondary" onClick={onEdit}>
+              <Button variant="secondary" actionName={`Edit ${itemName || 'Item'}`} onClick={onEdit}>
                 Edit
               </Button>
-              <Button variant="danger" onClick={onDelete}>
+              <Button variant="danger" actionName={`Delete ${itemName || 'Item'}`} onClick={onDelete}>
                 Delete
               </Button>
             </>
@@ -139,6 +148,7 @@ export function DraggableCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  logUserAction('CLICK', `Move Up ${itemName || 'Item'}`)
                   onMoveUp?.()
                 }}
                 disabled={!canMoveUp}
@@ -155,6 +165,7 @@ export function DraggableCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  logUserAction('CLICK', `Move Down ${itemName || 'Item'}`)
                   onMoveDown?.()
                 }}
                 disabled={!canMoveDown}

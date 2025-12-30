@@ -165,6 +165,7 @@ export function DatabaseCleanupCard({
             disabled={disabled}
             isBusy={isRunning}
             busyText="Running..."
+            actionName="Run Database Cleanup"
           >
             🔧 Fix {totalIssues} Issue{totalIssues !== 1 ? 's' : ''}
           </ActionButton>

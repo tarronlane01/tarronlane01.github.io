@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { logUserAction } from '@utils'
 
 export interface BreadcrumbItem {
   label: string
@@ -28,6 +29,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
           {item.to ? (
             <Link
               to={item.to}
+              onClick={() => logUserAction('NAVIGATE', `Breadcrumb: ${item.label}`)}
               style={{
                 color: 'inherit',
                 textDecoration: 'none',

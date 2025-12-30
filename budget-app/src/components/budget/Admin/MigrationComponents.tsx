@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { logUserAction } from '@utils/actionLogger'
 
 export interface MigrationStatus {
   categoriesArrayMigrationNeeded: boolean
@@ -58,6 +59,8 @@ interface MigrationCardProps {
   isBusy?: boolean
   /** Content to display in the card body */
   children?: ReactNode
+  /** Name for action logging */
+  cardName?: string
 }
 
 /**
@@ -72,7 +75,9 @@ export function MigrationCard({
   isRefreshing,
   isBusy = false,
   children,
+  cardName,
 }: MigrationCardProps) {
+  const name = cardName || title
   const getStatusStyle = () => {
     switch (status) {
       case 'unknown':
@@ -110,7 +115,7 @@ export function MigrationCard({
             </span>
           )}
           <button
-            onClick={onRefresh}
+            onClick={() => { logUserAction('CLICK', `Refresh ${name}`); onRefresh() }}
             disabled={isDisabled}
             style={{
               background: 'color-mix(in srgb, currentColor 10%, transparent)',
@@ -204,17 +209,19 @@ export function ActionButton({
   isBusy,
   busyText,
   children,
+  actionName,
 }: {
   onClick: () => void
   disabled?: boolean
   isBusy?: boolean
   busyText?: string
   children: ReactNode
+  actionName?: string
 }) {
   const isDisabled = disabled || isBusy
   return (
     <button
-      onClick={onClick}
+      onClick={() => { if (actionName) logUserAction('CLICK', actionName); onClick() }}
       disabled={isDisabled}
       style={{
         marginTop: '1rem',

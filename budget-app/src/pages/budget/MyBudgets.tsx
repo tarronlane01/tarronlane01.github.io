@@ -3,6 +3,7 @@ import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 import { PageContainer, BudgetNavBar } from '../../components/ui'
 import { BudgetCard } from '../../components/budget/Admin'
+import { logUserAction } from '@utils'
 
 function MyBudgets() {
   const {
@@ -47,6 +48,7 @@ function MyBudgets() {
   async function handleSwitchBudget(budgetId: string) {
     if (budgetId === currentBudget?.id) return
 
+    logUserAction('CLICK', 'Switch Budget', { details: budgetId })
     setIsSwitching(budgetId)
     setError(null)
     setSuccess(null)
@@ -63,6 +65,7 @@ function MyBudgets() {
   }
 
   async function handleAcceptInvite(budgetId: string) {
+    logUserAction('CLICK', 'Accept Budget Invite', { details: budgetId })
     setIsAccepting(budgetId)
     setError(null)
     setSuccess(null)
@@ -82,6 +85,7 @@ function MyBudgets() {
     e.preventDefault()
     if (!budgetIdInput.trim()) return
 
+    logUserAction('SUBMIT', 'Check Manual Invite', { value: budgetIdInput })
     setIsCheckingManual(true)
     setError(null)
     setManualInvite(null)
@@ -103,6 +107,7 @@ function MyBudgets() {
   async function handleAcceptManualInvite() {
     if (!manualInvite) return
 
+    logUserAction('CLICK', 'Accept Manual Invite', { details: manualInvite.budgetName })
     setIsAccepting(manualInvite.budgetId)
     setError(null)
 
@@ -120,6 +125,7 @@ function MyBudgets() {
   }
 
   function startEditing(budgetId: string, name: string) {
+    logUserAction('CLICK', 'Start Edit Budget Name', { details: name })
     setEditName(name)
     setEditingBudgetId(budgetId)
   }
@@ -133,6 +139,7 @@ function MyBudgets() {
     e.preventDefault()
     if (!editName.trim() || !editingBudgetId) return
 
+    logUserAction('SUBMIT', 'Rename Budget', { value: editName.trim() })
     setIsRenaming(true)
     setError(null)
     setSuccess(null)

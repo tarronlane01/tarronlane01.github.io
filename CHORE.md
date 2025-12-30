@@ -72,3 +72,38 @@ data/mutations/
 
 You're a Firebase expert, making sure my Firebase rules handle security for this app, making sure unauthorized users aren't able to create/edit/read any data they shouldn't.
 
+---
+
+## User Action Tracing Audit
+
+You're helping maintain the user action tracing system for AI-assisted debugging. The goal is to log user interactions to the console so that when errors occur, the user can copy/paste console output to show the AI exactly what actions led up to the error.
+
+**Feature flag:** `featureFlags.logUserActions` in `@constants/featureFlags`
+
+**Core utility:** `@utils/actionLogger.ts` provides:
+- `logUserAction(type, name, context?)` - Direct logging function
+- `trackedClick(name, onClick, options?)` - Wrapper for click handlers
+- `trackedChange(name, onChange, options?)` - Wrapper for value change handlers
+- `trackedInputChange(name, onChange, options?)` - Wrapper for input event handlers
+- `trackedSubmit(name, onSubmit, options?)` - Wrapper for form submissions
+
+**Built-in component support:**
+- `<Button actionName="...">` - Auto-logs clicks when actionName provided
+- `<FormWrapper actionName="...">` - Auto-logs form submissions when actionName provided
+
+**Audit checklist:**
+1. All `<Button>` components with meaningful actions should have `actionName` props
+2. All `<FormWrapper>` components should have `actionName` props
+3. Important form field changes should use `trackedChange` or `trackedInputChange`
+4. Modal opens/closes, navigation, and toggles should call `logUserAction` directly
+5. Action names should be descriptive: "Save Budget", "Delete Category", not just "Click"
+
+**Console output format:**
+```
+[14:32:05.123] [User] CLICK: Save Budget
+[14:32:06.456] [User] CHANGE: Amount = "$500"
+[14:32:07.789] [User] SUBMIT: Add Income Form
+```
+
+**Action types:** CLICK, CHANGE, SUBMIT, SELECT, TOGGLE, EXPAND, COLLAPSE, NAVIGATE, OPEN, CLOSE
+

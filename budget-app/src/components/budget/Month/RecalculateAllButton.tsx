@@ -17,7 +17,7 @@ import { useBudgetData } from '../../../hooks'
 import { queryClient, queryKeys, getFutureMonths, writeMonthData } from '../../../data'
 // eslint-disable-next-line no-restricted-imports -- Recalculation needs direct Firestore access
 import { readDocByPath, queryCollection } from '@firestore'
-import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
+import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal, logUserAction } from '@utils'
 import type { CategoriesMap, AccountsMap, MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
 import { MONTH_NAMES } from '../../../constants'
 import { RecalculateModal, type RecalcResults } from './RecalculateModal'
@@ -46,6 +46,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
   const [results, setResults] = useState<RecalcResults | null>(null)
 
   function handleOpenModal() {
+    logUserAction('OPEN', 'Recalculate Modal')
     setShowModal(true)
     setResults({ status: 'confirming' })
   }
@@ -55,6 +56,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
       return
     }
 
+    logUserAction('CLICK', 'Proceed Recalculation')
     setIsRecomputing(true)
     setResults({ status: 'pending' })
 
@@ -370,6 +372,7 @@ export function RecalculateAllButton({ isDisabled }: RecalculateAllButtonProps) 
   }
 
   function handleCloseModal() {
+    logUserAction('CLOSE', 'Recalculate Modal')
     setShowModal(false)
     setResults(null)
   }

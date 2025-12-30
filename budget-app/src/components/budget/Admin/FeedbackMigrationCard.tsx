@@ -127,6 +127,7 @@ export function FeedbackMigrationCard({
             disabled={disabled}
             isBusy={isMigrating}
             busyText="Migrating..."
+            actionName="Run Feedback Migration"
           >
             Run Migration
           </ActionButton>

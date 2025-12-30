@@ -49,7 +49,7 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
   }
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper actionName={submitLabel === 'Create' ? 'Create Category' : 'Update Category'} onSubmit={handleSubmit}>
       <FormField label="Category Name" htmlFor="category-name">
         <TextInput
           id="category-name"
@@ -127,8 +127,8 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
         </p>
       </FormField>
       <FormButtonGroup>
-        <Button type="submit" isLoading={isSubmitting}>{submitLabel}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" actionName={submitLabel === 'Create' ? 'Create Category' : 'Save Category'} isLoading={isSubmitting}>{submitLabel}</Button>
+        <Button type="button" variant="secondary" actionName="Cancel Category Form" onClick={onCancel}>Cancel</Button>
       </FormButtonGroup>
     </FormWrapper>
   )

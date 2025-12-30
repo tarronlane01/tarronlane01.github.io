@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
+import { logUserAction } from '@utils/actionLogger'
 
 function SettingsUsers() {
   // Context: identifiers only
@@ -28,6 +29,7 @@ function SettingsUsers() {
     e.preventDefault()
     if (!newUserId.trim() || !currentBudget) return
 
+    logUserAction('SUBMIT', 'Invite User Form')
     setIsInviting(true)
     setError(null)
     setSuccess(null)
@@ -61,6 +63,7 @@ function SettingsUsers() {
       ? 'Are you sure you want to revoke this user\'s access? They will lose access to this budget.'
       : 'Are you sure you want to cancel this invitation?'
 
+    logUserAction('CLICK', hasAccepted ? 'Revoke User Access' : 'Cancel User Invite', { userId: userIdToRevoke })
     if (!confirm(message)) return
 
     setError(null)

@@ -80,7 +80,7 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
   }
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper actionName={submitLabel === 'Create Account' ? 'Create Account' : 'Update Account'} onSubmit={handleSubmit}>
       <FormField label="Account Nickname" htmlFor="account-nickname">
         <TextInput
           id="account-nickname"
@@ -217,8 +217,8 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
         </div>
       )}
       <FormButtonGroup>
-        <Button type="submit">{submitLabel}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
+        <Button type="button" variant="secondary" actionName="Cancel Account Form" onClick={onCancel}>Cancel</Button>
       </FormButtonGroup>
     </FormWrapper>
   )

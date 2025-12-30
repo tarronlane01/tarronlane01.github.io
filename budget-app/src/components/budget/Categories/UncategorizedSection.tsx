@@ -6,6 +6,7 @@ import { CategoryForm, type CategoryFormData } from './CategoryForm'
 import { CategoryEndDropZone } from './CategoryEndDropZone'
 import { CategoryCardContent } from './CategoryGroupCard'
 import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
+import { logUserAction } from '@utils'
 
 type CategoryEntry = [string, Category]
 type DragType = 'category' | 'group' | null
@@ -116,7 +117,7 @@ export function UncategorizedSection({
             ({ungroupedCategories.length})
           </span>
         </h3>
-        <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
+        <Button variant="small" actionName="Open Add Category Form (Uncategorized)" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
           + Category
         </Button>
       </div>
@@ -149,8 +150,14 @@ export function UncategorizedSection({
               onDragLeave={handleDragLeave}
               onDragEnd={handleDragEnd}
               onDrop={(e) => handleCategoryDrop(e, catId, 'ungrouped')}
-              onEdit={() => setEditingCategoryId(catId)}
-              onDelete={() => handleDeleteCategory(catId)}
+              onEdit={() => {
+                logUserAction('CLICK', 'Edit Category', { details: category.name })
+                setEditingCategoryId(catId)
+              }}
+              onDelete={() => {
+                logUserAction('CLICK', 'Delete Category', { details: category.name })
+                handleDeleteCategory(catId)
+              }}
               onMoveUp={() => handleMoveCategory(catId, 'up')}
               onMoveDown={() => handleMoveCategory(catId, 'down')}
               canMoveUp={ungroupedCategories.findIndex(([cId]) => cId === catId) > 0}
@@ -208,7 +215,7 @@ export function UncategorizedSection({
       {/* Bottom add category button for ungrouped */}
       {createForGroupId !== 'ungrouped' && (
         <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-          <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
+          <Button variant="small" actionName="Open Add Category Form (Uncategorized)" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
             + Add Category
           </Button>
         </div>

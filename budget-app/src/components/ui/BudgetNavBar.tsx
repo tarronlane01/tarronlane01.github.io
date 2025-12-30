@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 import { DropdownMenu, type MenuItem } from './DropdownMenu'
+import { logUserAction } from '@utils'
 
 interface BudgetNavBarProps {
   /** The page title to display centered */
@@ -38,11 +39,11 @@ export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }:
       {/* Left: Icon or back arrow (wrapped in div to prevent link stretching across full 1fr column) */}
       <div>
         {showBackArrow ? (
-          <Link to="/" style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none' }} title="Back to Home">
+          <Link to="/" onClick={() => logUserAction('NAVIGATE', 'Back to Home')} style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none' }} title="Back to Home">
             ←
           </Link>
         ) : (
-          <Link to="/budget" title="Budget Home">
+          <Link to="/budget" onClick={() => logUserAction('NAVIGATE', 'Budget Home Icon')} title="Budget Home">
             <img src="/budget-icon.svg" alt="Budget" style={{ width: '1.5rem', height: '1.5rem' }} />
           </Link>
         )}

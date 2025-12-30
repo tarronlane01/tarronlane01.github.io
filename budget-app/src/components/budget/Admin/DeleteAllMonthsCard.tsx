@@ -113,6 +113,7 @@ export function DeleteAllMonthsCard({
             disabled={disabled}
             isBusy={isDeleting}
             busyText="Deleting..."
+            actionName="Delete All Months"
           >
             🗑️ Delete ALL {monthsCount} Month{monthsCount !== 1 ? 's' : ''}
           </ActionButton>

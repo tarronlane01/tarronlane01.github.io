@@ -14,6 +14,7 @@ import { CategoryForm, type CategoryFormData } from './CategoryForm'
 import { CategoryGroupForm, type CategoryGroupFormData } from './CategoryGroupForm'
 import { CategoryEndDropZone } from './CategoryEndDropZone'
 import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
+import { logUserAction } from '@utils'
 
 type CategoryEntry = [string, Category]
 type DragType = 'category' | 'group' | null
@@ -231,12 +232,12 @@ export function CategoryGroupCard({
               </h3>
               <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>
                 {!isMobile && (
-                  <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                  <Button variant="small" actionName={`Open Add Category Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                     + Category
                   </Button>
                 )}
                 <button
-                  onClick={() => setEditingGroupId(group.id)}
+                  onClick={() => { logUserAction('CLICK', 'Edit Category Group', { details: group.name }); setEditingGroupId(group.id) }}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -250,7 +251,7 @@ export function CategoryGroupCard({
                   ✏️
                 </button>
                 <button
-                  onClick={() => handleDeleteGroup(group.id)}
+                  onClick={() => { logUserAction('CLICK', 'Delete Category Group', { details: group.name }); handleDeleteGroup(group.id) }}
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -298,7 +299,7 @@ export function CategoryGroupCard({
             {/* Mobile: Add category button on its own row */}
             {isMobile && (
               <div style={{ marginBottom: '0.5rem' }}>
-                <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                <Button variant="small" actionName={`Open Add Category Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                   + Category
                 </Button>
               </div>
@@ -332,8 +333,14 @@ export function CategoryGroupCard({
                     onDragLeave={handleDragLeave}
                     onDragEnd={handleDragEnd}
                     onDrop={(e) => handleCategoryDrop(e, catId, group.id)}
-                    onEdit={() => setEditingCategoryId(catId)}
-                    onDelete={() => handleDeleteCategory(catId)}
+                    onEdit={() => {
+                      logUserAction('CLICK', 'Edit Category', { details: category.name })
+                      setEditingCategoryId(catId)
+                    }}
+                    onDelete={() => {
+                      logUserAction('CLICK', 'Delete Category', { details: category.name })
+                      handleDeleteCategory(catId)
+                    }}
                     onMoveUp={() => handleMoveCategory(catId, 'up')}
                     onMoveDown={() => handleMoveCategory(catId, 'down')}
                     canMoveUp={groupCategories.findIndex(([cId]) => cId === catId) > 0}
@@ -391,7 +398,7 @@ export function CategoryGroupCard({
             {/* Bottom add category button */}
             {createForGroupId !== group.id && (
               <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-                <Button variant="small" onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                <Button variant="small" actionName={`Open Add Category Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
                   + Add Category
                 </Button>
               </div>

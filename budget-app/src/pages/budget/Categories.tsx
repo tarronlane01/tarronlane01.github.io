@@ -281,7 +281,7 @@ function Categories() {
           submitLabel="Create Group"
         />
       ) : (
-        <Button variant="primary-large" onClick={() => setShowCreateGroupForm(true)}>
+        <Button variant="primary-large" actionName="Open Add Category Group Form" onClick={() => setShowCreateGroupForm(true)}>
           + Add Category Group
         </Button>
       )}

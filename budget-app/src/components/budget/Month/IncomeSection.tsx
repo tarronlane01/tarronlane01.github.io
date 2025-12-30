@@ -8,6 +8,7 @@ import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, getBalanceColor, SectionTotalHeader } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { IncomeForm, IncomeItem, IncomeTableHeader } from '../Income'
+import { logUserAction } from '@utils'
 
 export function IncomeSection() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
@@ -111,7 +112,7 @@ export function IncomeSection() {
         label="Total"
         value={<span style={{ color: getBalanceColor(totalMonthlyIncome) }}>{formatCurrency(totalMonthlyIncome)}</span>}
         action={!showAddIncome && (
-          <Button onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0}>
+          <Button actionName="Open Add Income Form" onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0}>
             + Add Income
           </Button>
         )}
@@ -188,7 +189,10 @@ export function IncomeSection() {
                     ? accountGroups[accounts[income.account_id]!.account_group_id!]?.name
                     : undefined
                 }
-                onEdit={() => setEditingIncomeId(income.id)}
+                onEdit={() => {
+                  logUserAction('CLICK', 'Edit Income', { details: income.payee || `$${income.amount}` })
+                  setEditingIncomeId(income.id)
+                }}
                 onDelete={() => handleDeleteIncome(income.id)}
                 isMobile={isMobile}
               />

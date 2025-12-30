@@ -4,6 +4,7 @@ import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { colors } from '../../../styles/shared'
 import { MONTH_NAMES } from '@constants'
 import { RecalculateAllButton } from './RecalculateAllButton'
+import { logUserAction } from '@utils'
 
 interface MonthNavigationProps {
   isLoading: boolean
@@ -69,7 +70,7 @@ export function MonthNavigation({
       borderRadius: '12px',
     }}>
       <button
-        onClick={onPreviousMonth}
+        onClick={() => { logUserAction('NAVIGATE', 'Previous Month'); onPreviousMonth() }}
         disabled={isLoading}
         style={{
           background: 'color-mix(in srgb, currentColor 10%, transparent)',
@@ -157,7 +158,7 @@ export function MonthNavigation({
             {/* Admin-only: Download month data */}
             {isAdmin && currentMonth && (
               <button
-                onClick={handleDownloadJson}
+                onClick={() => { logUserAction('CLICK', 'Download Month JSON'); handleDownloadJson() }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -183,7 +184,7 @@ export function MonthNavigation({
       </div>
 
       <button
-        onClick={onNextMonth}
+        onClick={() => { logUserAction('NAVIGATE', 'Next Month'); onNextMonth() }}
         disabled={isLoading}
         style={{
           background: 'color-mix(in srgb, currentColor 10%, transparent)',

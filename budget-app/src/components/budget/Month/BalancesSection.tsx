@@ -290,6 +290,7 @@ export function BalancesSection() {
       }}>
         {/* View Toggle Button - always on the left */}
         <Button
+          actionName={currentView === 'categories' ? 'Switch to Account Balances' : 'Switch to Category Balances'}
           onClick={() => setCurrentView(currentView === 'categories' ? 'accounts' : 'categories')}
           variant="secondary"
           style={{ fontSize: '0.85rem' }}
@@ -301,6 +302,7 @@ export function BalancesSection() {
         {currentView === 'categories' && isDraftMode && !isEditingAppliedAllocations && (
           <>
             <Button
+              actionName="Save Draft Allocations"
               onClick={handleSaveAllocations}
               disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
               variant="secondary"
@@ -309,6 +311,7 @@ export function BalancesSection() {
               {isSavingAllocations ? '⏳...' : '💾 Save Draft'}
             </Button>
             <Button
+              actionName="Apply Allocations"
               onClick={handleFinalizeAllocations}
               disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
               variant="secondary"
@@ -322,6 +325,7 @@ export function BalancesSection() {
         {/* Edit Allocations Button - only show for category view when not in draft mode and allocations are finalized */}
         {currentView === 'categories' && !isDraftMode && allocationsFinalized && (
           <Button
+            actionName="Edit Allocations"
             onClick={() => setIsEditingAppliedAllocations(true)}
             variant="secondary"
             style={{ fontSize: '0.85rem' }}
@@ -334,6 +338,7 @@ export function BalancesSection() {
         {currentView === 'categories' && isEditingAppliedAllocations && (
           <>
             <Button
+              actionName="Apply Allocations"
               onClick={handleFinalizeAllocations}
               disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
               variant="secondary"
@@ -342,6 +347,7 @@ export function BalancesSection() {
               {isFinalizingAllocations ? '⏳...' : '✓ Apply Allocations'}
             </Button>
             <Button
+              actionName="Cancel Edit Allocations"
               onClick={resetAllocationsToSaved}
               disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading}
               variant="secondary"
@@ -350,6 +356,7 @@ export function BalancesSection() {
               ✕ Cancel
             </Button>
             <Button
+              actionName="Open Delete Allocations Modal"
               onClick={() => setShowDeleteConfirm(true)}
               disabled={isDeletingAllocations || monthLoading}
               variant="secondary"
@@ -462,10 +469,11 @@ export function BalancesSection() {
           Are you sure you want to delete all allocations for this month? This will remove all allocated amounts and reset the month to unfinalized.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+          <Button actionName="Cancel Delete Allocations" variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
             Cancel
           </Button>
           <Button
+            actionName="Confirm Delete Allocations"
             variant="danger"
             onClick={() => {
               setShowDeleteConfirm(false)

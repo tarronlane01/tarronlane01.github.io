@@ -30,7 +30,7 @@ export function CategoryGroupForm({ initialData, onSubmit, onCancel, submitLabel
   }
 
   return (
-    <FormWrapper onSubmit={handleSubmit}>
+    <FormWrapper actionName={submitLabel === 'Create Group' ? 'Create Category Group' : 'Update Category Group'} onSubmit={handleSubmit}>
       <FormField label="Group Name" htmlFor="group-name">
         <TextInput
           id="group-name"
@@ -43,8 +43,8 @@ export function CategoryGroupForm({ initialData, onSubmit, onCancel, submitLabel
         />
       </FormField>
       <FormButtonGroup>
-        <Button type="submit" isLoading={isSubmitting}>{submitLabel}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" actionName={submitLabel === 'Create Group' ? 'Create Category Group' : 'Save Category Group'} isLoading={isSubmitting}>{submitLabel}</Button>
+        <Button type="button" variant="secondary" actionName="Cancel Category Group Form" onClick={onCancel}>Cancel</Button>
       </FormButtonGroup>
     </FormWrapper>
   )

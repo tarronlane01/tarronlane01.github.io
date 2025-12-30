@@ -15,6 +15,7 @@ import { AccountForm } from './AccountForm'
 import { AccountFlags } from './AccountFlags'
 import { AccountEndDropZone } from './AccountEndDropZone'
 import type { AccountFormData, GroupWithId, AccountWithId } from '../../../hooks/useAccountsPage'
+import { logUserAction } from '@utils'
 
 interface UngroupedAccountsSectionProps {
   accounts: AccountWithId[]
@@ -136,7 +137,7 @@ export function UngroupedAccountsSection({
             </span>
           )}
         </h3>
-        <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
+        <Button variant="small" actionName="Open Add Account Form (Ungrouped)" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
           + Account
         </Button>
       </div>
@@ -176,8 +177,14 @@ export function UngroupedAccountsSection({
               onDragLeave={onDragLeave}
               onDragEnd={onDragEnd}
               onDrop={(e) => onAccountDrop(e, account.id, 'ungrouped')}
-              onEdit={() => setEditingAccountId(account.id)}
-              onDelete={() => onDeleteAccount(account.id)}
+              onEdit={() => {
+                logUserAction('CLICK', 'Edit Account', { details: account.nickname })
+                setEditingAccountId(account.id)
+              }}
+              onDelete={() => {
+                logUserAction('CLICK', 'Delete Account', { details: account.nickname })
+                onDeleteAccount(account.id)
+              }}
               onMoveUp={() => onMoveAccount(account.id, 'up')}
               onMoveDown={() => onMoveAccount(account.id, 'down')}
               canMoveUp={idx > 0}
@@ -243,7 +250,7 @@ export function UngroupedAccountsSection({
 
       {createForGroupId !== 'ungrouped' && (
         <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)' }}>
-          <Button variant="small" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
+          <Button variant="small" actionName="Open Add Account Form (Ungrouped)" onClick={() => setCreateForGroupId('ungrouped')} disabled={createForGroupId !== null}>
             + Add Account
           </Button>
         </div>

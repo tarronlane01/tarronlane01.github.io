@@ -20,6 +20,7 @@ import {
   feedbackTypeConfig,
   type FeedbackType,
 } from '../../components/budget/Admin'
+import { logUserAction } from '@utils'
 
 function SettingsFeedback() {
   const [error, setError] = useState<string | null>(null)
@@ -254,7 +255,7 @@ function SettingsFeedback() {
       </div>
 
       {showAddForm ? (
-        <FormWrapper onSubmit={handleAddFeedback}>
+        <FormWrapper actionName="Add Feedback" onSubmit={handleAddFeedback}>
           <FeedbackTypeSelector
             selectedType={newFeedbackType}
             onSelect={setNewFeedbackType}
@@ -267,16 +268,16 @@ function SettingsFeedback() {
             required
           />
           <FormButtonGroup>
-            <Button type="submit" disabled={!newFeedbackText.trim()}>
+            <Button type="submit" actionName="Add Feedback" disabled={!newFeedbackText.trim()}>
               Add Feedback
             </Button>
-            <Button type="button" variant="secondary" onClick={() => { setShowAddForm(false); setNewFeedbackText(''); setNewFeedbackType('bug') }}>
+            <Button type="button" variant="secondary" actionName="Cancel Add Feedback" onClick={() => { setShowAddForm(false); setNewFeedbackText(''); setNewFeedbackType('bug') }}>
               Cancel
             </Button>
           </FormButtonGroup>
         </FormWrapper>
       ) : (
-        <Button variant="primary-large" onClick={() => setShowAddForm(true)}>
+        <Button variant="primary-large" actionName="Open Add Feedback Form" onClick={() => setShowAddForm(true)}>
           + Add Feedback
         </Button>
       )}
@@ -310,10 +311,10 @@ function SettingsFeedback() {
           </p>
         )}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <Button variant="secondary" onClick={() => setConfirmingItem(null)}>
+          <Button variant="secondary" actionName="Cancel Mark Complete" onClick={() => setConfirmingItem(null)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={confirmComplete}>
+          <Button variant="primary" actionName="Confirm Mark Complete" onClick={confirmComplete}>
             Mark Complete
           </Button>
         </div>
@@ -331,7 +332,7 @@ function SettingsFeedback() {
           selectedType={editingTypeItem?.feedback_type as FeedbackType || 'bug'}
           onSelect={handleTypeChange}
         />
-        <Button variant="secondary" onClick={() => setEditingTypeItem(null)} style={{ width: '100%' }}>
+        <Button variant="secondary" actionName="Cancel Change Feedback Type" onClick={() => setEditingTypeItem(null)} style={{ width: '100%' }}>
           Cancel
         </Button>
       </Modal>
@@ -358,7 +359,7 @@ function FeedbackTypeSelector({
           <button
             key={type}
             type="button"
-            onClick={() => onSelect(type)}
+            onClick={() => { logUserAction('SELECT', 'Feedback Type', { value: config.label }); onSelect(type) }}
             style={{
               flex: 1,
               padding: '0.6rem 0.75rem',

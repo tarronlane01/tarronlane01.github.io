@@ -7,6 +7,7 @@ import { readDocByPath, updateDocByPath } from '@firestore'
 import { useBudget } from '../../contexts/budget_context'
 import { Button, ErrorAlert } from '../../components/ui'
 import { pageSubtitle, card, colors } from '../../styles/shared'
+import { logUserAction } from '@utils/actionLogger'
 
 interface TestResult {
   name: string
@@ -27,6 +28,7 @@ function SettingsTests() {
   }
 
   async function runAllTests() {
+    logUserAction('CLICK', 'Run All Security Tests')
     setIsRunning(true)
     setTestResults([])
 
@@ -185,6 +187,7 @@ function SettingsTests() {
   }
 
   async function runSingleTest(name: string) {
+    logUserAction('CLICK', 'Run Security Test', { testName: name })
     const existingTest = testResults.find(t => t.name === name)
     if (!existingTest) {
       // Add it to results if not present

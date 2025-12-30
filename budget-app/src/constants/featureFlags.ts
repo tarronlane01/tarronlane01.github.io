@@ -11,6 +11,13 @@ export const featureFlags = {
    * Useful for debugging data flow, but can be noisy.
    */
   logFirebaseOperations: true,
+
+  /**
+   * Log user interactions (button clicks, form changes, etc.) to the console.
+   * Useful for AI-assisted debugging - copy/paste console output to show
+   * what actions led up to an error.
+   */
+  logUserActions: true,
 } as const
 
 // Type for feature flag keys

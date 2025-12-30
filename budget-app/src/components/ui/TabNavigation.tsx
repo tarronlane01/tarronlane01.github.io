@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { colors } from '../../styles/shared'
+import { logUserAction } from '@utils'
 
 export interface Tab {
   id: string
@@ -139,6 +140,7 @@ export function TabNavigation(props: TabNavigationProps) {
               <Link
                 key={tab.id}
                 to={`${props.linkPrefix}/${tab.id}`}
+                onClick={() => logUserAction('NAVIGATE', `Tab: ${tab.label}`)}
                 style={getTabStyle(isActive)}
               >
                 {renderTabContent(tab, isActive)}
@@ -149,7 +151,7 @@ export function TabNavigation(props: TabNavigationProps) {
           return (
             <button
               key={tab.id}
-              onClick={() => props.onTabChange(tab.id)}
+              onClick={() => { logUserAction('NAVIGATE', `Tab: ${tab.label}`); props.onTabChange(tab.id) }}
               style={getTabStyle(isActive)}
             >
               {renderTabContent(tab, isActive)}
