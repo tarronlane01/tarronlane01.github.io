@@ -24,7 +24,6 @@ export interface MonthDocument {
   category_balances: CategoryMonthBalance[]
   are_allocations_finalized: boolean
 
-  is_needs_recalculation: boolean
   created_at: string
   updated_at: string
 }

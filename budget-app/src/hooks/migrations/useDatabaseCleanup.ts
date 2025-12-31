@@ -19,7 +19,9 @@
 
 import { useState } from 'react'
 // eslint-disable-next-line no-restricted-imports
-import { readDocByPath, writeDocByPath, queryCollection, deleteDocByPath } from '@firestore'
+import { readDocByPath, writeDocByPath, queryCollection, deleteDocByPath, updateDocByPath } from '@firestore'
+// eslint-disable-next-line no-restricted-imports
+import { deleteField } from 'firebase/firestore'
 import type {
   FirestoreData,
   AccountsMap,
@@ -28,7 +30,9 @@ import type {
   FinancialAccount,
   AccountGroup,
   Category,
+  MonthMap,
 } from '@types'
+import { getYearMonthOrdinal } from '@utils'
 
 import type { DatabaseCleanupStatus, DatabaseCleanupResult, FutureMonthInfo } from './databaseCleanupTypes'
 import {
@@ -48,6 +52,86 @@ import {
 
 // Re-export types for consumers
 export type { DatabaseCleanupStatus, DatabaseCleanupResult, FutureMonthInfo }
+
+// ============================================================================
+// MONTH MAP HELPERS
+// ============================================================================
+
+/**
+ * Get the 7-month window ordinals (3 past, current, 3 future).
+ */
+function getMonthWindowOrdinals(): string[] {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1 // 1-12
+
+  const ordinals: string[] = []
+
+  // 3 months in the past
+  for (let i = 3; i > 0; i--) {
+    let year = currentYear
+    let month = currentMonth - i
+    while (month < 1) {
+      month += 12
+      year -= 1
+    }
+    ordinals.push(getYearMonthOrdinal(year, month))
+  }
+
+  // Current month
+  ordinals.push(getYearMonthOrdinal(currentYear, currentMonth))
+
+  // 3 months in the future
+  for (let i = 1; i <= 3; i++) {
+    let year = currentYear
+    let month = currentMonth + i
+    while (month > 12) {
+      month -= 12
+      year += 1
+    }
+    ordinals.push(getYearMonthOrdinal(year, month))
+  }
+
+  return ordinals
+}
+
+/**
+ * Build the initial month_map for a budget based on existing months.
+ */
+async function buildMonthMapForBudget(budgetId: string): Promise<MonthMap> {
+  const monthMap: MonthMap = {}
+  const windowOrdinals = getMonthWindowOrdinals()
+
+  // Query months for this budget
+  const monthsResult = await queryCollection<FirestoreData>(
+    'months',
+    `database cleanup: querying months for budget ${budgetId}`,
+    [{ field: 'budget_id', op: '==', value: budgetId }]
+  )
+
+  // Get ordinals of existing months
+  const existingOrdinals = new Set<string>()
+  for (const monthDoc of monthsResult.docs) {
+    const data = monthDoc.data
+    if (data.year && data.month) {
+      const ordinal = getYearMonthOrdinal(data.year as number, data.month as number)
+      existingOrdinals.add(ordinal)
+    }
+  }
+
+  // Only add entries for months that exist AND are in the window
+  for (const ordinal of windowOrdinals) {
+    if (existingOrdinals.has(ordinal)) {
+      monthMap[ordinal] = { needs_recalculation: false }
+    }
+  }
+
+  return monthMap
+}
+
+// ============================================================================
+// HOOK
+// ============================================================================
 
 interface UseDatabaseCleanupOptions {
   currentUser: unknown
@@ -83,6 +167,7 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
       let accountsNeedingDefaults = 0
       let categoriesNeedingDefaults = 0
       let groupsNeedingDefaults = 0
+      let budgetsNeedingMonthMap = 0
 
       for (const budgetDoc of budgetsResult.docs) {
         const data = budgetDoc.data
@@ -91,6 +176,12 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         if (Array.isArray(data.accounts) || Array.isArray(data.categories) || Array.isArray(data.account_groups)) {
           budgetsWithArrays++
           continue // Skip detailed checks for array-format budgets
+        }
+
+        // Check if month_map field is missing entirely (undefined means not migrated)
+        // Note: An empty {} is valid if the budget has no months in the 7-month window
+        if (data.month_map === undefined) {
+          budgetsNeedingMonthMap++
         }
 
         // Check accounts
@@ -142,6 +233,7 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
       const cutoff = getFutureMonthCutoff()
       const futureMonthsToDelete: FutureMonthInfo[] = []
       let monthsWithSchemaIssues = 0
+      let monthsWithOldRecalcField = 0
 
       for (const monthDoc of monthsResult.docs) {
         const data = monthDoc.data
@@ -162,6 +254,11 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         if (monthNeedsDefaults(data)) {
           monthsWithSchemaIssues++
         }
+
+        // Check for old is_needs_recalculation field
+        if (data.is_needs_recalculation !== undefined) {
+          monthsWithOldRecalcField++
+        }
       }
 
       // Sort future months by date
@@ -179,9 +276,11 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         accountsNeedingDefaults,
         categoriesNeedingDefaults,
         groupsNeedingDefaults,
+        budgetsNeedingMonthMap,
         totalMonths: monthsResult.docs.length,
         futureMonthsToDelete,
         monthsWithSchemaIssues,
+        monthsWithOldRecalcField,
       })
     } catch (err) {
       console.error('Failed to scan database:', err)
@@ -206,8 +305,10 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     let categoriesFixed = 0
     let groupsFixed = 0
     let arraysConverted = 0
+    let monthMapsAdded = 0
     let futureMonthsDeleted = 0
     let monthsFixed = 0
+    let oldRecalcFieldsRemoved = 0
 
     try {
       // ========================================
@@ -327,16 +428,22 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
             }
           }
 
-          // Ensure is_needs_recalculation exists
-          if (updates.is_needs_recalculation === undefined) {
-            updates.is_needs_recalculation = false
+          // Add month_map if field is missing entirely (undefined means not migrated)
+          // Note: An empty {} is valid if the budget has no months in the 7-month window
+          if (data.month_map === undefined) {
+            const monthMap = await buildMonthMapForBudget(budgetDoc.id)
+            updates.month_map = monthMap
             needsUpdate = true
+            monthMapsAdded++
+            console.log(`[DatabaseCleanup] Added month_map to budget ${budgetDoc.id} with ${Object.keys(monthMap).length} months`)
           }
 
           // Remove any old/deprecated fields
           delete (updates as { category_balances?: unknown }).category_balances
           delete (updates as { allocations?: unknown }).allocations
           delete (updates as { allocations_finalized?: unknown }).allocations_finalized
+          // Remove old is_needs_recalculation from budget (now tracked in month_map)
+          delete (updates as { is_needs_recalculation?: unknown }).is_needs_recalculation
 
           if (needsUpdate) {
             await writeDocByPath(
@@ -390,6 +497,21 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
             )
             monthsFixed++
           }
+
+          // Remove old is_needs_recalculation field (now tracked in budget's month_map)
+          if (data.is_needs_recalculation !== undefined) {
+            await updateDocByPath(
+              'months',
+              monthDoc.id,
+              {
+                is_needs_recalculation: deleteField(),
+                updated_at: new Date().toISOString(),
+              },
+              `database cleanup: removing is_needs_recalculation from month ${year}/${month}`
+            )
+            oldRecalcFieldsRemoved++
+            console.log(`[DatabaseCleanup] Removed is_needs_recalculation from month ${year}/${month}`)
+          }
         } catch (err) {
           errors.push(`Month ${monthDoc.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
         }
@@ -401,8 +523,10 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         categoriesFixed,
         groupsFixed,
         arraysConverted,
+        monthMapsAdded,
         futureMonthsDeleted,
         monthsFixed,
+        oldRecalcFieldsRemoved,
         errors,
       })
 
@@ -414,8 +538,10 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         categoriesFixed: 0,
         groupsFixed: 0,
         arraysConverted: 0,
+        monthMapsAdded: 0,
         futureMonthsDeleted: 0,
         monthsFixed: 0,
+        oldRecalcFieldsRemoved: 0,
         errors: [err instanceof Error ? err.message : 'Unknown error'],
       })
     } finally {
@@ -432,8 +558,10 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.accountsNeedingDefaults > 0 ||
     status.categoriesNeedingDefaults > 0 ||
     status.groupsNeedingDefaults > 0 ||
+    status.budgetsNeedingMonthMap > 0 ||
     status.futureMonthsToDelete.length > 0 ||
-    status.monthsWithSchemaIssues > 0
+    status.monthsWithSchemaIssues > 0 ||
+    status.monthsWithOldRecalcField > 0
   )
 
   const totalIssues = status !== null ? (
@@ -441,8 +569,10 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.accountsNeedingDefaults +
     status.categoriesNeedingDefaults +
     status.groupsNeedingDefaults +
+    status.budgetsNeedingMonthMap +
     status.futureMonthsToDelete.length +
-    status.monthsWithSchemaIssues
+    status.monthsWithSchemaIssues +
+    status.monthsWithOldRecalcField
   ) : 0
 
   return {

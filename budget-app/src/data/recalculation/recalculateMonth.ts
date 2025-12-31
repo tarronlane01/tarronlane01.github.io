@@ -57,7 +57,9 @@ export const EMPTY_SNAPSHOT: PreviousMonthSnapshot = {
  * 4. Recalculates account income/expenses from transaction arrays
  * 5. Recalculates end_balance = start_balance + net_change
  * 6. Sets previous_month_income
- * 7. Clears is_needs_recalculation flag
+ *
+ * Note: The needs_recalculation flag is stored in the budget's month_map,
+ * not on the month document itself. The caller handles clearing that flag.
  *
  * @param month - The month document to recalculate
  * @param prevSnapshot - Snapshot of previous month's end balances
@@ -84,7 +86,6 @@ export function recalculateMonth(
     previous_month_income: prevSnapshot.totalIncome,
     category_balances: categoryBalances,
     account_balances: accountBalances,
-    is_needs_recalculation: false,
     updated_at: new Date().toISOString(),
   }
 }

@@ -51,7 +51,6 @@ export function useFinalizeAllocations() {
       ...monthData,
       category_balances: categoryBalances,
       are_allocations_finalized: true,
-      is_needs_recalculation: false,
       updated_at: new Date().toISOString(),
     }
 

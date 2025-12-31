@@ -87,7 +87,6 @@ export function applyMonthDefaults(month: FirestoreData, docId: string): MonthDo
     category_balances: Array.isArray(month.category_balances) ? month.category_balances : [],
     are_allocations_finalized: month.are_allocations_finalized ?? false,
 
-    is_needs_recalculation: month.is_needs_recalculation ?? true,
     created_at: month.created_at ?? new Date().toISOString(),
     updated_at: month.updated_at ?? new Date().toISOString(),
   }

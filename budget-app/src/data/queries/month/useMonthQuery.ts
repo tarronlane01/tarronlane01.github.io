@@ -42,7 +42,6 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     account_balances: data.account_balances || [],
     category_balances: data.category_balances || [],
     are_allocations_finalized: data.are_allocations_finalized ?? false,
-    is_needs_recalculation: data.is_needs_recalculation ?? false,
     created_at: data.created_at,
     updated_at: data.updated_at,
   }

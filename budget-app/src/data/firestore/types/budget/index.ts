@@ -9,5 +9,5 @@ export type { DefaultAmountType, Category, CategoriesMap } from './Category'
 export type { CategoryGroup, CategoryGroupsMap, CategoryGroupWithId } from './CategoryGroup'
 
 // Budget document
-export type { Budget } from './BudgetDocument'
+export type { Budget, MonthInfo, MonthMap } from './BudgetDocument'
 

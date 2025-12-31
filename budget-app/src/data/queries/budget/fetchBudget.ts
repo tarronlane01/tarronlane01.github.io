@@ -18,6 +18,7 @@ import type {
   CategoryGroupWithId,
   AccountGroup,
   Category,
+  MonthMap,
 } from '@types'
 import { triggerRecalculation } from '@data/recalculation/triggerRecalculation'
 
@@ -38,6 +39,7 @@ interface BudgetDocument {
   category_groups: FirestoreData[]
   total_available?: number
   is_needs_recalculation?: boolean
+  month_map?: FirestoreData
   created_at?: string
   updated_at?: string
 }
@@ -51,6 +53,8 @@ export interface BudgetData {
   categoryGroups: CategoryGroupWithId[]
   /** Flag indicating balances need recalculation from transaction data */
   isNeedsRecalculation: boolean
+  /** Index of recent months with their recalculation status */
+  monthMap: MonthMap
 }
 
 // ============================================================================
@@ -130,6 +134,19 @@ function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): Category
   return groups
 }
 
+/**
+ * Parse raw Firestore month_map data into typed MonthMap
+ */
+function parseMonthMap(monthMapData: FirestoreData = {}): MonthMap {
+  const monthMap: MonthMap = {}
+  Object.entries(monthMapData).forEach(([ordinal, info]) => {
+    monthMap[ordinal] = {
+      needs_recalculation: info?.needs_recalculation ?? false,
+    }
+  })
+  return monthMap
+}
+
 // ============================================================================
 // MAIN FUNCTION
 // ============================================================================
@@ -186,8 +203,9 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
   // Get total_available - either from Firestore (after recalc) or calculate it
   // After recalculation, updatedData should have it. Otherwise use data value.
   let totalAvailable = data.total_available ?? 0
+  let monthMap = parseMonthMap(data.month_map)
 
-  // If we just recalculated, re-read to get the updated total_available
+  // If we just recalculated, re-read to get the updated total_available and month_map
   if (isNeedsRecalculation) {
     const { data: finalData } = await readDocByPath<BudgetDocument>(
       'budgets',
@@ -196,6 +214,9 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
     )
     if (finalData?.total_available !== undefined) {
       totalAvailable = finalData.total_available
+    }
+    if (finalData?.month_map) {
+      monthMap = parseMonthMap(finalData.month_map)
     }
   }
 
@@ -213,12 +234,14 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
       category_groups: categoryGroups,
       total_available: totalAvailable,
       is_needs_recalculation: false,
+      month_map: monthMap,
     },
     accounts,
     accountGroups,
     categories,
     categoryGroups,
     isNeedsRecalculation: false, // Always return false since we just reconciled if needed
+    monthMap,
   }
 }
 

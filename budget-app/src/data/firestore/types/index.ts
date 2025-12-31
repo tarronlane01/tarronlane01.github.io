@@ -28,6 +28,8 @@ export type {
   CategoryGroupsMap,
   CategoryGroupWithId,
   Budget,
+  MonthInfo,
+  MonthMap,
 } from '@firestore/types/budget/index'
 
 // Month-related types

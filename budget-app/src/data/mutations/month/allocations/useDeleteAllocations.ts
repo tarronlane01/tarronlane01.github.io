@@ -48,7 +48,6 @@ export function useDeleteAllocations() {
       ...monthData,
       category_balances: clearedCategoryBalances,
       are_allocations_finalized: false,
-      is_needs_recalculation: false,
       updated_at: new Date().toISOString(),
     }
 

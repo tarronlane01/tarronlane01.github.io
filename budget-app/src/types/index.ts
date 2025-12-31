@@ -21,6 +21,8 @@ export type {
   CategoryGroupsMap,
   CategoryGroupWithId,
   Budget,
+  MonthInfo,
+  MonthMap,
   IncomeTransaction,
   ExpenseTransaction,
   CategoryMonthBalance,

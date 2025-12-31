@@ -3,7 +3,6 @@
  *
  * Handles category balance loading and reconciliation.
  * Uses the balance field directly from each category in the budget document.
- * When budget.is_needs_recalculation is true, balances are recalculated.
  *
  * Extracted from useCategoriesPage to reduce file size.
  */

@@ -18,12 +18,13 @@ import { AccountBalancesView } from './AccountBalances'
 import { BalanceGroupBlock } from './CategoryBalances'
 import { triggerRecalculation } from '../../../data/recalculation/triggerRecalculation'
 import { queryClient, queryKeys } from '../../../data/queryClient'
+import { getYearMonthOrdinal } from '@utils'
 
 const VALID_VIEWS: BalancesView[] = ['categories', 'accounts']
 
 export function BalancesSection() {
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, lastBalancesView, setLastBalancesView } = useBudget()
-  const { categories, categoryGroups, accounts, accountGroups } = useBudgetData(selectedBudgetId, currentUserId)
+  const { categories, categoryGroups, accounts, accountGroups, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
   const { month: currentMonth, isLoading: monthLoading } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -32,10 +33,14 @@ export function BalancesSection() {
   const [isRecalculating, setIsRecalculating] = useState(false)
   const hasTriggeredRecalc = useRef(false)
 
+  // Check if current month needs recalculation from budget's month_map
+  const currentMonthOrdinal = getYearMonthOrdinal(currentYear, currentMonthNumber)
+  const monthNeedsRecalc = monthMap[currentMonthOrdinal]?.needs_recalculation === true
+
   // Trigger recalculation when viewing Balances tab and month needs it
   useEffect(() => {
     if (!selectedBudgetId || !currentMonth) return
-    if (!currentMonth.is_needs_recalculation) {
+    if (!monthNeedsRecalc) {
       hasTriggeredRecalc.current = false
       return
     }
@@ -53,7 +58,7 @@ export function BalancesSection() {
       .then(() => {
         // Invalidate month query to refetch fresh data
         queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
-        // Also invalidate budget query for updated account balances
+        // Also invalidate budget query for updated account balances and month_map
         queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
       })
       .catch((err) => {
@@ -62,7 +67,7 @@ export function BalancesSection() {
       .finally(() => {
         setIsRecalculating(false)
       })
-  }, [selectedBudgetId, currentMonth?.is_needs_recalculation, currentYear, currentMonthNumber, isRecalculating])
+  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber, isRecalculating])
 
   // Get initial view: URL takes precedence, then context's last view
   const getInitialView = (): BalancesView => {
@@ -269,6 +274,18 @@ export function BalancesSection() {
       />
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+
+      {/* Allocations Worksheet Title - shown when in draft mode */}
+      {currentView === 'categories' && isDraftMode && (
+        <h3 style={{
+          margin: '0 0 0.75rem 0',
+          fontSize: '1.1rem',
+          fontWeight: 600,
+          color: colors.primary,
+        }}>
+          Allocations Worksheet
+        </h3>
+      )}
 
       {/* Balance Summary Grid - shows different content based on view */}
       <FourStatGrid

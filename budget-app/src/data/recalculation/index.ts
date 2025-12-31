@@ -7,16 +7,16 @@
  * - triggerRecalculation - Called when is_needs_recalculation is detected
  *
  * MARKING AS STALE (when data changes):
- * - markBudgetNeedsRecalculation - Mark budget as needing recalculation
- * - markFutureMonthsNeedRecalculation - Mark future months as needing recalculation
+ * - markMonthsNeedRecalculation - Single write that marks budget and future months
+ * - setMonthInBudgetMap - Add/update a single month in the budget's month_map
  *
  * INTERNAL (used by triggerRecalculation):
  * - recalculateMonth - Pure calculation for a single month
  *
  * The pattern is:
- * 1. User edits data → writeMonthData → marks future months + budget as stale
+ * 1. User edits data → writeMonthData → marks budget + updates month_map in single write
  * 2. User views month/budget → read function detects stale flag → triggerRecalculation
- * 3. triggerRecalculation walks back to find valid starting point, then forward to recalculate
+ * 3. triggerRecalculation uses month_map to find which months need recalculation
  */
 
 // ============================================================================
@@ -29,8 +29,10 @@ export { triggerRecalculation } from './triggerRecalculation'
 // MARKING AS STALE
 // ============================================================================
 
-export { markBudgetNeedsRecalculation } from './markBudgetNeedsRecalculation'
-export { markFutureMonthsNeedRecalculation } from './markFutureMonthsNeedRecalculation'
+export {
+  markMonthsNeedRecalculation,
+  setMonthInBudgetMap,
+} from './markMonthsNeedRecalculation'
 
 // ============================================================================
 // INTERNAL HELPERS (exported for testing/advanced use)

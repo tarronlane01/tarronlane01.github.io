@@ -11,6 +11,7 @@ import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
+import { setMonthInBudgetMap } from '@data/recalculation'
 
 /**
  * Create a new month document with start balances from previous month.
@@ -79,7 +80,6 @@ export async function createMonth(
         account_balances: prevData.account_balances || [],
         category_balances: prevData.category_balances || [],
         are_allocations_finalized: prevData.are_allocations_finalized ?? false,
-        is_needs_recalculation: prevData.is_needs_recalculation ?? false,
         created_at: prevData.created_at,
         updated_at: prevData.updated_at,
       }
@@ -127,7 +127,6 @@ export async function createMonth(
     account_balances: accountBalances,
     category_balances: categoryBalances,
     are_allocations_finalized: false,
-    is_needs_recalculation: false,
     created_at: nowIso,
     updated_at: nowIso,
   }
@@ -146,7 +145,6 @@ export async function createMonth(
     account_balances: accountBalances,
     category_balances: categoryBalances,
     are_allocations_finalized: false,
-    is_needs_recalculation: false,
     created_at: nowIso,
     updated_at: nowIso,
   }
@@ -164,13 +162,9 @@ export async function createMonth(
     { month: newMonth }
   )
 
-  // Invalidate all futureMonthIds caches for this budget
-  // This ensures getFutureMonths will re-query to discover this new month
-  queryClient.invalidateQueries({
-    predicate: (query) =>
-      query.queryKey[0] === 'futureMonthIds' &&
-      query.queryKey[1] === budgetId,
-  })
+  // Add this month to the budget's month_map
+  // This also cleans up months older than 3 months from the map
+  await setMonthInBudgetMap(budgetId, year, month, false)
 
   return newMonth
 }

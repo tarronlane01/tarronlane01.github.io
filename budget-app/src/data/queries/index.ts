@@ -91,8 +91,8 @@ export {
 // Recalculation - in recalculation/
 export {
   triggerRecalculation,
-  markFutureMonthsNeedRecalculation,
-  markBudgetNeedsRecalculation,
+  markMonthsNeedRecalculation,
+  setMonthInBudgetMap,
 } from '../recalculation'
 
 // Date utilities

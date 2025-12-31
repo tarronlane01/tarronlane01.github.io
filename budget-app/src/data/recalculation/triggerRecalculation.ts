@@ -2,15 +2,15 @@
  * Trigger Recalculation
  *
  * Main entry point for the recalculation process.
- * Called when readMonth or readBudget detects is_needs_recalculation = true.
+ * Called when readBudget detects is_needs_recalculation = true.
  *
  * ALGORITHM:
- * 1. Fetch all months for the budget using getFutureMonths
- * 2. Walk backwards from the future-most month to find the last non-stale month
- * 3. Validate: starting point must not be before the passed-in month (catches marking bugs)
- * 4. Walk forward from starting point, calling recalculateMonth for each
- * 5. If budget-triggered (no targetOrdinal): recalculate ALL months, update budget
- * 6. If month-triggered: only recalculate up to that month, leave budget marked
+ * 1. Read budget document to get month_map (index of recent months)
+ * 2. Use month_map to determine which months need recalculation
+ * 3. Fetch those months from Firestore
+ * 4. Walk backwards from the first stale month to find the last valid month
+ * 5. Walk forward from starting point, calling recalculateMonth for each
+ * 6. Update budget with final balances and clear all recalc flags in month_map
  *
  * @param budgetId - The budget ID
  * @param targetMonthOrdinal - Optional month ordinal (YYYYMM) that triggered this
@@ -18,9 +18,9 @@
  *                             If not provided (budget-triggered), recalculate all
  */
 
-import type { FirestoreData } from '@types'
+import type { FirestoreData, MonthDocument, MonthMap } from '@types'
 import { readDocByPath, writeDocByPath } from '@firestore'
-import { getFutureMonths, type MonthWithId } from '../queries/month/getFutureMonths'
+import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { writeMonthData } from '../mutations/month'
 import {
   recalculateMonth,
@@ -64,9 +64,13 @@ interface BudgetDocument {
   category_groups: FirestoreData[]
   total_available?: number
   is_needs_recalculation?: boolean
+  month_map?: FirestoreData
   created_at?: string
   updated_at?: string
 }
+
+/** Month document with its Firestore document ID */
+type MonthWithId = MonthDocument & { id: string }
 
 // ============================================================================
 // HELPERS
@@ -89,56 +93,107 @@ function parseOrdinal(ordinal: string): { year: number; month: number } {
 }
 
 /**
- * Go back N months from a given year/month.
+ * Parse raw month_map data from Firestore into typed MonthMap.
  */
-function goBackMonths(year: number, month: number, count: number): { year: number; month: number } {
-  let y = year
-  let m = month - count
-  while (m < 1) {
-    m += 12
-    y -= 1
-  }
-  return { year: y, month: m }
+function parseMonthMap(monthMapData: FirestoreData = {}): MonthMap {
+  const monthMap: MonthMap = {}
+  Object.entries(monthMapData).forEach(([ordinal, info]) => {
+    const infoData = info as { needs_recalculation?: boolean } | undefined
+    monthMap[ordinal] = {
+      needs_recalculation: infoData?.needs_recalculation ?? false,
+    }
+  })
+  return monthMap
 }
 
 /**
- * Fetch relevant months for a budget for recalculation.
- * Queries from 12 months BEFORE the triggering month to ensure we capture
- * any month that might have been edited and marked for recalculation.
- * Uses skipCache to ensure we get fresh data from Firestore during recalculation.
- *
- * @param budgetId - The budget ID
- * @param triggeringMonthOrdinal - The month that triggered recalc (YYYYMM format)
+ * Get sorted list of month ordinals that need recalculation.
  */
-async function getMonthsForRecalc(
+function getMonthsNeedingRecalc(monthMap: MonthMap): string[] {
+  return Object.entries(monthMap)
+    .filter(([, info]) => info.needs_recalculation)
+    .map(([ordinal]) => ordinal)
+    .sort()
+}
+
+/**
+ * Get all month ordinals from the month_map, sorted chronologically.
+ */
+function getAllMonthOrdinals(monthMap: MonthMap): string[] {
+  return Object.keys(monthMap).sort()
+}
+
+/**
+ * Fetch a single month document from Firestore.
+ */
+async function fetchMonth(
   budgetId: string,
-  triggeringMonthOrdinal: string
-): Promise<MonthWithId[]> {
-  // Parse the triggering month and go back 12 months to ensure we capture
-  // any month that was edited and needs recalculation.
-  // Example: If viewing December 2025 and November 2025 was edited,
-  // we need to include November in the query results.
-  const { year, month } = parseOrdinal(triggeringMonthOrdinal)
-  const lookback = goBackMonths(year, month, 12)
+  ordinal: string
+): Promise<MonthWithId | null> {
+  const { year, month } = parseOrdinal(ordinal)
+  const monthDocId = getMonthDocId(budgetId, year, month)
 
-  console.log(`[Recalculation] Querying months from ${lookback.year}/${lookback.month} forward`)
+  const { exists, data } = await readDocByPath<FirestoreData>(
+    'months',
+    monthDocId,
+    `fetching month ${year}/${month} for recalculation`
+  )
 
-  // skipCache: true ensures we read fresh data, not stale cached values
-  return getFutureMonths(budgetId, lookback.year, lookback.month, { skipCache: true })
+  if (!exists || !data) {
+    return null
+  }
+
+  return {
+    id: monthDocId,
+    budget_id: budgetId,
+    year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
+    year: data.year ?? year,
+    month: data.month ?? month,
+    income: data.income || [],
+    total_income: data.total_income ?? 0,
+    previous_month_income: data.previous_month_income ?? 0,
+    expenses: data.expenses || [],
+    total_expenses: data.total_expenses ?? 0,
+    account_balances: data.account_balances || [],
+    category_balances: data.category_balances || [],
+    are_allocations_finalized: data.are_allocations_finalized ?? false,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+  }
 }
 
 /**
- * Find the index of the last month that does NOT need recalculation.
- * Returns -1 if all months need recalculation (start from beginning).
+ * Fetch all months that exist in the month_map, sorted chronologically.
  */
-function findStartingPointIndex(months: MonthWithId[]): number {
-  // Walk backwards from the end
-  for (let i = months.length - 1; i >= 0; i--) {
-    if (!months[i].is_needs_recalculation) {
+async function fetchMonthsFromMap(
+  budgetId: string,
+  monthMap: MonthMap
+): Promise<MonthWithId[]> {
+  const ordinals = getAllMonthOrdinals(monthMap)
+  const months: MonthWithId[] = []
+
+  for (const ordinal of ordinals) {
+    const month = await fetchMonth(budgetId, ordinal)
+    if (month) {
+      months.push(month)
+    }
+  }
+
+  return months
+}
+
+/**
+ * Find the index of the first month that needs recalculation.
+ * Uses the month_map to determine this, not the month document.
+ */
+function findFirstStaleIndex(months: MonthWithId[], monthMap: MonthMap): number {
+  for (let i = 0; i < months.length; i++) {
+    const ordinal = toOrdinal(months[i].year, months[i].month)
+    if (monthMap[ordinal]?.needs_recalculation) {
       return i
     }
   }
-  return -1 // All months need recalculation
+  return -1 // No months need recalculation
 }
 
 // ============================================================================
@@ -166,21 +221,43 @@ export async function triggerRecalculation(
     triggeringMonth: triggeringOrdinal,
   })
 
-  // Step 1: Fetch months from the triggering month forward
-  const allMonths = await getMonthsForRecalc(budgetId, triggeringOrdinal)
+  // Step 1: Read budget to get month_map
+  const { exists: budgetExists, data: budgetData } = await readDocByPath<BudgetDocument>(
+    'budgets',
+    budgetId,
+    'reading budget for recalculation (getting month_map)'
+  )
+
+  if (!budgetExists || !budgetData) {
+    console.warn(`[Recalculation] Budget ${budgetId} not found`)
+    return { monthsRecalculated: 0, budgetUpdated: false }
+  }
+
+  const monthMap = parseMonthMap(budgetData.month_map)
+  const monthsNeedingRecalc = getMonthsNeedingRecalc(monthMap)
+
+  if (monthsNeedingRecalc.length === 0 && !budgetData.is_needs_recalculation) {
+    console.log('[Recalculation] No months need recalculation')
+    return { monthsRecalculated: 0, budgetUpdated: false }
+  }
+
+  // Step 2: Fetch all months from the month_map
+  const allMonths = await fetchMonthsFromMap(budgetId, monthMap)
 
   if (allMonths.length === 0) {
     console.log('[Recalculation] No months found, nothing to recalculate')
-    await clearBudgetRecalcFlag(budgetId)
+    await clearBudgetRecalcFlag(budgetId, monthMap)
     return { monthsRecalculated: 0, budgetUpdated: true }
   }
 
-  // Step 2: Find the starting point - last month that does NOT need recalculation
-  const startingPointIndex = findStartingPointIndex(allMonths)
+  // Step 3: Find where to start recalculating
+  // If we have months marked as needing recalc, start from the month before the first stale one
+  const firstStaleIndex = findFirstStaleIndex(allMonths, monthMap)
+  const startingPointIndex = firstStaleIndex > 0 ? firstStaleIndex - 1 : -1
 
-  // Step 3: Determine which months to recalculate
-  const firstRecalcIndex = startingPointIndex + 1 // Start after the valid month
-  const lastRecalcIndex = allMonths.length - 1 // All remaining months
+  // Step 4: Determine which months to recalculate
+  const firstRecalcIndex = firstStaleIndex >= 0 ? firstStaleIndex : 0
+  const lastRecalcIndex = allMonths.length - 1
 
   // Get the starting snapshot
   let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
@@ -189,16 +266,20 @@ export async function triggerRecalculation(
   }
 
   // Check if there are actually months to recalculate
-  if (firstRecalcIndex > lastRecalcIndex) {
-    console.log(`[Recalculation] No months need recalculation (all months are valid)`)
-  } else {
-    console.log(`[Recalculation] Recalculating months ${firstRecalcIndex} to ${lastRecalcIndex}`, {
-      totalMonths: allMonths.length,
-      startingFrom: startingPointIndex >= 0
-        ? toOrdinal(allMonths[startingPointIndex].year, allMonths[startingPointIndex].month)
-        : 'beginning',
-    })
+  if (firstStaleIndex < 0) {
+    console.log(`[Recalculation] No months marked as needing recalculation, but budget flag was set`)
+    // Still need to clear the budget flag
+    await clearBudgetRecalcFlag(budgetId, monthMap)
+    return { monthsRecalculated: 0, budgetUpdated: true }
   }
+
+  console.log(`[Recalculation] Recalculating months ${firstRecalcIndex} to ${lastRecalcIndex}`, {
+    totalMonths: allMonths.length,
+    startingFrom: startingPointIndex >= 0
+      ? toOrdinal(allMonths[startingPointIndex].year, allMonths[startingPointIndex].month)
+      : 'beginning',
+    firstStaleMonth: toOrdinal(allMonths[firstStaleIndex].year, allMonths[firstStaleIndex].month),
+  })
 
   // Step 5: Walk forward and recalculate each month
   let monthsRecalculated = 0
@@ -225,7 +306,7 @@ export async function triggerRecalculation(
     console.log(`[Recalculation] Completed ${month.year}/${month.month}`)
   }
 
-  // Step 6: Always update budget with final balances and clear recalc flag
+  // Step 6: Update budget with final balances and clear all recalc flags
   let finalAccountBalances: Record<string, number> | undefined
   let finalCategoryBalances: Record<string, number> | undefined
 
@@ -237,11 +318,12 @@ export async function triggerRecalculation(
     finalCategoryBalances = prevSnapshot.categoryEndBalances
   }
 
-  // Update budget with final balances and clear recalc flag
+  // Update budget with final balances and clear all recalc flags in month_map
   await updateBudgetBalances(
     budgetId,
     finalAccountBalances || {},
-    finalCategoryBalances || {}
+    finalCategoryBalances || {},
+    monthMap
   )
 
   console.log(`[Recalculation] Complete`, {
@@ -261,12 +343,24 @@ export async function triggerRecalculation(
 // ============================================================================
 
 /**
- * Update budget with final account/category balances, total_available, and clear recalc flag.
+ * Clear all needs_recalculation flags in the month_map.
+ */
+function clearMonthMapFlags(monthMap: MonthMap): MonthMap {
+  const cleared: MonthMap = {}
+  for (const ordinal of Object.keys(monthMap)) {
+    cleared[ordinal] = { needs_recalculation: false }
+  }
+  return cleared
+}
+
+/**
+ * Update budget with final account/category balances, total_available, and clear recalc flags.
  */
 async function updateBudgetBalances(
   budgetId: string,
   accountBalances: Record<string, number>,
-  categoryBalances: Record<string, number>
+  categoryBalances: Record<string, number>,
+  monthMap: MonthMap
 ): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>(
     'budgets',
@@ -323,6 +417,9 @@ async function updateBudgetBalances(
 
   const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
 
+  // Clear all needs_recalculation flags in month_map
+  const clearedMonthMap = clearMonthMapFlags(monthMap)
+
   await writeDocByPath(
     'budgets',
     budgetId,
@@ -332,16 +429,17 @@ async function updateBudgetBalances(
       categories: updatedCategories,
       total_available: totalAvailable,
       is_needs_recalculation: false,
+      month_map: clearedMonthMap,
       updated_at: new Date().toISOString(),
     },
-    'saving recalculated balances and total_available'
+    'saving recalculated balances and clearing month_map flags'
   )
 }
 
 /**
- * Clear the budget's recalc flag and recalculate total_available from current balances.
+ * Clear the budget's recalc flag and month_map flags.
  */
-async function clearBudgetRecalcFlag(budgetId: string): Promise<void> {
+async function clearBudgetRecalcFlag(budgetId: string, monthMap: MonthMap): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>(
     'budgets',
     budgetId,
@@ -374,6 +472,9 @@ async function clearBudgetRecalcFlag(budgetId: string): Promise<void> {
 
   const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
 
+  // Clear all needs_recalculation flags in month_map
+  const clearedMonthMap = clearMonthMapFlags(monthMap)
+
   await writeDocByPath(
     'budgets',
     budgetId,
@@ -381,9 +482,9 @@ async function clearBudgetRecalcFlag(budgetId: string): Promise<void> {
       ...data,
       total_available: totalAvailable,
       is_needs_recalculation: false,
+      month_map: clearedMonthMap,
       updated_at: new Date().toISOString(),
     },
-    'clearing budget recalc flag and updating total_available (no months to recalculate)'
+    'clearing budget recalc flag and month_map flags'
   )
 }
-

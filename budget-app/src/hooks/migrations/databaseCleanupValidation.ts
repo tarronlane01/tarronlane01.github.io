@@ -53,7 +53,6 @@ export function monthNeedsDefaults(month: FirestoreData): boolean {
     !Array.isArray(month.account_balances) ||
     !Array.isArray(month.category_balances) ||
     month.are_allocations_finalized === undefined ||
-    month.is_needs_recalculation === undefined ||
     month.created_at === undefined ||
     month.updated_at === undefined
   )

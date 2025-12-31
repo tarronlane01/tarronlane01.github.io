@@ -17,6 +17,6 @@ export {
 
 // Recalculation helpers - re-exported from canonical location
 export {
-  markBudgetNeedsRecalculation,
-  markFutureMonthsNeedRecalculation,
+  markMonthsNeedRecalculation,
+  setMonthInBudgetMap,
 } from '../recalculation'

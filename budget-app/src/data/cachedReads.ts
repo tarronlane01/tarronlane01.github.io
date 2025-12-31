@@ -92,7 +92,6 @@ interface MonthBalanceData {
   year: number
   month: number
   category_balances?: CategoryMonthBalance[]
-  is_needs_recalculation?: boolean
   are_allocations_finalized?: boolean
   expenses?: Array<{ category_id: string; amount: number }>
 }
@@ -123,7 +122,6 @@ async function fetchMonthForBalances(
     year: monthDoc.year,
     month: monthDoc.month,
     category_balances: monthDoc.category_balances,
-    is_needs_recalculation: monthDoc.is_needs_recalculation,
     are_allocations_finalized: monthDoc.are_allocations_finalized,
     expenses: monthDoc.expenses,
   }
@@ -160,9 +158,12 @@ export async function calculateCurrentBalances(
   categoryIds.forEach(id => { balances[id] = 0 })
 
   // Step 1: Check current month
+  // Note: Recalculation status is now tracked in the budget's month_map.
+  // This function assumes months are up to date. Recalculation is triggered
+  // separately when viewing the Balances tab (see BalancesSection.tsx).
   const currentMonthData = await fetchMonthForBalances(budgetId, currentYear, currentMonth)
 
-  if (currentMonthData?.category_balances && !currentMonthData.is_needs_recalculation) {
+  if (currentMonthData?.category_balances) {
     // Use cached balances directly
     for (const bal of currentMonthData.category_balances) {
       if (categoryIds.includes(bal.category_id)) {
@@ -172,7 +173,7 @@ export async function calculateCurrentBalances(
     return balances
   }
 
-  // Step 2: Walk backwards to find a valid starting point
+  // No category balances found for current month, walk backwards to find a valid starting point
   const startingBalances: Record<string, number> = {}
   categoryIds.forEach(id => { startingBalances[id] = 0 })
 
@@ -197,8 +198,8 @@ export async function calculateCurrentBalances(
     if (!prevMonthData) {
       // No more months - start from zero
       foundValidStart = true
-    } else if (prevMonthData.category_balances && !prevMonthData.is_needs_recalculation) {
-      // Found a valid month - use its end_balance as our starting point
+    } else if (prevMonthData.category_balances) {
+      // Found a month with balances - use its end_balance as our starting point
       foundValidStart = true
       for (const bal of prevMonthData.category_balances) {
         if (categoryIds.includes(bal.category_id)) {
@@ -206,7 +207,7 @@ export async function calculateCurrentBalances(
         }
       }
     } else {
-      // This month is stale too - add to list and keep walking
+      // This month has no balances yet - add to list and keep walking
       monthsToCompute.push(prevMonthData)
     }
   }

@@ -252,7 +252,6 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
           account_balances: monthAccountBalances,
           category_balances: monthCategoryBalances,
           are_allocations_finalized: areAllocationsFinalized,
-          is_needs_recalculation: false,
           created_at: fullMonthData.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }

@@ -8,10 +8,9 @@
  * This is a "minor" recalc that only updates totals from transaction arrays.
  * It does NOT:
  * - Update start_balance or carry-forward values (those come from previous months)
- * - Clear is_needs_recalculation flag (only full recalculation does that)
  *
- * For full recalculation that updates start_balance and clears the flag,
- * see triggerRecalculation.ts
+ * For full recalculation that updates start_balance, see triggerRecalculation.ts.
+ * Note: Recalculation status is tracked in the budget's month_map, not on month documents.
  */
 
 import type { MonthDocument, AccountMonthBalance, CategoryMonthBalance } from '@types'
@@ -24,7 +23,6 @@ import type { MonthDocument, AccountMonthBalance, CategoryMonthBalance } from '@
  * - account_balances (income, expenses, net_change, end_balance per account)
  * - category_balances.spent (spent per category)
  *
- * Does NOT modify is_needs_recalculation - only full recalculation clears that.
  * Preserves start_balance values since those come from previous month.
  */
 export function retotalMonth(month: MonthDocument): MonthDocument {

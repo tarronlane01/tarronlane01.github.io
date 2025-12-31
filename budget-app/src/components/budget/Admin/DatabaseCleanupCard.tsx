@@ -33,8 +33,10 @@ export function DatabaseCleanupCard({
       result.accountsFixed > 0 ||
       result.categoriesFixed > 0 ||
       result.groupsFixed > 0 ||
+      result.monthMapsAdded > 0 ||
       result.futureMonthsDeleted > 0 ||
-      result.monthsFixed > 0
+      result.monthsFixed > 0 ||
+      result.oldRecalcFieldsRemoved > 0
     )) return 'complete'
     if (!hasIssues) return 'clean'
     return 'needs-action'
@@ -44,8 +46,10 @@ export function DatabaseCleanupCard({
     result.accountsFixed +
     result.categoriesFixed +
     result.groupsFixed +
+    result.monthMapsAdded +
     result.futureMonthsDeleted +
-    result.monthsFixed
+    result.monthsFixed +
+    result.oldRecalcFieldsRemoved
   ) : 0
 
   return (
@@ -81,11 +85,17 @@ export function DatabaseCleanupCard({
               {result.groupsFixed > 0 && (
                 <li>{result.groupsFixed} group{result.groupsFixed !== 1 ? 's' : ''} fixed</li>
               )}
+              {result.monthMapsAdded > 0 && (
+                <li>{result.monthMapsAdded} budget{result.monthMapsAdded !== 1 ? 's' : ''} got month_map added</li>
+              )}
               {result.futureMonthsDeleted > 0 && (
                 <li>{result.futureMonthsDeleted} future month{result.futureMonthsDeleted !== 1 ? 's' : ''} deleted</li>
               )}
               {result.monthsFixed > 0 && (
                 <li>{result.monthsFixed} month{result.monthsFixed !== 1 ? 's' : ''} schema fixed</li>
+              )}
+              {result.oldRecalcFieldsRemoved > 0 && (
+                <li>{result.oldRecalcFieldsRemoved} month{result.oldRecalcFieldsRemoved !== 1 ? 's' : ''} had old recalc field removed</li>
               )}
               {totalFixed === 0 && <li>No changes needed</li>}
             </ul>
@@ -134,6 +144,11 @@ export function DatabaseCleanupCard({
                     {status!.groupsNeedingDefaults} account group{status!.groupsNeedingDefaults !== 1 ? 's' : ''} missing default values
                   </li>
                 )}
+                {status!.budgetsNeedingMonthMap > 0 && (
+                  <li>
+                    {status!.budgetsNeedingMonthMap} budget{status!.budgetsNeedingMonthMap !== 1 ? 's' : ''} missing month_map
+                  </li>
+                )}
                 {status!.futureMonthsToDelete.length > 0 && (
                   <li>
                     {status!.futureMonthsToDelete.length} future month{status!.futureMonthsToDelete.length !== 1 ? 's' : ''} to delete
@@ -152,6 +167,11 @@ export function DatabaseCleanupCard({
                 {status!.monthsWithSchemaIssues > 0 && (
                   <li>
                     {status!.monthsWithSchemaIssues} month{status!.monthsWithSchemaIssues !== 1 ? 's' : ''} with schema issues
+                  </li>
+                )}
+                {status!.monthsWithOldRecalcField > 0 && (
+                  <li>
+                    {status!.monthsWithOldRecalcField} month{status!.monthsWithOldRecalcField !== 1 ? 's' : ''} with deprecated is_needs_recalculation field
                   </li>
                 )}
               </ul>

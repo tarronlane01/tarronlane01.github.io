@@ -25,3 +25,4 @@
 
 - Tracking negative balances, and how does that work. Overspending in a budget, which rduces the total vailable, but ideally we would just reduce the allocated to that category until it's out of the hole.
     - Have a "Debt" note, and highlight that field. to explain how debt allocations work (reduce debt but doesn't reduce total available to spend, unless greaterthan the debt)
+    - Make sure total available calculations ignore negative category balances, since they aren't actually allocated dollars. Reducing the total available happens automatically because the money in accounts will go down because the dollars aren't physically there to allocate

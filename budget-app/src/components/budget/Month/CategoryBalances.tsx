@@ -175,64 +175,85 @@ export function BalanceGroupBlock({
         </div>
       </div>
 
-      {/* Table Header - desktop only */}
+      {/* Desktop layout */}
       {!isMobile && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isDraftMode ? '2fr 120px 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr',
-          gap: '0.5rem',
-          padding: '0.5rem 0.75rem',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          opacity: 0.6,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}>
-          <span>Category</span>
-          {isDraftMode ? (
-            <>
-              <span style={{ textAlign: 'center' }}>Allocated</span>
-              <span style={{ textAlign: 'right' }}>Start</span>
-            </>
-          ) : (
-            <>
-              <span style={{ textAlign: 'right' }}>Start</span>
-              <span style={{ textAlign: 'right' }}>Allocated</span>
-            </>
-          )}
-          <span style={{ textAlign: 'right' }}>Spent</span>
-          <span style={{ textAlign: 'right' }}>End</span>
-        </div>
+        <>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            padding: '0.5rem 0.75rem',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            opacity: 0.6,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            <div style={{ flex: 2, minWidth: 0 }}>Category</div>
+            {isDraftMode ? (
+              <>
+                <div style={{ width: '120px', textAlign: 'center' }}>Allocated</div>
+                <div style={{ flex: 1, textAlign: 'right' }}>Start</div>
+              </>
+            ) : (
+              <>
+                <div style={{ flex: 1, textAlign: 'right' }}>Start</div>
+                <div style={{ flex: 1, textAlign: 'right' }}>Allocated</div>
+              </>
+            )}
+            <div style={{ flex: 1, textAlign: 'right' }}>Spent</div>
+            <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>End</div>
+            <div style={{ width: '120px', textAlign: 'right' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</div>
+          </div>
+          {/* Rows */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {categories.map(([catId, cat], index) => {
+              const bal = getCategoryBalance(catId)
+              if (!bal) return null
+              const storedBalance = cat.balance ?? 0
+              const monthChange = bal.end_balance - bal.start_balance
+              const projectedAllTime = storedBalance + monthChange
+              return (
+                <DesktopBalanceRow
+                  key={catId}
+                  category={cat}
+                  balance={bal}
+                  localAllocation={localAllocations[catId] || ''}
+                  previousMonthIncome={previousMonthIncome}
+                  isDraftMode={isDraftMode}
+                  onAllocationChange={(val) => onAllocationChange(catId, val)}
+                  allTimeBalance={isDraftMode ? projectedAllTime : storedBalance}
+                  isEvenRow={index % 2 === 0}
+                />
+              )
+            })}
+          </div>
+        </>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isDraftMode ? '0.5rem' : '0.25rem' }}>
-        {categories.map(([catId, cat]) => {
-          const bal = getCategoryBalance(catId)
-          if (!bal) return null
-
-          return isMobile ? (
-            <MobileBalanceRow
-              key={catId}
-              category={cat}
-              balance={bal}
-              localAllocation={localAllocations[catId] || ''}
-              previousMonthIncome={previousMonthIncome}
-              isDraftMode={isDraftMode}
-              onAllocationChange={(val) => onAllocationChange(catId, val)}
-            />
-          ) : (
-            <DesktopBalanceRow
-              key={catId}
-              category={cat}
-              balance={bal}
-              localAllocation={localAllocations[catId] || ''}
-              previousMonthIncome={previousMonthIncome}
-              isDraftMode={isDraftMode}
-              onAllocationChange={(val) => onAllocationChange(catId, val)}
-            />
-          )
-        })}
-      </div>
+      {/* Mobile layout */}
+      {isMobile && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isDraftMode ? '0.5rem' : '0.25rem' }}>
+          {categories.map(([catId, cat]) => {
+            const bal = getCategoryBalance(catId)
+            if (!bal) return null
+            const storedBalance = cat.balance ?? 0
+            const monthChange = bal.end_balance - bal.start_balance
+            const projectedAllTime = storedBalance + monthChange
+            return (
+              <MobileBalanceRow
+                key={catId}
+                category={cat}
+                balance={bal}
+                localAllocation={localAllocations[catId] || ''}
+                previousMonthIncome={previousMonthIncome}
+                isDraftMode={isDraftMode}
+                onAllocationChange={(val) => onAllocationChange(catId, val)}
+                projectedAllTime={projectedAllTime}
+              />
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -248,15 +269,20 @@ interface BalanceRowProps {
   previousMonthIncome: number
   isDraftMode: boolean
   onAllocationChange: (value: string) => void
+  /** Projected all-time balance (stored balance + this month's change) */
+  projectedAllTime: number
 }
 
-function MobileBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange }: BalanceRowProps) {
+function MobileBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange, projectedAllTime }: BalanceRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
   const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
   const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
 
   // Show inline input in draft mode for non-percentage categories
   const showInlineInput = isDraftMode && !isPercentageBased
+
+  // All-time balance: in draft mode show projected, otherwise show stored
+  const allTimeBalance = isDraftMode ? projectedAllTime : (category.balance ?? 0)
 
   return (
     <div style={{
@@ -271,10 +297,10 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
         </span>
       </div>
 
-      {/* Four values in one row */}
+      {/* Values in one row */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
         gap: '0.25rem',
         fontSize: '0.75rem',
       }}>
@@ -324,6 +350,12 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
             {formatCurrency(balance.end_balance)}
           </span>
         </div>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</span>
+          <span style={{ color: isDraftMode ? colors.primary : getBalanceColor(allTimeBalance) }}>
+            {formatCurrency(allTimeBalance)}
+          </span>
+        </div>
       </div>
 
       {/* Percentage equation - only in draft mode for percentage-based categories */}
@@ -341,51 +373,53 @@ function MobileBalanceRow({ category, balance, localAllocation, previousMonthInc
   )
 }
 
-function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange }: BalanceRowProps) {
+interface DesktopBalanceRowProps {
+  category: Category
+  balance: CategoryMonthBalance
+  localAllocation: string
+  previousMonthIncome: number
+  isDraftMode: boolean
+  onAllocationChange: (value: string) => void
+  allTimeBalance: number
+  isEvenRow: boolean
+}
+
+// Shared styles for full-height field containers with centered content
+const fieldContainer = {
+  alignSelf: 'stretch' as const,
+  display: 'flex',
+  alignItems: 'center',
+}
+
+function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange, allTimeBalance, isEvenRow }: DesktopBalanceRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
   const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
   const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
 
-  // Suggested amount display (only for fixed-amount categories in draft mode)
-  let suggestedDisplay: string | null = null
-  if (isDraftMode && !isPercentageBased && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0) {
-    suggestedDisplay = formatCurrency(category.default_monthly_amount)
-  }
-
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: isDraftMode ? '2fr 120px 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr',
-      gap: '0.5rem',
+      display: 'flex',
+      alignItems: 'stretch',
       padding: '0.6rem 0.75rem',
-      background: 'color-mix(in srgb, currentColor 3%, transparent)',
-      borderRadius: '6px',
-      alignItems: 'center',
+      background: isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)',
     }}>
-      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+      {/* Category name */}
+      <div style={{ ...fieldContainer, flex: 2, minWidth: 0, overflow: 'hidden' }}>
         <span style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {category.name}
         </span>
-        {suggestedDisplay && (
-          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
-            Suggested: {suggestedDisplay}
-          </span>
-        )}
       </div>
 
       {/* Draft mode: Allocated then Start. Finalized mode: Start then Allocated */}
       {isDraftMode ? (
         <>
-          <div>
+          <div style={{ ...fieldContainer, width: '120px', justifyContent: 'center' }}>
             {isPercentageBased ? (
-              <div style={{ textAlign: 'center', fontSize: '0.8rem' }}>
-                <span style={{ opacity: 0.5 }}>{formatCurrency(previousMonthIncome)} × </span>
+              <span style={{ fontSize: '0.8rem' }}>
                 <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
-                <span style={{ display: 'block', marginTop: '0.15rem' }}>
-                  <span style={{ opacity: 0.5 }}>= </span>
-                  <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
-                </span>
-              </div>
+                <span style={{ opacity: 0.5 }}> = </span>
+                <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+              </span>
             ) : (
               <input
                 type="text"
@@ -398,7 +432,7 @@ function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIn
                 placeholder="$0.00"
                 style={{
                   width: '100%',
-                  padding: '0.4rem 0.5rem',
+                  padding: '0.3rem 0.5rem',
                   borderRadius: '4px',
                   border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
                   background: 'color-mix(in srgb, currentColor 5%, transparent)',
@@ -409,39 +443,66 @@ function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIn
               />
             )}
           </div>
-          <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
+          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
             {formatCurrency(balance.start_balance)}
-          </span>
+          </div>
         </>
       ) : (
         <>
-          <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
+          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
             {formatCurrency(balance.start_balance)}
-          </span>
-          <span style={{
-            textAlign: 'right',
+          </div>
+          <div style={{
+            ...fieldContainer,
+            flex: 1,
+            justifyContent: 'flex-end',
             fontSize: '0.9rem',
             color: balance.allocated > 0 ? colors.success : 'inherit',
           }}>
             {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
-          </span>
+          </div>
         </>
       )}
-      <span style={{
-        textAlign: 'right',
+
+      {/* Spent */}
+      <div style={{
+        ...fieldContainer,
+        flex: 1,
+        justifyContent: 'flex-end',
         fontSize: '0.9rem',
         color: balance.spent > 0 ? colors.error : 'inherit',
       }}>
         {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
-      </span>
-      <span style={{
-        textAlign: 'right',
+      </div>
+
+      {/* End - with border-right that extends full height */}
+      <div style={{
+        ...fieldContainer,
+        flex: 1,
+        justifyContent: 'flex-end',
         fontSize: '0.9rem',
         fontWeight: 600,
         color: getBalanceColor(balance.end_balance),
+        paddingRight: '1rem',
+        marginTop: '-0.6rem',
+        marginBottom: '-0.6rem',
+        paddingTop: '0.6rem',
+        paddingBottom: '0.6rem',
+        borderRight: '2px solid rgba(128, 128, 128, 0.4)',
       }}>
         {formatCurrency(balance.end_balance)}
-      </span>
+      </div>
+
+      {/* All-Time */}
+      <div style={{
+        ...fieldContainer,
+        width: '120px',
+        justifyContent: 'flex-end',
+        fontSize: '0.9rem',
+        color: isDraftMode ? colors.primary : getBalanceColor(allTimeBalance),
+      }}>
+        {formatCurrency(allTimeBalance)}
+      </div>
     </div>
   )
 }

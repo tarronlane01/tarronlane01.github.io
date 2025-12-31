@@ -49,8 +49,8 @@ export {
   // Main entry point - called when is_needs_recalculation is detected
   triggerRecalculation,
   // Marking as stale (when data changes) - used by writeMonthData
-  markBudgetNeedsRecalculation,
-  markFutureMonthsNeedRecalculation,
+  markMonthsNeedRecalculation,
+  setMonthInBudgetMap,
 } from './recalculation'
 
 // ============================================================================

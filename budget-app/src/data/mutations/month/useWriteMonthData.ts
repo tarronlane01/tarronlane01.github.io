@@ -16,10 +16,7 @@ import type { MonthDocument } from '@types'
 import { writeDocByPath } from '@firestore'
 import { getMonthDocId } from '@utils'
 import { queryClient, queryKeys } from '@data/queryClient'
-import {
-  markFutureMonthsNeedRecalculation,
-  markBudgetNeedsRecalculation,
-} from '@data/recalculation'
+import { markMonthsNeedRecalculation } from '@data/recalculation'
 import type { MonthQueryData } from '@data/queries/month'
 
 // ============================================================================
@@ -61,17 +58,14 @@ async function writeMonthToFirestore(
 }
 
 /**
- * Mark future months and budget as needing recalculation.
+ * Mark future months and budget as needing recalculation in a single write.
  */
 async function cascadeRecalculationMarking(
   budgetId: string,
   year: number,
   month: number
 ): Promise<void> {
-  await Promise.all([
-    markFutureMonthsNeedRecalculation(budgetId, year, month),
-    markBudgetNeedsRecalculation(budgetId),
-  ])
+  await markMonthsNeedRecalculation(budgetId, year, month)
 }
 
 // ============================================================================
