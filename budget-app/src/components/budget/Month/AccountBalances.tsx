@@ -175,27 +175,6 @@ function AccountGroupBlock({
         </div>
       </div>
 
-      {/* Table Header - desktop only */}
-      {!isMobile && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-          gap: '0.5rem',
-          padding: '0.5rem 0.75rem',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          opacity: 0.6,
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}>
-          <span>Account</span>
-          <span style={{ textAlign: 'right' }}>Start</span>
-          <span style={{ textAlign: 'right' }}>Net Change</span>
-          <span style={{ textAlign: 'right' }}>End</span>
-          <span style={{ textAlign: 'right' }}></span>
-        </div>
-      )}
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {accounts.map(([accountId, account]) => {
           const bal = accountBalances[accountId]
@@ -290,15 +269,13 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
 function DesktopAccountRow({ account, balance }: AccountRowProps) {
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-      gap: '0.5rem',
+      display: 'flex',
+      alignItems: 'center',
       padding: '0.6rem 0.75rem',
       background: 'color-mix(in srgb, currentColor 3%, transparent)',
       borderRadius: '6px',
-      alignItems: 'center',
     }}>
-      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
         <span style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {account.nickname}
         </span>
@@ -312,11 +289,12 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
         )}
       </div>
 
-      <span style={{ textAlign: 'right', fontSize: '0.9rem' }}>
+      <span style={{ flex: 1, textAlign: 'right', fontSize: '0.9rem' }}>
         {formatCurrency(balance.start_balance)}
       </span>
 
       <span style={{
+        flex: 1,
         textAlign: 'right',
         fontSize: '0.9rem',
         color: balance.net_change >= 0 ? colors.success : colors.error,
@@ -325,6 +303,7 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
       </span>
 
       <span style={{
+        flex: 1,
         textAlign: 'right',
         fontSize: '0.9rem',
         fontWeight: 600,
@@ -334,7 +313,7 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
       </span>
 
       {/* Empty column to match header */}
-      <span></span>
+      <span style={{ flex: 1 }}></span>
     </div>
   )
 }

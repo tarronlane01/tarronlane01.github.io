@@ -410,12 +410,17 @@ async function updateBudgetBalances(
     return sum
   }, 0)
 
-  const totalCategoryBalances = Object.values(updatedCategories).reduce(
-    (sum, cat) => sum + (cat.balance ?? 0),
+  // Only sum positive category balances - negative balances (debt) don't reduce available
+  const totalPositiveCategoryBalances = Object.values(updatedCategories).reduce(
+    (sum, cat) => {
+      const balance = cat.balance ?? 0
+      // Only sum positive balances, ignore debt (negative balances)
+      return sum + (balance > 0 ? balance : 0)
+    },
     0
   )
 
-  const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
+  const totalAvailable = onBudgetAccountTotal - totalPositiveCategoryBalances
 
   // Clear all needs_recalculation flags in month_map
   const clearedMonthMap = clearMonthMapFlags(monthMap)
@@ -465,12 +470,17 @@ async function clearBudgetRecalcFlag(budgetId: string, monthMap: MonthMap): Prom
     return sum
   }, 0)
 
-  const totalCategoryBalances = Object.values(categories).reduce(
-    (sum, cat) => sum + ((cat as { balance?: number }).balance ?? 0),
+  // Only sum positive category balances - negative balances (debt) don't reduce available
+  const totalPositiveCategoryBalances = Object.values(categories).reduce(
+    (sum, cat) => {
+      const balance = (cat as { balance?: number }).balance ?? 0
+      // Only sum positive balances, ignore debt (negative balances)
+      return sum + (balance > 0 ? balance : 0)
+    },
     0
   )
 
-  const totalAvailable = onBudgetAccountTotal - totalCategoryBalances
+  const totalAvailable = onBudgetAccountTotal - totalPositiveCategoryBalances
 
   // Clear all needs_recalculation flags in month_map
   const clearedMonthMap = clearMonthMapFlags(monthMap)

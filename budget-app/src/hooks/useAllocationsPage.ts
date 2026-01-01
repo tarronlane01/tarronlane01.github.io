@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useApp } from '../contexts/app_context'
 import { useBudget } from '../contexts/budget_context'
 import type { Category, CategoriesMap, MonthDocument } from '@types'
 import { useBudgetData, useBudgetMonth } from './index'
@@ -37,6 +38,7 @@ function computeAllocationsMap(
 }
 
 export function useAllocationsPage() {
+  const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
   const { categories, getOnBudgetTotal, totalAvailable } = useBudgetData(selectedBudgetId, currentUserId)
   const {
@@ -65,9 +67,6 @@ export function useAllocationsPage() {
 
   // Allocations state - initialized from cached data if available
   const [localAllocations, setLocalAllocations] = useState<Record<string, string>>(initialAllocations)
-  const [isSavingAllocations, setIsSavingAllocations] = useState(false)
-  const [isFinalizingAllocations, setIsFinalizingAllocations] = useState(false)
-  const [isDeletingAllocations, setIsDeletingAllocations] = useState(false)
   const [isEditingAppliedAllocations, setIsEditingAppliedAllocations] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -109,17 +108,45 @@ export function useAllocationsPage() {
   }, [localAllocations, previousMonthIncome])
 
   // Calculate allocation totals (includes both manual and percentage-based)
+  // For categories with debt (negative balance), only count allocation amounts that exceed the debt
+  // This allows debt reduction to happen without reducing actual available dollars
   const currentDraftTotal = useMemo(() => {
     return Object.entries(categories).reduce((sum, [catId, cat]) => {
-      return sum + getAllocationAmount(catId, cat)
+      const allocationAmount = getAllocationAmount(catId, cat)
+      const categoryBalance = cat.balance ?? 0
+
+      // If category has debt (negative balance), only count the portion that exceeds the debt
+      if (categoryBalance < 0) {
+        const debtAmount = Math.abs(categoryBalance)
+        // Only add the amount that goes beyond debt reduction to the total
+        const amountBeyondDebt = Math.max(0, allocationAmount - debtAmount)
+        return sum + amountBeyondDebt
+      }
+
+      return sum + allocationAmount
     }, 0)
   }, [categories, getAllocationAmount])
 
   const onBudgetTotal = getOnBudgetTotal()
 
   // Calculate current month's already-finalized allocation total
+  // Only count allocations that go beyond debt reduction
   const currentMonthFinalizedTotal = areAllocationsFinalized
-    ? (currentMonth?.category_balances || []).reduce((sum, cb) => sum + cb.allocated, 0)
+    ? (currentMonth?.category_balances || []).reduce((sum, cb) => {
+        const categoryBalance = categories[cb.category_id]?.balance ?? 0
+        const allocated = cb.allocated
+
+        // If category had debt before this allocation, only count what went beyond debt
+        // But we need to check the balance BEFORE the allocation was applied
+        // For simplicity in this cache update, we use current balance - allocated to estimate pre-allocation
+        const estimatedPreAllocationBalance = categoryBalance - allocated
+        if (estimatedPreAllocationBalance < 0) {
+          const debtAmount = Math.abs(estimatedPreAllocationBalance)
+          return sum + Math.max(0, allocated - debtAmount)
+        }
+
+        return sum + allocated
+      }, 0)
     : 0
 
   // Available Now: Uses the pre-calculated total_available from the budget document.
@@ -177,7 +204,7 @@ export function useAllocationsPage() {
   const handleSaveAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
     setError(null)
-    setIsSavingAllocations(true)
+    addLoadingHold('allocations-save', 'Saving allocations...')
     try {
       await saveDraftAllocations(
         selectedBudgetId,
@@ -189,15 +216,15 @@ export function useAllocationsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save allocations')
     } finally {
-      setIsSavingAllocations(false)
+      removeLoadingHold('allocations-save')
     }
-  }, [selectedBudgetId, currentYear, currentMonthNumber, saveDraftAllocations, buildAllocationsData])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, saveDraftAllocations, buildAllocationsData, addLoadingHold, removeLoadingHold])
 
   // Finalize allocations (saves and finalizes in one operation)
   const handleFinalizeAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
     setError(null)
-    setIsFinalizingAllocations(true)
+    addLoadingHold('allocations-finalize', 'Applying allocations...')
     try {
       await finalizeAllocations({
         budgetId: selectedBudgetId,
@@ -209,15 +236,15 @@ export function useAllocationsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
     } finally {
-      setIsFinalizingAllocations(false)
+      removeLoadingHold('allocations-finalize')
     }
-  }, [selectedBudgetId, currentYear, currentMonthNumber, finalizeAllocations, buildAllocationsData])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, finalizeAllocations, buildAllocationsData, addLoadingHold, removeLoadingHold])
 
   // Delete allocations (clear and unfinalize)
   const handleDeleteAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
     setError(null)
-    setIsDeletingAllocations(true)
+    addLoadingHold('allocations-delete', 'Deleting allocations...')
     try {
       await deleteAllocations({
         budgetId: selectedBudgetId,
@@ -239,9 +266,9 @@ export function useAllocationsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete allocations')
     } finally {
-      setIsDeletingAllocations(false)
+      removeLoadingHold('allocations-delete')
     }
-  }, [selectedBudgetId, currentYear, currentMonthNumber, deleteAllocations, categories])
+  }, [selectedBudgetId, currentYear, currentMonthNumber, deleteAllocations, categories, addLoadingHold, removeLoadingHold])
 
   // Change from currently saved allocations (positive = allocating more, negative = allocating less)
   const draftChangeAmount = currentDraftTotal - currentMonthFinalizedTotal
@@ -249,9 +276,6 @@ export function useAllocationsPage() {
   return {
     // State
     localAllocations,
-    isSavingAllocations,
-    isFinalizingAllocations,
-    isDeletingAllocations,
     isEditingAppliedAllocations,
     error,
     monthLoading,

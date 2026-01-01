@@ -12,7 +12,8 @@
  *   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
  */
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
+import { useApp } from '../contexts/app_context'
 import {
   useMonthQuery,
   queryClient,
@@ -68,8 +69,20 @@ export function useBudgetMonth(
   year: number,
   month: number
 ): UseBudgetMonthReturn {
+  const { addLoadingHold, removeLoadingHold } = useApp()
+
   // Queries
   const monthQuery = useMonthQuery(budgetId, year, month, { enabled: !!budgetId })
+
+  // Show loading overlay during month query loading
+  useEffect(() => {
+    if (monthQuery.isLoading) {
+      addLoadingHold('month-query', 'Loading month data...')
+    } else {
+      removeLoadingHold('month-query')
+    }
+    return () => removeLoadingHold('month-query')
+  }, [monthQuery.isLoading, addLoadingHold, removeLoadingHold])
 
   // Mutations
   const { addIncome: addIncomeOp } = useAddIncome()

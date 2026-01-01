@@ -22,19 +22,6 @@ import { getYearMonthOrdinal } from '@utils'
 export type MonthWithId = MonthDocument & { id: string }
 
 // ============================================================================
-// TYPES (OPTIONS)
-// ============================================================================
-
-export interface GetFutureMonthsOptions {
-  /**
-   * Skip the cache and always fetch fresh data from Firestore.
-   * Use this during recalculation to ensure accurate data.
-   * Default: false
-   */
-  skipCache?: boolean
-}
-
-// ============================================================================
 // MAIN FUNCTION
 // ============================================================================
 
@@ -46,14 +33,12 @@ export interface GetFutureMonthsOptions {
  * @param budgetId - The budget ID to query months for
  * @param startAfterYear - Year of the month to start after
  * @param startAfterMonth - Month to start after (1-12)
- * @param _options - Optional configuration (skipCache is no longer used)
  * @returns Array of months after the specified month, sorted chronologically
  */
 export async function getFutureMonths(
   budgetId: string,
   startAfterYear: number,
-  startAfterMonth: number,
-  _options?: GetFutureMonthsOptions
+  startAfterMonth: number
 ): Promise<MonthWithId[]> {
   const startAfterOrdinal = getYearMonthOrdinal(startAfterYear, startAfterMonth)
 

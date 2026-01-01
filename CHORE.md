@@ -15,7 +15,7 @@ You're an expert front-end JavaScript / React / Firebase engineer. Review this p
 
 ## React Organization
 
-You're a React expert who specializes in organizing React projects to stay under the recommended line counts for their files. Where can this project improve to break things into more modular files without ballooning complexity or traceability? Where can we make use of shareable components to reduce repetition? How can we organize our CSS and styles better to consolidate our styles?
+You're a React expert who specializes in organizing React projects to stay under the recommended line counts for their files. Where can this project improve to break things into more modular files without ballooning complexity or traceability? Where can we make use of shareable components to reduce repetition? How can we organize our CSS and styles better to consolidate our styles? Make sure components handle mostly UI logic, with data and other logic moved out into separate hooks. Make components small to keep file size small, breaking out into multiple components when needed.
 
 ---
 

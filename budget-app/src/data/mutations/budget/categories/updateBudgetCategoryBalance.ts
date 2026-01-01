@@ -46,26 +46,34 @@ export async function updateBudgetCategoryBalances(
     return
   }
 
-  // Calculate total delta
-  let totalDelta = 0
+  // Update category balances in cache and track changes to positive balances
+  // Only positive balances count toward total_available (debt doesn't reduce it)
+  let oldPositiveSum = 0
+  let newPositiveSum = 0
 
-  // Update category balances in cache
   const updatedCategories: CategoriesMap = { ...cachedBudget.categories }
   for (const { categoryId, delta } of nonZeroDeltas) {
     if (updatedCategories[categoryId]) {
+      const oldBalance = updatedCategories[categoryId].balance
+      const newBalance = oldBalance + delta
+
+      // Track only positive portions for total_available calculation
+      if (oldBalance > 0) oldPositiveSum += oldBalance
+      if (newBalance > 0) newPositiveSum += newBalance
+
       updatedCategories[categoryId] = {
         ...updatedCategories[categoryId],
-        balance: updatedCategories[categoryId].balance + delta,
+        balance: newBalance,
       }
-      totalDelta += delta
     }
   }
 
-  // total_available = on_budget_accounts - category_balances
-  // When category balance increases, total_available decreases
+  // total_available = on_budget_accounts - positive_category_balances
+  // Negative balances (debt) don't reduce total_available
+  const positiveBalanceDelta = newPositiveSum - oldPositiveSum
   const updatedBudget = cachedBudget.budget ? {
     ...cachedBudget.budget,
-    total_available: cachedBudget.budget.total_available - totalDelta,
+    total_available: cachedBudget.budget.total_available - positiveBalanceDelta,
   } : cachedBudget.budget
 
   queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {

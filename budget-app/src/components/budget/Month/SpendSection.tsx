@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import { usePayeesQuery } from '../../../data'
 import type { FinancialAccount } from '@types'
-import { Button, formatCurrency, SectionTotalHeader } from '../../ui'
+import { Button, formatCurrency } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { ExpenseForm, ExpenseItem, ExpenseTableHeader } from '../Spend'
 import { logUserAction } from '@utils'
@@ -25,19 +25,6 @@ export function SpendSection() {
   const [error, setError] = useState<string | null>(null)
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
-
-  // Track previous month to detect navigation
-  const prevMonthRef = useRef({ year: currentYear, month: currentMonthNumber })
-
-  // Close any open forms when navigating to a different month
-  useEffect(() => {
-    const prev = prevMonthRef.current
-    if (prev.year !== currentYear || prev.month !== currentMonthNumber) {
-      setShowAddExpense(false)
-      setEditingExpenseId(null)
-      prevMonthRef.current = { year: currentYear, month: currentMonthNumber }
-    }
-  }, [currentYear, currentMonthNumber])
 
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddExpense || editingExpenseId !== null
@@ -112,10 +99,7 @@ export function SpendSection() {
 
   return (
     <div style={{
-      background: 'color-mix(in srgb, currentColor 5%, transparent)',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      marginBottom: '1.5rem',
+      paddingBottom: '2rem',
       opacity: monthLoading ? 0.5 : 1,
       transition: 'opacity 0.15s ease-out',
       pointerEvents: monthLoading ? 'none' : 'auto',
@@ -133,23 +117,58 @@ export function SpendSection() {
         </div>
       )}
 
-      <SectionTotalHeader
-        label="Total Expenses"
-        value={
-          <span style={{ color: totalMonthlyExpenses > 0 ? colors.error : 'inherit' }}>
-            {totalMonthlyExpenses > 0 ? '-' : ''}{formatCurrency(totalMonthlyExpenses)}
-          </span>
-        }
-        action={!showAddExpense && (
-          <Button
-            actionName="Open Add Expense Form"
-            onClick={() => setShowAddExpense(true)}
-            disabled={expenseAccounts.length === 0 || Object.keys(categories).length === 0}
-          >
-            + Add Expense
-          </Button>
+      {/* Sticky header: title + total + button + column headers */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#242424',
+        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+        paddingLeft: 'var(--page-padding, 2rem)',
+        paddingRight: 'var(--page-padding, 2rem)',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
+      }}>
+        {/* Title + Stats + Button row */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>Expenses:</span>
+            <span>
+              <span style={{ opacity: 0.6 }}>Total: </span>
+              <span style={{ color: totalMonthlyExpenses > 0 ? colors.error : 'inherit', fontWeight: 600 }}>
+                {totalMonthlyExpenses > 0 ? '-' : ''}{formatCurrency(totalMonthlyExpenses)}
+              </span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            {!showAddExpense && (
+              <Button
+                actionName="Open Add Expense Form"
+                onClick={() => setShowAddExpense(true)}
+                disabled={expenseAccounts.length === 0 || Object.keys(categories).length === 0}
+                style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+              >
+                + Add Expense
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Column headers - always show on desktop */}
+        {!isMobile && (
+          <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem' }}>
+            <ExpenseTableHeader />
+          </div>
         )}
-      />
+      </div>
 
       {expenseAccounts.length === 0 && (
         <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1rem' }}>
@@ -198,11 +217,6 @@ export function SpendSection() {
         overflow: 'hidden',
         marginBottom: '1rem',
       }}>
-        {/* Table header - only show on desktop when there are items */}
-        {!isMobile && currentMonth?.expenses && currentMonth.expenses.length > 0 && (
-          <ExpenseTableHeader />
-        )}
-
         {currentMonth?.expenses
           ?.slice()
           .sort((a, b) => (a.date || '').localeCompare(b.date || ''))

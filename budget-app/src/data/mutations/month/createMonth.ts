@@ -20,14 +20,14 @@ import { setMonthInBudgetMap } from '@data/recalculation'
  * @param year - Year
  * @param month - Month (1-12)
  * @returns The created month document
- * @throws Error if the month is more than 3 months in the future
+ * @throws Error if the month is more than 3 months in the future or past
  */
 export async function createMonth(
   budgetId: string,
   year: number,
   month: number
 ): Promise<MonthDocument> {
-  // Safeguard: Prevent creating months more than 3 months in the future
+  // Safeguard: Prevent creating months more than 3 months in the future or past
   // This catches bugs like double-incrementing the year during navigation
   const now = new Date()
   const currentYear = now.getFullYear()
@@ -40,6 +40,14 @@ export async function createMonth(
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
       `it's ${monthsFromNow} months in the future (max allowed: 3). ` +
       `This likely indicates a bug in month navigation.`
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
+
+  if (monthsFromNow < -3) {
+    const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
+      `it's ${Math.abs(monthsFromNow)} months in the past (max allowed: 3). ` +
+      `Existing months can still be viewed, but new months cannot be created this far back.`
     console.error(errorMsg)
     throw new Error(errorMsg)
   }

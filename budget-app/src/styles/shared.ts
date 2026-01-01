@@ -14,6 +14,10 @@ export const colors = {
   success: '#4ade80',
   danger: '#f87171',
   warning: '#facc15',
+  // Debt color (orange) - used for negative category balances
+  debt: '#fb923c',
+  debtBg: 'rgba(251, 146, 60, 0.1)',
+  debtBorder: 'rgba(251, 146, 60, 0.5)',
 }
 
 // Layout styles - uses CSS variables from index.css for easy customization
@@ -53,6 +57,24 @@ export const statsCard: CSSProperties = {
   padding: '1rem 1.5rem',
   borderRadius: '8px',
   marginBottom: '1.5rem',
+}
+
+// Shared table header style
+export const tableHeaderStyle: CSSProperties = {
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  opacity: 0.6,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+// Table row alternating backgrounds
+export const tableRowEven: CSSProperties = {
+  background: 'color-mix(in srgb, currentColor 3%, transparent)',
+}
+
+export const tableRowOdd: CSSProperties = {
+  background: 'color-mix(in srgb, currentColor 6%, transparent)',
 }
 
 // Form styles

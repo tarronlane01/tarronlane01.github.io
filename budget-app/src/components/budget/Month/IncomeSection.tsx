@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import { usePayeesQuery } from '../../../data'
 import type { FinancialAccount } from '@types'
-import { Button, formatCurrency, getBalanceColor, SectionTotalHeader } from '../../ui'
+import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { IncomeForm, IncomeItem, IncomeTableHeader } from '../Income'
 import { logUserAction } from '@utils'
@@ -25,19 +25,6 @@ export function IncomeSection() {
   const [error, setError] = useState<string | null>(null)
   const [showAddIncome, setShowAddIncome] = useState(false)
   const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
-
-  // Track previous month to detect navigation
-  const prevMonthRef = useRef({ year: currentYear, month: currentMonthNumber })
-
-  // Close any open forms when navigating to a different month
-  useEffect(() => {
-    const prev = prevMonthRef.current
-    if (prev.year !== currentYear || prev.month !== currentMonthNumber) {
-      setShowAddIncome(false)
-      setEditingIncomeId(null)
-      prevMonthRef.current = { year: currentYear, month: currentMonthNumber }
-    }
-  }, [currentYear, currentMonthNumber])
 
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddIncome || editingIncomeId !== null
@@ -112,10 +99,7 @@ export function IncomeSection() {
 
   return (
     <div style={{
-      background: 'color-mix(in srgb, currentColor 5%, transparent)',
-      borderRadius: '12px',
-      padding: '1.5rem',
-      marginBottom: '1.5rem',
+      paddingBottom: '2rem',
       opacity: monthLoading ? 0.5 : 1,
       transition: 'opacity 0.15s ease-out',
       pointerEvents: monthLoading ? 'none' : 'auto',
@@ -133,15 +117,51 @@ export function IncomeSection() {
         </div>
       )}
 
-      <SectionTotalHeader
-        label="Total"
-        value={<span style={{ color: getBalanceColor(totalMonthlyIncome) }}>{formatCurrency(totalMonthlyIncome)}</span>}
-        action={!showAddIncome && (
-          <Button actionName="Open Add Income Form" onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0}>
-            + Add Income
-          </Button>
+      {/* Sticky header: title + total + button + column headers */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#242424',
+        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+        paddingLeft: 'var(--page-padding, 2rem)',
+        paddingRight: 'var(--page-padding, 2rem)',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
+      }}>
+        {/* Title + Stats + Button row */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>Income:</span>
+            <span>
+              <span style={{ opacity: 0.6 }}>Total: </span>
+              <span style={{ color: getBalanceColor(totalMonthlyIncome), fontWeight: 600 }}>{formatCurrency(totalMonthlyIncome)}</span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            {!showAddIncome && (
+              <Button actionName="Open Add Income Form" onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0} style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}>
+                + Add Income
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Column headers - always show on desktop */}
+        {!isMobile && (
+          <div style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem' }}>
+            <IncomeTableHeader />
+          </div>
         )}
-      />
+      </div>
 
       {incomeAccounts.length === 0 && (
         <p style={{ opacity: 0.6, fontSize: '0.9rem', marginBottom: '1rem' }}>
@@ -179,11 +199,6 @@ export function IncomeSection() {
         overflow: 'hidden',
         marginBottom: '1rem',
       }}>
-        {/* Table header - only show on desktop when there are items */}
-        {!isMobile && currentMonth?.income && currentMonth.income.length > 0 && (
-          <IncomeTableHeader />
-        )}
-
         {currentMonth?.income
           .slice()
           .sort((a, b) => (a.date || '').localeCompare(b.date || ''))

@@ -1,109 +1,74 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useApp } from '../../../contexts/app_context'
 import { useBudget, type Category, type BalancesView } from '../../../contexts/budget_context'
 import { useBudgetData, useAllocationsPage, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import type { CategoryMonthBalance, AccountMonthBalance } from '@types'
-import {
-  Button,
-  formatCurrency,
-  getBalanceColor,
-  ErrorAlert,
-  LoadingOverlay,
-  FourStatGrid,
-  Modal,
-} from '../../ui'
+import { ErrorAlert } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { AccountBalancesView } from './AccountBalances'
 import { BalanceGroupBlock } from './CategoryBalances'
+import { DeleteAllocationsModal } from '../Allocations'
+import {
+  CategoryStatsRow,
+  AccountStatsRow,
+  BalancesActionButtons,
+  CategoryColumnHeaders,
+  AccountColumnHeaders,
+} from './MonthBalances'
 import { triggerRecalculation } from '../../../data/recalculation/triggerRecalculation'
 import { queryClient, queryKeys } from '../../../data/queryClient'
 import { getYearMonthOrdinal } from '@utils'
 
-const VALID_VIEWS: BalancesView[] = ['categories', 'accounts']
+interface BalancesSectionProps {
+  currentView: BalancesView
+  onViewChange: (view: BalancesView) => void
+}
 
-export function BalancesSection() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, lastBalancesView, setLastBalancesView } = useBudget()
+export function BalancesSection({ currentView, onViewChange }: BalancesSectionProps) {
+  const { addLoadingHold, removeLoadingHold } = useApp()
+  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
   const { categories, categoryGroups, accounts, accountGroups, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
-  const { month: currentMonth, isLoading: monthLoading } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
-  const [searchParams, setSearchParams] = useSearchParams()
-
-  // Recalculation state
-  const [isRecalculating, setIsRecalculating] = useState(false)
-  const hasTriggeredRecalc = useRef(false)
 
   // Check if current month needs recalculation from budget's month_map
   const currentMonthOrdinal = getYearMonthOrdinal(currentYear, currentMonthNumber)
   const monthNeedsRecalc = monthMap[currentMonthOrdinal]?.needs_recalculation === true
 
+  // Track recalculation in progress (prevents re-triggering during async operation)
+  const recalcInProgressRef = useRef(false)
+
   // Trigger recalculation when viewing Balances tab and month needs it
   useEffect(() => {
     if (!selectedBudgetId || !currentMonth) return
-    if (!monthNeedsRecalc) {
-      hasTriggeredRecalc.current = false
-      return
-    }
-    if (hasTriggeredRecalc.current || isRecalculating) return
+    if (!monthNeedsRecalc || recalcInProgressRef.current) return
 
-    // Trigger full budget recalculation starting from the current month
-    hasTriggeredRecalc.current = true
-    setIsRecalculating(true)
+    recalcInProgressRef.current = true
+    addLoadingHold('balances-recalc', 'Recalculating balances...')
 
-    // Build ordinal for the current month (YYYYMM format)
     const triggeringMonthOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
     console.log(`[BalancesSection] Month needs recalculation, triggering from ${triggeringMonthOrdinal}...`)
 
     triggerRecalculation(selectedBudgetId, { triggeringMonthOrdinal })
       .then(() => {
-        // Invalidate month query to refetch fresh data
         queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
-        // Also invalidate budget query for updated account balances and month_map
         queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
       })
       .catch((err) => {
         console.error('[BalancesSection] Recalculation failed:', err)
       })
       .finally(() => {
-        setIsRecalculating(false)
+        recalcInProgressRef.current = false
+        removeLoadingHold('balances-recalc')
       })
-  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber, isRecalculating])
+  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber, addLoadingHold, removeLoadingHold])
 
-  // Get initial view: URL takes precedence, then context's last view
-  const getInitialView = (): BalancesView => {
-    const urlView = searchParams.get('view')
-    if (urlView && VALID_VIEWS.includes(urlView as BalancesView)) {
-      return urlView as BalancesView
-    }
-    return lastBalancesView
-  }
-
-  const [currentView, setCurrentViewLocal] = useState<BalancesView>(getInitialView)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-
-  // Wrap setCurrentView to also update context and URL
-  const setCurrentView = (view: BalancesView) => {
-    setCurrentViewLocal(view)
-    setLastBalancesView(view)
-    setSearchParams({ view }, { replace: true })
-  }
-
-  // On mount: sync context to local state if URL didn't have a view
-  // This handles the case where user navigates away and back - context remembers the view
-  useEffect(() => {
-    const urlView = searchParams.get('view')
-    if (!urlView || !VALID_VIEWS.includes(urlView as BalancesView)) {
-      // No valid URL view, use context's lastBalancesView
-      // Using flushSync would be overkill here - just update URL without re-render
-      setSearchParams({ view: lastBalancesView }, { replace: true })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     localAllocations,
-    isSavingAllocations,
-    isFinalizingAllocations,
-    isDeletingAllocations,
     isEditingAppliedAllocations,
     error,
     availableNow,
@@ -117,7 +82,6 @@ export function BalancesSection() {
     resetAllocationsToSaved,
     handleSaveAllocations,
     handleFinalizeAllocations,
-    handleDeleteAllocations,
     setIsEditingAppliedAllocations,
     setError,
   } = useAllocationsPage()
@@ -142,13 +106,6 @@ export function BalancesSection() {
     return result
   }, [categories])
 
-  // Show full-page overlay when saving, deleting allocations, or recalculating
-  const showLoadingOverlay = isFinalizingAllocations || isDeletingAllocations || isRecalculating
-  const loadingMessage = isRecalculating
-    ? 'Recalculating balances...'
-    : isFinalizingAllocations
-    ? 'Applying allocations...'
-    : 'Deleting allocations...'
 
   // Determine if we're in draft mode (not finalized, or editing applied allocations)
   const isDraftMode = !allocationsFinalized || isEditingAppliedAllocations
@@ -263,174 +220,67 @@ export function BalancesSection() {
   }, [liveCategoryBalances])
 
   return (
-    <div style={{
-      opacity: monthLoading ? 0.5 : 1,
-      transition: 'opacity 0.15s ease-out',
-      pointerEvents: monthLoading ? 'none' : 'auto',
-    }}>
-      <LoadingOverlay
-        isVisible={showLoadingOverlay}
-        message={loadingMessage}
-      />
+    <>
 
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Allocations Worksheet Title - shown when in draft mode */}
-      {currentView === 'categories' && isDraftMode && (
-        <h3 style={{
-          margin: '0 0 0.75rem 0',
-          fontSize: '1.1rem',
-          fontWeight: 600,
-          color: colors.primary,
-        }}>
-          Allocations Worksheet
-        </h3>
-      )}
-
-      {/* Balance Summary Grid - shows different content based on view */}
-      <FourStatGrid
-        items={currentView === 'categories' ? [
-          {
-            label: isDraftMode ? 'Available Now' : 'Month Income',
-            value: isDraftMode
-              ? <span style={{ color: getBalanceColor(availableNow) }}>{formatCurrency(availableNow)}</span>
-              : <span style={{ color: colors.success }}>+{formatCurrency(currentMonthIncome)}</span>,
-          },
-          {
-            label: isDraftMode ? 'Draft Allocations' : 'Allocated',
-            value: isEditingAppliedAllocations ? (
-              <span>
-                <span style={{ color: colors.primary }}>+{formatCurrency(balanceTotals.allocated)}</span>
-                {draftChangeAmount !== 0 && (
-                  <span style={{
-                    marginLeft: '0.35rem',
-                    fontSize: '0.85em',
-                    color: draftChangeAmount > 0 ? colors.warning : colors.success
-                  }}>
-                    ({draftChangeAmount > 0 ? '+' : '−'}{formatCurrency(Math.abs(draftChangeAmount))})
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span style={{ color: isDraftMode ? colors.primary : colors.success }}>+{formatCurrency(balanceTotals.allocated)}</span>
-            ),
-          },
-          {
-            label: 'Spent',
-            value: <span style={{ color: colors.error }}>-{formatCurrency(balanceTotals.spent)}</span>,
-          },
-          {
-            label: isDraftMode ? 'Available If Applied' : 'Net Change',
-            value: isDraftMode
-              ? <span style={{ color: getBalanceColor(availableAfterApply) }}>{formatCurrency(availableAfterApply)}</span>
-              : <span style={{ color: getBalanceColor(balanceTotals.allocated - balanceTotals.spent) }}>{formatCurrency(balanceTotals.allocated - balanceTotals.spent)}</span>,
-          },
-        ] : [
-          {
-            label: 'Start of Month',
-            value: <span style={{ color: getBalanceColor(accountBalanceTotals.start) }}>{formatCurrency(accountBalanceTotals.start)}</span>,
-          },
-          {
-            label: 'Income',
-            value: <span style={{ color: colors.success }}>+{formatCurrency(accountBalanceTotals.income)}</span>,
-          },
-          {
-            label: 'Expenses',
-            value: <span style={{ color: colors.error }}>-{formatCurrency(accountBalanceTotals.expenses)}</span>,
-          },
-          {
-            label: 'End of Month',
-            value: <span style={{ color: getBalanceColor(accountBalanceTotals.end) }}>{formatCurrency(accountBalanceTotals.end)}</span>,
-          },
-        ]}
-      />
-
-      {/* Action Button Bar */}
+      {/* Sticky header: stats + buttons + column headers */}
       <div style={{
-        display: 'flex',
-        gap: '0.5rem',
-        marginBottom: '1.5rem',
-        flexWrap: 'wrap',
-        alignItems: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#242424',
+        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+        paddingLeft: 'var(--page-padding, 2rem)',
+        paddingRight: 'var(--page-padding, 2rem)',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
       }}>
-        {/* View Toggle Button - always on the left */}
-        <Button
-          actionName={currentView === 'categories' ? 'Switch to Account Balances' : 'Switch to Category Balances'}
-          onClick={() => setCurrentView(currentView === 'categories' ? 'accounts' : 'categories')}
-          variant="secondary"
-          style={{ fontSize: '0.85rem' }}
-        >
-          {currentView === 'categories' ? '🏦 Switch to Account Balances' : '📊 Switch to Category Balances'}
-        </Button>
+        {/* Stats + Buttons row */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          {/* Title + Stats */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            {currentView === 'categories' ? (
+              <CategoryStatsRow
+                isDraftMode={isDraftMode}
+                isEditingAppliedAllocations={isEditingAppliedAllocations}
+                availableNow={availableNow}
+                currentMonthIncome={currentMonthIncome}
+                balanceTotals={balanceTotals}
+                draftChangeAmount={draftChangeAmount}
+                availableAfterApply={availableAfterApply}
+              />
+            ) : (
+              <AccountStatsRow totals={accountBalanceTotals} />
+            )}
+          </div>
 
-        {/* Save Draft & Apply Buttons - show for category view when in draft mode but not editing applied */}
-        {currentView === 'categories' && isDraftMode && !isEditingAppliedAllocations && (
-          <>
-            <Button
-              actionName="Save Draft Allocations"
-              onClick={handleSaveAllocations}
-              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
-              variant="secondary"
-              style={{ fontSize: '0.85rem' }}
-            >
-              {isSavingAllocations ? '⏳...' : '💾 Save Draft'}
-            </Button>
-            <Button
-              actionName="Apply Allocations"
-              onClick={handleFinalizeAllocations}
-              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
-              variant="secondary"
-              style={{ fontSize: '0.85rem' }}
-            >
-              {isFinalizingAllocations ? '⏳...' : '✓ Apply Allocations'}
-            </Button>
-          </>
-        )}
+          {/* Buttons */}
+          <BalancesActionButtons
+            currentView={currentView}
+            onViewChange={onViewChange}
+            isDraftMode={isDraftMode}
+            isEditingAppliedAllocations={isEditingAppliedAllocations}
+            allocationsFinalized={allocationsFinalized}
+            onSave={handleSaveAllocations}
+            onApply={handleFinalizeAllocations}
+            onEdit={() => setIsEditingAppliedAllocations(true)}
+            onCancel={resetAllocationsToSaved}
+            onDelete={() => setShowDeleteConfirm(true)}
+          />
+        </div>
 
-        {/* Edit Allocations Button - only show for category view when not in draft mode and allocations are finalized */}
-        {currentView === 'categories' && !isDraftMode && allocationsFinalized && (
-          <Button
-            actionName="Edit Allocations"
-            onClick={() => setIsEditingAppliedAllocations(true)}
-            variant="secondary"
-            style={{ fontSize: '0.85rem' }}
-          >
-            ✏️ Edit Allocations
-          </Button>
-        )}
-
-        {/* Editing Allocations Buttons - show when editing applied allocations */}
-        {currentView === 'categories' && isEditingAppliedAllocations && (
-          <>
-            <Button
-              actionName="Apply Allocations"
-              onClick={handleFinalizeAllocations}
-              disabled={isSavingAllocations || isFinalizingAllocations || monthLoading}
-              variant="secondary"
-              style={{ fontSize: '0.85rem' }}
-            >
-              {isFinalizingAllocations ? '⏳...' : '✓ Apply Allocations'}
-            </Button>
-            <Button
-              actionName="Cancel Edit Allocations"
-              onClick={resetAllocationsToSaved}
-              disabled={isFinalizingAllocations || isDeletingAllocations || monthLoading}
-              variant="secondary"
-              style={{ fontSize: '0.85rem' }}
-            >
-              ✕ Cancel
-            </Button>
-            <Button
-              actionName="Open Delete Allocations Modal"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={isDeletingAllocations || monthLoading}
-              variant="secondary"
-              style={{ fontSize: '0.85rem', color: colors.error }}
-            >
-              🗑️ Delete
-            </Button>
-          </>
-        )}
+        {/* Column headers for desktop */}
+        {!isMobile && currentView === 'categories' && <CategoryColumnHeaders isDraftMode={isDraftMode} />}
+        {!isMobile && currentView === 'accounts' && <AccountColumnHeaders />}
       </div>
 
       {/* Account Balances View */}
@@ -445,9 +295,7 @@ export function BalancesSection() {
 
       {/* Category Balances View */}
       {currentView === 'categories' && (
-        <>
-          {/* Category Balances by Group */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '2rem' }}>
         {Object.keys(categories).length === 0 && (
           <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
             No categories yet.{' '}
@@ -485,6 +333,7 @@ export function BalancesSection() {
               isDraftMode={isDraftMode}
               onAllocationChange={handleAllocationChange}
               isMobile={isMobile}
+              hideHeader={!isMobile}
             />
           )
         })}
@@ -517,38 +366,19 @@ export function BalancesSection() {
               onAllocationChange={handleAllocationChange}
               isMobile={isMobile}
               isUngrouped
+              hideHeader={!isMobile}
             />
           )
         })()}
-      </div>
-        </>
+        </div>
       )}
 
       {/* Delete Allocations Confirmation Modal */}
-      <Modal
+      <DeleteAllocationsModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Delete Allocations"
-      >
-        <p style={{ margin: '0 0 1.5rem 0' }}>
-          Are you sure you want to delete all allocations for this month? This will remove all allocated amounts and reset the month to unfinalized.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <Button actionName="Cancel Delete Allocations" variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
-            Cancel
-          </Button>
-          <Button
-            actionName="Confirm Delete Allocations"
-            variant="danger"
-            onClick={() => {
-              setShowDeleteConfirm(false)
-              handleDeleteAllocations()
-            }}
-          >
-            Delete Allocations
-          </Button>
-        </div>
-      </Modal>
-    </div>
+        onDeleted={() => setIsEditingAppliedAllocations(false)}
+      />
+    </>
   )
 }

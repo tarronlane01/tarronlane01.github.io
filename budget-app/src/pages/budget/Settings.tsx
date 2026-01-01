@@ -1,14 +1,15 @@
 import { useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
+import { useApp } from '../../contexts/app_context'
 import { useBudget, type SettingsTab } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
-import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
+import { TabNavigation, type Tab, BudgetNavBar, ContentContainer } from '../../components/ui'
 import { pageContainer } from '../../styles/shared'
 
 const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
 
 function Settings() {
-  // Context: identifiers and UI flags
+  const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentUserId, lastSettingsTab, setLastSettingsTab } = useBudget()
 
   // Hook: budget data
@@ -16,6 +17,16 @@ function Settings() {
     isOwner,
     isLoading: loading,
   } = useBudgetData(selectedBudgetId, currentUserId)
+
+  // Add loading hold while loading
+  useEffect(() => {
+    if (loading) {
+      addLoadingHold('settings', 'Loading settings...')
+    } else {
+      removeLoadingHold('settings')
+    }
+    return () => removeLoadingHold('settings')
+  }, [loading, addLoadingHold, removeLoadingHold])
 
   const location = useLocation()
 
@@ -57,13 +68,7 @@ function Settings() {
     { id: 'users', label: 'Users', icon: '👥', hidden: !isOwner },
   ], [isOwner])
 
-  if (loading) {
-    return (
-      <div style={pageContainer}>
-        <p>Loading...</p>
-      </div>
-    )
-  }
+  if (loading) return null
 
   // Owner-only pages (Users)
   const isOwnerOnlyPage = isUsersPage
@@ -99,7 +104,9 @@ function Settings() {
       {isRootSettings ? (
         <Navigate to={`/budget/settings/${getSavedSettingsTab()}`} replace />
       ) : (
-        <Outlet />
+        <ContentContainer>
+          <Outlet />
+        </ContentContainer>
       )}
     </div>
   )

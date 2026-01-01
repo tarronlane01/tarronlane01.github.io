@@ -1,7 +1,7 @@
 import type { DragEvent } from 'react'
 import type { Category, CategoryGroup } from '../../../contexts/budget_context'
 import { Button, DraggableCard } from '../../ui'
-import { formatCurrency, getBalanceColor } from '../../ui'
+import { formatCurrency, getCategoryBalanceColor } from '../../ui'
 import {
   listContainer,
   itemTitle,
@@ -459,7 +459,7 @@ export function CategoryCardContent({
           margin: 0,
           fontSize: '1rem',
           fontWeight: 600,
-          color: getBalanceColor(balance.current),
+          color: getCategoryBalanceColor(balance.current),
         }}>
           {loadingBalances ? '...' : formatCurrency(balance.current)}
           <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.6, marginLeft: '0.35rem' }}>
@@ -471,7 +471,7 @@ export function CategoryCardContent({
           margin: '0.15rem 0 0 0',
           fontSize: '0.85rem',
           fontWeight: 500,
-          color: getBalanceColor(balance.total),
+          color: getCategoryBalanceColor(balance.total),
           opacity: 0.75,
         }}>
           {loadingBalances ? '...' : formatCurrency(balance.total)}

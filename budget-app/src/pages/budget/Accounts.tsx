@@ -1,11 +1,12 @@
-import { useState, type DragEvent } from 'react'
+import { useState, useMemo, type DragEvent } from 'react'
 import { useAccountsPage } from '../../hooks'
 import {
   ErrorAlert,
   Button,
   DropZone,
+  formatCurrency,
+  getBalanceColor,
 } from '../../components/ui'
-import { pageSubtitle } from '../../styles/shared'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   GroupForm,
@@ -134,6 +135,35 @@ function Accounts() {
     handleDragEnd()
   }
 
+  // Calculate stats for header
+  const stats = useMemo(() => {
+    const accountList = Object.values(accounts)
+    const totalBalance = accountList.reduce((sum, acc) => sum + (acc.balance ?? 0), 0)
+
+    // Calculate on-budget total (accounts in on-budget groups or ungrouped on-budget accounts)
+    let onBudgetTotal = 0
+    let offBudgetTotal = 0
+
+    for (const acc of accountList) {
+      const group = sortedGroups.find(g => g.id === acc.account_group_id)
+      // Account is on-budget if: its own on_budget is true, OR (on_budget is undefined and group's on_budget is true or undefined)
+      const isOnBudget = acc.on_budget === true || (acc.on_budget === undefined && (group?.on_budget !== false))
+      if (isOnBudget) {
+        onBudgetTotal += acc.balance ?? 0
+      } else {
+        offBudgetTotal += acc.balance ?? 0
+      }
+    }
+
+    return {
+      count: accountList.length,
+      groupCount: sortedGroups.length,
+      totalBalance,
+      onBudgetTotal,
+      offBudgetTotal,
+    }
+  }, [accounts, sortedGroups])
+
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
   }
@@ -142,29 +172,57 @@ function Accounts() {
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Accounts</h2>
-      <p style={pageSubtitle}>
-        Organize your financial accounts by type.
-        <br />
-        <span style={{ fontSize: '0.9rem' }}>
-          {isMobile
-            ? 'Use ▲▼ buttons to reorder items, or drag to move between types.'
-            : 'Drag accounts between types, or use ▲▼ buttons to reorder.'}
-        </span>
-      </p>
-
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Recalculate All button - for syncing data during development */}
+      {/* Sticky header: title + stats + buttons */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginBottom: '1rem',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#242424',
+        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+        paddingLeft: 'var(--page-padding, 2rem)',
+        paddingRight: 'var(--page-padding, 2rem)',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
       }}>
-        <RecalculateAllButton />
+        {/* Title + Stats + Buttons row */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>Accounts:</span>
+            <span>
+              <span style={{ opacity: 0.6 }}>On-Budget: </span>
+              <span style={{ color: getBalanceColor(stats.onBudgetTotal), fontWeight: 600 }}>{formatCurrency(stats.onBudgetTotal)}</span>
+            </span>
+            {stats.offBudgetTotal !== 0 && (
+              <span>
+                <span style={{ opacity: 0.6 }}>Off-Budget: </span>
+                <span style={{ fontWeight: 600, opacity: 0.7 }}>{formatCurrency(stats.offBudgetTotal)}</span>
+              </span>
+            )}
+            <span>
+              <span style={{ opacity: 0.6 }}>Total: </span>
+              <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatCurrency(stats.totalBalance)}</span>
+            </span>
+            <span style={{ opacity: 0.5, fontSize: '0.8rem' }}>
+              {isMobile ? 'Drag to move.' : 'Drag between types or use ▲▼ to reorder.'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <RecalculateAllButton />
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', paddingTop: '1rem' }}>
         {Object.keys(accounts).length === 0 && sortedGroups.length === 0 && (
           <p style={{ opacity: 0.7 }}>No accounts yet. Create an account type first, then add accounts!</p>
         )}

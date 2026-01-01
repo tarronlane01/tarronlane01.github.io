@@ -1,0 +1,318 @@
+/**
+ * Category Balance Row Components
+ *
+ * Mobile and Desktop row components for displaying individual category balances.
+ */
+
+import type { Category, CategoryMonthBalance } from '@types'
+import { formatCurrency, getCategoryBalanceColor } from '../../ui'
+import { colors } from '../../../styles/shared'
+
+// Shared styles for full-height field containers with centered content
+const fieldContainer = {
+  alignSelf: 'stretch' as const,
+  display: 'flex',
+  alignItems: 'center',
+}
+
+// =============================================================================
+// MOBILE BALANCE ROW
+// =============================================================================
+
+interface BalanceRowProps {
+  category: Category
+  balance: CategoryMonthBalance
+  localAllocation: string
+  previousMonthIncome: number
+  isDraftMode: boolean
+  onAllocationChange: (value: string) => void
+  /** Projected all-time balance (stored balance + this month's change) */
+  projectedAllTime: number
+}
+
+export function MobileBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange, projectedAllTime }: BalanceRowProps) {
+  const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
+  const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
+  const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
+
+  // Show inline input in draft mode for non-percentage categories
+  const showInlineInput = isDraftMode && !isPercentageBased
+
+  // All-time balance: in draft mode show projected, otherwise show stored
+  const allTimeBalance = isDraftMode ? projectedAllTime : (category.balance ?? 0)
+
+  // Check if this category has debt (negative stored balance)
+  const storedBalance = category.balance ?? 0
+  const hasDebt = storedBalance < 0
+  const debtAmount = hasDebt ? Math.abs(storedBalance) : 0
+
+  // Calculate how much of the allocation goes to debt reduction vs actual balance
+  const allocationAmount = isPercentageBased ? calculatedAmount : (parseFloat(localAllocation) || 0)
+  const debtReductionAmount = hasDebt ? Math.min(allocationAmount, debtAmount) : 0
+  const toBalanceAmount = hasDebt ? Math.max(0, allocationAmount - debtAmount) : 0
+  const showBreakdown = hasDebt && allocationAmount > 0 && toBalanceAmount > 0
+
+  return (
+    <div style={{
+      background: hasDebt ? colors.debtBg : 'color-mix(in srgb, currentColor 5%, transparent)',
+      borderRadius: '8px',
+      padding: '0.75rem',
+      boxShadow: hasDebt ? `inset 0 0 0 2px ${colors.debtBorder}` : 'none',
+    }}>
+      {/* Category name row */}
+      <div style={{ marginBottom: '0.5rem' }}>
+        <span style={{ fontWeight: 500 }}>
+          {category.name}
+        </span>
+      </div>
+
+      {/* Values in one row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
+        gap: '0.25rem',
+        fontSize: '0.75rem',
+      }}>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>Start</span>
+          <span>{formatCurrency(balance.start_balance)}</span>
+        </div>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>Alloc</span>
+          {showInlineInput ? (
+            <>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayValue ? `$${displayValue}` : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^\d.]/g, '')
+                  onAllocationChange(raw)
+                }}
+                placeholder="$0"
+                style={{
+                  width: '100%',
+                  maxWidth: '80px',
+                  padding: '0.25rem 0.35rem',
+                  borderRadius: '4px',
+                  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                  background: 'color-mix(in srgb, currentColor 8%, transparent)',
+                  fontSize: '0.8rem',
+                  color: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* Show debt reduction breakdown below input on mobile */}
+              {hasDebt && allocationAmount > 0 && (
+                <div style={{ fontSize: '0.65rem', marginTop: '0.15rem', lineHeight: 1.3 }}>
+                  <span style={{ color: colors.debt, display: 'block' }}>
+                    {formatCurrency(debtReductionAmount)} → debt
+                  </span>
+                  {showBreakdown && (
+                    <span style={{ color: colors.success, display: 'block' }}>
+                      {formatCurrency(toBalanceAmount)} → balance
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <span style={{ color: balance.allocated > 0 ? colors.success : 'inherit' }}>
+              {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+            </span>
+          )}
+        </div>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>Spent</span>
+          <span style={{ color: balance.spent > 0 ? colors.error : 'inherit' }}>
+            {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
+          </span>
+        </div>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>End</span>
+          <span style={{ color: getCategoryBalanceColor(balance.end_balance) }}>
+            {formatCurrency(balance.end_balance)}
+          </span>
+        </div>
+        <div>
+          <span style={{ opacity: 0.6, display: 'block' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</span>
+          <span style={{ color: isDraftMode ? (allTimeBalance < 0 ? colors.debt : colors.primary) : getCategoryBalanceColor(allTimeBalance) }}>
+            {formatCurrency(allTimeBalance)}
+          </span>
+        </div>
+      </div>
+
+      {/* Percentage equation - only in draft mode for percentage-based categories */}
+      {isDraftMode && isPercentageBased && (
+        <div style={{ marginTop: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem' }}>
+            <span style={{ opacity: 0.6 }}>{formatCurrency(previousMonthIncome)} × </span>
+            <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+            <span style={{ opacity: 0.6 }}> = </span>
+            <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// DESKTOP BALANCE ROW
+// =============================================================================
+
+interface DesktopBalanceRowProps {
+  category: Category
+  balance: CategoryMonthBalance
+  localAllocation: string
+  previousMonthIncome: number
+  isDraftMode: boolean
+  onAllocationChange: (value: string) => void
+  allTimeBalance: number
+  isEvenRow: boolean
+}
+
+export function DesktopBalanceRow({ category, balance, localAllocation, previousMonthIncome, isDraftMode, onAllocationChange, allTimeBalance, isEvenRow }: DesktopBalanceRowProps) {
+  const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
+  const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
+  const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
+
+  // Check if this category has debt (negative stored balance)
+  const storedBalance = category.balance ?? 0
+  const hasDebt = storedBalance < 0
+  const debtAmount = hasDebt ? Math.abs(storedBalance) : 0
+
+  // Calculate how much of the allocation goes to debt reduction vs actual balance
+  const allocationAmount = isPercentageBased ? calculatedAmount : (parseFloat(localAllocation) || 0)
+  const debtReductionAmount = hasDebt ? Math.min(allocationAmount, debtAmount) : 0
+  const toBalanceAmount = hasDebt ? Math.max(0, allocationAmount - debtAmount) : 0
+  const showBreakdown = hasDebt && allocationAmount > 0 && toBalanceAmount > 0
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'stretch',
+      padding: '0.6rem 0.75rem',
+      background: hasDebt ? colors.debtBg : (isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)'),
+      boxShadow: hasDebt ? `inset 0 0 0 2px ${colors.debtBorder}` : 'none',
+      borderRadius: hasDebt ? '8px' : '0',
+    }}>
+      {/* Category name */}
+      <div style={{ ...fieldContainer, flex: 2, minWidth: 0, overflow: 'hidden' }}>
+        <span style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {category.name}
+        </span>
+      </div>
+
+      {/* Draft mode: Allocated then Start. Finalized mode: Start then Allocated */}
+      {isDraftMode ? (
+        <>
+          <div style={{ ...fieldContainer, width: '200px', justifyContent: 'center', flexDirection: 'column', gap: '0.15rem' }}>
+            {isPercentageBased ? (
+              <span style={{ fontSize: '0.8rem' }}>
+                <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+                <span style={{ opacity: 0.5 }}> = </span>
+                <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+              </span>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={displayValue ? `$${displayValue}` : ''}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^\d.]/g, '')
+                    onAllocationChange(raw)
+                  }}
+                  placeholder="$0.00"
+                  style={{
+                    width: '90px',
+                    padding: '0.3rem 0.5rem',
+                    borderRadius: '4px',
+                    border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                    background: 'color-mix(in srgb, currentColor 5%, transparent)',
+                    fontSize: '0.9rem',
+                    color: 'inherit',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                {/* Show debt reduction breakdown below input */}
+                {hasDebt && allocationAmount > 0 && (
+                  <div style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
+                    <span style={{ color: colors.debt }}>
+                      {formatCurrency(debtReductionAmount)} → debt
+                    </span>
+                    {showBreakdown && (
+                      <span style={{ color: colors.success, marginLeft: '0.5rem' }}>
+                        {formatCurrency(toBalanceAmount)} → bal
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
+            {formatCurrency(balance.start_balance)}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
+            {formatCurrency(balance.start_balance)}
+          </div>
+          <div style={{
+            ...fieldContainer,
+            flex: 1,
+            justifyContent: 'flex-end',
+            fontSize: '0.9rem',
+            color: balance.allocated > 0 ? colors.success : 'inherit',
+          }}>
+            {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+          </div>
+        </>
+      )}
+
+      {/* Spent */}
+      <div style={{
+        ...fieldContainer,
+        flex: 1,
+        justifyContent: 'flex-end',
+        fontSize: '0.9rem',
+        color: balance.spent > 0 ? colors.error : 'inherit',
+      }}>
+        {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
+      </div>
+
+      {/* End - with border-right that extends full height */}
+      <div style={{
+        ...fieldContainer,
+        flex: 1,
+        justifyContent: 'flex-end',
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        color: getCategoryBalanceColor(balance.end_balance),
+        paddingRight: '1rem',
+        marginTop: '-0.6rem',
+        marginBottom: '-0.6rem',
+        paddingTop: '0.6rem',
+        paddingBottom: '0.6rem',
+        borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+      }}>
+        {formatCurrency(balance.end_balance)}
+      </div>
+
+      {/* All-Time */}
+      <div style={{
+        ...fieldContainer,
+        width: '120px',
+        justifyContent: 'flex-end',
+        fontSize: '0.9rem',
+        color: isDraftMode ? (allTimeBalance < 0 ? colors.debt : colors.primary) : getCategoryBalanceColor(allTimeBalance),
+      }}>
+        {formatCurrency(allTimeBalance)}
+      </div>
+    </div>
+  )
+}
+

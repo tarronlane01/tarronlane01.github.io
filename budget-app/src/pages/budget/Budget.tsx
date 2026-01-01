@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useBudget, type BudgetTab } from '../../contexts/budget_context'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useBudget, type BudgetTab, type BalancesView } from '../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../hooks'
 import { PageContainer, ErrorAlert, BudgetNavBar, ContentContainer } from '../../components/ui'
 import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
@@ -13,33 +13,38 @@ import {
 } from '../../components/budget/Month'
 
 const VALID_TABS: BudgetTab[] = ['income', 'balances', 'spend']
+const VALID_VIEWS: BalancesView[] = ['categories', 'accounts']
 
-function parsePathParams(params: { year?: string; month?: string; tab?: string }) {
+function parsePathParams(params: { year?: string; month?: string; tab?: string; view?: string }) {
   const year = params.year ? parseInt(params.year, 10) : null
   const month = params.month ? parseInt(params.month, 10) : null
   const tab = params.tab && VALID_TABS.includes(params.tab as BudgetTab) ? params.tab as BudgetTab : null
+  const view = params.view && VALID_VIEWS.includes(params.view as BalancesView) ? params.view as BalancesView : null
 
   return {
     year: year && !isNaN(year) && year >= 2000 && year <= 2100 ? year : null,
     month: month && !isNaN(month) && month >= 1 && month <= 12 ? month : null,
     tab,
+    view,
   }
 }
 
 function Budget() {
-  const params = useParams<{ year?: string; month?: string; tab?: string }>()
+  const params = useParams<{ year?: string; month?: string; tab?: string; view?: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // Context: identifiers and UI state only
   const {
     currentUserId,
     selectedBudgetId,
     currentYear,
     currentMonthNumber,
     lastActiveTab,
+    lastBalancesView,
     setCurrentYear,
     setCurrentMonthNumber,
     setLastActiveTab,
+    setLastBalancesView,
     goToPreviousMonth,
     goToNextMonth,
     hasPendingInvites,
@@ -47,7 +52,6 @@ function Budget() {
     needsFirstBudget,
   } = useBudget()
 
-  // Hooks: data and mutations
   const {
     budget: currentBudget,
     createBudget,
@@ -56,51 +60,76 @@ function Budget() {
 
   const {
     month: currentMonth,
-    isLoading: monthLoading,
     error: monthError,
   } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
-  const [error, setError] = useState<string | null>(null)
+  // Check for error message in URL params (from redirect)
+  const urlError = searchParams.get('error')
+  const [error, setError] = useState<string | null>(urlError)
   const urlInitializedRef = useRef(false)
 
-  // Handle "month too far in future" error - auto-navigate to max allowed month
+  // Clear error param from URL after reading it
+  useEffect(() => {
+    if (urlError) {
+      searchParams.delete('error')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [urlError, searchParams, setSearchParams])
+
+  // Handle month errors by redirecting to valid month
   useEffect(() => {
     if (!monthError) return
-
     const errorMsg = monthError.message || ''
-    if (errorMsg.includes('months in the future') || errorMsg.includes('Refusing to create month')) {
-      console.log('[Budget] Month too far in future, navigating to max allowed month')
 
-      // Calculate max allowed month (3 months from now)
+    // Handle months too far in the future
+    if (errorMsg.includes('months in the future') || errorMsg.includes('Refusing to create month')) {
       const now = new Date()
       let maxYear = now.getFullYear()
-      let maxMonth = now.getMonth() + 1 + 3 // 3 months ahead
-
+      let maxMonth = now.getMonth() + 1 + 3
       while (maxMonth > 12) {
         maxMonth -= 12
         maxYear += 1
       }
-
-      // Navigate to max allowed month
-      setCurrentYear(maxYear)
-      setCurrentMonthNumber(maxMonth)
-      setError(`Cannot navigate to ${currentYear}/${currentMonthNumber} - redirected to ${maxYear}/${maxMonth}`)
+      const errorMessage = `Cannot navigate to ${currentYear}/${currentMonthNumber} - redirected to ${maxYear}/${maxMonth}`
+      navigate(`/budget/${maxYear}/${maxMonth}/${lastActiveTab}?error=${encodeURIComponent(errorMessage)}`, { replace: true })
+      return
     }
-  }, [monthError, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber])
 
-  // Initialize from URL params on mount, fallback to context's last active tab
+    // Handle months too far in the past
+    if (errorMsg.includes('months in the past')) {
+      const now = new Date()
+      let minYear = now.getFullYear()
+      let minMonth = now.getMonth() + 1 - 3
+      while (minMonth < 1) {
+        minMonth += 12
+        minYear -= 1
+      }
+      const errorMessage = `Cannot create month ${currentYear}/${currentMonthNumber} - redirected to ${minYear}/${minMonth}`
+      navigate(`/budget/${minYear}/${minMonth}/${lastActiveTab}?error=${encodeURIComponent(errorMessage)}`, { replace: true })
+    }
+  }, [monthError, currentYear, currentMonthNumber, lastActiveTab, navigate])
+
   const [activeTab, setActiveTabLocal] = useState<BudgetTab>(() => {
     const { tab } = parsePathParams(params)
     return tab ?? lastActiveTab
   })
 
-  // Wrap setActiveTab to also update context
+  // View state for balances tab (categories vs accounts)
+  const [balancesView, setBalancesViewLocal] = useState<BalancesView>(() => {
+    const { view } = parsePathParams(params)
+    return view ?? lastBalancesView
+  })
+
   const setActiveTab = (tab: BudgetTab) => {
     setActiveTabLocal(tab)
     setLastActiveTab(tab)
   }
 
-  // Initialize year/month from URL on first render
+  const setBalancesView = (view: BalancesView) => {
+    setBalancesViewLocal(view)
+    setLastBalancesView(view)
+  }
+
   useEffect(() => {
     if (urlInitializedRef.current) return
     const { year, month } = parsePathParams(params)
@@ -109,19 +138,17 @@ function Budget() {
     urlInitializedRef.current = true
   }, [params, setCurrentYear, setCurrentMonthNumber])
 
-  // Sync URL path when month/year/tab changes
   useEffect(() => {
     if (!urlInitializedRef.current) return
-    const newPath = `/budget/${currentYear}/${currentMonthNumber}/${activeTab}`
-    const currentPath = `/budget/${params.year}/${params.month}/${params.tab}`
-
+    // Include view segment only for balances tab
+    const viewSegment = activeTab === 'balances' ? `/${balancesView}` : ''
+    const newPath = `/budget/${currentYear}/${currentMonthNumber}/${activeTab}${viewSegment}`
+    const currentPath = `/budget/${params.year}/${params.month}/${params.tab}${params.view ? `/${params.view}` : ''}`
     if (newPath !== currentPath) {
       navigate(newPath, { replace: true })
     }
-  }, [currentYear, currentMonthNumber, activeTab, navigate, params])
+  }, [currentYear, currentMonthNumber, activeTab, balancesView, navigate, params])
 
-
-  // Handlers for onboarding screens
   async function handleAcceptInvite(budgetId: string) {
     try {
       await acceptInvite(budgetId)
@@ -138,7 +165,6 @@ function Budget() {
     }
   }
 
-  // If no current budget but there are pending invites, show invite selection
   if (!currentBudget && hasPendingInvites) {
     return (
       <PageContainer>
@@ -152,7 +178,6 @@ function Budget() {
     )
   }
 
-  // If user needs to create their first budget (no invites, no existing budgets)
   if (!currentBudget && needsFirstBudget) {
     return (
       <PageContainer>
@@ -162,7 +187,6 @@ function Budget() {
     )
   }
 
-  // Handle month navigation
   function handlePreviousMonth() {
     setError(null)
     goToPreviousMonth()
@@ -181,7 +205,6 @@ function Budget() {
         {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
         <MonthNavigation
-          isLoading={monthLoading}
           onPreviousMonth={handlePreviousMonth}
           onNextMonth={handleNextMonth}
         />
@@ -192,9 +215,15 @@ function Budget() {
           allocationsFinalized={currentMonth?.are_allocations_finalized}
         />
 
-        {activeTab === 'income' && <IncomeSection />}
-        {activeTab === 'balances' && <BalancesSection />}
-        {activeTab === 'spend' && <SpendSection />}
+        {activeTab === 'income' && <IncomeSection key={`${currentYear}-${currentMonthNumber}`} />}
+        {activeTab === 'balances' && (
+          <BalancesSection
+            key={`${currentYear}-${currentMonthNumber}`}
+            currentView={balancesView}
+            onViewChange={setBalancesView}
+          />
+        )}
+        {activeTab === 'spend' && <SpendSection key={`${currentYear}-${currentMonthNumber}`} />}
       </ContentContainer>
     </PageContainer>
   )

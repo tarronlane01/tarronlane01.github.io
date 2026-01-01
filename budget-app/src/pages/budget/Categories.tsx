@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCategoriesPage } from '../../hooks'
+import { useApp } from '../../contexts/app_context'
 import {
   ErrorAlert,
   Button,
   DropZone,
-  StatCard,
   formatCurrency,
   getBalanceColor,
 } from '../../components/ui'
-import { pageSubtitle, colors } from '../../styles/shared'
+import { colors } from '../../styles/shared'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   CategoryGroupForm,
@@ -62,6 +62,17 @@ function Categories() {
   } = useCategoriesPage()
 
   const isMobile = useIsMobile()
+  const { addLoadingHold, removeLoadingHold } = useApp()
+
+  // Add loading hold while loading
+  useEffect(() => {
+    if (isLoading) {
+      addLoadingHold('categories', 'Loading categories...')
+    } else {
+      removeLoadingHold('categories')
+    }
+    return () => removeLoadingHold('categories')
+  }, [isLoading, addLoadingHold, removeLoadingHold])
 
   // UI state for editing
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
@@ -73,107 +84,69 @@ function Categories() {
     return <p>No budget found. Please log in.</p>
   }
 
-  // Show clean loading state with just heading and centered spinner
-  if (isLoading) {
-    return (
-      <div>
-        <h2 style={{ marginTop: 0 }}>Categories & Groups</h2>
-        <p style={pageSubtitle}>
-          Organize your spending categories into groups.
-        </p>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '200px',
-          opacity: 0.7,
-        }}>
-          <p>Loading...</p>
-        </div>
-      </div>
-    )
-  }
+  // Calculate stats for header
+  const totalCurrentAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.current, 0)
+  const totalAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.total, 0)
+  const availableNow = getOnBudgetTotal() - totalCurrentAllocated
+  const hasFutureAllocations = Math.abs(totalAllocated - totalCurrentAllocated) > 0.01
+
+  if (isLoading) return null
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Categories & Groups</h2>
-      <p style={pageSubtitle}>
-        Organize your spending categories into groups.
-        <br />
-        <span style={{ fontSize: '0.9rem' }}>
-          {isMobile
-            ? 'Use ▲▼ buttons to reorder items, or drag to move between groups.'
-            : 'Drag categories between groups, or use ▲▼ buttons to reorder.'}
-        </span>
-      </p>
-
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
-      {/* Recalculate All button - for syncing data during development */}
+      {/* Sticky header: title + stats + buttons */}
       <div style={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginBottom: '1rem',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: '#242424',
+        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+        paddingLeft: 'var(--page-padding, 2rem)',
+        paddingRight: 'var(--page-padding, 2rem)',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid rgba(255,255,255,0.15)',
       }}>
-        <RecalculateAllButton />
+        {/* Title + Stats + Buttons row */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 1rem',
+          fontSize: '0.85rem',
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600 }}>Categories:</span>
+            <span>
+              <span style={{ opacity: 0.6 }}>On-Budget: </span>
+              <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatCurrency(getOnBudgetTotal())}</span>
+            </span>
+            <span>
+              <span style={{ opacity: 0.6 }}>Allocated: </span>
+              <span style={{ color: colors.primary, fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}</span>
+              {hasFutureAllocations && <span style={{ opacity: 0.5, fontSize: '0.8rem' }}> ({formatCurrency(totalAllocated)} total)</span>}
+            </span>
+            <span>
+              <span style={{ opacity: 0.6 }}>Available: </span>
+              <span style={{ color: getBalanceColor(availableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(availableNow)}</span>
+            </span>
+            <span style={{ opacity: 0.6 }}>
+              {isMobile
+                ? 'Drag to move between groups.'
+                : 'Drag categories between groups, or use ▲▼ to reorder.'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <RecalculateAllButton />
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      {(() => {
-        const totalCurrentAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.current, 0)
-        const totalAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.total, 0)
-        const availableNow = getOnBudgetTotal() - totalCurrentAllocated
-        const availableTotal = getOnBudgetTotal() - totalAllocated
-        const hasFutureAllocations = Math.abs(totalAllocated - totalCurrentAllocated) > 0.01
-
-        return (
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <StatCard style={{ flex: 1, minWidth: '120px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Categories</p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
-                {Object.keys(categories).length}
-              </p>
-            </StatCard>
-            <StatCard style={{ flex: 1, minWidth: '120px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Groups</p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600 }}>
-                {categoryGroups.length}
-              </p>
-            </StatCard>
-            <StatCard style={{ flex: 1, minWidth: '120px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>On-Budget</p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(getOnBudgetTotal()) }}>
-                {formatCurrency(getOnBudgetTotal())}
-              </p>
-            </StatCard>
-            <StatCard style={{ flex: 1, minWidth: '120px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Allocated Now</p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: colors.primary }}>
-                {loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}
-              </p>
-              {hasFutureAllocations && (
-                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
-                  {loadingBalances ? '' : `${formatCurrency(totalAllocated)} total`}
-                </p>
-              )}
-            </StatCard>
-            <StatCard style={{ flex: 1, minWidth: '120px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>Available Now</p>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 600, color: getBalanceColor(availableNow) }}>
-                {loadingBalances ? '...' : formatCurrency(availableNow)}
-              </p>
-              {hasFutureAllocations && (
-                <p style={{ margin: '0.1rem 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>
-                  {loadingBalances ? '' : `${formatCurrency(availableTotal)} after future`}
-                </p>
-              )}
-            </StatCard>
-          </div>
-        )
-      })()}
-
       {/* Category Groups */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', paddingTop: '1rem' }}>
         {Object.keys(categories).length === 0 && categoryGroups.length === 0 && (
           <p style={{ opacity: 0.7 }}>No categories yet. Create a group first, then add categories!</p>
         )}

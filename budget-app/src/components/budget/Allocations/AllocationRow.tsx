@@ -1,5 +1,5 @@
 import type { Category } from '@types'
-import { formatCurrency } from '../../ui'
+import { formatCurrency, DebtBorder } from '../../ui'
 import { colors } from '../../../styles/shared'
 
 interface AllocationRowProps {
@@ -10,9 +10,11 @@ interface AllocationRowProps {
   disabled?: boolean
   readOnly?: boolean
   index?: number
+  /** The category's all-time balance (used for debt detection) */
+  allTimeBalance?: number
 }
 
-export function AllocationRow({ category, value, onChange, previousMonthIncome, disabled, readOnly, index = 0 }: AllocationRowProps) {
+export function AllocationRow({ category, value, onChange, previousMonthIncome, disabled, readOnly, index = 0, allTimeBalance }: AllocationRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
 
   // For percentage-based categories, calculate the amount
@@ -34,10 +36,20 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
     suggestedDisplay = formatCurrency(category.default_monthly_amount)
   }
 
+  // Check if this category has debt (negative all-time balance)
+  const categoryBalance = allTimeBalance ?? (category.balance ?? 0)
+  const hasDebt = categoryBalance < 0
+  const debtAmount = hasDebt ? Math.abs(categoryBalance) : 0
+
+  // Calculate how much of the allocation goes to debt vs actual balance
+  const debtReductionAmount = hasDebt ? Math.min(amount, debtAmount) : 0
+  const actualBalanceAmount = hasDebt ? Math.max(0, amount - debtAmount) : amount
+  const showBreakdown = hasDebt && amount > 0 && actualBalanceAmount > 0
+
   // Condensed read-only view when finalized OR for percentage-based categories (always show equation style)
   if (readOnly || isPercentageBased) {
     const isEven = index % 2 === 0
-    return (
+    const content = (
       <div
         style={{
           display: 'flex',
@@ -47,8 +59,8 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
           padding: '0.5rem 0.5rem',
           maxWidth: '100%',
           boxSizing: 'border-box',
-          background: isEven ? 'transparent' : 'color-mix(in srgb, currentColor 3%, transparent)',
-          borderBottom: '1px solid color-mix(in srgb, currentColor 8%, transparent)',
+          background: hasDebt ? 'transparent' : (isEven ? 'transparent' : 'color-mix(in srgb, currentColor 3%, transparent)'),
+          borderBottom: hasDebt ? 'none' : '1px solid color-mix(in srgb, currentColor 8%, transparent)',
         }}
       >
         <span style={{
@@ -87,9 +99,14 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
         </span>
       </div>
     )
+
+    if (hasDebt) {
+      return <DebtBorder style={{ marginBottom: '0.5rem' }}>{content}</DebtBorder>
+    }
+    return content
   }
 
-  return (
+  const content = (
     <div
       style={{
         display: 'flex',
@@ -97,7 +114,7 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
         justifyContent: 'space-between',
         gap: '0.75rem',
         padding: '0.6rem 0.75rem',
-        background: 'color-mix(in srgb, currentColor 5%, transparent)',
+        background: hasDebt ? 'transparent' : 'color-mix(in srgb, currentColor 5%, transparent)',
         borderRadius: '8px',
         maxWidth: '100%',
         boxSizing: 'border-box',
@@ -115,33 +132,76 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
             Suggested: {suggestedDisplay}
           </span>
         )}
+        {hasDebt && (
+          <span style={{
+            fontSize: '0.7rem',
+            color: colors.debt,
+            display: 'block',
+            marginTop: '0.15rem',
+          }}>
+            Debt: {formatCurrency(debtAmount)}
+          </span>
+        )}
       </div>
-      <div style={{ flexShrink: 0, width: '110px' }}>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={displayValue ? `$${displayValue}` : ''}
-          onChange={(e) => {
-            const raw = e.target.value.replace(/[^\d.]/g, '')
-            onChange(raw)
-          }}
-          placeholder="$0.00"
-          disabled={disabled}
-          style={{
-            width: '100%',
-            padding: '0.5rem 0.6rem',
-            borderRadius: '6px',
-            border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-            background: 'color-mix(in srgb, currentColor 5%, transparent)',
-            fontSize: '0.9rem',
-            color: 'inherit',
-            boxSizing: 'border-box',
-            opacity: disabled ? 0.6 : 1,
-            cursor: disabled ? 'not-allowed' : 'text',
-          }}
-        />
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ width: '110px' }}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={displayValue ? `$${displayValue}` : ''}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^\d.]/g, '')
+              onChange(raw)
+            }}
+            placeholder="$0.00"
+            disabled={disabled}
+            style={{
+              width: '100%',
+              padding: '0.5rem 0.6rem',
+              borderRadius: '6px',
+              border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+              background: 'color-mix(in srgb, currentColor 5%, transparent)',
+              fontSize: '0.9rem',
+              color: 'inherit',
+              boxSizing: 'border-box',
+              opacity: disabled ? 0.6 : 1,
+              cursor: disabled ? 'not-allowed' : 'text',
+            }}
+          />
+        </div>
+        {/* Breakdown showing debt reduction vs actual balance */}
+        {showBreakdown && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            fontSize: '0.7rem',
+            lineHeight: 1.3,
+          }}>
+            <span style={{ color: colors.debt }}>
+              {formatCurrency(debtReductionAmount)} → debt
+            </span>
+            <span style={{ color: colors.success }}>
+              {formatCurrency(actualBalanceAmount)} → balance
+            </span>
+          </div>
+        )}
+        {/* Show debt reduction amount when full allocation goes to debt */}
+        {hasDebt && amount > 0 && !showBreakdown && (
+          <span style={{
+            fontSize: '0.7rem',
+            color: colors.debt,
+          }}>
+            {formatCurrency(debtReductionAmount)} → debt
+          </span>
+        )}
       </div>
     </div>
   )
+
+  if (hasDebt) {
+    return <DebtBorder>{content}</DebtBorder>
+  }
+
+  return content
 }
 

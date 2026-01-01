@@ -1,19 +1,13 @@
 import { colors } from '../../styles/shared'
 
-interface LoadingOverlayProps {
-  /** Whether to show the overlay */
-  isVisible: boolean
-  /** Text to display under the spinner */
-  message?: string
-}
-
 /**
  * Full-page loading overlay with spinner.
- * Use when performing operations that should block all user interaction.
+ *
+ * Rendered in App.tsx, controlled via AppContext:
+ *   addLoadingHold('unique-key', 'Message...')
+ *   removeLoadingHold('unique-key')
  */
-export function LoadingOverlay({ isVisible, message = 'Loading...' }: LoadingOverlayProps) {
-  if (!isVisible) return null
-
+export function LoadingOverlay({ message = 'Loading...' }: { message?: string }) {
   return (
     <div style={{
       position: 'fixed',
@@ -21,23 +15,29 @@ export function LoadingOverlay({ isVisible, message = 'Loading...' }: LoadingOve
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(0, 0, 0, 0.7)',
+      background: 'rgba(15, 15, 20, 0.92)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 9999,
-      gap: '1rem',
+      gap: '1.25rem',
+      backdropFilter: 'blur(4px)',
     }}>
       <div style={{
-        width: '3rem',
-        height: '3rem',
-        border: '3px solid rgba(255, 255, 255, 0.2)',
+        width: '3.5rem',
+        height: '3.5rem',
+        border: '3px solid rgba(255, 255, 255, 0.15)',
         borderTopColor: colors.primary,
         borderRadius: '50%',
         animation: 'loadingOverlaySpin 0.8s linear infinite',
       }} />
-      <p style={{ color: 'white', fontSize: '1.1rem', fontWeight: 500 }}>
+      <p style={{
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: '1.1rem',
+        fontWeight: 500,
+        letterSpacing: '0.02em',
+      }}>
         {message}
       </p>
       <style>{`

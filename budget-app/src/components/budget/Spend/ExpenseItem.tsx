@@ -101,11 +101,9 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
     return (
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '5rem 1fr 8rem 8rem 6rem 1fr 3rem 4rem',
-          gap: '0.75rem',
-          padding: '0.625rem 1rem',
+          display: 'flex',
           alignItems: 'center',
+          padding: '0.6rem 0',
           borderBottom: '1px solid color-mix(in srgb, currentColor 8%, transparent)',
           transition: 'background 0.15s',
         }}
@@ -113,19 +111,26 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
         {/* Date */}
-        <span style={{ fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
+        <div style={{ width: '5rem', fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
           {formattedDate}
-        </span>
+        </div>
 
         {/* Payee */}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontWeight: 500, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {expense.payee || '—'}
-          </span>
+        <div style={{
+          flex: 1.5,
+          minWidth: 0,
+          fontWeight: 500,
+          fontSize: '0.9rem',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {expense.payee || '—'}
         </div>
 
         {/* Category */}
-        <span style={{
+        <div style={{
+          width: '7rem',
           fontSize: '0.8rem',
           background: `color-mix(in srgb, ${colors.primary} 15%, transparent)`,
           color: colors.primaryLight,
@@ -137,10 +142,12 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
           textAlign: 'center',
         }}>
           {categoryName}
-        </span>
+        </div>
 
         {/* Account */}
-        <span style={{
+        <div style={{
+          flex: 1,
+          minWidth: 0,
           fontSize: '0.85rem',
           opacity: 0.7,
           overflow: 'hidden',
@@ -148,20 +155,24 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
           whiteSpace: 'nowrap',
         }}>
           {accountDisplay}
-        </span>
+        </div>
 
         {/* Amount */}
-        <span style={{
+        <div style={{
+          width: '6rem',
           fontWeight: 600,
           color: colors.error,
           fontFamily: 'monospace',
           textAlign: 'right',
         }}>
           -{formatCurrency(expense.amount)}
-        </span>
+        </div>
 
         {/* Description */}
-        <span style={{
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          paddingLeft: '1rem',
           fontSize: '0.8rem',
           opacity: 0.6,
           overflow: 'hidden',
@@ -169,20 +180,21 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
           whiteSpace: 'nowrap',
         }}>
           {expense.description || '—'}
-        </span>
+        </div>
 
         {/* Cleared */}
-        <span style={{
+        <div style={{
+          width: '3rem',
           textAlign: 'center',
           color: expense.cleared ? colors.success : 'inherit',
           opacity: expense.cleared ? 1 : 0.3,
           fontSize: '1rem',
         }}>
           {expense.cleared ? '✓' : '○'}
-        </span>
+        </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+        <div style={{ width: '4rem', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
           <button
             onClick={onEdit}
             style={{
@@ -226,11 +238,9 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '5rem 1fr 7rem 7rem 6rem 3rem 4rem',
-        gap: '0.5rem',
-        padding: '0.625rem 1rem',
+        display: 'flex',
         alignItems: 'center',
+        padding: '0.6rem 0',
         borderBottom: '1px solid color-mix(in srgb, currentColor 8%, transparent)',
         transition: 'background 0.15s',
       }}
@@ -238,12 +248,12 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
     >
       {/* Date */}
-      <span style={{ fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
+      <div style={{ width: '5rem', fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
         {formattedDate}
-      </span>
+      </div>
 
       {/* Payee + Description */}
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <span style={{ fontWeight: 500, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {expense.payee || '—'}
         </span>
@@ -255,7 +265,8 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
       </div>
 
       {/* Category */}
-      <span style={{
+      <div style={{
+        width: '7rem',
         fontSize: '0.75rem',
         background: `color-mix(in srgb, ${colors.primary} 15%, transparent)`,
         color: colors.primaryLight,
@@ -267,10 +278,11 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         textAlign: 'center',
       }}>
         {categoryName}
-      </span>
+      </div>
 
       {/* Account */}
-      <span style={{
+      <div style={{
+        width: '7rem',
         fontSize: '0.8rem',
         opacity: 0.7,
         overflow: 'hidden',
@@ -278,10 +290,11 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         whiteSpace: 'nowrap',
       }}>
         {accountName}
-      </span>
+      </div>
 
       {/* Amount */}
-      <span style={{
+      <div style={{
+        width: '6rem',
         fontWeight: 600,
         color: colors.error,
         fontFamily: 'monospace',
@@ -289,20 +302,21 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         fontSize: '0.9rem',
       }}>
         -{formatCurrency(expense.amount)}
-      </span>
+      </div>
 
       {/* Cleared */}
-      <span style={{
+      <div style={{
+        width: '3rem',
         textAlign: 'center',
         color: expense.cleared ? colors.success : 'inherit',
         opacity: expense.cleared ? 1 : 0.3,
         fontSize: '0.9rem',
       }}>
         {expense.cleared ? '✓' : '○'}
-      </span>
+      </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+      <div style={{ width: '4rem', display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
         <button
           onClick={onEdit}
           style={{
@@ -346,57 +360,40 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
 export function ExpenseTableHeader() {
   const isWide = useIsWide()
 
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    opacity: 0.6,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  }
+
   if (isWide) {
     return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '5rem 1fr 8rem 8rem 6rem 1fr 3rem 4rem',
-          gap: '0.75rem',
-          padding: '0.5rem 1rem',
-          borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-          opacity: 0.5,
-          fontWeight: 600,
-        }}
-      >
-        <span>Date</span>
-        <span>Payee</span>
-        <span style={{ textAlign: 'center' }}>Category</span>
-        <span>Account</span>
-        <span style={{ textAlign: 'right' }}>Amount</span>
-        <span>Description</span>
-        <span style={{ textAlign: 'center' }}>Clr</span>
-        <span></span>
+      <div style={headerStyle}>
+        <div style={{ width: '5rem' }}>Date</div>
+        <div style={{ flex: 1.5, minWidth: 0 }}>Payee</div>
+        <div style={{ width: '7rem', textAlign: 'center' }}>Category</div>
+        <div style={{ flex: 1, minWidth: 0 }}>Account</div>
+        <div style={{ width: '6rem', textAlign: 'right' }}>Amount</div>
+        <div style={{ flex: 1, minWidth: 0, paddingLeft: '1rem' }}>Description</div>
+        <div style={{ width: '3rem', textAlign: 'center' }}>Clr</div>
+        <div style={{ width: '4rem' }}></div>
       </div>
     )
   }
 
   // Medium desktop header
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '5rem 1fr 7rem 7rem 6rem 3rem 4rem',
-        gap: '0.5rem',
-        padding: '0.5rem 1rem',
-        borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-        fontSize: '0.75rem',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        opacity: 0.5,
-        fontWeight: 600,
-      }}
-    >
-      <span>Date</span>
-      <span>Payee</span>
-      <span style={{ textAlign: 'center' }}>Category</span>
-      <span>Account</span>
-      <span style={{ textAlign: 'right' }}>Amount</span>
-      <span style={{ textAlign: 'center' }}>Clr</span>
-      <span></span>
+    <div style={headerStyle}>
+      <div style={{ width: '5rem' }}>Date</div>
+      <div style={{ flex: 1, minWidth: 0 }}>Payee</div>
+      <div style={{ width: '7rem', textAlign: 'center' }}>Category</div>
+      <div style={{ width: '7rem' }}>Account</div>
+      <div style={{ width: '6rem', textAlign: 'right' }}>Amount</div>
+      <div style={{ width: '3rem', textAlign: 'center' }}>Clr</div>
+      <div style={{ width: '4rem' }}></div>
     </div>
   )
 }

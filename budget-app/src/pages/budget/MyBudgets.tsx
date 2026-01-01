@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
+import { useApp } from '../../contexts/app_context'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 import { PageContainer, BudgetNavBar } from '../../components/ui'
@@ -6,6 +7,7 @@ import { BudgetCard } from '../../components/budget/Admin'
 import { logUserAction } from '@utils'
 
 function MyBudgets() {
+  const { addLoadingHold, removeLoadingHold } = useApp()
   const {
     selectedBudgetId,
     currentUserId,
@@ -159,13 +161,17 @@ function MyBudgets() {
   const acceptedBudgets = accessibleBudgets.filter(b => !b.isPending)
   const pendingBudgetsList = accessibleBudgets.filter(b => b.isPending)
 
-  if (loading || !isInitialized) {
-    return (
-      <PageContainer>
-        <p>Loading your budgets...</p>
-      </PageContainer>
-    )
-  }
+  // Add loading hold while loading
+  useEffect(() => {
+    if (loading || !isInitialized) {
+      addLoadingHold('my-budgets', 'Loading your budgets...')
+    } else {
+      removeLoadingHold('my-budgets')
+    }
+    return () => removeLoadingHold('my-budgets')
+  }, [loading, isInitialized, addLoadingHold, removeLoadingHold])
+
+  if (loading || !isInitialized) return null
 
   return (
     <PageContainer>

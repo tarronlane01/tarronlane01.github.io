@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
+import { useApp } from '../../contexts/app_context'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
 
 function SettingsBudget() {
+  const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentUserId, isAdmin } = useBudget()
 
   const {
@@ -14,9 +17,17 @@ function SettingsBudget() {
     isLoading: loading,
   } = useBudgetData(selectedBudgetId, currentUserId)
 
-  if (loading) {
-    return <p>Loading budget info...</p>
-  }
+  // Add loading hold while loading
+  useEffect(() => {
+    if (loading) {
+      addLoadingHold('settings-budget', 'Loading budget info...')
+    } else {
+      removeLoadingHold('settings-budget')
+    }
+    return () => removeLoadingHold('settings-budget')
+  }, [loading, addLoadingHold, removeLoadingHold])
+
+  if (loading) return null
 
   if (!currentBudget) {
     return <p style={{ opacity: 0.7 }}>No budget selected.</p>

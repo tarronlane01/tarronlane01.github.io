@@ -2,11 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 
+import { AppProvider, useApp } from './contexts/app_context'
 import UserContext from './contexts/user_context'
 import { QueryProvider } from './data'
 import { BudgetProvider } from './contexts/budget_context'
 import useFirebaseAuth from './hooks/useFirebaseAuth'
-import { pageContainer } from './styles/shared'
 
 import Home from './pages/Home'
 import SqlTest from './pages/SqlTest'
@@ -26,6 +26,7 @@ import MyBudgets from './pages/budget/MyBudgets'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton } from './components/ui'
+import { LoadingOverlay } from './components/app/LoadingOverlay'
 import type { type_user_context } from '@types'
 
 const initial_user_context: type_user_context = {
@@ -35,10 +36,19 @@ const initial_user_context: type_user_context = {
   set_user_context: () => {},
 }
 
-function App() {
+/** Global loading overlay - renders when any loading holds exist */
+function GlobalLoadingOverlay() {
+  const { isLoading, loadingMessage } = useApp()
+  if (!isLoading) return null
+  return <LoadingOverlay message={loadingMessage} />
+}
+
+/** Main app content with auth handling */
+function AppContent() {
   const [user_context, set_user_context] = useState<type_user_context>(initial_user_context)
   const firebase_auth_hook = useFirebaseAuth()
   const listenerSetRef = useRef(false)
+  const { addLoadingHold, removeLoadingHold } = useApp()
 
   useEffect(function() {
     // Only set up listener once (firebase_auth_hook is stable but ESLint doesn't know that)
@@ -55,13 +65,17 @@ function App() {
     })
   }, [firebase_auth_hook])
 
-  if (!user_context.is_auth_checked) {
-    return (
-      <div style={pageContainer}>
-        <p>Loading...</p>
-      </div>
-    )
-  }
+  // Add loading hold during auth check
+  useEffect(() => {
+    if (!user_context.is_auth_checked) {
+      addLoadingHold('auth', 'Authenticating...')
+    } else {
+      removeLoadingHold('auth')
+    }
+  }, [user_context.is_auth_checked, addLoadingHold, removeLoadingHold])
+
+  // Don't render routes until auth is checked
+  if (!user_context.is_auth_checked) return null
 
   return (
     <UserContext.Provider value={user_context}>
@@ -77,7 +91,7 @@ function App() {
               <Route path="/budget" element={<ProtectedRoute />}>
                 <Route element={<BudgetLayout />}>
                   <Route index element={<Budget />} />
-                  <Route path=":year/:month/:tab" element={<Budget />} />
+                  <Route path=":year/:month/:tab/:view?" element={<Budget />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="my-budgets" element={<MyBudgets />} />
 
@@ -104,6 +118,15 @@ function App() {
         </BudgetProvider>
       </QueryProvider>
     </UserContext.Provider>
+  )
+}
+
+function App() {
+  return (
+    <AppProvider>
+      <GlobalLoadingOverlay />
+      <AppContent />
+    </AppProvider>
   )
 }
 

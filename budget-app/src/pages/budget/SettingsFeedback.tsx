@@ -1,4 +1,4 @@
-import { useState, useContext, type DragEvent, type FormEvent } from 'react'
+import { useState, useContext, useEffect, type DragEvent, type FormEvent } from 'react'
 import UserContext from '../../contexts/user_context'
 import useFirebaseAuth from '../../hooks/useFirebaseAuth'
 import { useFeedbackQuery, type FlattenedFeedbackItem, type FeedbackItem } from '../../data'
@@ -13,6 +13,7 @@ import {
   CollapsibleSection,
   Modal,
 } from '../../components/ui'
+import { useApp } from '../../contexts/app_context'
 import { pageSubtitle, listContainer } from '../../styles/shared'
 import {
   FeedbackCard,
@@ -43,6 +44,18 @@ function SettingsFeedback() {
   const { updateSortOrder } = useUpdateSortOrder()
 
   const allFeedback = feedbackQuery.data?.items || []
+
+  const { addLoadingHold, removeLoadingHold } = useApp()
+
+  // Add loading hold while loading
+  useEffect(() => {
+    if (feedbackQuery.isLoading) {
+      addLoadingHold('settings-feedback', 'Loading feedback...')
+    } else {
+      removeLoadingHold('settings-feedback')
+    }
+    return () => removeLoadingHold('settings-feedback')
+  }, [feedbackQuery.isLoading, addLoadingHold, removeLoadingHold])
 
   function handleAddFeedback(e: FormEvent) {
     e.preventDefault()
@@ -212,7 +225,7 @@ function SettingsFeedback() {
     }
   }
 
-  if (feedbackQuery.isLoading) return <p>Loading feedback...</p>
+  if (feedbackQuery.isLoading) return null
 
   return (
     <div>
