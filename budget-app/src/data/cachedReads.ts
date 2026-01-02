@@ -160,7 +160,7 @@ export async function calculateCurrentBalances(
   // Step 1: Check current month
   // Note: Recalculation status is now tracked in the budget's month_map.
   // This function assumes months are up to date. Recalculation is triggered
-  // separately when viewing the Balances tab (see BalancesSection.tsx).
+  // separately when viewing the Categories tab (see MonthCategories.tsx).
   const currentMonthData = await fetchMonthForBalances(budgetId, currentYear, currentMonth)
 
   if (currentMonthData?.category_balances) {

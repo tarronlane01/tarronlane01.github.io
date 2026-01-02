@@ -9,10 +9,11 @@
  * - Firestore fetches when not cached
  *
  * NOTE: Recalculation is NOT triggered by this module.
- * Recalculation is only triggered when viewing the Balances tab,
- * which shows the BalancesSection component.
+ * Recalculation is only triggered when viewing the Categories or Accounts tabs,
+ * which show the MonthCategories or MonthAccounts components.
  *
- * See: components/budget/Month/BalancesSection.tsx
+ * See: components/budget/Month/MonthCategories.tsx
+ * See: components/budget/Month/MonthAccounts.tsx
  */
 
 import type { MonthDocument, FirestoreData } from '@types'
@@ -32,7 +33,7 @@ export interface ReadMonthOptions {
   /** Description for logging */
   description?: string
   /**
-   * @deprecated No longer used - recalculation is handled by BalancesSection
+   * @deprecated No longer used - recalculation is handled by MonthCategories/MonthAccounts
    */
   triggerRecalc?: boolean
 }

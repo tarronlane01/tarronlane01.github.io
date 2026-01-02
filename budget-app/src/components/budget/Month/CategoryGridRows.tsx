@@ -1,0 +1,372 @@
+/**
+ * Category Grid Row Components
+ *
+ * Desktop grid row components for displaying category balances.
+ * Used by MonthCategories for the main category listing.
+ */
+
+import type { Category, CategoryMonthBalance } from '@types'
+import { formatCurrency, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
+import { colors } from '../../../styles/shared'
+import { MobileBalanceRow } from './CategoryBalanceRows'
+
+// =============================================================================
+// CATEGORY GROUP ROWS - renders as grid items using display: contents
+// =============================================================================
+
+export interface CategoryGroupRowsProps {
+  name: string
+  categories: [string, Category][]
+  groupTotals: { start: number; allocated: number; spent: number; end: number }
+  getCategoryBalance: (catId: string) => CategoryMonthBalance | undefined
+  localAllocations: Record<string, string>
+  savedAllocations: Record<string, number>
+  previousMonthIncome: number
+  isDraftMode: boolean
+  onAllocationChange: (categoryId: string, value: string) => void
+  isMobile: boolean
+  isUngrouped?: boolean
+  getAllocationAmount: (catId: string, cat: Category) => number
+}
+
+export function CategoryGroupRows({
+  name,
+  categories,
+  groupTotals,
+  getCategoryBalance,
+  localAllocations,
+  savedAllocations,
+  previousMonthIncome,
+  isDraftMode,
+  onAllocationChange,
+  isMobile,
+  isUngrouped,
+  getAllocationAmount,
+}: CategoryGroupRowsProps) {
+  // Group header cell style - matches accounts page
+  const groupHeaderCellStyle: React.CSSProperties = {
+    paddingTop: '0.6rem',
+    paddingBottom: '0.6rem',
+    paddingLeft: '0.5rem',
+    paddingRight: '0.5rem',
+    marginTop: '1.25rem',
+    borderTop: '1px solid rgba(255,255,255,0.2)',
+    background: 'rgba(255,255,255,0.04)',
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '0.9rem',
+    fontWeight: 600,
+  }
+
+  const groupNetChange = groupTotals.allocated - groupTotals.spent
+
+  // Calculate group all-time total
+  const groupAllTime = categories.reduce((sum, [catId, cat]) => {
+    const storedBalance = cat.balance ?? 0
+    if (isDraftMode) {
+      const draftAllocation = getAllocationAmount(catId, cat)
+      const savedAllocation = savedAllocations[catId] ?? 0
+      const allocationChange = draftAllocation - savedAllocation
+      return sum + storedBalance + allocationChange
+    }
+    return sum + storedBalance
+  }, 0)
+
+  return (
+    <div style={{ display: 'contents' }}>
+      {/* Desktop: Group header row with totals in each column */}
+      {!isMobile && (
+        <>
+          <div style={{ ...groupHeaderCellStyle, paddingLeft: '0.5rem', opacity: isUngrouped ? 0.7 : 1 }}>
+            {name}
+            <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({categories.length})</span>
+          </div>
+          {!isDraftMode && (
+            <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupTotals.start) }}>
+              {formatCurrency(groupTotals.start)}
+            </div>
+          )}
+          <div style={{ ...groupHeaderCellStyle, justifyContent: isDraftMode ? 'center' : 'flex-end', color: getAllocatedColor(groupTotals.allocated) }}>
+            +{formatCurrency(groupTotals.allocated)}
+          </div>
+          {!isDraftMode && (
+            <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getSpendColor(groupTotals.spent) }}>
+              -{formatCurrency(groupTotals.spent)}
+            </div>
+          )}
+          {!isDraftMode && (
+            <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupNetChange) }}>
+              {groupNetChange >= 0 ? '+' : ''}{formatCurrency(groupNetChange)}
+            </div>
+          )}
+          {!isDraftMode && (
+            <div style={{
+              ...groupHeaderCellStyle,
+              justifyContent: 'flex-end',
+              color: getCategoryBalanceColor(groupTotals.end),
+              paddingRight: '1rem',
+              borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+            }}>
+              {formatCurrency(groupTotals.end)}
+            </div>
+          )}
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: groupAllTime < 0 ? colors.debt : colors.primary }}>
+            {formatCurrency(groupAllTime)}
+          </div>
+        </>
+      )}
+
+      {/* Mobile finalized mode: Simplified group header */}
+      {!isDraftMode && isMobile && (
+        <div style={{
+          gridColumn: '1 / -1',
+          paddingTop: '0.6rem',
+          paddingBottom: '0.6rem',
+          paddingLeft: '0.5rem',
+          paddingRight: '0.5rem',
+          marginTop: '1.25rem',
+          borderTop: '1px solid rgba(255,255,255,0.2)',
+          background: 'rgba(255,255,255,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1 }}>
+            {name}
+            <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({categories.length})</span>
+          </span>
+          <span style={{ fontWeight: 600, color: getCategoryBalanceColor(groupTotals.end) }}>
+            {formatCurrency(groupTotals.end)}
+          </span>
+        </div>
+      )}
+
+      {/* Category rows */}
+      {categories.map(([catId, cat], index) => {
+        const bal = getCategoryBalance(catId)
+        if (!bal) return null
+
+        const storedBalance = cat.balance ?? 0
+        let allTimeBalance = storedBalance
+        if (isDraftMode) {
+          const draftAllocation = getAllocationAmount(catId, cat)
+          const savedAllocation = savedAllocations[catId] ?? 0
+          const allocationChange = draftAllocation - savedAllocation
+          allTimeBalance = storedBalance + allocationChange
+        }
+
+        if (isMobile) {
+          return (
+            <div key={catId} style={{ gridColumn: '1 / -1' }}>
+              <MobileBalanceRow
+                category={cat}
+                balance={bal}
+                localAllocation={localAllocations[catId] || ''}
+                previousMonthIncome={previousMonthIncome}
+                isDraftMode={isDraftMode}
+                onAllocationChange={(val: string) => onAllocationChange(catId, val)}
+                projectedAllTime={allTimeBalance}
+              />
+            </div>
+          )
+        }
+
+        return (
+          <CategoryGridRow
+            key={catId}
+            category={cat}
+            balance={bal}
+            localAllocation={localAllocations[catId] || ''}
+            previousMonthIncome={previousMonthIncome}
+            isDraftMode={isDraftMode}
+            onAllocationChange={(val) => onAllocationChange(catId, val)}
+            allTimeBalance={allTimeBalance}
+            isEvenRow={index % 2 === 0}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// =============================================================================
+// CATEGORY GRID ROW - renders directly as grid items (display: contents)
+// =============================================================================
+
+interface CategoryGridRowProps {
+  category: Category
+  balance: CategoryMonthBalance
+  localAllocation: string
+  previousMonthIncome: number
+  isDraftMode: boolean
+  onAllocationChange: (value: string) => void
+  allTimeBalance: number
+  isEvenRow: boolean
+}
+
+function CategoryGridRow({
+  category,
+  balance,
+  localAllocation,
+  previousMonthIncome,
+  isDraftMode,
+  onAllocationChange,
+  allTimeBalance,
+  isEvenRow,
+}: CategoryGridRowProps) {
+  const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
+  const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
+  const displayValue = isPercentageBased ? calculatedAmount.toFixed(2) : localAllocation
+
+  const storedBalance = category.balance ?? 0
+  const hasDebt = storedBalance < 0
+  const debtAmount = hasDebt ? Math.abs(storedBalance) : 0
+
+  const allocationAmount = isPercentageBased ? calculatedAmount : (parseFloat(localAllocation) || 0)
+  const debtReductionAmount = hasDebt ? Math.min(allocationAmount, debtAmount) : 0
+  const toBalanceAmount = hasDebt ? Math.max(0, allocationAmount - debtAmount) : 0
+  const showBreakdown = hasDebt && allocationAmount > 0 && toBalanceAmount > 0
+
+  const rowBg = hasDebt ? colors.debtBg : (isEvenRow ? 'rgba(255,255,255,0.02)' : 'transparent')
+
+  const cellStyle: React.CSSProperties = {
+    paddingTop: '0.6rem',
+    paddingBottom: '0.6rem',
+    paddingLeft: '0.5rem',
+    paddingRight: '0.5rem',
+    background: rowBg,
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '0.9rem',
+    minHeight: '2.4rem',
+    boxSizing: 'border-box',
+  }
+
+  const netChange = balance.allocated - balance.spent
+
+  return (
+    <div style={{ display: 'contents' }}>
+      {/* Category name */}
+      <div style={{
+        paddingTop: '0.6rem',
+        paddingBottom: '0.6rem',
+        paddingRight: '0.5rem',
+        paddingLeft: '1.5rem',
+        background: rowBg,
+        display: 'flex',
+        alignItems: 'center',
+        fontSize: '0.9rem',
+        fontWeight: 500,
+        overflow: 'hidden',
+        borderLeft: '2px solid rgba(255,255,255,0.1)',
+        minHeight: '2.4rem',
+        boxSizing: 'border-box',
+      }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {category.name}
+        </span>
+      </div>
+
+      {/* Start balance - only in finalized mode */}
+      {!isDraftMode && (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balance.start_balance) }}>
+          {formatCurrency(balance.start_balance)}
+        </div>
+      )}
+
+      {/* Allocated - input in draft mode, display in finalized mode */}
+      {isDraftMode ? (
+        <div style={{ ...cellStyle, justifyContent: 'center', flexDirection: 'column', gap: '0.1rem', paddingTop: '0.35rem', paddingBottom: '0.35rem' }}>
+          {isPercentageBased ? (
+            <span style={{ fontSize: '0.85rem' }}>
+              <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+              <span style={{ opacity: 0.5 }}> = </span>
+              <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+            </span>
+          ) : (
+            <>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayValue ? `$${displayValue}` : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^\d.]/g, '')
+                  onAllocationChange(raw)
+                }}
+                placeholder="$0.00"
+                style={{
+                  width: '100px',
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: '4px',
+                  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
+                  fontSize: '0.9rem',
+                  lineHeight: 1,
+                  color: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {hasDebt && allocationAmount > 0 && (
+                <div style={{ fontSize: '0.6rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1 }}>
+                  <span style={{ color: colors.debt }}>{formatCurrency(debtReductionAmount)} → debt</span>
+                  {showBreakdown && (
+                    <span style={{ color: colors.success, marginLeft: '0.35rem' }}>{formatCurrency(toBalanceAmount)} → bal</span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        (() => {
+          const hadDebtAtStart = balance.start_balance < 0
+          const startDebtAmount = hadDebtAtStart ? Math.abs(balance.start_balance) : 0
+          const finalizedDebtReduction = hadDebtAtStart ? Math.min(balance.allocated, startDebtAmount) : 0
+          const finalizedToBalance = hadDebtAtStart ? Math.max(0, balance.allocated - startDebtAmount) : 0
+          const showFinalizedBreakdown = hadDebtAtStart && balance.allocated > 0
+
+          return (
+            <div style={{ ...cellStyle, justifyContent: 'flex-end', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem', color: getAllocatedColor(balance.allocated) }}>
+              <span>+{formatCurrency(balance.allocated)}</span>
+              {showFinalizedBreakdown && (
+                <div style={{ fontSize: '0.6rem', whiteSpace: 'nowrap', textAlign: 'right', lineHeight: 1 }}>
+                  <span style={{ color: colors.debt }}>{formatCurrency(finalizedDebtReduction)} → debt</span>
+                  {finalizedToBalance > 0 && (
+                    <span style={{ color: colors.success, marginLeft: '0.35rem' }}>{formatCurrency(finalizedToBalance)} → bal</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()
+      )}
+
+      {/* Spent - only shown in finalized mode */}
+      {!isDraftMode && (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getSpendColor(balance.spent) }}>
+          -{formatCurrency(balance.spent)}
+        </div>
+      )}
+
+      {/* Net Change - only in finalized mode */}
+      {!isDraftMode && (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange) }}>
+          {netChange >= 0 ? '+' : ''}{formatCurrency(netChange)}
+        </div>
+      )}
+
+      {/* End Balance (with border) - only in finalized mode */}
+      {!isDraftMode && (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getCategoryBalanceColor(balance.end_balance), paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>
+          {formatCurrency(balance.end_balance)}
+        </div>
+      )}
+
+      {/* All-Time Balance */}
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: allTimeBalance < 0 ? colors.debt : colors.primary }}>
+        {formatCurrency(allTimeBalance)}
+      </div>
+    </div>
+  )
+}
+

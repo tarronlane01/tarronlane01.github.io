@@ -3,11 +3,12 @@ import { Outlet } from 'react-router-dom'
 import { useApp } from '../contexts/app_context'
 import { useBudget } from '../contexts/budget_context'
 import { useBudgetData } from '../hooks'
+import { BudgetNavBar } from './ui'
 import { pageContainer } from '../styles/shared'
 
 export default function BudgetLayout() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, isInitialized } = useBudget()
+  const { selectedBudgetId, currentUserId, isInitialized, pageTitle } = useBudget()
 
   // Hook: budget data and refresh
   const { isLoading: loading, error } = useBudgetData(selectedBudgetId, currentUserId)
@@ -37,7 +38,8 @@ export default function BudgetLayout() {
   }
 
   return (
-    <div style={{ paddingBottom: '5rem' }}>
+    <div style={{ ...pageContainer, paddingBottom: '5rem' }}>
+      <BudgetNavBar title={pageTitle} />
       {isInitialized && <Outlet />}
     </div>
   )

@@ -1,14 +1,16 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget, type AdminTab } from '../../contexts/budget_context'
-import { TabNavigation, type Tab, BudgetNavBar } from '../../components/ui'
-import { pageContainer } from '../../styles/shared'
+import { TabNavigation, type Tab } from '../../components/ui'
 
 const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests']
 
 function Admin() {
   // Context: identifiers and UI flags
-  const { isAdmin, isTest, lastAdminTab, setLastAdminTab } = useBudget()
+  const { isAdmin, isTest, lastAdminTab, setLastAdminTab, setPageTitle } = useBudget()
+
+  // Set page title for layout header
+  useLayoutEffect(() => { setPageTitle('Budget Admin') }, [setPageTitle])
 
   const location = useLocation()
 
@@ -55,8 +57,7 @@ function Admin() {
   // Non-admins cannot access admin pages at all
   if (!isAdmin) {
     return (
-      <div style={pageContainer}>
-        <BudgetNavBar title="Budget Admin" />
+      <div>
         <h1>Access Denied</h1>
         <p style={{ opacity: 0.7 }}>
           Only administrators can access this section.
@@ -73,8 +74,7 @@ function Admin() {
   // Test-only pages
   if (!isTest && isTestsPage) {
     return (
-      <div style={pageContainer}>
-        <BudgetNavBar title="Budget Admin" />
+      <div>
         <h1>Access Denied</h1>
         <p style={{ opacity: 0.7 }}>
           Only test users can access this section.
@@ -89,8 +89,7 @@ function Admin() {
   }
 
   return (
-    <div style={pageContainer}>
-      <BudgetNavBar title="Budget Admin" />
+    <div>
       <TabNavigation
         mode="link"
         linkPrefix="/budget/admin"

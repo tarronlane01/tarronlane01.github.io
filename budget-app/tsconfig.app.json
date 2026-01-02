@@ -19,6 +19,8 @@
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
+      "@calculations": ["src/utils/calculations"],
+      "@calculations/*": ["src/utils/calculations/*"],
       "@constants": ["src/constants"],
       "@constants/*": ["src/constants/*"],
       "@utils": ["src/utils"],

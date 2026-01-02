@@ -5,7 +5,7 @@
  */
 
 import type { Category, CategoryMonthBalance } from '@types'
-import { formatCurrency, getCategoryBalanceColor } from '../../ui'
+import { formatCurrency, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 
 // Shared styles for full-height field containers with centered content
@@ -75,7 +75,7 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
       }}>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Start</span>
-          <span>{formatCurrency(balance.start_balance)}</span>
+          <span style={{ color: getCategoryBalanceColor(balance.start_balance) }}>{formatCurrency(balance.start_balance)}</span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Alloc</span>
@@ -117,14 +117,14 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
               )}
             </>
           ) : (
-            <span style={{ color: balance.allocated > 0 ? colors.success : 'inherit' }}>
+            <span style={{ color: getAllocatedColor(balance.allocated) }}>
               {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
             </span>
           )}
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Spent</span>
-          <span style={{ color: balance.spent > 0 ? colors.error : 'inherit' }}>
+          <span style={{ color: getSpendColor(balance.spent) }}>
             {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
           </span>
         </div>
@@ -204,73 +204,68 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         </span>
       </div>
 
-      {/* Draft mode: Allocated then Start. Finalized mode: Start then Allocated */}
+      {/* Start balance */}
+      <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem', color: getCategoryBalanceColor(balance.start_balance) }}>
+        {formatCurrency(balance.start_balance)}
+      </div>
+
+      {/* Allocated - input in draft mode, display in finalized mode */}
       {isDraftMode ? (
-        <>
-          <div style={{ ...fieldContainer, width: '200px', justifyContent: 'center', flexDirection: 'column', gap: '0.15rem' }}>
-            {isPercentageBased ? (
-              <span style={{ fontSize: '0.8rem' }}>
-                <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
-                <span style={{ opacity: 0.5 }}> = </span>
-                <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
-              </span>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={displayValue ? `$${displayValue}` : ''}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^\d.]/g, '')
-                    onAllocationChange(raw)
-                  }}
-                  placeholder="$0.00"
-                  style={{
-                    width: '90px',
-                    padding: '0.3rem 0.5rem',
-                    borderRadius: '4px',
-                    border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-                    background: 'color-mix(in srgb, currentColor 5%, transparent)',
-                    fontSize: '0.9rem',
-                    color: 'inherit',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {/* Show debt reduction breakdown below input */}
-                {hasDebt && allocationAmount > 0 && (
-                  <div style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
-                    <span style={{ color: colors.debt }}>
-                      {formatCurrency(debtReductionAmount)} → debt
+        <div style={{ ...fieldContainer, width: '200px', justifyContent: 'center', flexDirection: 'column', gap: '0.15rem' }}>
+          {isPercentageBased ? (
+            <span style={{ fontSize: '0.8rem' }}>
+              <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+              <span style={{ opacity: 0.5 }}> = </span>
+              <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+            </span>
+          ) : (
+            <>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayValue ? `$${displayValue}` : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^\d.]/g, '')
+                  onAllocationChange(raw)
+                }}
+                placeholder="$0.00"
+                style={{
+                  width: '90px',
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: '4px',
+                  border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
+                  fontSize: '0.9rem',
+                  color: 'inherit',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* Show debt reduction breakdown below input */}
+              {hasDebt && allocationAmount > 0 && (
+                <div style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
+                  <span style={{ color: colors.debt }}>
+                    {formatCurrency(debtReductionAmount)} → debt
+                  </span>
+                  {showBreakdown && (
+                    <span style={{ color: colors.success, marginLeft: '0.5rem' }}>
+                      {formatCurrency(toBalanceAmount)} → bal
                     </span>
-                    {showBreakdown && (
-                      <span style={{ color: colors.success, marginLeft: '0.5rem' }}>
-                        {formatCurrency(toBalanceAmount)} → bal
-                      </span>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
-            {formatCurrency(balance.start_balance)}
-          </div>
-        </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       ) : (
-        <>
-          <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem' }}>
-            {formatCurrency(balance.start_balance)}
-          </div>
-          <div style={{
-            ...fieldContainer,
-            flex: 1,
-            justifyContent: 'flex-end',
-            fontSize: '0.9rem',
-            color: balance.allocated > 0 ? colors.success : 'inherit',
-          }}>
-            {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
-          </div>
-        </>
+        <div style={{
+          ...fieldContainer,
+          flex: 1,
+          justifyContent: 'flex-end',
+          fontSize: '0.9rem',
+          color: getAllocatedColor(balance.allocated),
+        }}>
+          {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+        </div>
       )}
 
       {/* Spent */}
@@ -279,7 +274,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         flex: 1,
         justifyContent: 'flex-end',
         fontSize: '0.9rem',
-        color: balance.spent > 0 ? colors.error : 'inherit',
+        color: getSpendColor(balance.spent),
       }}>
         {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
       </div>

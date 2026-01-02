@@ -1,8 +1,7 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, useLayoutEffect, type FormEvent } from 'react'
 import { useApp } from '../../contexts/app_context'
 import { useBudget } from '../../contexts/budget_context'
 import { useBudgetData } from '../../hooks'
-import { PageContainer, BudgetNavBar } from '../../components/ui'
 import { BudgetCard } from '../../components/budget/Admin'
 import { logUserAction } from '@utils'
 
@@ -16,7 +15,11 @@ function MyBudgets() {
     switchToBudget,
     checkBudgetInvite,
     isInitialized,
+    setPageTitle,
   } = useBudget()
+
+  // Set page title for layout header
+  useLayoutEffect(() => { setPageTitle('My Budgets') }, [setPageTitle])
 
   // Load accessible budgets when page mounts (query is lazy, only runs here)
   useEffect(() => {
@@ -174,9 +177,7 @@ function MyBudgets() {
   if (loading || !isInitialized) return null
 
   return (
-    <PageContainer>
-      <BudgetNavBar title="My Budgets" />
-
+    <div>
       <h1>My Budgets</h1>
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
         Switch between budgets, accept invitations, or join a budget by ID.
@@ -459,7 +460,7 @@ function MyBudgets() {
           </code>
         </div>
       )}
-    </PageContainer>
+    </div>
   )
 }
 

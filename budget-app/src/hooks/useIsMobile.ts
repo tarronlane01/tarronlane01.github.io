@@ -8,15 +8,29 @@ export function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
   })
 
   useEffect(() => {
+    // Use matchMedia for reliable detection (works with Chrome DevTools device emulation)
+    const mediaQuery = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+
+    function handleChange(e: MediaQueryListEvent | MediaQueryList) {
+      setIsMobile(e.matches)
+    }
+
+    // Set initial value
+    handleChange(mediaQuery)
+
+    // Modern browsers use addEventListener
+    mediaQuery.addEventListener('change', handleChange)
+
+    // Also listen to resize as a fallback
     function handleResize() {
       setIsMobile(window.innerWidth < breakpoint)
     }
-
     window.addEventListener('resize', handleResize)
-    // Check on mount in case SSR value differs
-    handleResize()
 
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange)
+      window.removeEventListener('resize', handleResize)
+    }
   }, [breakpoint])
 
   return isMobile

@@ -18,6 +18,8 @@ export const colors = {
   debt: '#fb923c',
   debtBg: 'rgba(251, 146, 60, 0.1)',
   debtBorder: 'rgba(251, 146, 60, 0.5)',
+  // Neutral grey for zero values
+  zero: 'rgba(255, 255, 255, 0.4)',
 }
 
 // Layout styles - uses CSS variables from index.css for easy customization

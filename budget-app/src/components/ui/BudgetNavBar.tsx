@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useBudget } from '../../contexts/budget_context'
 import { DropdownMenu, type MenuItem } from './DropdownMenu'
 import { logUserAction } from '@utils'
@@ -18,9 +18,19 @@ interface BudgetNavBarProps {
  */
 export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }: BudgetNavBarProps) {
   const { isAdmin } = useBudget()
+  const location = useLocation()
+
+  // Check if we're on the main budget page (not settings, admin, analytics, or my-budgets)
+  const isOnBudgetPage = location.pathname === '/budget' ||
+    (location.pathname.startsWith('/budget/') &&
+     !location.pathname.startsWith('/budget/settings') &&
+     !location.pathname.startsWith('/budget/admin') &&
+     !location.pathname.startsWith('/budget/analytics') &&
+     !location.pathname.startsWith('/budget/my-budgets'))
 
   const menuItems: MenuItem[] = [
-    { label: 'Budget', icon: '💰', to: '/budget' },
+    // Only show Budget link if we're not already on the budget page
+    ...(!isOnBudgetPage ? [{ label: 'Budget', icon: '💰', to: '/budget' }] : []),
     { label: 'Budget Settings', icon: '⚙️', to: '/budget/settings' },
     { label: 'Analytics', icon: '📊', to: '/budget/analytics' },
     ...(isAdmin ? [{ label: 'Admin', icon: '🛡️', to: '/budget/admin' }] : []),
@@ -32,12 +42,13 @@ export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }:
   return (
     <nav style={{
       marginBottom: '1rem',
-      display: 'grid',
-      gridTemplateColumns: '1fr auto 1fr',
+      display: 'flex',
+      justifyContent: 'space-between',
       alignItems: 'center',
+      width: '100%',
     }}>
-      {/* Left: Icon or back arrow (wrapped in div to prevent link stretching across full 1fr column) */}
-      <div>
+      {/* Left: Icon or back arrow */}
+      <div style={{ flex: '0 0 auto' }}>
         {showBackArrow ? (
           <Link to="/" onClick={() => logUserAction('NAVIGATE', 'Back to Home')} style={{ opacity: 0.6, fontSize: '1.5rem', textDecoration: 'none' }} title="Back to Home">
             ←
@@ -50,13 +61,13 @@ export function BudgetNavBar({ title, showBackArrow = false, hideMenu = false }:
       </div>
 
       {/* Center: Title */}
-      <span style={{ fontWeight: 600, fontSize: '1.1rem', textAlign: 'center' }}>
+      <span style={{ fontWeight: 600, fontSize: '1.1rem', textAlign: 'center', flex: '1 1 auto' }}>
         {title}
       </span>
 
-      {/* Right: Dropdown menu or empty */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        {!hideMenu && <DropdownMenu items={menuItems} />}
+      {/* Right: Dropdown menu or empty placeholder for balance */}
+      <div style={{ flex: '0 0 auto' }}>
+        {!hideMenu ? <DropdownMenu items={menuItems} /> : <div style={{ width: '1.5rem' }} />}
       </div>
     </nav>
   )

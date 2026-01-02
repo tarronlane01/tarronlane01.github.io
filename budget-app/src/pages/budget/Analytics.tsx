@@ -1,13 +1,16 @@
+import { useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PageContainer, BudgetNavBar } from '../../components/ui'
+import { useBudget } from '../../contexts/budget_context'
 import { colors } from '../../styles/shared'
 
 function Analytics() {
-  return (
-    <PageContainer>
-      <BudgetNavBar title="Analytics" />
+  const { setPageTitle } = useBudget()
 
-      <div style={{
+  // Set page title for layout header
+  useLayoutEffect(() => { setPageTitle('Analytics') }, [setPageTitle])
+
+  return (
+    <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -62,7 +65,6 @@ function Analytics() {
           Back to Budget
         </Link>
       </div>
-    </PageContainer>
   )
 }
 

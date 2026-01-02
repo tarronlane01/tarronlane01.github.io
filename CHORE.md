@@ -1,3 +1,9 @@
+# Integration Testing
+- Make Sure recalc writes happen effciently are won't happen more than once
+- make sure all file sizes uner 500
+- Make sure build is successful
+- make sure if we've changed urls or nav that the nav menus all work correctly (like not showing same page in nav menu if we're on that page)
+
 # Code Maintenance AI Chore Notes
 
 Prompts and guidelines for AI-assisted code maintenance sessions.

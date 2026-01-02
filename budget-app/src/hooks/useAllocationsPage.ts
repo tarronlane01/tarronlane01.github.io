@@ -152,14 +152,23 @@ export function useAllocationsPage() {
   // Available Now: Uses the pre-calculated total_available from the budget document.
   // This ensures consistency across all months regardless of which month is currently viewed.
   // The value is updated during recalculation and persists until the next recalc.
-  const availableNow = totalAvailable
+  // When editing applied allocations, temporarily add back the finalized amount so users
+  // can see the full amount available if they were to release/reallocate those funds.
+  const availableNow = isEditingAppliedAllocations
+    ? totalAvailable + currentMonthFinalizedTotal
+    : totalAvailable
 
   // Available After Apply = what it would be if we apply current draft
-  // We add back the already-finalized amount for this month (since it's already
-  // reflected in totalAvailable) and subtract the new draft amount
+  // When editing applied allocations, availableNow already includes the finalized amount,
+  // so we only need to subtract the draft total.
+  // For regular draft mode, add back finalized amount (since it's already reflected
+  // in totalAvailable) and subtract the new draft amount.
   const availableAfterApply = useMemo(() => {
+    if (isEditingAppliedAllocations) {
+      return availableNow - currentDraftTotal
+    }
     return availableNow - currentDraftTotal + currentMonthFinalizedTotal
-  }, [availableNow, currentDraftTotal, currentMonthFinalizedTotal])
+  }, [availableNow, currentDraftTotal, currentMonthFinalizedTotal, isEditingAppliedAllocations])
 
   // Handle allocation changes
   const handleAllocationChange = useCallback((categoryId: string, value: string) => {

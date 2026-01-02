@@ -76,10 +76,9 @@ export type {
 // ============================================================================
 
 // Valid tabs for each section
-export type BudgetTab = 'income' | 'balances' | 'spend'
+export type BudgetTab = 'income' | 'categories' | 'accounts' | 'spend'
 export type SettingsTab = 'accounts' | 'categories' | 'users'
 export type AdminTab = 'budget' | 'feedback' | 'migration' | 'tests'
-export type BalancesView = 'categories' | 'accounts'
 
 interface BudgetContextType {
   // Current user
@@ -92,7 +91,6 @@ interface BudgetContextType {
   lastActiveTab: BudgetTab
   lastSettingsTab: SettingsTab
   lastAdminTab: AdminTab
-  lastBalancesView: BalancesView
 
   // Selection setters
   setSelectedBudgetId: (id: string | null) => void
@@ -101,7 +99,10 @@ interface BudgetContextType {
   setLastActiveTab: (tab: BudgetTab) => void
   setLastSettingsTab: (tab: SettingsTab) => void
   setLastAdminTab: (tab: AdminTab) => void
-  setLastBalancesView: (view: BalancesView) => void
+
+  // Page title for layout header
+  pageTitle: string
+  setPageTitle: (title: string) => void
 
   // UI/initialization state
   isInitialized: boolean
@@ -138,17 +139,17 @@ const defaultContextValue: BudgetContextType = {
   selectedBudgetId: null,
   currentYear: new Date().getFullYear(),
   currentMonthNumber: new Date().getMonth() + 1,
-  lastActiveTab: 'balances',
+  lastActiveTab: 'categories',
   lastSettingsTab: 'categories',
   lastAdminTab: 'budget',
-  lastBalancesView: 'categories',
   setSelectedBudgetId: () => {},
   setCurrentYear: () => {},
   setCurrentMonthNumber: () => {},
   setLastActiveTab: () => {},
   setLastSettingsTab: () => {},
   setLastAdminTab: () => {},
-  setLastBalancesView: () => {},
+  pageTitle: 'Budget',
+  setPageTitle: () => {},
   isInitialized: false,
   needsFirstBudget: false,
   goToPreviousMonth: () => {},
@@ -178,10 +179,17 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
-  const [lastActiveTab, setLastActiveTab] = useState<BudgetTab>('balances')
+  const [lastActiveTab, setLastActiveTab] = useState<BudgetTab>('categories')
   const [lastSettingsTab, setLastSettingsTab] = useState<SettingsTab>('categories')
   const [lastAdminTab, setLastAdminTab] = useState<AdminTab>('budget')
-  const [lastBalancesView, setLastBalancesView] = useState<BalancesView>('categories')
+
+  // Page title for layout header
+  const [pageTitle, setPageTitleState] = useState('Budget')
+
+  // Only update if title actually changed to prevent re-render loops
+  const setPageTitle = useCallback((title: string) => {
+    setPageTitleState(prev => prev === title ? prev : title)
+  }, [])
 
   // UI state
   const [isInitialized, setIsInitialized] = useState(false)
@@ -327,14 +335,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     lastActiveTab,
     lastSettingsTab,
     lastAdminTab,
-    lastBalancesView,
     setSelectedBudgetId,
     setCurrentYear,
     setCurrentMonthNumber,
     setLastActiveTab,
     setLastSettingsTab,
     setLastAdminTab,
-    setLastBalancesView,
+    pageTitle,
+    setPageTitle,
     isInitialized,
     needsFirstBudget,
     goToPreviousMonth,

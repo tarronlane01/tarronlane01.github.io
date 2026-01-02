@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ExpenseTransaction } from '@types'
-import { formatCurrency } from '../../ui'
+import { formatCurrency, getSpendColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { BREAKPOINTS } from '@constants'
 
@@ -88,7 +88,7 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, color: colors.error, fontFamily: 'monospace' }}>
+          <span style={{ fontWeight: 600, color: getSpendColor(expense.amount), fontFamily: 'monospace' }}>
             -{formatCurrency(expense.amount)}
           </span>
         </div>
@@ -161,7 +161,7 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         <div style={{
           width: '6rem',
           fontWeight: 600,
-          color: colors.error,
+          color: getSpendColor(expense.amount),
           fontFamily: 'monospace',
           textAlign: 'right',
         }}>
@@ -296,7 +296,7 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
       <div style={{
         width: '6rem',
         fontWeight: 600,
-        color: colors.error,
+        color: getSpendColor(expense.amount),
         fontFamily: 'monospace',
         textAlign: 'right',
         fontSize: '0.9rem',

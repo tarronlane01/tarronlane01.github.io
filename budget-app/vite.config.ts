@@ -8,6 +8,7 @@ export default defineConfig({
   base: '/',
   resolve: {
     alias: {
+      '@calculations': path.resolve(__dirname, './src/utils/calculations'),
       '@constants': path.resolve(__dirname, './src/constants'),
       '@utils': path.resolve(__dirname, './src/utils'),
       '@firestore': path.resolve(__dirname, './src/data/firestore'),

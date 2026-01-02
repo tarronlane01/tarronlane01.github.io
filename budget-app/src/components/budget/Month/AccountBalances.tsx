@@ -165,7 +165,7 @@ function AccountGroupBlock({
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <span style={{
             fontSize: '0.8rem',
-            color: groupTotals.netChange >= 0 ? colors.success : colors.error,
+            color: getBalanceColor(groupTotals.netChange),
           }}>
             {groupTotals.netChange >= 0 ? '+' : ''}{formatCurrency(groupTotals.netChange)}
           </span>
@@ -231,7 +231,7 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Net Change</span>
-          <span style={{ color: balance.net_change >= 0 ? colors.success : colors.error }}>
+          <span style={{ color: getBalanceColor(balance.net_change) }}>
             {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
           </span>
         </div>
@@ -297,7 +297,7 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
         flex: 1,
         textAlign: 'right',
         fontSize: '0.9rem',
-        color: balance.net_change >= 0 ? colors.success : colors.error,
+        color: getBalanceColor(balance.net_change),
       }}>
         {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
       </span>

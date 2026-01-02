@@ -11,6 +11,7 @@ export { useBudgetMonth } from './useBudgetMonth'
 export { useAccountsPage, type AccountWithId } from './useAccountsPage'
 export { useAllocationsPage } from './useAllocationsPage'
 export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
+export { useMonthNavigationError } from './useMonthNavigationError'
 
 // Migration hooks
 export {

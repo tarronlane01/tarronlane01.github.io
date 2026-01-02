@@ -13,12 +13,13 @@ interface BudgetTabsProps {
 
 export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: BudgetTabsProps) {
   const tabs: Tab[] = useMemo(() => [
-    { id: 'income', label: 'Income' },
     {
-      id: 'balances',
-      label: 'Balances',
+      id: 'categories',
+      label: 'Categories',
       checkmark: allocationsFinalized,
     },
+    { id: 'accounts', label: 'Accounts' },
+    { id: 'income', label: 'Income' },
     { id: 'spend', label: 'Spend' },
   ], [allocationsFinalized])
 
