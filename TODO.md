@@ -1,13 +1,5 @@
-# Vibe Coding rules
-- Check and understand code after each atomic change, to ensure we aren't creating tech debt or following anti patterns
-- See `CHORE.md` for AI-assisted code maintenance prompts and patterns
-
-# Current Chain
-- What happens when we load account and the account flag is stale?
-- [ ] Explain how budget recalculation flow is working, fix if needed
-    - Also, have month recalculation do the same walk to get redone
-
 # To do
+- Let's also have consistent name for spend missing category and missing account (instead of no account vs adjustment). Maybe No Account, No Category to make it clear. Update this in the the import parsing migration, as well as anywhere else we display dropdowns for category/account so that the No options is available to be picked. For income, don't have the No Account availalble. And let's also add a form validation so that account and category can never be BOTH the No option.
 - Move settingsMigration to an Admin subfolder, clean up the page files to be under folders per sub-page
 - Prevent users from creating months too far into the future
 - [ ] Migration so all ID's have some human readable pattern to them, to help with tracking down issues
@@ -22,7 +14,3 @@
 - [ ] Drop max file size down to 400
 
 - [ ] To cut down on writes, maintain a month list with needs-recalculation flags on the budget document itself. that way we always have a month index we can reference instead of doing batch read/writes to know what months we have and to mark them as stale.
-
-- Tracking negative balances, and how does that work. Overspending in a budget, which rduces the total vailable, but ideally we would just reduce the allocated to that category until it's out of the hole.
-    - Have a "Debt" note, and highlight that field. to explain how debt allocations work (reduce debt but doesn't reduce total available to spend, unless greaterthan the debt)
-    - Make sure total available calculations ignore negative category balances, since they aren't actually allocated dollars. Reducing the total available happens automatically because the money in accounts will go down because the dollars aren't physically there to allocate

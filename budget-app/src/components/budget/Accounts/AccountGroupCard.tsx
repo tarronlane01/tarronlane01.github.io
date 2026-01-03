@@ -408,7 +408,7 @@ function GroupHeader({
     }}>
       <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
         {!isMobile && <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>}
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>
           {group.name}
         </span>
         <span style={{ opacity: 0.5, fontWeight: 400, fontSize: '0.9rem', flexShrink: 0 }}>
@@ -420,6 +420,8 @@ function GroupHeader({
           fontSize: '0.9rem',
           color: getBalanceColor(groupTotal),
           flexShrink: 0,
+          borderBottom: '2px solid currentColor',
+          paddingBottom: '2px',
         }}>
           {formatCurrency(groupTotal)}
         </span>

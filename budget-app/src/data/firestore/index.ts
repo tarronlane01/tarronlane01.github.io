@@ -48,4 +48,4 @@ export type {
 } from '@firestore/types/index'
 
 // Operations
-export { readDocByPath, queryCollection, writeDocByPath, updateDocByPath, deleteDocByPath } from '@firestore/operations/index'
+export { readDocByPath, queryCollection, writeDocByPath, updateDocByPath, deleteDocByPath, batchWriteDocs, batchDeleteDocs, type BatchWriteDoc, type BatchDeleteDoc } from '@firestore/operations/index'

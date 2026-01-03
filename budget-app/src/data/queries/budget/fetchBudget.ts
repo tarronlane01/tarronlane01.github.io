@@ -4,8 +4,8 @@
  * Core function for fetching budget documents from Firestore.
  * Handles parsing raw Firestore data into typed structures.
  *
- * If is_needs_recalculation is true, triggers full recalculation of ALL months
- * and updates the budget's account balances before returning.
+ * NOTE: This does NOT auto-trigger recalculation. Recalculation is triggered
+ * by the MonthCategories component when viewing a month that needs it.
  */
 
 import { readDocByPath } from '@firestore'
@@ -20,7 +20,6 @@ import type {
   Category,
   MonthMap,
 } from '@types'
-import { triggerRecalculation } from '@data/recalculation/triggerRecalculation'
 
 // ============================================================================
 // TYPES
@@ -154,8 +153,10 @@ function parseMonthMap(monthMapData: FirestoreData = {}): MonthMap {
 /**
  * Fetch budget document from Firestore
  *
- * If is_needs_recalculation is true, triggers full recalculation of ALL months
- * and updates the budget's account balances before returning.
+ * NOTE: This does NOT auto-trigger recalculation. Recalculation is triggered
+ * by the MonthCategories component when viewing a month that needs it.
+ * This ensures recalculation only happens when actually viewing month data,
+ * not just when fetching the budget (e.g., after bulk imports).
  */
 export async function fetchBudget(budgetId: string): Promise<BudgetData> {
   const { exists, data } = await readDocByPath<BudgetDocument>(
@@ -168,57 +169,13 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
     throw new Error(`Budget ${budgetId} not found`)
   }
 
-  // Parse the basic data
-  let accounts = parseAccounts(data.accounts)
-  const isNeedsRecalculation = data.is_needs_recalculation ?? false
-
-  // If balances are stale, trigger full recalculation
-  if (isNeedsRecalculation) {
-    console.log('[Budget] Balances are stale, triggering full recalculation...')
-
-    // Trigger recalculation for ALL months (no targetMonthOrdinal = budget-triggered)
-    // This will recalculate all months and update the budget's account balances
-    const result = await triggerRecalculation(budgetId)
-
-    // Re-read budget to get updated balances
-    const { data: updatedData } = await readDocByPath<BudgetDocument>(
-      'budgets',
-      budgetId,
-      'reading budget after recalculation'
-    )
-
-    if (updatedData) {
-      accounts = parseAccounts(updatedData.accounts)
-    }
-
-    console.log('[Budget] Recalculation complete', {
-      monthsRecalculated: result.monthsRecalculated,
-    })
-  }
-
+  const accounts = parseAccounts(data.accounts)
   const accountGroups = parseAccountGroups(data.account_groups)
   const categories = parseCategories(data.categories)
   const categoryGroups = parseCategoryGroups(data.category_groups)
-
-  // Get total_available - either from Firestore (after recalc) or calculate it
-  // After recalculation, updatedData should have it. Otherwise use data value.
-  let totalAvailable = data.total_available ?? 0
-  let monthMap = parseMonthMap(data.month_map)
-
-  // If we just recalculated, re-read to get the updated total_available and month_map
-  if (isNeedsRecalculation) {
-    const { data: finalData } = await readDocByPath<BudgetDocument>(
-      'budgets',
-      budgetId,
-      'reading budget total_available after recalculation'
-    )
-    if (finalData?.total_available !== undefined) {
-      totalAvailable = finalData.total_available
-    }
-    if (finalData?.month_map) {
-      monthMap = parseMonthMap(finalData.month_map)
-    }
-  }
+  const totalAvailable = data.total_available ?? 0
+  const monthMap = parseMonthMap(data.month_map)
+  const isNeedsRecalculation = data.is_needs_recalculation ?? false
 
   return {
     budget: {
@@ -233,14 +190,14 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
       categories,
       category_groups: categoryGroups,
       total_available: totalAvailable,
-      is_needs_recalculation: false,
+      is_needs_recalculation: isNeedsRecalculation,
       month_map: monthMap,
     },
     accounts,
     accountGroups,
     categories,
     categoryGroups,
-    isNeedsRecalculation: false, // Always return false since we just reconciled if needed
+    isNeedsRecalculation,
     monthMap,
   }
 }

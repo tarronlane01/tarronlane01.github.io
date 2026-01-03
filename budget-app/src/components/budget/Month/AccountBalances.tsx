@@ -7,7 +7,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
-import { formatCurrency, getBalanceColor } from '../../ui'
+import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 
 interface AccountBalancesViewProps {
@@ -167,7 +167,7 @@ function AccountGroupBlock({
             fontSize: '0.8rem',
             color: getBalanceColor(groupTotals.netChange),
           }}>
-            {groupTotals.netChange >= 0 ? '+' : ''}{formatCurrency(groupTotals.netChange)}
+            {formatSignedCurrencyAlways(groupTotals.netChange)}
           </span>
           <span style={{ fontWeight: 600, color: getBalanceColor(groupTotals.end) }}>
             {formatCurrency(groupTotals.end)}
@@ -232,7 +232,7 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Net Change</span>
           <span style={{ color: getBalanceColor(balance.net_change) }}>
-            {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
+            {formatSignedCurrencyAlways(balance.net_change)}
           </span>
         </div>
         <div>
@@ -254,11 +254,11 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
           fontSize: '0.7rem',
           opacity: 0.7,
         }}>
-          {balance.income > 0 && (
-            <span>+{formatCurrency(balance.income)} income</span>
+          {balance.income !== 0 && (
+            <span>{formatSignedCurrencyAlways(balance.income)} income</span>
           )}
-          {balance.expenses > 0 && (
-            <span>-{formatCurrency(balance.expenses)} expenses</span>
+          {balance.expenses !== 0 && (
+            <span>{formatSignedCurrency(balance.expenses)} expenses</span>
           )}
         </div>
       )}
@@ -280,11 +280,11 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
           {account.nickname}
         </span>
         {/* Show income/expense breakdown if any */}
-        {(balance.income > 0 || balance.expenses > 0) && (
+        {(balance.income !== 0 || balance.expenses !== 0) && (
           <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>
-            {balance.income > 0 && `+${formatCurrency(balance.income)}`}
-            {balance.income > 0 && balance.expenses > 0 && ' / '}
-            {balance.expenses > 0 && `-${formatCurrency(balance.expenses)}`}
+            {balance.income !== 0 && formatSignedCurrencyAlways(balance.income)}
+            {balance.income !== 0 && balance.expenses !== 0 && ' / '}
+            {balance.expenses !== 0 && formatSignedCurrency(balance.expenses)}
           </span>
         )}
       </div>
@@ -299,7 +299,7 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
         fontSize: '0.9rem',
         color: getBalanceColor(balance.net_change),
       }}>
-        {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
+        {formatSignedCurrencyAlways(balance.net_change)}
       </span>
 
       <span style={{

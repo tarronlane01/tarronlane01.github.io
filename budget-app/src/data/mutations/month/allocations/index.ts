@@ -3,8 +3,8 @@
  *
  * Individual hooks for each allocation mutation:
  * - useSaveDraftAllocations - Save allocations as draft (no balance changes)
- * - useFinalizeAllocations - Finalize allocations (applies to balances)
- * - useDeleteAllocations - Delete all allocations
+ * - useFinalizeAllocations - Finalize allocations (applies to balances, triggers recalc)
+ * - useDeleteAllocations - Delete all allocations (triggers recalc)
  */
 
 // Shared type for allocation data (category_id -> amount)
@@ -15,6 +15,11 @@ export { calculateCategoryBalancesForMonth } from './calculateCategoryBalances'
 
 // Hooks
 export { useSaveDraftAllocations } from './useSaveDraftAllocations'
-export { useFinalizeAllocations, type FinalizeAllocationsParams } from './useFinalizeAllocations'
+export {
+  useFinalizeAllocations,
+  type FinalizeAllocationsParams,
+  type AllocationProgress,
+  type AllocationProgressPhase,
+} from './useFinalizeAllocations'
 export { useDeleteAllocations, type DeleteAllocationsParams } from './useDeleteAllocations'
 

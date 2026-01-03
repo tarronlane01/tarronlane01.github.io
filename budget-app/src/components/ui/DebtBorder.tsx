@@ -27,7 +27,7 @@ export function DebtBorder({ children, label, style }: DebtBorderProps) {
         // Use box-shadow instead of border to avoid affecting layout/alignment
         boxShadow: `inset 0 0 0 2px ${colors.debtBorder}`,
         borderRadius: '8px',
-        background: colors.debtBg,
+        // No background shading - just border to indicate debt
         ...style,
       }}
     >

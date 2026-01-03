@@ -4,7 +4,7 @@
  * Button that triggers recalculation of budget data from the current month forward:
  * - Month totals (income, expenses) for current month and future
  * - Category balances (carry-forward across months)
- * - All account balances (sum of income - expenses per account)
+ * - All account balances (sum of income + expenses per account, where expenses is negative for money out)
  * - Budget document snapshots
  *
  * Past months are not modified. Use this when data seems out of sync
@@ -177,12 +177,14 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
 
           let spent = 0
           if (expenses.length > 0) {
+            // Note: expense.amount follows CSV convention: negative = money out, positive = money in
             spent = expenses
               .filter((e: { category_id: string }) => e.category_id === catId)
               .reduce((sum: number, e: { amount: number }) => sum + e.amount, 0)
           }
 
-          const endBalance = startBalance + allocated - spent
+          // end_balance = start + allocated + spent (spent is negative for money out)
+          const endBalance = startBalance + allocated + spent
 
           return {
             category_id: catId,
@@ -211,11 +213,13 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
             .filter((inc: { account_id: string }) => inc.account_id === accountId)
             .reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0)
 
+          // Note: expense.amount follows CSV convention: negative = money out, positive = money in
           const accountExpenses = expenses
             .filter((exp: { account_id: string }) => exp.account_id === accountId)
             .reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0)
 
-          const netChange = accountIncome - accountExpenses
+          // Net change = income + expenses (expenses is negative for money out)
+          const netChange = accountIncome + accountExpenses
 
           // Get start balance from existing data or 0
           let startBalance = 0

@@ -122,7 +122,7 @@ export function UngroupedAccountsSection({
         borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
       }}>
         <h3 style={{ ...sectionHeader, margin: 0, opacity: 0.7, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          Ungrouped
+          <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>Ungrouped</span>
           <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400, fontSize: '0.9rem' }}>
             ({sortedAccounts.length})
           </span>
@@ -132,6 +132,8 @@ export function UngroupedAccountsSection({
               fontWeight: 600,
               fontSize: '0.9rem',
               color: getBalanceColor(ungroupedTotal),
+              borderBottom: '2px solid currentColor',
+              paddingBottom: '2px',
             }}>
               {formatCurrency(ungroupedTotal)}
             </span>

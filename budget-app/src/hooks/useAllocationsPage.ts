@@ -8,6 +8,7 @@ import {
   useFinalizeAllocations,
   useDeleteAllocations,
   type AllocationData,
+  type AllocationProgress,
 } from '../data/mutations/month/allocations'
 
 // Helper to compute allocations map from month and categories
@@ -230,6 +231,7 @@ export function useAllocationsPage() {
   }, [selectedBudgetId, currentYear, currentMonthNumber, saveDraftAllocations, buildAllocationsData, addLoadingHold, removeLoadingHold])
 
   // Finalize allocations (saves and finalizes in one operation)
+  // Now triggers immediate recalculation and shows detailed progress
   const handleFinalizeAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
     setError(null)
@@ -240,6 +242,10 @@ export function useAllocationsPage() {
         year: currentYear,
         month: currentMonthNumber,
         allocations: buildAllocationsData(),
+        onProgress: (progress: AllocationProgress) => {
+          // Update loading message as operation progresses
+          addLoadingHold('allocations-finalize', progress.message)
+        },
       })
       setIsEditingAppliedAllocations(false)
     } catch (err) {
@@ -250,6 +256,7 @@ export function useAllocationsPage() {
   }, [selectedBudgetId, currentYear, currentMonthNumber, finalizeAllocations, buildAllocationsData, addLoadingHold, removeLoadingHold])
 
   // Delete allocations (clear and unfinalize)
+  // Now triggers immediate recalculation and shows detailed progress
   const handleDeleteAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
     setError(null)
@@ -259,6 +266,10 @@ export function useAllocationsPage() {
         budgetId: selectedBudgetId,
         year: currentYear,
         month: currentMonthNumber,
+        onProgress: (progress: AllocationProgress) => {
+          // Update loading message as operation progresses
+          addLoadingHold('allocations-delete', progress.message)
+        },
       })
       // Reset local allocations to defaults after deletion
       const allocMap: Record<string, string> = {}

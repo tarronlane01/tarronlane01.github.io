@@ -7,19 +7,19 @@
 
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useApp } from '../../../contexts/app_context'
 import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useAllocationsPage, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import type { CategoryMonthBalance } from '@types'
-import { ErrorAlert, formatCurrency, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
+import { ErrorAlert, formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 import { CategoryGroupRows } from './CategoryGridRows'
-import { triggerRecalculation } from '../../../data/recalculation/triggerRecalculation'
+import { triggerRecalculation, type RecalculationProgress } from '../../../data/recalculation'
 import { queryClient, queryKeys } from '../../../data/queryClient'
 import { getYearMonthOrdinal } from '@utils'
+import { LoadingOverlay, ProgressBar, StatItem, PercentLabel } from '../../app/LoadingOverlay'
 import {
   calculateCategoriesByGroup,
   calculateLiveCategoryBalances,
@@ -39,7 +39,6 @@ const columnHeaderStyle: React.CSSProperties = {
 }
 
 export function MonthCategories() {
-  const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
   const { categories, categoryGroups, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
@@ -49,8 +48,9 @@ export function MonthCategories() {
   const currentMonthOrdinal = getYearMonthOrdinal(currentYear, currentMonthNumber)
   const monthNeedsRecalc = monthMap[currentMonthOrdinal]?.needs_recalculation === true
 
-  // Track recalculation in progress (prevents re-triggering during async operation)
+  // Track recalculation in progress and progress state
   const recalcInProgressRef = useRef(false)
+  const [recalcProgress, setRecalcProgress] = useState<RecalculationProgress | null>(null)
 
   // Trigger recalculation when viewing and month needs it
   useEffect(() => {
@@ -58,11 +58,13 @@ export function MonthCategories() {
     if (!monthNeedsRecalc || recalcInProgressRef.current) return
 
     recalcInProgressRef.current = true
-    addLoadingHold('balances-recalc', 'Recalculating balances...')
-
     const triggeringMonthOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
 
-    triggerRecalculation(selectedBudgetId, { triggeringMonthOrdinal })
+    // Start recalculation - onProgress callback will set initial state
+    triggerRecalculation(selectedBudgetId, {
+      triggeringMonthOrdinal,
+      onProgress: (progress) => setRecalcProgress(progress),
+    })
       .then(() => {
         // Refresh month data after recalculation
         queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
@@ -72,9 +74,9 @@ export function MonthCategories() {
       })
       .finally(() => {
         recalcInProgressRef.current = false
-        removeLoadingHold('balances-recalc')
+        setRecalcProgress(null)
       })
-  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber, addLoadingHold, removeLoadingHold])
+  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber])
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -153,8 +155,49 @@ export function MonthCategories() {
     }, 0)
   }, [categories, isDraftMode, getAllocationAmount, savedAllocations])
 
+  // Get phase label for progress overlay
+  const getRecalcPhaseLabel = () => {
+    if (!recalcProgress) return ''
+    switch (recalcProgress.phase) {
+      case 'reading-budget': return 'Reading budget data...'
+      case 'fetching-months': return 'Fetching months...'
+      case 'recalculating':
+        return recalcProgress.currentMonth ? `Recalculating ${recalcProgress.currentMonth}...` : 'Recalculating...'
+      case 'saving': return 'Saving results...'
+      case 'complete': return 'Recalculation complete!'
+      default: return 'Recalculating balances...'
+    }
+  }
+
   return (
     <>
+      {/* Recalculation Progress Overlay */}
+      {recalcProgress && (
+        <LoadingOverlay message={getRecalcPhaseLabel()} spinnerColor="#22c55e">
+          <ProgressBar
+            percent={recalcProgress.percentComplete}
+            gradient="linear-gradient(90deg, #22c55e, #10b981)"
+          />
+          <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {(recalcProgress.totalMonthsToFetch ?? 0) > 0 && (
+              <StatItem
+                value={`${recalcProgress.monthsFetched || 0}/${recalcProgress.totalMonthsToFetch}`}
+                label="Months Loaded"
+                color={recalcProgress.phase === 'fetching-months' ? '#22c55e' : '#6b7280'}
+              />
+            )}
+            {(recalcProgress.totalMonths ?? 0) > 0 && (
+              <StatItem
+                value={`${recalcProgress.monthsProcessed}/${recalcProgress.totalMonths}`}
+                label="Months Recalculated"
+                color={recalcProgress.phase === 'recalculating' ? '#22c55e' : '#6b7280'}
+              />
+            )}
+          </div>
+          <PercentLabel percent={recalcProgress.percentComplete} />
+        </LoadingOverlay>
+      )}
+
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
       {/* CSS Grid container - header and content share the same grid */}
@@ -163,7 +206,7 @@ export function MonthCategories() {
         gridTemplateColumns: isMobile
           ? '1fr' // Mobile: single column, content handles its own layout
           : isDraftMode
-            ? '2fr 200px 120px' // Draft: Name, Allocated, All-Time (simplified)
+            ? '2fr 1fr 200px 1fr 1fr 1fr 120px' // Draft: Name, Start, Allocated, Spent, Net Change, End, All-Time
             : '2fr 1fr 1fr 1fr 1fr 1fr 120px',  // Finalized: Name, Start, Allocated, Spent, Net Change, End, All-Time
       }}>
         {/* Sticky wrapper using subgrid */}
@@ -220,24 +263,22 @@ export function MonthCategories() {
           {!isMobile && (
             <>
               <div style={columnHeaderStyle}>Category</div>
-              {!isDraftMode && <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Start</div>}
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Start</div>
               <div style={{ ...columnHeaderStyle, textAlign: isDraftMode ? 'center' : 'right' }}>Allocated</div>
-              {!isDraftMode && <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Spent</div>}
-              {!isDraftMode && <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>}
-              {!isDraftMode && (
-                <div style={{
-                  ...columnHeaderStyle,
-                  textAlign: 'right',
-                  paddingRight: '1rem',
-                  borderRight: '2px solid rgba(128, 128, 128, 0.4)',
-                }}>End</div>
-              )}
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Spent</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
+              <div style={{
+                ...columnHeaderStyle,
+                textAlign: 'right',
+                paddingRight: '1rem',
+                borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+              }}>End</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>All-Time</div>
             </>
           )}
 
-          {/* Finalized mode: Grand totals row (like accounts page) */}
-          {!isDraftMode && !isMobile && (() => {
+          {/* Grand totals row (like accounts page) - shown in both draft and finalized modes */}
+          {!isMobile && (() => {
             const grandTotalsCellStyle: React.CSSProperties = {
               paddingTop: '0.6rem',
               paddingBottom: '0.6rem',
@@ -250,34 +291,37 @@ export function MonthCategories() {
               alignItems: 'center',
               fontSize: '0.9rem',
             }
-            const netChange = balanceTotals.allocated - balanceTotals.spent
+            // Net change = allocated + spent (spent is negative for money out)
+            const netChange = balanceTotals.allocated + balanceTotals.spent
             return (
               <>
                 <div style={{ ...grandTotalsCellStyle, gap: '0.75rem' }}>
                   Grand Totals
-                  {/* Edit button inline */}
-                  <BalancesActionButtons
-                    isDraftMode={false}
-                    isEditingAppliedAllocations={false}
-                    allocationsFinalized={allocationsFinalized}
-                    onSave={handleSaveAllocations}
-                    onApply={handleFinalizeAllocations}
-                    onEdit={() => setIsEditingAppliedAllocations(true)}
-                    onCancel={resetAllocationsToSaved}
-                    onDelete={() => setShowDeleteConfirm(true)}
-                  />
+                  {/* Edit button inline - only show in finalized mode */}
+                  {!isDraftMode && (
+                    <BalancesActionButtons
+                      isDraftMode={false}
+                      isEditingAppliedAllocations={false}
+                      allocationsFinalized={allocationsFinalized}
+                      onSave={handleSaveAllocations}
+                      onApply={handleFinalizeAllocations}
+                      onEdit={() => setIsEditingAppliedAllocations(true)}
+                      onCancel={resetAllocationsToSaved}
+                      onDelete={() => setShowDeleteConfirm(true)}
+                    />
+                  )}
                 </div>
                 <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balanceTotals.start) }}>
-                  {formatCurrency(balanceTotals.start)}
+                  {formatBalanceCurrency(balanceTotals.start)}
                 </div>
-                <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getAllocatedColor(balanceTotals.allocated) }}>
+                <div style={{ ...grandTotalsCellStyle, justifyContent: isDraftMode ? 'center' : 'flex-end', color: getAllocatedColor(balanceTotals.allocated) }}>
                   +{formatCurrency(balanceTotals.allocated)}
                 </div>
                 <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getSpendColor(balanceTotals.spent) }}>
-                  -{formatCurrency(balanceTotals.spent)}
+                  {formatSignedCurrency(balanceTotals.spent)}
                 </div>
                 <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange) }}>
-                  {netChange >= 0 ? '+' : ''}{formatCurrency(netChange)}
+                  {formatSignedCurrencyAlways(netChange)}
                 </div>
                 <div style={{
                   ...grandTotalsCellStyle,
@@ -286,10 +330,10 @@ export function MonthCategories() {
                   paddingRight: '1rem',
                   borderRight: '2px solid rgba(128, 128, 128, 0.4)',
                 }}>
-                  {formatCurrency(balanceTotals.end)}
+                  {formatBalanceCurrency(balanceTotals.end)}
                 </div>
                 <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: grandAllTime < 0 ? colors.debt : colors.primary }}>
-                  {formatCurrency(grandAllTime)}
+                  {formatBalanceCurrency(grandAllTime)}
                 </div>
               </>
             )

@@ -16,4 +16,5 @@ export {
 export { DatabaseCleanupCard } from './DatabaseCleanupCard'
 export { FeedbackMigrationCard } from './FeedbackMigrationCard'
 export { DeleteAllMonthsCard } from './DeleteAllMonthsCard'
+export { SeedImportCard } from './SeedImportCard'
 

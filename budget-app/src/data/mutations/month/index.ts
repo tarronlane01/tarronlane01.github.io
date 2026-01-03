@@ -22,7 +22,7 @@ export { writeMonthData } from './useWriteMonthData'
 export { useWriteMonthData, type WriteMonthParams } from './useWriteMonthData'
 
 // Month creation (called when viewing a month for the first time)
-export { createMonth } from './createMonth'
+export { createMonth, type CreateMonthOptions } from './createMonth'
 
 // ============================================================================
 // FEATURE MUTATIONS

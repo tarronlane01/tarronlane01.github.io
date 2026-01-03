@@ -9,6 +9,7 @@ import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { IncomeForm } from '../Income'
 import { logUserAction } from '@utils'
+import { isNoAccount, NO_ACCOUNT_NAME } from '../../../data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
@@ -251,11 +252,13 @@ export function MonthIncome() {
               <IncomeGridRow
                 key={income.id}
                 income={income}
-                accountName={accounts[income.account_id]?.nickname || 'Unknown Account'}
+                accountName={isNoAccount(income.account_id) ? NO_ACCOUNT_NAME : (accounts[income.account_id]?.nickname || 'Unknown Account')}
                 accountGroupName={
-                  accounts[income.account_id]?.account_group_id
-                    ? accountGroups[accounts[income.account_id]!.account_group_id!]?.name
-                    : undefined
+                  isNoAccount(income.account_id) ? undefined : (
+                    accounts[income.account_id]?.account_group_id
+                      ? accountGroups[accounts[income.account_id]!.account_group_id!]?.name
+                      : undefined
+                  )
                 }
                 onEdit={() => {
                   logUserAction('CLICK', 'Edit Income', { details: income.payee || `$${income.amount}` })

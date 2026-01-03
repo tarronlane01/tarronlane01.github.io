@@ -22,6 +22,8 @@ export type AccountEntry = [string, FinancialAccount]
 export interface TransactionFieldConfig {
   showCategory?: boolean
   showCleared?: boolean
+  /** Show the special "Adjustment" category option (for spend entries) */
+  showAdjustmentCategory?: boolean
   accountLabel?: string
   payeePlaceholder?: string
   descriptionPlaceholder?: string
@@ -161,7 +163,7 @@ export function TransactionForm({
 
   const categoryField = showCategory && categories && categoryGroups ? (
     <FormField label="Category" htmlFor="txn-category">
-      <CategoryAutocomplete id="txn-category" value={categoryId} onChange={setCategoryId} categories={categories} categoryGroups={categoryGroups} placeholder="Search..." required />
+      <CategoryAutocomplete id="txn-category" value={categoryId} onChange={setCategoryId} categories={categories} categoryGroups={categoryGroups} placeholder="Search..." required showAdjustmentOption={config.showAdjustmentCategory} />
     </FormField>
   ) : null
 

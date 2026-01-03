@@ -13,8 +13,8 @@ import { calculateCategoryBalances } from '../data'
 
 // Balance object for each category showing current (spendable now) and total (including future)
 export interface CategoryBalance {
-  current: number  // Available to spend now (allocations through current month - expenses through current month)
-  total: number    // Total including future allocations - all expenses
+  current: number  // Available to spend now (allocations + expenses through current month, expenses negative for money out)
+  total: number    // Total including future allocations + all expenses
 }
 
 interface UseCategoryBalancesParams {

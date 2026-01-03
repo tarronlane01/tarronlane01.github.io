@@ -195,7 +195,12 @@ interface CategoryAutocompleteProps {
   categoryGroups: { id: string; name: string; sort_order: number }[]
   placeholder?: string
   required?: boolean
+  /** Show the special "Adjustment" category option (for spend entries) */
+  showAdjustmentOption?: boolean
 }
+
+// Import constants for Adjustment category
+import { ADJUSTMENT_CATEGORY_ID, ADJUSTMENT_CATEGORY_NAME } from '../../data/constants'
 
 export function CategoryAutocomplete({
   id,
@@ -205,6 +210,7 @@ export function CategoryAutocomplete({
   categoryGroups,
   placeholder = 'Search categories...',
   required,
+  showAdjustmentOption = false,
 }: CategoryAutocompleteProps) {
   // Build a lookup map for group names
   const groupNameMap = Object.fromEntries(categoryGroups.map(g => [g.id, g.name]))
@@ -218,9 +224,22 @@ export function CategoryAutocomplete({
     sortOrder: cat.sort_order,
   }))
 
+  // Add special Adjustment category if enabled
+  if (showAdjustmentOption) {
+    categoryItems.unshift({
+      id: ADJUSTMENT_CATEGORY_ID,
+      name: ADJUSTMENT_CATEGORY_NAME,
+      groupId: null,
+      groupName: null,
+      sortOrder: -1, // Always sort first
+    })
+  }
+
   // Get selected category name for display
-  const selectedCategory = value ? categories[value] : null
-  const displayValue = selectedCategory?.name || ''
+  // Handle special Adjustment category
+  const isAdjustmentSelected = value === ADJUSTMENT_CATEGORY_ID
+  const selectedCategory = isAdjustmentSelected ? null : (value ? categories[value] : null)
+  const displayValue = isAdjustmentSelected ? ADJUSTMENT_CATEGORY_NAME : (selectedCategory?.name || '')
 
   const [inputValue, setInputValue] = useState(displayValue)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -230,8 +249,12 @@ export function CategoryAutocomplete({
 
   // Sync input value when external value changes
   useEffect(() => {
-    const selectedCat = value ? categories[value] : null
-    setInputValue(selectedCat?.name || '')
+    if (value === ADJUSTMENT_CATEGORY_ID) {
+      setInputValue(ADJUSTMENT_CATEGORY_NAME)
+    } else {
+      const selectedCat = value ? categories[value] : null
+      setInputValue(selectedCat?.name || '')
+    }
   }, [value, categories])
 
   // Get filtered and sorted suggestions based on input
@@ -282,8 +305,12 @@ export function CategoryAutocomplete({
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowSuggestions(false)
         // Reset to selected value if user didn't select anything
-        const selectedCat = value ? categories[value] : null
-        setInputValue(selectedCat?.name || '')
+        if (value === ADJUSTMENT_CATEGORY_ID) {
+          setInputValue(ADJUSTMENT_CATEGORY_NAME)
+        } else {
+          const selectedCat = value ? categories[value] : null
+          setInputValue(selectedCat?.name || '')
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -311,8 +338,12 @@ export function CategoryAutocomplete({
       setShowSuggestions(false)
       setHighlightedIndex(-1)
       // Reset to selected value
-      const selectedCat = value ? categories[value] : null
-      setInputValue(selectedCat?.name || '')
+      if (value === ADJUSTMENT_CATEGORY_ID) {
+        setInputValue(ADJUSTMENT_CATEGORY_NAME)
+      } else {
+        const selectedCat = value ? categories[value] : null
+        setInputValue(selectedCat?.name || '')
+      }
     } else if (e.key === 'Tab') {
       // Auto-select first suggestion on Tab if there's a match
       if (showSuggestions && suggestions.length > 0) {

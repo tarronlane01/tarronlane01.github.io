@@ -87,11 +87,13 @@ function retotalAccountBalances(month: MonthDocument): AccountMonthBalance[] {
       .reduce((sum, i) => sum + i.amount, 0)
 
     // Sum expenses for this account
+    // Note: expense.amount is negative for money out, positive for money in
     const expensesTotal = expenses
       .filter(e => e.account_id === accountId)
       .reduce((sum, e) => sum + e.amount, 0)
 
-    const netChange = incomeTotal - expensesTotal
+    // Net change = income + expenses (expenses is negative for money out)
+    const netChange = incomeTotal + expensesTotal
 
     balances.push({
       account_id: accountId,
@@ -128,12 +130,13 @@ function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
   }
 
   // Update existing balances with new spent amounts
+  // Note: spent is negative for money out, positive for money in
   const balances: CategoryMonthBalance[] = existingBalances.map(cb => {
     const spent = spentByCategory.get(cb.category_id) ?? 0
     return {
       ...cb,
       spent,
-      end_balance: cb.start_balance + cb.allocated - spent,
+      end_balance: cb.start_balance + cb.allocated + spent,
     }
   })
 

@@ -6,6 +6,7 @@ export interface IncomeTransaction {
   date: string // YYYY-MM-DD format
   payee?: string
   description?: string
+  cleared?: boolean // Whether this transaction has appeared in the bank account
   created_at: string
 }
 

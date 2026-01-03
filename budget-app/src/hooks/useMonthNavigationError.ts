@@ -1,39 +1,39 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import type { MonthMap } from '@types'
 
 interface UseMonthNavigationErrorOptions {
   monthError: Error | null
   currentYear: number
   currentMonthNumber: number
   lastActiveTab: string
+  monthMap: MonthMap
 }
 
 /**
- * Calculates the maximum allowed month (3 months in the future)
+ * Get the earliest month from a month_map.
  */
-function getMaxAllowedMonth(): { year: number; month: number } {
-  const now = new Date()
-  let maxYear = now.getFullYear()
-  let maxMonth = now.getMonth() + 1 + 3
-  while (maxMonth > 12) {
-    maxMonth -= 12
-    maxYear += 1
+function getEarliestMonthFromMap(monthMap: MonthMap): { year: number; month: number } | null {
+  const ordinals = Object.keys(monthMap).sort()
+  if (ordinals.length === 0) return null
+  const earliest = ordinals[0]
+  return {
+    year: parseInt(earliest.slice(0, 4), 10),
+    month: parseInt(earliest.slice(4, 6), 10),
   }
-  return { year: maxYear, month: maxMonth }
 }
 
 /**
- * Calculates the minimum allowed month (3 months in the past)
+ * Get the latest month from a month_map.
  */
-function getMinAllowedMonth(): { year: number; month: number } {
-  const now = new Date()
-  let minYear = now.getFullYear()
-  let minMonth = now.getMonth() + 1 - 3
-  while (minMonth < 1) {
-    minMonth += 12
-    minYear -= 1
+function getLatestMonthFromMap(monthMap: MonthMap): { year: number; month: number } | null {
+  const ordinals = Object.keys(monthMap).sort()
+  if (ordinals.length === 0) return null
+  const latest = ordinals[ordinals.length - 1]
+  return {
+    year: parseInt(latest.slice(0, 4), 10),
+    month: parseInt(latest.slice(4, 6), 10),
   }
-  return { year: minYear, month: minMonth }
 }
 
 /**
@@ -45,6 +45,7 @@ export function useMonthNavigationError({
   currentYear,
   currentMonthNumber,
   lastActiveTab,
+  monthMap,
 }: UseMonthNavigationErrorOptions) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -61,26 +62,52 @@ export function useMonthNavigationError({
     }
   }, [urlError, searchParams, setSearchParams])
 
-  // Handle month errors by redirecting to valid month
+  // Handle month errors by redirecting to the budget's valid month range
   useEffect(() => {
     if (!monthError) return
-    const errorMsg = monthError.message || ''
 
-    // Handle months too far in the future
-    if (errorMsg.includes('months in the future') || errorMsg.includes('Refusing to create month')) {
-      const { year: maxYear, month: maxMonth } = getMaxAllowedMonth()
-      const errorMessage = `Cannot navigate to ${currentYear}/${currentMonthNumber} - redirected to ${maxYear}/${maxMonth}`
-      navigate(`/budget/${maxYear}/${maxMonth}/${lastActiveTab}?error=${encodeURIComponent(errorMessage)}`, { replace: true })
+    // Get budget's actual month range
+    const earliest = getEarliestMonthFromMap(monthMap)
+    const latest = getLatestMonthFromMap(monthMap)
+
+    // If no months in budget, can't redirect - just show error
+    // Use queueMicrotask to avoid synchronous setState in effect
+    if (!earliest || !latest) {
+      console.log('[useMonthNavigationError] Cannot redirect - no months in budget')
+      queueMicrotask(() => setError(`Error loading month: ${monthError.message}`))
       return
     }
 
-    // Handle months too far in the past
-    if (errorMsg.includes('months in the past')) {
-      const { year: minYear, month: minMonth } = getMinAllowedMonth()
-      const errorMessage = `Cannot create month ${currentYear}/${currentMonthNumber} - redirected to ${minYear}/${minMonth}`
-      navigate(`/budget/${minYear}/${minMonth}/${lastActiveTab}?error=${encodeURIComponent(errorMessage)}`, { replace: true })
+    const errorMsg = monthError.message || ''
+
+    // Handle any month creation/navigation errors by redirecting to nearest valid month
+    if (errorMsg.includes('Refusing to create month') || errorMsg.includes('months in the')) {
+      // Determine if we're before or after the valid range
+      const currentOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
+      const earliestOrdinal = `${earliest.year}${String(earliest.month).padStart(2, '0')}`
+      const latestOrdinal = `${latest.year}${String(latest.month).padStart(2, '0')}`
+
+      let targetYear: number
+      let targetMonth: number
+
+      if (currentOrdinal < earliestOrdinal) {
+        // Before earliest - go to earliest
+        targetYear = earliest.year
+        targetMonth = earliest.month
+      } else if (currentOrdinal > latestOrdinal) {
+        // After latest - go to latest
+        targetYear = latest.year
+        targetMonth = latest.month
+      } else {
+        // Within range but month doesn't exist - go to latest
+        targetYear = latest.year
+        targetMonth = latest.month
+      }
+
+      const errorMessage = `Cannot navigate to ${currentYear}/${currentMonthNumber} - redirected to ${targetYear}/${targetMonth}`
+      navigate(`/budget/${targetYear}/${targetMonth}/${lastActiveTab}?error=${encodeURIComponent(errorMessage)}`, { replace: true })
     }
-  }, [monthError, currentYear, currentMonthNumber, lastActiveTab, navigate])
+  }, [monthError, currentYear, currentMonthNumber, lastActiveTab, monthMap, navigate, setError])
 
   return {
     error,

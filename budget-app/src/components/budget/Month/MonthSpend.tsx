@@ -5,10 +5,11 @@ import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import { usePayeesQuery } from '../../../data'
 import type { FinancialAccount, ExpenseTransaction } from '@types'
-import { Button, formatCurrency, getSpendColor } from '../../ui'
+import { Button, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { ExpenseForm } from '../Spend'
 import { logUserAction } from '@utils'
+import { isAdjustmentCategory, ADJUSTMENT_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '../../../data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
@@ -160,8 +161,8 @@ export function MonthSpend() {
               <span style={{ fontWeight: 600 }}>Expenses:</span>
               <span>
                 <span style={{ opacity: 0.6 }}>Total: </span>
-                <span style={{ color: getSpendColor(totalMonthlyExpenses), fontWeight: 600 }}>
-                  {totalMonthlyExpenses > 0 ? '-' : ''}{formatCurrency(totalMonthlyExpenses)}
+                <span style={{ color: getBalanceColor(totalMonthlyExpenses), fontWeight: 600 }}>
+                  {formatSignedCurrencyAlways(totalMonthlyExpenses)}
                 </span>
               </span>
             </div>
@@ -262,12 +263,14 @@ export function MonthSpend() {
               <ExpenseGridRow
                 key={expense.id}
                 expense={expense}
-                categoryName={categories[expense.category_id]?.name || 'Unknown Category'}
-                accountName={accounts[expense.account_id]?.nickname || 'Unknown Account'}
+                categoryName={isAdjustmentCategory(expense.category_id) ? ADJUSTMENT_CATEGORY_NAME : (categories[expense.category_id]?.name || 'Unknown Category')}
+                accountName={isNoAccount(expense.account_id) ? NO_ACCOUNT_NAME : (accounts[expense.account_id]?.nickname || 'Unknown Account')}
                 accountGroupName={
-                  accounts[expense.account_id]?.account_group_id
-                    ? accountGroups[accounts[expense.account_id]!.account_group_id!]?.name
-                    : undefined
+                  isNoAccount(expense.account_id) ? undefined : (
+                    accounts[expense.account_id]?.account_group_id
+                      ? accountGroups[accounts[expense.account_id]!.account_group_id!]?.name
+                      : undefined
+                  )
                 }
                 onEdit={() => {
                   logUserAction('CLICK', 'Edit Expense', { details: expense.payee || `$${expense.amount}` })
@@ -363,8 +366,8 @@ function ExpenseGridRow({ expense, categoryName, accountName, accountGroupName, 
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, color: getSpendColor(expense.amount), fontFamily: 'monospace' }}>
-            -{formatCurrency(expense.amount)}
+          <span style={{ fontWeight: 600, color: getBalanceColor(expense.amount), fontFamily: 'monospace' }}>
+            {formatSignedCurrencyAlways(expense.amount)}
           </span>
         </div>
       </div>
@@ -418,8 +421,8 @@ function ExpenseGridRow({ expense, categoryName, accountName, accountGroupName, 
       </div>
 
       {/* Amount */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getSpendColor(expense.amount), fontFamily: 'monospace' }}>
-        -{formatCurrency(expense.amount)}
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getBalanceColor(expense.amount), fontFamily: 'monospace' }}>
+        {formatSignedCurrencyAlways(expense.amount)}
       </div>
 
       {/* Description */}

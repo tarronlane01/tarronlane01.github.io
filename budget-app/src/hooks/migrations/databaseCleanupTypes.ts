@@ -14,7 +14,8 @@ export interface DatabaseCleanupStatus {
   accountsNeedingDefaults: number
   categoriesNeedingDefaults: number
   groupsNeedingDefaults: number
-  budgetsNeedingMonthMap: number
+  budgetsNeedingMonthMapUpdate: number
+  budgetsWithDeprecatedEarliestMonth: number
 
   // Months
   totalMonths: number
@@ -37,7 +38,8 @@ export interface DatabaseCleanupResult {
   categoriesFixed: number
   groupsFixed: number
   arraysConverted: number
-  monthMapsAdded: number
+  monthMapsUpdated: number
+  deprecatedFieldsRemoved: number
 
   // Months
   futureMonthsDeleted: number

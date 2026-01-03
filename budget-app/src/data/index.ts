@@ -81,3 +81,15 @@ export { arrayUnion } from '@firestore'
 
 // Query helpers
 export { getFutureMonths } from './queries/month'
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+export {
+  ADJUSTMENT_CATEGORY_ID,
+  ADJUSTMENT_CATEGORY_NAME,
+  isAdjustmentCategory,
+  NO_ACCOUNT_ID,
+  NO_ACCOUNT_NAME,
+  isNoAccount,
+} from './constants'

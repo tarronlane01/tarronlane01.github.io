@@ -5,7 +5,7 @@
  */
 
 import type { Category, CategoryMonthBalance } from '@types'
-import { formatCurrency, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
+import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 
 // Shared styles for full-height field containers with centered content
@@ -54,10 +54,9 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
 
   return (
     <div style={{
-      background: hasDebt ? colors.debtBg : 'color-mix(in srgb, currentColor 5%, transparent)',
+      background: 'color-mix(in srgb, currentColor 5%, transparent)',
       borderRadius: '8px',
       padding: '0.75rem',
-      boxShadow: hasDebt ? `inset 0 0 0 2px ${colors.debtBorder}` : 'none',
     }}>
       {/* Category name row */}
       <div style={{ marginBottom: '0.5rem' }}>
@@ -75,7 +74,7 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
       }}>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Start</span>
-          <span style={{ color: getCategoryBalanceColor(balance.start_balance) }}>{formatCurrency(balance.start_balance)}</span>
+          <span style={{ color: getCategoryBalanceColor(balance.start_balance) }}>{formatBalanceCurrency(balance.start_balance)}</span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Alloc</span>
@@ -118,26 +117,26 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
             </>
           ) : (
             <span style={{ color: getAllocatedColor(balance.allocated) }}>
-              {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+              {formatSignedCurrencyAlways(balance.allocated)}
             </span>
           )}
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Spent</span>
           <span style={{ color: getSpendColor(balance.spent) }}>
-            {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
+            {formatSignedCurrency(balance.spent)}
           </span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>End</span>
           <span style={{ color: getCategoryBalanceColor(balance.end_balance) }}>
-            {formatCurrency(balance.end_balance)}
+            {formatBalanceCurrency(balance.end_balance)}
           </span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</span>
           <span style={{ color: isDraftMode ? (allTimeBalance < 0 ? colors.debt : colors.primary) : getCategoryBalanceColor(allTimeBalance) }}>
-            {formatCurrency(allTimeBalance)}
+            {formatBalanceCurrency(allTimeBalance)}
           </span>
         </div>
       </div>
@@ -193,9 +192,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
       display: 'flex',
       alignItems: 'stretch',
       padding: '0.6rem 0.75rem',
-      background: hasDebt ? colors.debtBg : (isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)'),
-      boxShadow: hasDebt ? `inset 0 0 0 2px ${colors.debtBorder}` : 'none',
-      borderRadius: hasDebt ? '8px' : '0',
+      background: isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)',
     }}>
       {/* Category name */}
       <div style={{ ...fieldContainer, flex: 2, minWidth: 0, overflow: 'hidden' }}>
@@ -206,7 +203,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
 
       {/* Start balance */}
       <div style={{ ...fieldContainer, flex: 1, justifyContent: 'flex-end', fontSize: '0.9rem', color: getCategoryBalanceColor(balance.start_balance) }}>
-        {formatCurrency(balance.start_balance)}
+        {formatBalanceCurrency(balance.start_balance)}
       </div>
 
       {/* Allocated - input in draft mode, display in finalized mode */}
@@ -242,12 +239,12 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
               />
               {/* Show debt reduction breakdown below input */}
               {hasDebt && allocationAmount > 0 && (
-                <div style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.2 }}>
+                <div style={{ fontSize: '0.65rem', whiteSpace: 'nowrap', textAlign: 'center', lineHeight: 1.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <span style={{ color: colors.debt }}>
                     {formatCurrency(debtReductionAmount)} → debt
                   </span>
                   {showBreakdown && (
-                    <span style={{ color: colors.success, marginLeft: '0.5rem' }}>
+                    <span style={{ color: colors.success }}>
                       {formatCurrency(toBalanceAmount)} → bal
                     </span>
                   )}
@@ -264,7 +261,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
           fontSize: '0.9rem',
           color: getAllocatedColor(balance.allocated),
         }}>
-          {balance.allocated > 0 ? '+' : ''}{formatCurrency(balance.allocated)}
+          {formatSignedCurrencyAlways(balance.allocated)}
         </div>
       )}
 
@@ -276,7 +273,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         fontSize: '0.9rem',
         color: getSpendColor(balance.spent),
       }}>
-        {balance.spent > 0 ? '-' : ''}{formatCurrency(balance.spent)}
+        {formatSignedCurrency(balance.spent)}
       </div>
 
       {/* End - with border-right that extends full height */}
@@ -294,7 +291,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         paddingBottom: '0.6rem',
         borderRight: '2px solid rgba(128, 128, 128, 0.4)',
       }}>
-        {formatCurrency(balance.end_balance)}
+        {formatBalanceCurrency(balance.end_balance)}
       </div>
 
       {/* All-Time */}
@@ -305,7 +302,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         fontSize: '0.9rem',
         color: isDraftMode ? (allTimeBalance < 0 ? colors.debt : colors.primary) : getCategoryBalanceColor(allTimeBalance),
       }}>
-        {formatCurrency(allTimeBalance)}
+        {formatBalanceCurrency(allTimeBalance)}
       </div>
     </div>
   )

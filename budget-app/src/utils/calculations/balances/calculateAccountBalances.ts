@@ -32,6 +32,7 @@ export function calculateAccountBalances(
     }
 
     // Calculate expenses from this account this month
+    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
     let expenses = 0
     if (currentMonth?.expenses) {
       expenses = currentMonth.expenses
@@ -39,7 +40,8 @@ export function calculateAccountBalances(
         .reduce((sum, e) => sum + e.amount, 0)
     }
 
-    const netChange = income - expenses
+    // Net change = income + expenses (expenses is negative for money out)
+    const netChange = income + expenses
 
     balances[accountId] = {
       account_id: accountId,

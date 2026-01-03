@@ -66,6 +66,7 @@ export function ExpenseForm({
       config={{
         showCategory: true,
         showCleared: true,
+        showAdjustmentCategory: true,
         accountLabel: 'Pay From',
         payeePlaceholder: 'e.g., Grocery Store',
         descriptionPlaceholder: 'e.g., Weekly groceries',

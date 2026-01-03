@@ -35,7 +35,11 @@ export async function scanDatabaseStatus(): Promise<DatabaseCleanupStatus> {
   let accountsNeedingDefaults = 0
   let categoriesNeedingDefaults = 0
   let groupsNeedingDefaults = 0
-  let budgetsNeedingMonthMap = 0
+  let budgetsNeedingMonthMapUpdate = 0
+  let budgetsWithDeprecatedEarliestMonth = 0
+
+  // Track budgets for month_map validation
+  const budgetIds = new Set<string>()
 
   for (const budgetDoc of budgetsResult.docs) {
     const data = budgetDoc.data
@@ -46,9 +50,16 @@ export async function scanDatabaseStatus(): Promise<DatabaseCleanupStatus> {
       continue // Skip detailed checks for array-format budgets
     }
 
+    budgetIds.add(budgetDoc.id)
+
     // Check if month_map field is missing entirely
     if (data.month_map === undefined) {
-      budgetsNeedingMonthMap++
+      budgetsNeedingMonthMapUpdate++
+    }
+
+    // Check if deprecated earliest_month field exists (should be removed)
+    if (data.earliest_month !== undefined) {
+      budgetsWithDeprecatedEarliestMonth++
     }
 
     // Check accounts
@@ -143,7 +154,8 @@ export async function scanDatabaseStatus(): Promise<DatabaseCleanupStatus> {
     accountsNeedingDefaults,
     categoriesNeedingDefaults,
     groupsNeedingDefaults,
-    budgetsNeedingMonthMap,
+    budgetsNeedingMonthMapUpdate,
+    budgetsWithDeprecatedEarliestMonth,
     totalMonths: monthsResult.docs.length,
     futureMonthsToDelete,
     monthsWithSchemaIssues,

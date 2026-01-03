@@ -13,22 +13,36 @@ import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
 import { setMonthInBudgetMap } from '@data/recalculation'
 
+/** Options for createMonth */
+export interface CreateMonthOptions {
+  /**
+   * Bypass the 3-month date limit safeguard.
+   * Use only for seed data imports or migrations that need to create historical months.
+   */
+  bypassDateLimit?: boolean
+}
+
 /**
  * Create a new month document with start balances from previous month.
  *
  * @param budgetId - Budget ID
  * @param year - Year
  * @param month - Month (1-12)
+ * @param options - Optional settings (e.g., bypassDateLimit for seed imports)
  * @returns The created month document
- * @throws Error if the month is more than 3 months in the future or past
+ * @throws Error if the month is more than 3 months in the future or past (unless bypassed)
  */
 export async function createMonth(
   budgetId: string,
   year: number,
-  month: number
+  month: number,
+  options?: CreateMonthOptions
 ): Promise<MonthDocument> {
+  const { bypassDateLimit = false } = options ?? {}
+
   // Safeguard: Prevent creating months more than 3 months in the future or past
   // This catches bugs like double-incrementing the year during navigation
+  // Can be bypassed for seed data imports
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1 // 1-12
@@ -36,7 +50,7 @@ export async function createMonth(
   // Calculate months from now (positive = future, negative = past)
   const monthsFromNow = (year - currentYear) * 12 + (month - currentMonth)
 
-  if (monthsFromNow > 3) {
+  if (!bypassDateLimit && monthsFromNow > 3) {
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
       `it's ${monthsFromNow} months in the future (max allowed: 3). ` +
       `This likely indicates a bug in month navigation.`
@@ -44,13 +58,14 @@ export async function createMonth(
     throw new Error(errorMsg)
   }
 
-  if (monthsFromNow < -3) {
+  if (!bypassDateLimit && monthsFromNow < -3) {
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
       `it's ${Math.abs(monthsFromNow)} months in the past (max allowed: 3). ` +
       `Existing months can still be viewed, but new months cannot be created this far back.`
     console.error(errorMsg)
     throw new Error(errorMsg)
   }
+
 
   const nowIso = now.toISOString()
   const monthDocId = getMonthDocId(budgetId, year, month)
@@ -171,7 +186,7 @@ export async function createMonth(
   )
 
   // Add this month to the budget's month_map
-  // This also cleans up months older than 3 months from the map
+  // The month_map now contains ALL months (not just the 7-month window)
   await setMonthInBudgetMap(budgetId, year, month, false)
 
   return newMonth

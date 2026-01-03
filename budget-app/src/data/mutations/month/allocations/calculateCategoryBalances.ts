@@ -43,16 +43,18 @@ export function calculateCategoryBalancesForMonth(
     const allocated = allocationsFinalized ? (allocations[catId] ?? 0) : 0
 
     // Sum expenses for this category
+    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
     const spent = expenses
       .filter(e => e.category_id === catId)
       .reduce((sum, e) => sum + e.amount, 0)
 
+    // end_balance = start + allocated + spent (spent is negative for money out)
     return {
       category_id: catId,
       start_balance: startBalance,
       allocated,
       spent,
-      end_balance: startBalance + allocated - spent,
+      end_balance: startBalance + allocated + spent,
     }
   })
 }

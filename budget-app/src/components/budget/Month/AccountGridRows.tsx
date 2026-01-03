@@ -6,22 +6,24 @@
  */
 
 import type { FinancialAccount, AccountMonthBalance } from '@types'
-import { formatCurrency, getBalanceColor } from '../../ui'
+import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 
-// Helper color functions
+// Helper color functions - consistent: positive=green, negative=red, zero=grey
 function getIncomeColor(value: number): string {
-  return value > 0 ? colors.success : 'rgba(255,255,255,0.4)'
+  if (value === 0) return colors.zero
+  return value > 0 ? colors.success : colors.error
 }
 
+// Expenses: negative = money out (red), positive = money in (green), zero = grey
 function getExpenseColor(value: number): string {
-  return value > 0 ? colors.error : 'rgba(255,255,255,0.4)'
+  if (value === 0) return colors.zero
+  return value < 0 ? colors.error : colors.success
 }
 
 function getNetChangeColor(value: number): string {
-  if (value > 0) return colors.success
-  if (value < 0) return colors.error
-  return 'rgba(255,255,255,0.4)'
+  if (value === 0) return colors.zero
+  return value > 0 ? colors.success : colors.error
 }
 
 // =============================================================================
@@ -53,23 +55,23 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
     <div style={{ display: 'contents' }}>
       {/* Group header row */}
       <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1 }}>
-        {name}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{name}</span>
         <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.start) }}>
-        {formatCurrency(groupTotals.start)}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatCurrency(groupTotals.start)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getIncomeColor(groupTotals.income) }}>
-        +{formatCurrency(groupTotals.income)}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>+{formatCurrency(groupTotals.income)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getExpenseColor(groupTotals.expenses) }}>
-        -{formatCurrency(groupTotals.expenses)}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrency(groupTotals.expenses)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(groupTotals.netChange) }}>
-        {groupTotals.netChange >= 0 ? '+' : ''}{formatCurrency(groupTotals.netChange)}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
-        {formatCurrency(groupTotals.end)}
+        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatCurrency(groupTotals.end)}</span>
       </div>
 
       {/* Account rows */}
@@ -117,10 +119,10 @@ function AccountGridRow({ account, balance, isEvenRow }: { account: FinancialAcc
         +{formatCurrency(balance.income)}
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getExpenseColor(balance.expenses) }}>
-        -{formatCurrency(balance.expenses)}
+        {formatSignedCurrency(balance.expenses)}
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getNetChangeColor(balance.net_change) }}>
-        {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
+        {formatSignedCurrencyAlways(balance.net_change)}
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getBalanceColor(balance.end_balance) }}>
         {formatCurrency(balance.end_balance)}
@@ -147,7 +149,7 @@ function MobileAccountRow({ account, balance }: { account: FinancialAccount; bal
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Net Change</span>
           <span style={{ color: getBalanceColor(balance.net_change) }}>
-            {balance.net_change >= 0 ? '+' : ''}{formatCurrency(balance.net_change)}
+            {formatSignedCurrencyAlways(balance.net_change)}
           </span>
         </div>
         <div>
@@ -155,10 +157,10 @@ function MobileAccountRow({ account, balance }: { account: FinancialAccount; bal
           <span style={{ color: getBalanceColor(balance.end_balance) }}>{formatCurrency(balance.end_balance)}</span>
         </div>
       </div>
-      {(balance.income > 0 || balance.expenses > 0) && (
+      {(balance.income !== 0 || balance.expenses !== 0) && (
         <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)', display: 'flex', gap: '1rem', fontSize: '0.7rem', opacity: 0.7 }}>
-          {balance.income > 0 && <span>+{formatCurrency(balance.income)} income</span>}
-          {balance.expenses > 0 && <span>-{formatCurrency(balance.expenses)} expenses</span>}
+          {balance.income !== 0 && <span>{formatSignedCurrencyAlways(balance.income)} income</span>}
+          {balance.expenses !== 0 && <span>{formatSignedCurrency(balance.expenses)} expenses</span>}
         </div>
       )}
     </div>

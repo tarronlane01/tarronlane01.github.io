@@ -37,70 +37,25 @@ import {
 } from './databaseCleanupValidation'
 
 /**
- * Get the 7-month window ordinals (3 past, current, 3 future).
+ * Build the complete month_map for a budget by scanning ALL existing months.
+ * The month_map now contains ALL months (not just a window) so we can derive
+ * earliest/latest month from the map keys.
  */
-function getMonthWindowOrdinals(): string[] {
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
-
-  const ordinals: string[] = []
-
-  // 3 months in the past
-  for (let i = 3; i > 0; i--) {
-    let year = currentYear
-    let month = currentMonth - i
-    while (month < 1) {
-      month += 12
-      year -= 1
-    }
-    ordinals.push(getYearMonthOrdinal(year, month))
-  }
-
-  // Current month
-  ordinals.push(getYearMonthOrdinal(currentYear, currentMonth))
-
-  // 3 months in the future
-  for (let i = 1; i <= 3; i++) {
-    let year = currentYear
-    let month = currentMonth + i
-    while (month > 12) {
-      month -= 12
-      year += 1
-    }
-    ordinals.push(getYearMonthOrdinal(year, month))
-  }
-
-  return ordinals
-}
-
-/**
- * Build the initial month_map for a budget based on existing months.
- */
-async function buildMonthMapForBudget(budgetId: string): Promise<MonthMap> {
+async function buildCompleteMonthMapForBudget(budgetId: string): Promise<MonthMap> {
   const monthMap: MonthMap = {}
-  const windowOrdinals = getMonthWindowOrdinals()
 
-  // Query months for this budget
+  // Query ALL months for this budget
   const monthsResult = await queryCollection<FirestoreData>(
     'months',
-    `database cleanup: querying months for budget ${budgetId}`,
+    `database cleanup: querying all months for budget ${budgetId}`,
     [{ field: 'budget_id', op: '==', value: budgetId }]
   )
 
-  // Get ordinals of existing months
-  const existingOrdinals = new Set<string>()
+  // Add ALL existing months to the map
   for (const monthDoc of monthsResult.docs) {
     const data = monthDoc.data
     if (data.year && data.month) {
       const ordinal = getYearMonthOrdinal(data.year as number, data.month as number)
-      existingOrdinals.add(ordinal)
-    }
-  }
-
-  // Only add entries for months that exist AND are in the window
-  for (const ordinal of windowOrdinals) {
-    if (existingOrdinals.has(ordinal)) {
       monthMap[ordinal] = { needs_recalculation: false }
     }
   }
@@ -118,7 +73,8 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
   let categoriesFixed = 0
   let groupsFixed = 0
   let arraysConverted = 0
-  let monthMapsAdded = 0
+  let monthMapsUpdated = 0
+  let deprecatedFieldsRemoved = 0
   let futureMonthsDeleted = 0
   let monthsFixed = 0
   let oldRecalcFieldsRemoved = 0
@@ -240,20 +196,21 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
         }
       }
 
-      // Add month_map if field is missing entirely
+      // Add/update month_map to include ALL months (not just window)
       if (data.month_map === undefined) {
-        const monthMap = await buildMonthMapForBudget(budgetDoc.id)
+        const monthMap = await buildCompleteMonthMapForBudget(budgetDoc.id)
         updates.month_map = monthMap
         needsUpdate = true
-        monthMapsAdded++
-        console.log(`[DatabaseCleanup] Added month_map to budget ${budgetDoc.id} with ${Object.keys(monthMap).length} months`)
+        monthMapsUpdated++
+        console.log(`[DatabaseCleanup] Added complete month_map to budget ${budgetDoc.id} with ${Object.keys(monthMap).length} months`)
       }
 
-      // Remove any old/deprecated fields
+      // Remove any old/deprecated fields from the updates object
       delete (updates as { category_balances?: unknown }).category_balances
       delete (updates as { allocations?: unknown }).allocations
       delete (updates as { allocations_finalized?: unknown }).allocations_finalized
       delete (updates as { is_needs_recalculation?: unknown }).is_needs_recalculation
+      delete (updates as { earliest_month?: unknown }).earliest_month
 
       if (needsUpdate) {
         await writeDocByPath(
@@ -263,6 +220,21 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
           'database cleanup: saving fixed budget'
         )
         budgetsProcessed++
+      }
+
+      // Remove deprecated earliest_month field using updateDoc (deleteField only works with updateDoc)
+      if (data.earliest_month !== undefined) {
+        await updateDocByPath(
+          'budgets',
+          budgetDoc.id,
+          {
+            earliest_month: deleteField(),
+            updated_at: new Date().toISOString(),
+          },
+          `database cleanup: removing deprecated earliest_month from budget ${budgetDoc.id}`
+        )
+        deprecatedFieldsRemoved++
+        console.log(`[DatabaseCleanup] Removed deprecated earliest_month from budget ${budgetDoc.id}`)
       }
     } catch (err) {
       errors.push(`Budget ${budgetDoc.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -333,7 +305,8 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
     categoriesFixed,
     groupsFixed,
     arraysConverted,
-    monthMapsAdded,
+    monthMapsUpdated,
+    deprecatedFieldsRemoved,
     futureMonthsDeleted,
     monthsFixed,
     oldRecalcFieldsRemoved,

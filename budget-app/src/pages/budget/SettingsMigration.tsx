@@ -6,6 +6,7 @@ import {
   DatabaseCleanupCard,
   FeedbackMigrationCard,
   DeleteAllMonthsCard,
+  SeedImportCard,
 } from '../../components/budget/Admin'
 import { Modal, Button } from '../../components/ui'
 import { logUserAction } from '@utils/actionLogger'
@@ -47,10 +48,9 @@ function SettingsMigration() {
   })
 
   // Delete all months - destructive utility
-  // Opens reload modal automatically when deletion completes successfully
+  // Automatically recalculates budgets and clears cache after deletion
   const deleteAllMonths = useDeleteAllMonths({
     currentUser: current_user,
-    onComplete: () => setShowReloadModal(true),
   })
 
   // Scanning state for all
@@ -136,6 +136,11 @@ function SettingsMigration() {
         isRefreshing={deleteAllMonths.isScanning}
         disabled={!current_user}
         deleteResult={deleteAllMonths.deleteResult}
+        deleteProgress={deleteAllMonths.deleteProgress}
+      />
+
+      <SeedImportCard
+        disabled={!current_user}
       />
 
       {/* Info about migration scope */}

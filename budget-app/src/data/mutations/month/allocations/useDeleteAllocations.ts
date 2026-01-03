@@ -2,40 +2,36 @@
  * Delete Allocations Hook
  *
  * Deletes all allocations (clears allocations and sets unfinalized).
- * Uses writeMonthData which automatically marks future months and budget
- * as needing recalculation.
+ * Now triggers immediate recalculation instead of just marking months as needing recalc.
  *
- * Also updates budget's category balances and total_available for immediate UI feedback.
+ * Progress callback allows the UI to show detailed status during the operation.
  */
 
 import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
-import { updateBudgetCategoryBalances } from '../../budget/categories'
+import { triggerRecalculation } from '../../../recalculation'
+import { queryClient, queryKeys } from '../../../queryClient'
+import type { AllocationProgress } from './useFinalizeAllocations'
 
 export interface DeleteAllocationsParams {
   budgetId: string
   year: number
   month: number
+  /** Optional callback to report progress during the operation */
+  onProgress?: (progress: AllocationProgress) => void
 }
 
 export function useDeleteAllocations() {
   const { writeData } = useWriteMonthData()
 
   const deleteAllocations = async (params: DeleteAllocationsParams) => {
-    const { budgetId, year, month } = params
+    const { budgetId, year, month, onProgress } = params
+
+    // Phase 1: Deleting allocations
+    onProgress?.({ phase: 'saving', message: 'Deleting allocations...' })
 
     const monthData = await readMonthForEdit(budgetId, year, month, 'delete allocations')
-
-    // Capture previous allocations before clearing (for budget update)
-    const previousAllocations: { categoryId: string; allocated: number }[] = []
-    if (monthData.are_allocations_finalized && monthData.category_balances) {
-      for (const cb of monthData.category_balances) {
-        if (cb.allocated > 0) {
-          previousAllocations.push({ categoryId: cb.category_id, allocated: cb.allocated })
-        }
-      }
-    }
 
     // Clear allocations from category_balances
     const clearedCategoryBalances = monthData.category_balances.map(cb => ({
@@ -51,25 +47,43 @@ export function useDeleteAllocations() {
       updated_at: new Date().toISOString(),
     }
 
-    // writeData handles:
-    // - Writing to Firestore
-    // - Optimistic cache updates for month
-    // - Marking future months as needing recalculation
-    // - Marking budget as needing recalculation
+    // Write month data with cascade marking (marks future months as needing recalc)
     await writeData.mutateAsync({
       budgetId,
       month: updatedMonth,
       description: 'delete allocations',
     })
 
-    // Update budget's category balances (negative delta to remove allocations)
-    if (previousAllocations.length > 0) {
-      const categoryDeltas = previousAllocations.map(({ categoryId, allocated }) => ({
-        categoryId,
-        delta: -allocated, // Remove the allocation (negative delta)
-      }))
-      await updateBudgetCategoryBalances(budgetId, categoryDeltas)
-    }
+    // Phase 2: Trigger immediate recalculation
+    onProgress?.({ phase: 'recalculating', message: 'Recalculating month balances...' })
+
+    await triggerRecalculation(budgetId, {
+      triggeringMonthOrdinal: `${year}${String(month).padStart(2, '0')}`,
+      onProgress: (recalcProgress) => {
+        // Forward recalculation progress with a user-friendly message
+        let message = 'Recalculating balances...'
+        if (recalcProgress.phase === 'fetching-months') {
+          message = `Loading month data (${recalcProgress.monthsFetched}/${recalcProgress.totalMonthsToFetch})...`
+        } else if (recalcProgress.phase === 'recalculating' && recalcProgress.currentMonth) {
+          message = `Recalculating ${recalcProgress.currentMonth}...`
+        } else if (recalcProgress.phase === 'saving') {
+          message = 'Saving recalculated balances...'
+        }
+        onProgress?.({
+          phase: 'recalculating',
+          message,
+          recalcProgress,
+        })
+      },
+    })
+
+    // Force refetch month and budget data after recalculation
+    // Using refetchQueries instead of invalidateQueries because refetchOnMount: false
+    // means invalidated queries won't refetch when navigating to a new page
+    await queryClient.refetchQueries({ queryKey: queryKeys.month(budgetId, year, month) })
+    await queryClient.refetchQueries({ queryKey: queryKeys.budget(budgetId) })
+
+    onProgress?.({ phase: 'complete', message: 'Allocations deleted!' })
 
     return { updatedMonth }
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ExpenseTransaction } from '@types'
-import { formatCurrency, getSpendColor } from '../../ui'
+import { formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { BREAKPOINTS } from '@constants'
 
@@ -88,8 +88,8 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, color: getSpendColor(expense.amount), fontFamily: 'monospace' }}>
-            -{formatCurrency(expense.amount)}
+          <span style={{ fontWeight: 600, color: getBalanceColor(expense.amount), fontFamily: 'monospace' }}>
+            {formatSignedCurrencyAlways(expense.amount)}
           </span>
         </div>
       </div>
@@ -161,11 +161,11 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
         <div style={{
           width: '6rem',
           fontWeight: 600,
-          color: getSpendColor(expense.amount),
+          color: getBalanceColor(expense.amount),
           fontFamily: 'monospace',
           textAlign: 'right',
         }}>
-          -{formatCurrency(expense.amount)}
+          {formatSignedCurrencyAlways(expense.amount)}
         </div>
 
         {/* Description */}
@@ -296,12 +296,12 @@ export function ExpenseItem({ expense, categoryName, accountName, accountGroupNa
       <div style={{
         width: '6rem',
         fontWeight: 600,
-        color: getSpendColor(expense.amount),
+        color: getBalanceColor(expense.amount),
         fontFamily: 'monospace',
         textAlign: 'right',
         fontSize: '0.9rem',
       }}>
-        -{formatCurrency(expense.amount)}
+        {formatSignedCurrencyAlways(expense.amount)}
       </div>
 
       {/* Cleared */}

@@ -17,5 +17,17 @@ export {
 
 // Special-purpose migrations
 export { useFeedbackMigration, type FeedbackMigrationResult, type FeedbackMigrationStatus } from './useFeedbackMigration'
-export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo } from './useDeleteAllMonths'
+export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo, type DeleteProgress, type DeletePhase } from './useDeleteAllMonths'
+
+// Seed data import
+export {
+  useSeedImport,
+  type SeedRecordType,
+  type SeedImportStatus,
+  type ParsedSeedRow,
+  type MappingEntry,
+  type ImportDataMap,
+  type SeedImportResult,
+  type ImportProgress,
+} from './useSeedImport'
 

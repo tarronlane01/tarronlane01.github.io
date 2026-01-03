@@ -5,16 +5,13 @@ import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { colors } from '../../../styles/shared'
 import { MONTH_NAMES } from '@constants'
 import { RecalculateAllButton } from './RecalculateAllButton'
-import { logUserAction } from '@utils'
+import { logUserAction, getYearMonthOrdinal } from '@utils'
 import {
   MonthNavButton,
-  getMaxAllowedMonth,
-  getMinAllowedMonth,
-  isMonthTooFarInPast,
-  isMonthTooFarInFuture,
-  monthExistsInMap,
   getPrevMonth,
   getNextMonth,
+  getEffectiveMinMonth,
+  getMaxAllowedMonth,
 } from './MonthNavigation/index'
 
 interface MonthNavigationProps {
@@ -39,13 +36,22 @@ export function MonthNavigation({
   const { budget: currentBudget, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
-  // Check if previous/next navigation should be disabled
+  // Navigation bounds: 3 months in past (or earliest in monthMap if older), 3 months in future
+  // This allows navigating to months that don't exist yet - they'll be created on demand
   const prevMonth = getPrevMonth(currentYear, currentMonthNumber)
   const nextMonth = getNextMonth(currentYear, currentMonthNumber)
 
-  const isPrevDisabled = isMonthTooFarInPast(prevMonth.year, prevMonth.month) &&
-    !monthExistsInMap(prevMonth.year, prevMonth.month, monthMap)
-  const isNextDisabled = isMonthTooFarInFuture(nextMonth.year, nextMonth.month)
+  const minAllowed = getEffectiveMinMonth(monthMap)
+  const maxAllowed = getMaxAllowedMonth()
+
+  const minOrdinal = getYearMonthOrdinal(minAllowed.year, minAllowed.month)
+  const maxOrdinal = getYearMonthOrdinal(maxAllowed.year, maxAllowed.month)
+
+  const prevOrdinal = getYearMonthOrdinal(prevMonth.year, prevMonth.month)
+  const nextOrdinal = getYearMonthOrdinal(nextMonth.year, nextMonth.month)
+
+  const isPrevDisabled = prevOrdinal < minOrdinal
+  const isNextDisabled = nextOrdinal > maxOrdinal
 
   const [showMonthMenu, setShowMonthMenu] = useState(false)
   const [showMonthPicker, setShowMonthPicker] = useState(false)
@@ -76,34 +82,9 @@ export function MonthNavigation({
   }
 
   function handleGoToMonth() {
-    const maxAllowed = getMaxAllowedMonth()
-    const minAllowed = getMinAllowedMonth()
-    let targetYear = pickerYear
-    let targetMonth = pickerMonth
-
-    // Check if selected month is too far in the future
-    const selectedMonthsFromNow = (targetYear - new Date().getFullYear()) * 12 +
-      (targetMonth - (new Date().getMonth() + 1))
-    const maxMonthsFromNow = 3
-
-    if (selectedMonthsFromNow > maxMonthsFromNow) {
-      // Clamp to max allowed
-      targetYear = maxAllowed.year
-      targetMonth = maxAllowed.month
-      console.log(`[MonthNavigation] Clamping to max allowed month: ${targetYear}/${targetMonth}`)
-    }
-
-    // Check if selected month is too far in the past and doesn't exist
-    if (selectedMonthsFromNow < -maxMonthsFromNow && !monthExistsInMap(targetYear, targetMonth, monthMap)) {
-      // Clamp to min allowed
-      targetYear = minAllowed.year
-      targetMonth = minAllowed.month
-      console.log(`[MonthNavigation] Clamping to min allowed month: ${targetYear}/${targetMonth}`)
-    }
-
-    logUserAction('NAVIGATE', 'Go to Month', { details: `${targetYear}/${targetMonth}` })
-    setCurrentYear(targetYear)
-    setCurrentMonthNumber(targetMonth)
+    logUserAction('NAVIGATE', 'Go to Month', { details: `${pickerYear}/${pickerMonth}` })
+    setCurrentYear(pickerYear)
+    setCurrentMonthNumber(pickerMonth)
     setShowMonthPicker(false)
     setShowMonthMenu(false)
   }
@@ -145,7 +126,7 @@ export function MonthNavigation({
         direction="prev"
         isDisabled={isPrevDisabled}
         isLoading={isLoading}
-        disabledReason="Cannot create months more than 3 months in the past"
+        disabledReason="Cannot create months more than 3 months into the past"
         onNavigate={onPreviousMonth}
       />
 
@@ -211,7 +192,7 @@ export function MonthNavigation({
               border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
               borderRadius: '8px',
               padding: '0.25rem',
-              zIndex: 10,
+              zIndex: 100,
               minWidth: '160px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             }}
@@ -242,7 +223,15 @@ export function MonthNavigation({
             </button>
 
             {/* Month picker */}
-            {showMonthPicker && (
+            {showMonthPicker && (() => {
+              // Bounds: 3 months back (or earliest in map if older) to 3 months ahead
+              const earliestYear = minAllowed.year
+              const latestYear = maxAllowed.year
+
+              const canGoPrevYear = pickerYear > earliestYear
+              const canGoNextYear = pickerYear < latestYear
+
+              return (
               <div style={{
                 padding: '0.75rem',
                 borderTop: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
@@ -252,14 +241,17 @@ export function MonthNavigation({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <button
                     onClick={() => setPickerYear(y => y - 1)}
+                    disabled={!canGoPrevYear}
                     style={{
                       background: 'color-mix(in srgb, currentColor 10%, transparent)',
                       border: 'none',
                       borderRadius: '4px',
                       padding: '0.25rem 0.5rem',
-                      cursor: 'pointer',
+                      cursor: canGoPrevYear ? 'pointer' : 'not-allowed',
                       fontSize: '0.8rem',
+                      opacity: canGoPrevYear ? 1 : 0.3,
                     }}
+                    title={canGoPrevYear ? 'Previous year' : 'Cannot go further back'}
                   >
                     ←
                   </button>
@@ -268,14 +260,17 @@ export function MonthNavigation({
                   </span>
                   <button
                     onClick={() => setPickerYear(y => y + 1)}
+                    disabled={!canGoNextYear}
                     style={{
                       background: 'color-mix(in srgb, currentColor 10%, transparent)',
                       border: 'none',
                       borderRadius: '4px',
                       padding: '0.25rem 0.5rem',
-                      cursor: 'pointer',
+                      cursor: canGoNextYear ? 'pointer' : 'not-allowed',
                       fontSize: '0.8rem',
+                      opacity: canGoNextYear ? 1 : 0.3,
                     }}
+                    title={canGoNextYear ? 'Next year' : 'Cannot go further ahead'}
                   >
                     →
                   </button>
@@ -292,19 +287,18 @@ export function MonthNavigation({
                     const monthNum = idx + 1
                     const isSelected = monthNum === pickerMonth
                     const isCurrent = pickerYear === currentYear && monthNum === currentMonthNumber
-                    const maxAllowed = getMaxAllowedMonth()
-                    const isTooFarFuture = (pickerYear > maxAllowed.year) ||
-                      (pickerYear === maxAllowed.year && monthNum > maxAllowed.month)
-                    // Too far in past AND doesn't already exist
-                    const isTooFarPast = isMonthTooFarInPast(pickerYear, monthNum) &&
-                      !monthExistsInMap(pickerYear, monthNum, monthMap)
-                    const isDisabled = isTooFarFuture || isTooFarPast
+                    const monthOrdinal = getYearMonthOrdinal(pickerYear, monthNum)
+
+                    // Grey out months outside the allowed range (3 months back to 3 months ahead)
+                    const isBeforeMin = monthOrdinal < minOrdinal
+                    const isAfterMax = monthOrdinal > maxOrdinal
+                    const isDisabled = isBeforeMin || isAfterMax
 
                     let title: string = name
-                    if (isTooFarFuture) {
-                      title = 'Cannot create months more than 3 months in the future'
-                    } else if (isTooFarPast) {
-                      title = 'Cannot create months more than 3 months in the past'
+                    if (isBeforeMin) {
+                      title = 'Too far in the past'
+                    } else if (isAfterMax) {
+                      title = 'Too far in the future'
                     }
 
                     return (
@@ -334,24 +328,34 @@ export function MonthNavigation({
                 </div>
 
                 {/* Go button */}
-                <button
-                  onClick={handleGoToMonth}
-                  style={{
-                    width: '100%',
-                    background: colors.primary,
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    color: '#fff',
-                    fontWeight: 500,
-                  }}
-                >
-                  Go to {MONTH_NAMES[pickerMonth - 1]} {pickerYear}
-                </button>
+                {(() => {
+                  // Check if selected month is within allowed range
+                  const selectedOrdinal = getYearMonthOrdinal(pickerYear, pickerMonth)
+                  const isSelectedValid = selectedOrdinal >= minOrdinal && selectedOrdinal <= maxOrdinal
+
+                  return (
+                    <button
+                      onClick={handleGoToMonth}
+                      disabled={!isSelectedValid}
+                      style={{
+                        width: '100%',
+                        background: isSelectedValid ? colors.primary : 'color-mix(in srgb, currentColor 20%, transparent)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.5rem',
+                        cursor: isSelectedValid ? 'pointer' : 'not-allowed',
+                        fontSize: '0.85rem',
+                        color: isSelectedValid ? '#fff' : 'inherit',
+                        fontWeight: 500,
+                        opacity: isSelectedValid ? 1 : 0.5,
+                      }}
+                    >
+                      Go to {MONTH_NAMES[pickerMonth - 1]} {pickerYear}
+                    </button>
+                  )
+                })()}
               </div>
-            )}
+            )})()}
 
             {/* Admin-only: Download month data */}
             {isAdmin && currentMonth && (
@@ -385,7 +389,7 @@ export function MonthNavigation({
         direction="next"
         isDisabled={isNextDisabled}
         isLoading={isLoading}
-        disabledReason="Cannot create months more than 3 months in the future"
+        disabledReason="Cannot create months more than 3 months into the future"
         onNavigate={onNextMonth}
       />
     </div>

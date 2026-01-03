@@ -42,9 +42,11 @@ export interface Budget {
   is_needs_recalculation: boolean
 
   /**
-   * Index of recent months (current, 3 past, 3 future).
+   * Index of ALL months in the budget.
    * Each entry tracks whether that month needs recalculation.
    * Key is YYYYMM ordinal format.
+   *
+   * This allows deriving earliest/latest month from the map keys.
    */
   month_map: MonthMap
 

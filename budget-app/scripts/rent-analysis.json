@@ -1,0 +1,680 @@
+{
+  "summary": {
+    "totalMonths": 67,
+    "finalBalance": 8182.029999999993,
+    "totalAllocations": 180864.10000000006,
+    "totalSpend": -172682.0699999999
+  },
+  "months": [
+    {
+      "month": "2020-08",
+      "start": 0,
+      "allocated": 0,
+      "spent": -705,
+      "netChange": -705,
+      "end": -705,
+      "allocationCount": 0,
+      "spendCount": 1
+    },
+    {
+      "month": "2020-09",
+      "start": -705,
+      "allocated": 1200,
+      "spent": 300,
+      "netChange": 1500,
+      "end": 795,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2020-10",
+      "start": 795,
+      "allocated": 1200,
+      "spent": -3195,
+      "netChange": -1995,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 3
+    },
+    {
+      "month": "2020-11",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2020-12",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-01",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -2400,
+      "netChange": -1200,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2021-02",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": 0,
+      "netChange": 1200,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2021-03",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -2400,
+      "netChange": -1200,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2021-04",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-05",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": 0,
+      "netChange": 1200,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2021-06",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -2400,
+      "netChange": -1200,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2021-07",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-08",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-09",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-10",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -2400,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2021-11",
+      "start": -2400,
+      "allocated": 1200,
+      "spent": 0,
+      "netChange": 1200,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2021-12",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-01",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": 0,
+      "netChange": 1200,
+      "end": 0,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2022-02",
+      "start": 0,
+      "allocated": 1200,
+      "spent": -2400,
+      "netChange": -1200,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2022-03",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": 0,
+      "netChange": 1200,
+      "end": 0,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2022-04",
+      "start": 0,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": 0,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-05",
+      "start": 0,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": 0,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-06",
+      "start": 0,
+      "allocated": 1200,
+      "spent": -2400,
+      "netChange": -1200,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2022-07",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-08",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-09",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": -1200,
+      "netChange": 0,
+      "end": -1200,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2022-10",
+      "start": -1200,
+      "allocated": 1200,
+      "spent": 130.48,
+      "netChange": 1330.48,
+      "end": 130.48,
+      "allocationCount": 1,
+      "spendCount": 4
+    },
+    {
+      "month": "2022-11",
+      "start": 130.48,
+      "allocated": 3200,
+      "spent": -2670.48,
+      "netChange": 529.52,
+      "end": 660,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2022-12",
+      "start": 660,
+      "allocated": 3500,
+      "spent": -3446.21,
+      "netChange": 53.79,
+      "end": 713.79,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2023-01",
+      "start": 713.79,
+      "allocated": 4000,
+      "spent": -4713.21,
+      "netChange": -713.21,
+      "end": 0.58,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-02",
+      "start": 0.58,
+      "allocated": 4000,
+      "spent": -3996.21,
+      "netChange": 3.79,
+      "end": 4.37,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-03",
+      "start": 4.37,
+      "allocated": 3500,
+      "spent": -3446.21,
+      "netChange": 53.79,
+      "end": 58.16,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2023-04",
+      "start": 58.16,
+      "allocated": 3500,
+      "spent": -3446.21,
+      "netChange": 53.79,
+      "end": 111.95,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2023-05",
+      "start": 111.95,
+      "allocated": 3500,
+      "spent": -3611.21,
+      "netChange": -111.21,
+      "end": 0.74,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-06",
+      "start": 0.74,
+      "allocated": 3500,
+      "spent": -3446.21,
+      "netChange": 53.79,
+      "end": 54.53,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2023-07",
+      "start": 54.53,
+      "allocated": 3500,
+      "spent": -3546.21,
+      "netChange": -46.21,
+      "end": 8.32,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-08",
+      "start": 8.32,
+      "allocated": 3500,
+      "spent": -3487.74,
+      "netChange": 12.26,
+      "end": 20.58,
+      "allocationCount": 1,
+      "spendCount": 3
+    },
+    {
+      "month": "2023-09",
+      "start": 20.58,
+      "allocated": 3500,
+      "spent": -3516.11,
+      "netChange": -16.11,
+      "end": 4.47,
+      "allocationCount": 1,
+      "spendCount": 3
+    },
+    {
+      "month": "2023-10",
+      "start": 4.47,
+      "allocated": 3500,
+      "spent": -3458.54,
+      "netChange": 41.46,
+      "end": 45.93,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-11",
+      "start": 45.93,
+      "allocated": 3500,
+      "spent": -3531.21,
+      "netChange": -31.21,
+      "end": 14.72,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2023-12",
+      "start": 14.72,
+      "allocated": 3447,
+      "spent": -3366.98,
+      "netChange": 80.02,
+      "end": 94.74,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2024-01",
+      "start": 94.74,
+      "allocated": 3547,
+      "spent": -3640.98,
+      "netChange": -93.98,
+      "end": 0.76,
+      "allocationCount": 1,
+      "spendCount": 3
+    },
+    {
+      "month": "2024-02",
+      "start": 0.76,
+      "allocated": 3632,
+      "spent": -3631.98,
+      "netChange": 0.02,
+      "end": 0.78,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-03",
+      "start": 0.78,
+      "allocated": 3632,
+      "spent": -3631.98,
+      "netChange": 0.02,
+      "end": 0.8,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-04",
+      "start": 0.8,
+      "allocated": 3632,
+      "spent": -3630.09,
+      "netChange": 1.91,
+      "end": 2.71,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2024-05",
+      "start": 2.71,
+      "allocated": 3632,
+      "spent": -3633.09,
+      "netChange": -1.09,
+      "end": 1.62,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2024-06",
+      "start": 1.62,
+      "allocated": 3632,
+      "spent": -3630.09,
+      "netChange": 1.91,
+      "end": 3.53,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2024-07",
+      "start": 3.53,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 4.44,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-08",
+      "start": 4.44,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 5.35,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-09",
+      "start": 5.35,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 6.26,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-10",
+      "start": 6.26,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 7.17,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-11",
+      "start": 7.17,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 8.08,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2024-12",
+      "start": 8.08,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 8.99,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-01",
+      "start": 8.99,
+      "allocated": 3591,
+      "spent": -3590.09,
+      "netChange": 0.91,
+      "end": 9.9,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-02",
+      "start": 9.9,
+      "allocated": 4091,
+      "spent": -4090.09,
+      "netChange": 0.91,
+      "end": 10.81,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-03",
+      "start": 10.81,
+      "allocated": 4091,
+      "spent": -4090.09,
+      "netChange": 0.91,
+      "end": 11.72,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-04",
+      "start": 11.72,
+      "allocated": 4090.1,
+      "spent": -4092.24,
+      "netChange": -2.14,
+      "end": 9.58,
+      "allocationCount": 1,
+      "spendCount": 4
+    },
+    {
+      "month": "2025-05",
+      "start": 9.58,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 10.97,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-06",
+      "start": 10.97,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 12.36,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-07",
+      "start": 12.36,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 13.75,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-08",
+      "start": 13.75,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 15.14,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-09",
+      "start": 15.14,
+      "allocated": 4090.1,
+      "spent": -4100.5,
+      "netChange": -10.4,
+      "end": 4.74,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2025-10",
+      "start": 4.74,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 6.13,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2025-11",
+      "start": 6.13,
+      "allocated": 4090.1,
+      "spent": -4095.79,
+      "netChange": -5.69,
+      "end": 0.44,
+      "allocationCount": 1,
+      "spendCount": 2
+    },
+    {
+      "month": "2025-12",
+      "start": 0.44,
+      "allocated": 4090.1,
+      "spent": -4088.71,
+      "netChange": 1.39,
+      "end": 1.83,
+      "allocationCount": 1,
+      "spendCount": 1
+    },
+    {
+      "month": "2026-01",
+      "start": 1.83,
+      "allocated": 4090.1,
+      "spent": 0,
+      "netChange": 4090.1,
+      "end": 4091.93,
+      "allocationCount": 1,
+      "spendCount": 0
+    },
+    {
+      "month": "2026-02",
+      "start": 4091.93,
+      "allocated": 4090.1,
+      "spent": 0,
+      "netChange": 4090.1,
+      "end": 8182.03,
+      "allocationCount": 1,
+      "spendCount": 0
+    }
+  ]
+}

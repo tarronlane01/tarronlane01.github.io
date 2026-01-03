@@ -16,6 +16,7 @@ import type {
   CategoryMonthBalance,
   AccountMonthBalance,
 } from '@types'
+import { isAdjustmentCategory, isNoAccount } from '../constants'
 
 // ============================================================================
 // TYPES
@@ -52,10 +53,10 @@ export const EMPTY_SNAPSHOT: PreviousMonthSnapshot = {
  *
  * This function:
  * 1. Sets start_balance for categories from previous month's end_balance
- * 2. Recalculates end_balance = start_balance + allocated - spent
+ * 2. Recalculates end_balance = start_balance + allocated + spent (spent is negative for money out)
  * 3. Sets start_balance for accounts from previous month's end_balance
  * 4. Recalculates account income/expenses from transaction arrays
- * 5. Recalculates end_balance = start_balance + net_change
+ * 5. Recalculates end_balance = start_balance + net_change (net_change = income + expenses)
  * 6. Sets previous_month_income
  *
  * Note: The needs_recalculation flag is stored in the budget's month_map,
@@ -96,29 +97,35 @@ export function recalculateMonth(
 
 /**
  * Recalculate category balances with correct start balances from previous month.
+ * Note: The special Adjustment category is excluded as it doesn't track balances.
  */
 function recalculateCategoryBalances(
   currentBalances: CategoryMonthBalance[],
   prevCategoryEndBalances: Record<string, number>
 ): CategoryMonthBalance[] {
-  // Build map of existing balances
+  // Build map of existing balances (excluding Adjustment category)
   const balanceMap = new Map<string, CategoryMonthBalance>()
   for (const cb of currentBalances) {
+    if (isAdjustmentCategory(cb.category_id)) continue
     balanceMap.set(cb.category_id, cb)
   }
 
-  // Update each existing balance with correct start_balance
-  const updated: CategoryMonthBalance[] = currentBalances.map(cb => {
-    const startBalance = prevCategoryEndBalances[cb.category_id] ?? 0
-    return {
-      ...cb,
-      start_balance: startBalance,
-      end_balance: startBalance + cb.allocated - cb.spent,
-    }
-  })
+  // Update each existing balance with correct start_balance (excluding Adjustment)
+  // Note: spent is negative for money out, positive for money in
+  const updated: CategoryMonthBalance[] = currentBalances
+    .filter(cb => !isAdjustmentCategory(cb.category_id))
+    .map(cb => {
+      const startBalance = prevCategoryEndBalances[cb.category_id] ?? 0
+      return {
+        ...cb,
+        start_balance: startBalance,
+        end_balance: startBalance + cb.allocated + cb.spent,
+      }
+    })
 
-  // Add any categories from previous month that aren't in current
+  // Add any categories from previous month that aren't in current (excluding Adjustment)
   for (const [catId, endBal] of Object.entries(prevCategoryEndBalances)) {
+    if (isAdjustmentCategory(catId)) continue
     if (!balanceMap.has(catId)) {
       updated.push({
         category_id: catId,
@@ -135,25 +142,30 @@ function recalculateCategoryBalances(
 
 /**
  * Recalculate account balances from income/expense transactions.
+ * Note: The special "No Account" is excluded as it doesn't track balances.
  */
 function recalculateAccountBalances(
   month: MonthDocument,
   prevAccountEndBalances: Record<string, number>
 ): AccountMonthBalance[] {
-  // Collect all account IDs from transactions and previous balances
+  // Collect all account IDs from transactions and previous balances (excluding No Account)
   const accountIds = new Set<string>()
 
   for (const income of month.income || []) {
+    if (isNoAccount(income.account_id)) continue
     accountIds.add(income.account_id)
   }
   for (const expense of month.expenses || []) {
+    if (isNoAccount(expense.account_id)) continue
     accountIds.add(expense.account_id)
   }
   for (const accountId of Object.keys(prevAccountEndBalances)) {
+    if (isNoAccount(accountId)) continue
     accountIds.add(accountId)
   }
-  // Also include accounts from existing balances
+  // Also include accounts from existing balances (excluding No Account)
   for (const ab of month.account_balances || []) {
+    if (isNoAccount(ab.account_id)) continue
     accountIds.add(ab.account_id)
   }
 
@@ -169,11 +181,13 @@ function recalculateAccountBalances(
       .reduce((sum, i) => sum + i.amount, 0)
 
     // Sum expenses for this account
+    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
     const expensesTotal = (month.expenses || [])
       .filter(e => e.account_id === accountId)
       .reduce((sum, e) => sum + e.amount, 0)
 
-    const netChange = incomeTotal - expensesTotal
+    // Net change = income + expenses (expenses is negative for money out)
+    const netChange = incomeTotal + expensesTotal
 
     balances.push({
       account_id: accountId,
@@ -194,16 +208,21 @@ function recalculateAccountBalances(
 
 /**
  * Extract a snapshot from a month for passing to the next month's recalculation.
+ * Note: The special Adjustment category and No Account are excluded as they don't track balances.
  */
 export function extractSnapshotFromMonth(month: MonthDocument): PreviousMonthSnapshot {
   const categoryEndBalances: Record<string, number> = {}
   const accountEndBalances: Record<string, number> = {}
 
   for (const cb of month.category_balances || []) {
+    // Skip the Adjustment category - it doesn't track balances
+    if (isAdjustmentCategory(cb.category_id)) continue
     categoryEndBalances[cb.category_id] = cb.end_balance
   }
 
   for (const ab of month.account_balances || []) {
+    // Skip the No Account - it doesn't track balances
+    if (isNoAccount(ab.account_id)) continue
     accountEndBalances[ab.account_id] = ab.end_balance
   }
 

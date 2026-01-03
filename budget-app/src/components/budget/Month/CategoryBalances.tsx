@@ -5,7 +5,7 @@
  */
 
 import type { Category, CategoryMonthBalance } from '@types'
-import { Button, formatCurrency, getBalanceColor, getCategoryBalanceColor } from '../../ui'
+import { Button, formatCurrency, formatBalanceCurrency, getBalanceColor, getCategoryBalanceColor } from '../../ui'
 import { colors, sectionHeader } from '../../../styles/shared'
 import { MobileBalanceRow, DesktopBalanceRow } from './CategoryBalanceRows'
 
@@ -98,7 +98,7 @@ export function DraftEquation({
           fontWeight: 600
         }}>
           {allocationsFinalized
-            ? (draftChangeAmount === 0 ? '$0.00' : formatCurrency(Math.abs(draftChangeAmount)))
+            ? (draftChangeAmount === 0 ? '$0.00' : formatCurrency(draftChangeAmount))
             : formatCurrency(currentDraftTotal)
           }
         </span>
@@ -208,7 +208,7 @@ export function BalanceGroupBlock({
         borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
       }}>
         <h3 style={{ ...sectionHeader, margin: 0, opacity: isUngrouped ? 0.7 : 1 }}>
-          {name}
+          <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{name}</span>
           <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400, fontSize: '0.9rem' }}>
             ({categories.length})
           </span>
@@ -217,11 +217,13 @@ export function BalanceGroupBlock({
           <span style={{
             fontSize: '0.8rem',
             opacity: 0.6,
+            borderBottom: '2px solid currentColor',
+            paddingBottom: '2px',
           }}>
             +{formatCurrency(groupAllocated)}
           </span>
-          <span style={{ fontWeight: 600, color: getCategoryBalanceColor(groupEndBalance) }}>
-            {formatCurrency(groupEndBalance)}
+          <span style={{ fontWeight: 600, color: getCategoryBalanceColor(groupEndBalance), borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>
+            {formatBalanceCurrency(groupEndBalance)}
           </span>
         </div>
       </div>

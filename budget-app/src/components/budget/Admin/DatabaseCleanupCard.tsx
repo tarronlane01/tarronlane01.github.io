@@ -33,7 +33,8 @@ export function DatabaseCleanupCard({
       result.accountsFixed > 0 ||
       result.categoriesFixed > 0 ||
       result.groupsFixed > 0 ||
-      result.monthMapsAdded > 0 ||
+      result.monthMapsUpdated > 0 ||
+      result.deprecatedFieldsRemoved > 0 ||
       result.futureMonthsDeleted > 0 ||
       result.monthsFixed > 0 ||
       result.oldRecalcFieldsRemoved > 0
@@ -46,7 +47,8 @@ export function DatabaseCleanupCard({
     result.accountsFixed +
     result.categoriesFixed +
     result.groupsFixed +
-    result.monthMapsAdded +
+    result.monthMapsUpdated +
+    result.deprecatedFieldsRemoved +
     result.futureMonthsDeleted +
     result.monthsFixed +
     result.oldRecalcFieldsRemoved
@@ -85,8 +87,11 @@ export function DatabaseCleanupCard({
               {result.groupsFixed > 0 && (
                 <li>{result.groupsFixed} group{result.groupsFixed !== 1 ? 's' : ''} fixed</li>
               )}
-              {result.monthMapsAdded > 0 && (
-                <li>{result.monthMapsAdded} budget{result.monthMapsAdded !== 1 ? 's' : ''} got month_map added</li>
+              {result.monthMapsUpdated > 0 && (
+                <li>{result.monthMapsUpdated} budget{result.monthMapsUpdated !== 1 ? 's' : ''} got month_map updated</li>
+              )}
+              {result.deprecatedFieldsRemoved > 0 && (
+                <li>{result.deprecatedFieldsRemoved} budget{result.deprecatedFieldsRemoved !== 1 ? 's' : ''} had deprecated fields removed</li>
               )}
               {result.futureMonthsDeleted > 0 && (
                 <li>{result.futureMonthsDeleted} future month{result.futureMonthsDeleted !== 1 ? 's' : ''} deleted</li>
@@ -144,9 +149,14 @@ export function DatabaseCleanupCard({
                     {status!.groupsNeedingDefaults} account group{status!.groupsNeedingDefaults !== 1 ? 's' : ''} missing default values
                   </li>
                 )}
-                {status!.budgetsNeedingMonthMap > 0 && (
+                {status!.budgetsNeedingMonthMapUpdate > 0 && (
                   <li>
-                    {status!.budgetsNeedingMonthMap} budget{status!.budgetsNeedingMonthMap !== 1 ? 's' : ''} missing month_map
+                    {status!.budgetsNeedingMonthMapUpdate} budget{status!.budgetsNeedingMonthMapUpdate !== 1 ? 's' : ''} missing month_map
+                  </li>
+                )}
+                {status!.budgetsWithDeprecatedEarliestMonth > 0 && (
+                  <li>
+                    {status!.budgetsWithDeprecatedEarliestMonth} budget{status!.budgetsWithDeprecatedEarliestMonth !== 1 ? 's' : ''} with deprecated earliest_month field to remove
                   </li>
                 )}
                 {status!.futureMonthsToDelete.length > 0 && (

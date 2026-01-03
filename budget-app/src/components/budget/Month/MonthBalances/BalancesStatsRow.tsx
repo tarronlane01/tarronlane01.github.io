@@ -3,7 +3,7 @@
  * Shows different stats for category vs account view.
  */
 
-import { formatCurrency, getBalanceColor, getSpendColor } from '../../../ui'
+import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor, getSpendColor } from '../../../ui'
 import { colors } from '../../../../styles/shared'
 
 interface CategoryBalanceTotals {
@@ -74,7 +74,7 @@ export function CategoryStatsRow({
         </span>
         {isEditingAppliedAllocations && draftChangeAmount !== 0 && (
           <span style={{ fontSize: '0.85em', color: draftChangeAmount > 0 ? colors.warning : colors.success, marginLeft: '0.25rem' }}>
-            ({draftChangeAmount > 0 ? '+' : '−'}{formatCurrency(Math.abs(draftChangeAmount))})
+            ({formatSignedCurrencyAlways(draftChangeAmount)})
           </span>
         )}
       </span>
@@ -82,7 +82,7 @@ export function CategoryStatsRow({
       {!isDraftMode && (
         <span>
           <span style={{ opacity: 0.6 }}>Spent: </span>
-          <span style={{ color: getSpendColor(balanceTotals.spent), fontWeight: 600 }}>-{formatCurrency(balanceTotals.spent)}</span>
+          <span style={{ color: getSpendColor(balanceTotals.spent), fontWeight: 600 }}>{formatSignedCurrency(balanceTotals.spent)}</span>
         </span>
       )}
 
@@ -91,7 +91,7 @@ export function CategoryStatsRow({
         <span style={{ opacity: 0.6 }}>{isDraftMode ? 'Remaining: ' : 'Net: '}</span>
         {isDraftMode
           ? <span style={{ color: getBalanceColor(availableAfterApply), fontWeight: 600 }}>{formatCurrency(availableAfterApply)}</span>
-          : <span style={{ color: getBalanceColor(balanceTotals.allocated - balanceTotals.spent), fontWeight: 600 }}>{formatCurrency(balanceTotals.allocated - balanceTotals.spent)}</span>
+          : <span style={{ color: getBalanceColor(balanceTotals.allocated + balanceTotals.spent), fontWeight: 600 }}>{formatCurrency(balanceTotals.allocated + balanceTotals.spent)}</span>
         }
       </span>
     </>
@@ -115,7 +115,7 @@ export function AccountStatsRow({ totals }: AccountStatsRowProps) {
       </span>
       <span>
         <span style={{ opacity: 0.6 }}>Exp: </span>
-        <span style={{ color: getSpendColor(totals.expenses), fontWeight: 600 }}>-{formatCurrency(totals.expenses)}</span>
+        <span style={{ color: getSpendColor(totals.expenses), fontWeight: 600 }}>{formatSignedCurrency(totals.expenses)}</span>
       </span>
       <span>
         <span style={{ opacity: 0.6 }}>End: </span>

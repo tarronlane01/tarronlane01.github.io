@@ -69,7 +69,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         categoriesFixed: 0,
         groupsFixed: 0,
         arraysConverted: 0,
-        monthMapsAdded: 0,
+        monthMapsUpdated: 0,
+        deprecatedFieldsRemoved: 0,
         futureMonthsDeleted: 0,
         monthsFixed: 0,
         oldRecalcFieldsRemoved: 0,
@@ -86,7 +87,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.accountsNeedingDefaults > 0 ||
     status.categoriesNeedingDefaults > 0 ||
     status.groupsNeedingDefaults > 0 ||
-    status.budgetsNeedingMonthMap > 0 ||
+    status.budgetsNeedingMonthMapUpdate > 0 ||
+    status.budgetsWithDeprecatedEarliestMonth > 0 ||
     status.futureMonthsToDelete.length > 0 ||
     status.monthsWithSchemaIssues > 0 ||
     status.monthsWithOldRecalcField > 0
@@ -97,7 +99,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.accountsNeedingDefaults +
     status.categoriesNeedingDefaults +
     status.groupsNeedingDefaults +
-    status.budgetsNeedingMonthMap +
+    status.budgetsNeedingMonthMapUpdate +
+    status.budgetsWithDeprecatedEarliestMonth +
     status.futureMonthsToDelete.length +
     status.monthsWithSchemaIssues +
     status.monthsWithOldRecalcField

@@ -1,27 +1,13 @@
 /**
- * Trigger Recalculation
- *
- * Main entry point for the recalculation process.
+ * Trigger Recalculation - Main entry point for the recalculation process.
  * Called when readBudget detects is_needs_recalculation = true.
- *
- * ALGORITHM:
- * 1. Read budget document to get month_map (index of recent months)
- * 2. Use month_map to determine which months need recalculation
- * 3. Fetch those months from Firestore
- * 4. Walk backwards from the first stale month to find the last valid month
- * 5. Walk forward from starting point, calling recalculateMonth for each
- * 6. Update budget with final balances and clear all recalc flags in month_map
- *
- * @param budgetId - The budget ID
- * @param targetMonthOrdinal - Optional month ordinal (YYYYMM) that triggered this
- *                             If provided, only recalculate up to this month
- *                             If not provided (budget-triggered), recalculate all
+ * Uses month_map to determine which months need recalculation, then walks forward
+ * from the first stale month recalculating each and updating balances.
  */
 
 import type { FirestoreData, MonthDocument, MonthMap } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { readDocByPath, writeDocByPath, batchWriteDocs, type BatchWriteDoc } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
-import { writeMonthData } from '../mutations/month'
 import {
   recalculateMonth,
   extractSnapshotFromMonth,
@@ -30,22 +16,31 @@ import {
 } from './recalculateMonth'
 import { queryClient, queryKeys } from '../queryClient'
 import type { BudgetData } from '../queries/budget'
+import type { MonthQueryData } from '../queries/month'
 
-// ============================================================================
-// DEDUPLICATION - Prevent multiple simultaneous recalculations
-// ============================================================================
-
-/**
- * Track in-progress recalculations per budget.
- * Maps budgetId -> Promise of the recalculation in progress.
- * This prevents duplicate recalculations when multiple components
- * (e.g., MonthCategories and MonthAccounts) detect the need simultaneously.
- */
+// Track in-progress recalculations to prevent duplicates when multiple components detect stale data
 const inProgressRecalculations = new Map<string, Promise<RecalculationResult>>()
 
-// ============================================================================
-// TYPES
-// ============================================================================
+/**
+ * Progress information for recalculation.
+ * Reported via onProgress callback during recalculation.
+ */
+export interface RecalculationProgress {
+  /** Current phase of recalculation */
+  phase: 'reading-budget' | 'fetching-months' | 'recalculating' | 'saving' | 'complete'
+  /** Human-readable label for current month being processed */
+  currentMonth?: string
+  /** Number of months fetched so far (during fetching-months phase) */
+  monthsFetched?: number
+  /** Total number of months to fetch (during fetching-months phase) */
+  totalMonthsToFetch?: number
+  /** Number of months processed so far */
+  monthsProcessed: number
+  /** Total number of months to process */
+  totalMonths: number
+  /** Percentage complete (0-100) */
+  percentComplete: number
+}
 
 interface TriggerRecalculationOptions {
   /**
@@ -54,6 +49,10 @@ interface TriggerRecalculationOptions {
    * If not provided, defaults to current calendar month.
    */
   triggeringMonthOrdinal?: string
+  /**
+   * Optional callback to report progress during recalculation.
+   */
+  onProgress?: (progress: RecalculationProgress) => void
 }
 
 interface RecalculationResult {
@@ -65,7 +64,7 @@ interface RecalculationResult {
   finalAccountBalances?: Record<string, number>
 }
 
-// Raw budget document structure from Firestore
+// Budget document structure from Firestore
 interface BudgetDocument {
   name: string
   user_ids: string[]
@@ -83,73 +82,35 @@ interface BudgetDocument {
   updated_at?: string
 }
 
-/** Month document with its Firestore document ID */
 type MonthWithId = MonthDocument & { id: string }
 
-// ============================================================================
-// HELPERS
-// ============================================================================
+// === HELPERS ===
 
-/**
- * Parse an ordinal string (YYYYMM) into year and month.
- */
 function parseOrdinal(ordinal: string): { year: number; month: number } {
-  const year = parseInt(ordinal.slice(0, 4), 10)
-  const month = parseInt(ordinal.slice(4, 6), 10)
-  return { year, month }
+  return { year: parseInt(ordinal.slice(0, 4), 10), month: parseInt(ordinal.slice(4, 6), 10) }
 }
 
-/**
- * Parse raw month_map data from Firestore into typed MonthMap.
- */
 function parseMonthMap(monthMapData: FirestoreData = {}): MonthMap {
   const monthMap: MonthMap = {}
   Object.entries(monthMapData).forEach(([ordinal, info]) => {
-    const infoData = info as { needs_recalculation?: boolean } | undefined
-    monthMap[ordinal] = {
-      needs_recalculation: infoData?.needs_recalculation ?? false,
-    }
+    monthMap[ordinal] = { needs_recalculation: (info as { needs_recalculation?: boolean })?.needs_recalculation ?? false }
   })
   return monthMap
 }
 
-/**
- * Get sorted list of month ordinals that need recalculation.
- */
 function getMonthsNeedingRecalc(monthMap: MonthMap): string[] {
-  return Object.entries(monthMap)
-    .filter(([, info]) => info.needs_recalculation)
-    .map(([ordinal]) => ordinal)
-    .sort()
+  return Object.entries(monthMap).filter(([, info]) => info.needs_recalculation).map(([ordinal]) => ordinal).sort()
 }
 
-/**
- * Get all month ordinals from the month_map, sorted chronologically.
- */
 function getAllMonthOrdinals(monthMap: MonthMap): string[] {
   return Object.keys(monthMap).sort()
 }
 
-/**
- * Fetch a single month document from Firestore.
- */
-async function fetchMonth(
-  budgetId: string,
-  ordinal: string
-): Promise<MonthWithId | null> {
+async function fetchMonth(budgetId: string, ordinal: string): Promise<MonthWithId | null> {
   const { year, month } = parseOrdinal(ordinal)
   const monthDocId = getMonthDocId(budgetId, year, month)
-
-  const { exists, data } = await readDocByPath<FirestoreData>(
-    'months',
-    monthDocId,
-    `[recalc] fetching month ${year}/${month}`
-  )
-
-  if (!exists || !data) {
-    return null
-  }
-
+  const { exists, data } = await readDocByPath<FirestoreData>('months', monthDocId, `[recalc] fetching month ${year}/${month}`)
+  if (!exists || !data) return null
   return {
     id: monthDocId,
     budget_id: budgetId,
@@ -169,33 +130,25 @@ async function fetchMonth(
   }
 }
 
-/**
- * Fetch only the months needed for recalculation.
- * This avoids fetching months before the starting point.
- *
- * @param budgetId - The budget ID
- * @param ordinals - List of month ordinals to fetch
- * @returns Array of month documents
- */
 async function fetchMonthsByOrdinals(
   budgetId: string,
-  ordinals: string[]
+  ordinals: string[],
+  onFetchProgress?: (fetched: number, total: number) => void
 ): Promise<MonthWithId[]> {
-  const months: MonthWithId[] = []
+  // Fetch all months in parallel for better performance
+  onFetchProgress?.(0, ordinals.length)
 
-  for (const ordinal of ordinals) {
-    const month = await fetchMonth(budgetId, ordinal)
-    if (month) {
-      months.push(month)
-    }
-  }
+  const results = await Promise.all(
+    ordinals.map(ordinal => fetchMonth(budgetId, ordinal))
+  )
 
-  return months
+  onFetchProgress?.(ordinals.length, ordinals.length)
+
+  // Filter out nulls (months that don't exist) and maintain order
+  return results.filter((month): month is MonthWithId => month !== null)
 }
 
-// ============================================================================
-// MAIN FUNCTION
-// ============================================================================
+// === MAIN FUNCTION ===
 
 /**
  * Trigger the recalculation process.
@@ -229,16 +182,27 @@ export async function triggerRecalculation(
   }
 }
 
+/** Month name constants for progress reporting */
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 /**
  * Internal implementation of recalculation.
  * Called by triggerRecalculation after deduplication check.
  */
 async function executeRecalculation(
   budgetId: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _options: TriggerRecalculationOptions = {}
+  options: TriggerRecalculationOptions = {}
 ): Promise<RecalculationResult> {
+  const { onProgress } = options
+
   // Step 1: Read budget to get month_map
+  onProgress?.({
+    phase: 'reading-budget',
+    monthsProcessed: 0,
+    totalMonths: 0,
+    percentComplete: 5,
+  })
+
   const { exists: budgetExists, data: budgetData } = await readDocByPath<BudgetDocument>(
     'budgets',
     budgetId,
@@ -246,6 +210,7 @@ async function executeRecalculation(
   )
 
   if (!budgetExists || !budgetData) {
+    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
     return { monthsRecalculated: 0, budgetUpdated: false }
   }
 
@@ -253,6 +218,7 @@ async function executeRecalculation(
   const monthsNeedingRecalc = getMonthsNeedingRecalc(monthMap)
 
   if (monthsNeedingRecalc.length === 0 && !budgetData.is_needs_recalculation) {
+    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
     return { monthsRecalculated: 0, budgetUpdated: false }
   }
 
@@ -262,6 +228,7 @@ async function executeRecalculation(
 
   if (!firstStaleOrdinal) {
     await clearBudgetRecalcFlag(budgetId, monthMap)
+    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
     return { monthsRecalculated: 0, budgetUpdated: true }
   }
 
@@ -276,10 +243,34 @@ async function executeRecalculation(
     ? allOrdinals.slice(firstStaleOrdinalIndex - 1)
     : allOrdinals.slice(firstStaleOrdinalIndex)
 
-  const months = await fetchMonthsByOrdinals(budgetId, ordinalsToFetch)
+  // Estimate months to recalculate (all fetched minus the starting snapshot month if present)
+  const estimatedToRecalculate = hasStartingMonth ? ordinalsToFetch.length - 1 : ordinalsToFetch.length
+
+  onProgress?.({
+    phase: 'fetching-months',
+    monthsFetched: 0,
+    totalMonthsToFetch: ordinalsToFetch.length,
+    monthsProcessed: 0,
+    totalMonths: estimatedToRecalculate,
+    percentComplete: 10,
+  })
+
+  const months = await fetchMonthsByOrdinals(budgetId, ordinalsToFetch, (fetched, total) => {
+    // Fetching phase goes from 10% to 30% of overall progress
+    const fetchPercent = fetched === 0 ? 10 : 30
+    onProgress?.({
+      phase: 'fetching-months',
+      monthsFetched: fetched,
+      totalMonthsToFetch: total,
+      monthsProcessed: 0,
+      totalMonths: estimatedToRecalculate,
+      percentComplete: fetchPercent,
+    })
+  })
 
   if (months.length === 0) {
     await clearBudgetRecalcFlag(budgetId, monthMap)
+    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
     return { monthsRecalculated: 0, budgetUpdated: true }
   }
 
@@ -288,6 +279,7 @@ async function executeRecalculation(
   // If no starting month, stale months start at 0
   const firstRecalcIndex = hasStartingMonth ? 1 : 0
   const lastRecalcIndex = months.length - 1
+  const totalToRecalculate = lastRecalcIndex - firstRecalcIndex + 1
 
   // Get the starting snapshot from the month before first stale
   let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
@@ -295,30 +287,64 @@ async function executeRecalculation(
     prevSnapshot = extractSnapshotFromMonth(months[0])
   }
 
-  // Step 5: Walk forward and recalculate each month
+  // Step 5: Pre-compute all recalculated months in memory
+  const recalculatedMonths: MonthDocument[] = []
   let monthsRecalculated = 0
 
   for (let i = firstRecalcIndex; i <= lastRecalcIndex; i++) {
     const month = months[i]
+    const monthLabel = `${MONTH_NAMES[month.month - 1]} ${month.year}`
 
-    // Recalculate this month
-    const recalculated = recalculateMonth(month, prevSnapshot)
-
-    // Save to Firestore with cascadeRecalculation disabled
-    // We're handling the recalculation ourselves, no need to mark future months
-    await writeMonthData({
-      budgetId,
-      month: recalculated,
-      description: `[recalc] month ${month.year}/${month.month}`,
-      cascadeRecalculation: false,
+    onProgress?.({
+      phase: 'recalculating',
+      currentMonth: monthLabel,
+      monthsProcessed: monthsRecalculated,
+      totalMonths: totalToRecalculate,
+      percentComplete: Math.round(30 + (monthsRecalculated / totalToRecalculate) * 40),
     })
+
+    // Recalculate this month (in memory only)
+    const recalculated = recalculateMonth(month, prevSnapshot)
+    recalculatedMonths.push(recalculated)
 
     // Update snapshot for next iteration
     prevSnapshot = extractSnapshotFromMonth(recalculated)
     monthsRecalculated++
   }
 
-  // Step 6: Update budget with final balances and clear all recalc flags
+  // Step 6: Batch write all recalculated months to Firestore
+  onProgress?.({
+    phase: 'saving',
+    monthsProcessed: monthsRecalculated,
+    totalMonths: totalToRecalculate,
+    percentComplete: 75,
+  })
+
+  // Prepare batch write documents
+  const batchDocs: BatchWriteDoc[] = recalculatedMonths.map(month => ({
+    collectionPath: 'months',
+    docId: getMonthDocId(budgetId, month.year, month.month),
+    data: month as unknown as FirestoreData,
+  }))
+
+  await batchWriteDocs(batchDocs, `[recalc] batch write ${recalculatedMonths.length} months`)
+
+  // Update query cache for each recalculated month
+  for (const month of recalculatedMonths) {
+    queryClient.setQueryData<MonthQueryData>(
+      queryKeys.month(budgetId, month.year, month.month),
+      { month }
+    )
+  }
+
+  // Step 7: Update budget with final balances and clear all recalc flags
+  onProgress?.({
+    phase: 'saving',
+    monthsProcessed: monthsRecalculated,
+    totalMonths: totalToRecalculate,
+    percentComplete: 92,
+  })
+
   // prevSnapshot now contains the final balances from the last processed month
   const finalAccountBalances = prevSnapshot.accountEndBalances
   const finalCategoryBalances = prevSnapshot.categoryEndBalances
@@ -331,6 +357,13 @@ async function executeRecalculation(
     monthMap
   )
 
+  onProgress?.({
+    phase: 'complete',
+    monthsProcessed: monthsRecalculated,
+    totalMonths: totalToRecalculate,
+    percentComplete: 100,
+  })
+
   return {
     monthsRecalculated,
     budgetUpdated: true,
@@ -338,124 +371,108 @@ async function executeRecalculation(
   }
 }
 
-// ============================================================================
-// BUDGET UPDATE HELPERS
-// ============================================================================
+// === BUDGET UPDATE HELPERS ===
 
-/**
- * Clear all needs_recalculation flags in the month_map.
- */
 function clearMonthMapFlags(monthMap: MonthMap): MonthMap {
   const cleared: MonthMap = {}
-  for (const ordinal of Object.keys(monthMap)) {
-    cleared[ordinal] = { needs_recalculation: false }
-  }
+  for (const ordinal of Object.keys(monthMap)) cleared[ordinal] = { needs_recalculation: false }
   return cleared
 }
 
-/**
- * Calculate total_available from accounts and categories.
- * total_available = sum of on-budget account balances - sum of positive category balances
- */
-function calculateTotalAvailable(
-  accounts: FirestoreData,
-  categories: FirestoreData,
-  accountGroups: FirestoreData
-): number {
+function calculateTotalAvailable(accounts: FirestoreData, categories: FirestoreData, accountGroups: FirestoreData): number {
   const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
     const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
     const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
-    if (effectiveOnBudget && effectiveActive) {
-      return sum + (account.balance ?? 0)
-    }
-    return sum
+    return (effectiveOnBudget && effectiveActive) ? sum + (account.balance ?? 0) : sum
   }, 0)
-
-  // Only sum positive category balances - negative balances (debt) don't reduce available
-  const totalPositiveCategoryBalances = Object.values(categories).reduce(
-    (sum, cat) => {
-      const balance = (cat as { balance?: number }).balance ?? 0
-      return sum + (balance > 0 ? balance : 0)
-    },
-    0
-  )
-
+  const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {
+    const balance = (cat as { balance?: number }).balance ?? 0
+    return sum + (balance > 0 ? balance : 0)
+  }, 0)
   return onBudgetAccountTotal - totalPositiveCategoryBalances
 }
 
-/**
- * Update budget with final account/category balances, total_available, and clear recalc flags.
- * Also updates the React Query cache to prevent re-triggering.
- */
-async function updateBudgetBalances(
-  budgetId: string,
-  accountBalances: Record<string, number>,
-  categoryBalances: Record<string, number>,
-  monthMap: MonthMap
-): Promise<void> {
-  const { exists, data } = await readDocByPath<BudgetDocument>(
-    'budgets',
-    budgetId,
-    '[recalc] reading budget for balance update'
-  )
+async function updateBudgetBalances(budgetId: string, accountBalances: Record<string, number>, categoryBalances: Record<string, number>, monthMap: MonthMap): Promise<void> {
+  const { exists, data } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget for balance update')
+  if (!exists || !data) return
 
-  if (!exists || !data) {
-    return
-  }
-
-  // Update account balances in the accounts map
   const updatedAccounts = { ...data.accounts }
   for (const [accountId, balance] of Object.entries(accountBalances)) {
-    if (updatedAccounts[accountId]) {
-      updatedAccounts[accountId] = { ...updatedAccounts[accountId], balance }
-    }
+    if (updatedAccounts[accountId]) updatedAccounts[accountId] = { ...updatedAccounts[accountId], balance }
   }
-
-  // Update category balances in the categories map
   const updatedCategories = { ...data.categories }
   for (const [categoryId, balance] of Object.entries(categoryBalances)) {
-    if (updatedCategories[categoryId]) {
-      updatedCategories[categoryId] = { ...updatedCategories[categoryId], balance }
-    }
+    if (updatedCategories[categoryId]) updatedCategories[categoryId] = { ...updatedCategories[categoryId], balance }
   }
 
-  const totalAvailable = calculateTotalAvailable(updatedAccounts, updatedCategories, data.account_groups || {})
   const clearedMonthMap = clearMonthMapFlags(monthMap)
+  const totalAvailable = calculateTotalAvailable(updatedAccounts, updatedCategories, data.account_groups || {})
 
-  await writeDocByPath(
-    'budgets',
-    budgetId,
-    {
-      ...data,
-      accounts: updatedAccounts,
-      categories: updatedCategories,
-      total_available: totalAvailable,
-      is_needs_recalculation: false,
-      month_map: clearedMonthMap,
-      updated_at: new Date().toISOString(),
-    },
-    '[recalc] saving balances and clearing flags'
-  )
+  await writeDocByPath('budgets', budgetId, {
+    ...data,
+    accounts: updatedAccounts,
+    categories: updatedCategories,
+    total_available: totalAvailable,
+    is_needs_recalculation: false,
+    month_map: clearedMonthMap,
+    updated_at: new Date().toISOString(),
+  }, '[recalc] saving balances and clearing flags')
 
-  updateBudgetCache(budgetId, clearedMonthMap)
+  // Update cache with the new balances (not just flags)
+  updateBudgetCacheWithBalances(budgetId, updatedAccounts, updatedCategories, totalAvailable, clearedMonthMap)
+}
+
+function updateBudgetCache(budgetId: string, clearedMonthMap: MonthMap): void {
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  if (cachedBudget) {
+    queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+      ...cachedBudget,
+      isNeedsRecalculation: false,
+      monthMap: clearedMonthMap,
+      budget: { ...cachedBudget.budget, is_needs_recalculation: false, month_map: clearedMonthMap },
+    })
+  }
 }
 
 /**
- * Update React Query cache with cleared month_map flags.
- * This prevents components from re-triggering recalculation after it completes.
+ * Update the budget cache with new account/category balances after recalculation.
+ * This ensures the UI reflects the new balances without needing to re-fetch.
  */
-function updateBudgetCache(budgetId: string, clearedMonthMap: MonthMap): void {
-  const budgetKey = queryKeys.budget(budgetId)
-  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
-
+function updateBudgetCacheWithBalances(
+  budgetId: string,
+  updatedAccounts: FirestoreData,
+  updatedCategories: FirestoreData,
+  totalAvailable: number,
+  clearedMonthMap: MonthMap
+): void {
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   if (cachedBudget) {
-    queryClient.setQueryData<BudgetData>(budgetKey, {
+    // Build updated accounts map with new balances
+    const newAccounts: Record<string, BudgetData['accounts'][string]> = {}
+    for (const [id, acc] of Object.entries(cachedBudget.accounts)) {
+      const updatedAcc = updatedAccounts[id]
+      newAccounts[id] = updatedAcc ? { ...acc, balance: updatedAcc.balance ?? acc.balance } : acc
+    }
+
+    // Build updated categories map with new balances
+    const newCategories: Record<string, BudgetData['categories'][string]> = {}
+    for (const [id, cat] of Object.entries(cachedBudget.categories)) {
+      const updatedCat = updatedCategories[id]
+      newCategories[id] = updatedCat ? { ...cat, balance: updatedCat.balance ?? cat.balance } : cat
+    }
+
+    queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
       ...cachedBudget,
+      accounts: newAccounts,
+      categories: newCategories,
       isNeedsRecalculation: false,
       monthMap: clearedMonthMap,
       budget: {
         ...cachedBudget.budget,
+        accounts: updatedAccounts,
+        categories: updatedCategories,
+        total_available: totalAvailable,
         is_needs_recalculation: false,
         month_map: clearedMonthMap,
       },
@@ -463,29 +480,17 @@ function updateBudgetCache(budgetId: string, clearedMonthMap: MonthMap): void {
   }
 }
 
-/**
- * Clear the budget's recalc flag and month_map flags.
- */
 async function clearBudgetRecalcFlag(budgetId: string, monthMap: MonthMap): Promise<void> {
-  const { exists, data } = await readDocByPath<BudgetDocument>(
-    'budgets',
-    budgetId,
-    '[recalc] reading budget to clear flags'
-  )
+  const { exists, data } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget to clear flags')
+  if (!exists || !data) return
 
-  if (!exists || !data) {
-    return
-  }
-
-  const totalAvailable = calculateTotalAvailable(data.accounts || {}, data.categories || {}, data.account_groups || {})
   const clearedMonthMap = clearMonthMapFlags(monthMap)
-
-  await writeDocByPath(
-    'budgets',
-    budgetId,
-    { ...data, total_available: totalAvailable, is_needs_recalculation: false, month_map: clearedMonthMap, updated_at: new Date().toISOString() },
-    '[recalc] clearing flags'
-  )
-
+  await writeDocByPath('budgets', budgetId, {
+    ...data,
+    total_available: calculateTotalAvailable(data.accounts || {}, data.categories || {}, data.account_groups || {}),
+    is_needs_recalculation: false,
+    month_map: clearedMonthMap,
+    updated_at: new Date().toISOString(),
+  }, '[recalc] clearing flags')
   updateBudgetCache(budgetId, clearedMonthMap)
 }

@@ -75,19 +75,13 @@ function getMonthWindowOrdinals(): string[] {
 }
 
 /**
- * Clean up the month_map to only include months in the 7-month window.
+ * The month_map now contains ALL months in the budget, not just the 7-month window.
+ * This allows us to derive earliest_month, latest_month, etc. from the map.
+ * No cleanup is needed - all months are preserved.
  */
 function cleanupMonthMap(monthMap: MonthMap): MonthMap {
-  const validOrdinals = new Set(getMonthWindowOrdinals())
-  const cleaned: MonthMap = {}
-
-  for (const [ordinal, info] of Object.entries(monthMap)) {
-    if (validOrdinals.has(ordinal)) {
-      cleaned[ordinal] = info
-    }
-  }
-
-  return cleaned
+  // Return as-is - we now keep all months in the map
+  return monthMap
 }
 
 // ============================================================================
@@ -216,9 +210,14 @@ export async function markMonthsNeedRecalculation(
     }
   }
 
-  // If nothing changed (all already marked in Firestore too), skip the write
-  if (markedCount === 0) {
-    console.log(`[markMonthsNeedRecalculation] No new months to mark, skipping write`)
+  // Check if budget is already marked as needing recalculation
+  const budgetAlreadyMarked = budgetData.is_needs_recalculation === true
+
+  // If nothing changed AND budget is already marked, skip the write
+  // But if budget is NOT marked, we still need to mark it even if no months need marking
+  // This ensures budget totals get recalculated when allocations change on the latest month
+  if (markedCount === 0 && budgetAlreadyMarked) {
+    console.log(`[markMonthsNeedRecalculation] No new months to mark and budget already marked, skipping write`)
     return { markedCount: 0, budgetUpdated: false }
   }
 
@@ -311,5 +310,118 @@ export async function setMonthInBudgetMap(
     },
     `adding month ${year}/${month} to budget month_map`
   )
+}
+
+// ============================================================================
+// MARK ALL MONTHS FROM STARTING POINT (FOR HISTORICAL IMPORTS)
+// ============================================================================
+
+/**
+ * Mark all existing months from a starting point onwards as needing recalculation.
+ * Used after seed data import to ensure balances cascade correctly.
+ *
+ * Unlike markMonthsNeedRecalculation, this function:
+ * 1. Queries ALL months for the budget (not just the 7-month window)
+ * 2. Marks every month >= startingOrdinal as needing recalculation
+ * 3. Adds all marked months to the month_map (preserving historical months)
+ *
+ * @param budgetId - The budget ID
+ * @param startingYear - Year to start marking from
+ * @param startingMonth - Month to start marking from (1-12)
+ * @returns Summary of marking operation
+ */
+export async function markAllMonthsFromOrdinal(
+  budgetId: string,
+  startingYear: number,
+  startingMonth: number
+): Promise<MarkMonthsResult> {
+  const startingOrdinal = getYearMonthOrdinal(startingYear, startingMonth)
+
+  // Query all months for this budget
+  const { queryCollection } = await import('@firestore')
+  const monthsResult = await queryCollection<FirestoreData>(
+    'months',
+    `marking months for recalc: querying all months for budget ${budgetId}`,
+    [{ field: 'budget_id', op: '==', value: budgetId }]
+  )
+
+  // Build list of all month ordinals that exist
+  const existingOrdinals: string[] = []
+  for (const monthDoc of monthsResult.docs) {
+    const data = monthDoc.data
+    if (data.year && data.month) {
+      const ordinal = getYearMonthOrdinal(data.year as number, data.month as number)
+      existingOrdinals.push(ordinal)
+    }
+  }
+  existingOrdinals.sort()
+
+  // Read current budget to get existing month_map
+  const { exists, data: budgetData } = await readDocByPath<FirestoreData>(
+    'budgets',
+    budgetId,
+    'reading budget for historical month marking'
+  )
+
+  if (!exists || !budgetData) {
+    console.warn(`[markAllMonthsFromOrdinal] Budget ${budgetId} not found`)
+    return { markedCount: 0, budgetUpdated: false }
+  }
+
+  // Start with existing month_map
+  const existingMonthMap: MonthMap = budgetData.month_map || {}
+  const updatedMonthMap: MonthMap = { ...existingMonthMap }
+
+  // Mark all months >= startingOrdinal as needing recalculation
+  let markedCount = 0
+  for (const ordinal of existingOrdinals) {
+    if (ordinal >= startingOrdinal) {
+      updatedMonthMap[ordinal] = { needs_recalculation: true }
+      markedCount++
+    } else if (!updatedMonthMap[ordinal]) {
+      // Also add earlier months to the map (not marked for recalc)
+      updatedMonthMap[ordinal] = { needs_recalculation: false }
+    }
+  }
+
+  if (markedCount === 0) {
+    console.log(`[markAllMonthsFromOrdinal] No months to mark from ${startingOrdinal}`)
+    return { markedCount: 0, budgetUpdated: false }
+  }
+
+  console.log(`[markAllMonthsFromOrdinal] Marking ${markedCount} months from ${startingOrdinal} as needing recalculation`)
+
+  // Update cache
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+  if (cachedBudget) {
+    queryClient.setQueryData<BudgetData>(budgetKey, {
+      ...cachedBudget,
+      isNeedsRecalculation: true,
+      monthMap: updatedMonthMap,
+      budget: {
+        ...cachedBudget.budget,
+        is_needs_recalculation: true,
+        month_map: updatedMonthMap,
+      },
+    })
+  }
+
+  // Write to Firestore
+  await updateDocByPath(
+    'budgets',
+    budgetId,
+    {
+      is_needs_recalculation: true,
+      month_map: updatedMonthMap,
+      updated_at: new Date().toISOString(),
+    },
+    `marking ${markedCount} months from ${startingYear}/${startingMonth} as needing recalculation`
+  )
+
+  return {
+    markedCount,
+    budgetUpdated: true,
+  }
 }
 

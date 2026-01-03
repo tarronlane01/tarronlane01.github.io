@@ -1,0 +1,56 @@
+{
+  "instructions": "Check these months in the app and record the values. First discrepancy = source of bug.",
+  "category": "Rent",
+  "months_to_check": [
+    {
+      "month": "2022-10",
+      "seed": { "start": -1200.00, "allocated": 1200.00, "spent": 130.48, "end": 130.48 },
+      "app": { "start": null, "allocated": null, "spent": null, "end": null },
+      "note": "Huge house DP transactions (+$106k, -$117k) - verify these imported correctly"
+    },
+    {
+      "month": "2022-11", 
+      "seed": { "start": 130.48, "allocated": 3200.00, "spent": -2670.48, "end": 660.00 },
+      "app": { "start": null, "allocated": null, "spent": null, "end": null }
+    },
+    {
+      "month": "2022-12",
+      "seed": { "start": 660.00, "allocated": 3500.00, "spent": -3446.21, "end": 713.79 },
+      "app": { "start": null, "allocated": null, "spent": null, "end": null }
+    },
+    {
+      "month": "2023-01",
+      "seed": { "start": 713.79, "allocated": 4000.00, "spent": -4713.21, "end": 0.58 },
+      "app": { "start": -551.21, "allocated": null, "spent": -713.21, "end": -1264.42 },
+      "discrepancy": {
+        "start_diff": -1265.00,
+        "spent_diff": 4000.00,
+        "end_diff": -1265.00
+      },
+      "note": "KNOWN DISCREPANCY - $1,265 missing from start. Spent is $4,000 less than seed (exactly the allocation amount!)"
+    }
+  ],
+  "suspicious_transactions": [
+    {
+      "date": "1/20/2023",
+      "payee": "Unit",
+      "amount": -1267.00,
+      "description": "Extra Payment",
+      "note": "Amount very close to the $1,265 discrepancy"
+    },
+    {
+      "date": "10/4/2022",
+      "payee": "Vanguard",
+      "amount": 106737.40,
+      "description": "House DP",
+      "note": "Large transaction - verify imported correctly"
+    },
+    {
+      "date": "10/14/2022",
+      "payee": "House",
+      "amount": -117367.34,
+      "description": "",
+      "note": "Large transaction - verify imported correctly"
+    }
+  ]
+}

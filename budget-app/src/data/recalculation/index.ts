@@ -23,7 +23,7 @@
 // MAIN ENTRY POINT
 // ============================================================================
 
-export { triggerRecalculation } from './triggerRecalculation'
+export { triggerRecalculation, type RecalculationProgress } from './triggerRecalculation'
 
 // ============================================================================
 // MARKING AS STALE
@@ -31,6 +31,7 @@ export { triggerRecalculation } from './triggerRecalculation'
 
 export {
   markMonthsNeedRecalculation,
+  markAllMonthsFromOrdinal,
   setMonthInBudgetMap,
 } from './markMonthsNeedRecalculation'
 

@@ -35,12 +35,13 @@ export function calculateLiveCategoryBalances(
       allocated = existing.allocated
     }
 
+    // end_balance = start + allocated + spent (spent is negative for money out)
     balances[catId] = {
       category_id: catId,
       start_balance: startBalance,
       allocated,
       spent,
-      end_balance: startBalance + allocated - spent,
+      end_balance: startBalance + allocated + spent,
     }
   })
 
