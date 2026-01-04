@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useCategoriesPage } from '../../hooks'
-import { useApp } from '../../contexts/app_context'
+import { useCategoriesPage } from '../../../hooks'
+import { useApp } from '../../../contexts/app_context'
 import {
   ErrorAlert,
   Button,
   DropZone,
   formatCurrency,
   getBalanceColor,
-} from '../../components/ui'
-import { colors } from '../../styles/shared'
-import { useIsMobile } from '../../hooks/useIsMobile'
+} from '../../../components/ui'
+import { colors } from '../../../styles/shared'
+import { useIsMobile } from '../../../hooks/useIsMobile'
 import {
   CategoryGroupForm,
   CategoryGroupCard,
   UncategorizedSection,
-} from '../../components/budget/Categories'
-import { RecalculateAllButton } from '../../components/budget/Month'
+} from '../../../components/budget/Categories'
+import { RecalculateAllButton } from '../../../components/budget/Month'
 
 function Categories() {
   const {
@@ -263,3 +263,4 @@ function Categories() {
 }
 
 export default Categories
+

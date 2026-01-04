@@ -3,7 +3,7 @@
 # Check for files over 500 lines in the src directory
 # Used as a pre-commit hook to enforce file size limits
 
-MAX_LINES=500
+MAX_LINES=400
 EXIT_CODE=0
 
 echo "Checking for files over $MAX_LINES lines..."

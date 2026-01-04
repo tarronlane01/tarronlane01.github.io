@@ -86,9 +86,9 @@ export { getFutureMonths } from './queries/month'
 // CONSTANTS
 // ============================================================================
 export {
-  ADJUSTMENT_CATEGORY_ID,
-  ADJUSTMENT_CATEGORY_NAME,
-  isAdjustmentCategory,
+  NO_CATEGORY_ID,
+  NO_CATEGORY_NAME,
+  isNoCategory,
   NO_ACCOUNT_ID,
   NO_ACCOUNT_NAME,
   isNoAccount,

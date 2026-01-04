@@ -16,14 +16,17 @@ import {
 import { useScreenWidth } from '../../../hooks'
 import { colors } from '../../../styles/shared'
 import { logUserAction } from '@utils'
+import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME, NO_CATEGORY_ID } from '../../../data/constants'
 
 export type AccountEntry = [string, FinancialAccount]
 
 export interface TransactionFieldConfig {
   showCategory?: boolean
   showCleared?: boolean
-  /** Show the special "Adjustment" category option (for spend entries) */
-  showAdjustmentCategory?: boolean
+  /** Show the special "No Category" option (for spend entries) */
+  showNoCategoryOption?: boolean
+  /** Show the special "No Account" option (for spend entries) */
+  showNoAccountOption?: boolean
   accountLabel?: string
   payeePlaceholder?: string
   descriptionPlaceholder?: string
@@ -133,6 +136,13 @@ export function TransactionForm({
     if (isNaN(parsedAmount) || parsedAmount <= 0) return
     if (showCategory && !categoryId) return
     if (!accountId || !date) return
+    // Validation: Cannot have both No Category AND No Account selected
+    const isNoCategorySelected = categoryId === NO_CATEGORY_ID
+    const isNoAccount = accountId === NO_ACCOUNT_ID
+    if (isNoCategorySelected && isNoAccount) {
+      // Both cannot be "No" options - need at least one real category or account
+      return
+    }
     onSubmit({
       date, payee: payee.trim() || undefined,
       categoryId: showCategory ? categoryId : undefined,
@@ -142,8 +152,17 @@ export function TransactionForm({
     })
   }
 
+  // Check if both No Category and No Account are selected (invalid state)
+  const isNoCategorySelected = categoryId === NO_CATEGORY_ID
+  const isNoAccountSelected = accountId === NO_ACCOUNT_ID
+  const isBothNoOptions = isNoCategorySelected && isNoAccountSelected
+
   const accountSelect = (
     <SelectInput id="txn-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required style={{ fontSize: '0.85rem', padding: '0.5rem' }}>
+      {/* Special "No Account" option for spend entries */}
+      {config.showNoAccountOption && (
+        <option value={NO_ACCOUNT_ID}>{NO_ACCOUNT_NAME}</option>
+      )}
       {Object.entries(accountGroups).map(([groupId, group]) => {
         const grpAccounts = accountsByGroup[groupId]
         if (!grpAccounts?.length) return null
@@ -163,7 +182,7 @@ export function TransactionForm({
 
   const categoryField = showCategory && categories && categoryGroups ? (
     <FormField label="Category" htmlFor="txn-category">
-      <CategoryAutocomplete id="txn-category" value={categoryId} onChange={setCategoryId} categories={categories} categoryGroups={categoryGroups} placeholder="Search..." required showAdjustmentOption={config.showAdjustmentCategory} />
+      <CategoryAutocomplete id="txn-category" value={categoryId} onChange={setCategoryId} categories={categories} categoryGroups={categoryGroups} placeholder="Search..." required showNoCategoryOption={config.showNoCategoryOption} />
     </FormField>
   ) : null
 
@@ -178,16 +197,29 @@ export function TransactionForm({
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', paddingBottom: '0.1rem' }}>
       <span style={{ fontSize: '0.75rem', opacity: 0.7, fontWeight: 500 }}>&nbsp;</span>
       <div style={{ display: 'flex', gap: '0.25rem' }}>
-        <button type="submit" title={submitLabel} style={submitBtnStyle}>✓</button>
+        <button type="submit" title={isBothNoOptions ? 'Cannot select both "No Category" and "No Account"' : submitLabel} style={{ ...submitBtnStyle, opacity: isBothNoOptions ? 0.5 : 1, cursor: isBothNoOptions ? 'not-allowed' : 'pointer' }} disabled={isBothNoOptions}>✓</button>
         <button type="button" onClick={() => { logUserAction('CLICK', 'Cancel Transaction Form'); onCancel() }} title="Cancel" style={cancelBtnStyle}>✕</button>
         {onDelete && <button type="button" onClick={() => { logUserAction('CLICK', 'Delete Transaction'); onDelete() }} title="Delete" style={deleteBtnStyle}>🗑</button>}
       </div>
     </div>
   )
 
+  const validationWarning = isBothNoOptions ? (
+    <div style={{
+      background: `color-mix(in srgb, ${colors.error} 15%, transparent)`,
+      border: `1px solid ${colors.errorBorder}`,
+      borderRadius: '6px',
+      padding: '0.5rem 0.75rem',
+      fontSize: '0.85rem',
+      color: colors.error,
+    }}>
+      Cannot select both "No Category" and "No Account" — at least one must be a real category or account.
+    </div>
+  ) : null
+
   const stackedButtonGroup = (
     <FormButtonGroup>
-      <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
+      <Button type="submit" actionName={submitLabel} disabled={isBothNoOptions}>{submitLabel}</Button>
       <Button type="button" variant="secondary" actionName="Cancel Transaction Form" onClick={onCancel}>Cancel</Button>
       {onDelete && <Button type="button" variant="danger" actionName="Delete Transaction" onClick={onDelete}>🗑️ Delete</Button>}
     </FormButtonGroup>
@@ -223,6 +255,7 @@ export function TransactionForm({
               <label htmlFor="txn-cleared-stacked" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>Cleared (appeared in bank account)</label>
             </div>
           )}
+          {validationWarning}
           {extraContent}
         </div>
         {stackedButtonGroup}
@@ -260,6 +293,7 @@ export function TransactionForm({
         {clearedCheckbox}
         {inlineActionButtons}
       </div>
+      {validationWarning}
       {extraContent}
     </FormWrapper>
   )

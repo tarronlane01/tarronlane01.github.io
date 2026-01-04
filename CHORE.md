@@ -3,6 +3,7 @@
 Let's deploy this code with a git message of "Fixed import category balances" using the deploy.sh script. Before doing this, let's make sure all files are under 500 lines, and that we've resolved all build and linter errors.
 
 # Integration Testing
+- Organize page files into folder structure matching site URLs (e.g., settings/ for /budget/settings/*, admin/ for /budget/admin/*)
 - Make Sure recalc writes happen effciently are won't happen more than once
 - make sure all file sizes uner 500
 - Make sure build is successful

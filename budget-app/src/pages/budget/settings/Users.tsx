@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { useBudget } from '../../contexts/budget_context'
-import { useBudgetData } from '../../hooks'
+import { useBudget } from '../../../contexts/budget_context'
+import { useBudgetData } from '../../../hooks'
 import { logUserAction } from '@utils/actionLogger'
 
-function SettingsUsers() {
+function Users() {
   // Context: identifiers only
   const { selectedBudgetId, currentUserId } = useBudget()
 
@@ -380,5 +380,5 @@ function SettingsUsers() {
   )
 }
 
-export default SettingsUsers
+export default Users
 

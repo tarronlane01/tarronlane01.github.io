@@ -4,10 +4,11 @@ import { useBudget } from '../../../contexts/budget_context'
 import { useBudgetData, useBudgetMonth } from '../../../hooks'
 import { useIsMobile } from '../../../hooks/useIsMobile'
 import { usePayeesQuery } from '../../../data'
-import type { FinancialAccount, IncomeTransaction } from '@types'
+import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors } from '../../../styles/shared'
 import { IncomeForm } from '../Income'
+import { IncomeGridRow } from './IncomeGridRow'
 import { logUserAction } from '@utils'
 import { isNoAccount, NO_ACCOUNT_NAME } from '../../../data/constants'
 
@@ -132,7 +133,6 @@ export function MonthIncome() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Date, Payee, Account, Amount, Description, Actions
         gridTemplateColumns: isMobile ? '1fr' : '5rem 1.5fr 2fr 7rem 1.5fr 3rem',
       }}>
         {/* Sticky wrapper using subgrid */}
@@ -284,147 +284,3 @@ export function MonthIncome() {
     </div>
   )
 }
-
-// =============================================================================
-// INCOME GRID ROW - renders directly as grid items (display: contents)
-// =============================================================================
-
-interface IncomeGridRowProps {
-  income: IncomeTransaction
-  accountName: string
-  accountGroupName?: string
-  onEdit: () => void
-  onDelete: () => void
-  isMobile?: boolean
-  isEvenRow: boolean
-}
-
-function IncomeGridRow({ income, accountName, accountGroupName, onEdit, onDelete, isMobile, isEvenRow }: IncomeGridRowProps) {
-  const formattedDate = income.date
-    ? new Date(income.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : '—'
-
-  const accountDisplay = accountGroupName ? `${accountGroupName} / ${accountName}` : accountName
-  const rowBg = isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)'
-
-  // Mobile: Card-like view (tappable)
-  if (isMobile) {
-    return (
-      <div
-        onClick={onEdit}
-        style={{
-          gridColumn: '1 / -1',
-          display: 'grid',
-          gridTemplateColumns: '1fr auto',
-          gap: '0.5rem',
-          padding: '0.75rem 1rem',
-          background: rowBg,
-          cursor: 'pointer',
-          transition: 'background 0.15s',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', opacity: 0.5, fontFamily: 'monospace', minWidth: '3rem' }}>
-              {formattedDate}
-            </span>
-            <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>
-              {income.payee || '—'}
-            </span>
-          </div>
-          <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-            → {accountDisplay}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, color: colors.success, fontFamily: 'monospace' }}>
-            +{formatCurrency(income.amount)}
-          </span>
-        </div>
-      </div>
-    )
-  }
-
-  // Desktop: Grid row using display: contents
-  const cellStyle: React.CSSProperties = {
-    padding: '0.6rem 0.25rem',
-    background: rowBg,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.9rem',
-  }
-
-  return (
-    <div style={{ display: 'contents' }}>
-      {/* Date */}
-      <div style={{ ...cellStyle, fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
-        {formattedDate}
-      </div>
-
-      {/* Payee */}
-      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {income.payee || '—'}
-        </span>
-      </div>
-
-      {/* Account */}
-      <div style={{ ...cellStyle, opacity: 0.7, overflow: 'hidden' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-          {accountDisplay}
-        </span>
-      </div>
-
-      {/* Amount */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: colors.success, fontFamily: 'monospace' }}>
-        +{formatCurrency(income.amount)}
-      </div>
-
-      {/* Description */}
-      <div style={{ ...cellStyle, paddingLeft: '0.5rem', opacity: 0.6, overflow: 'hidden' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
-          {income.description || '—'}
-        </span>
-      </div>
-
-      {/* Actions */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', gap: '0.25rem' }}>
-        <button
-          onClick={onEdit}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            opacity: 0.5,
-            fontSize: '0.85rem',
-            padding: '0.25rem',
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
-          title="Edit"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={onDelete}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            opacity: 0.5,
-            fontSize: '0.85rem',
-            padding: '0.25rem',
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
-          title="Delete"
-        >
-          🗑️
-        </button>
-      </div>
-    </div>
-  )
-}
-

@@ -1,0 +1,142 @@
+/**
+ * Helper functions for Mark Months Need Recalculation
+ */
+
+import type { MonthMap } from '@types'
+import { queryClient, queryKeys } from '../queryClient'
+import type { BudgetData } from '../queries/budget'
+import { getYearMonthOrdinal } from '@utils'
+
+/**
+ * Get the 7-month window (3 past, current, 3 future) ordinals.
+ */
+export function getMonthWindowOrdinals(): string[] {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1 // 1-12
+
+  const ordinals: string[] = []
+
+  // 3 months in the past
+  for (let i = 3; i > 0; i--) {
+    let year = currentYear
+    let month = currentMonth - i
+    while (month < 1) {
+      month += 12
+      year -= 1
+    }
+    ordinals.push(getYearMonthOrdinal(year, month))
+  }
+
+  // Current month
+  ordinals.push(getYearMonthOrdinal(currentYear, currentMonth))
+
+  // 3 months in the future
+  for (let i = 1; i <= 3; i++) {
+    let year = currentYear
+    let month = currentMonth + i
+    while (month > 12) {
+      month -= 12
+      year += 1
+    }
+    ordinals.push(getYearMonthOrdinal(year, month))
+  }
+
+  return ordinals
+}
+
+/**
+ * The month_map now contains ALL months in the budget, not just the 7-month window.
+ * This allows us to derive earliest_month, latest_month, etc. from the map.
+ * No cleanup is needed - all months are preserved.
+ */
+export function cleanupMonthMap(monthMap: MonthMap): MonthMap {
+  // Return as-is - we now keep all months in the map
+  return monthMap
+}
+
+/**
+ * Check if ALL months after the specified ordinal are already marked in cache.
+ * Returns true only if the cache exists AND all relevant months are already marked.
+ *
+ * This optimization prevents unnecessary Firestore writes when the user
+ * makes multiple edits to the same month in quick succession.
+ */
+export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, afterOrdinal: string): boolean {
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+  if (!cachedBudget?.monthMap) return false
+
+  // Check if any future month in the cache is NOT marked
+  for (const [ordinal, info] of Object.entries(cachedBudget.monthMap)) {
+    if (ordinal > afterOrdinal && !info.needs_recalculation) {
+      return false // Found a future month that's not marked
+    }
+  }
+
+  return true // All future months (if any) are already marked
+}
+
+/**
+ * Update the cache to mark the budget and months as needing recalculation.
+ */
+export function updateCacheWithMarking(
+  budgetId: string,
+  _monthOrdinalToMark: string,
+  updatedMonthMap: MonthMap
+): void {
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+
+  if (cachedBudget) {
+    queryClient.setQueryData<BudgetData>(budgetKey, {
+      ...cachedBudget,
+      isNeedsRecalculation: true,
+      monthMap: updatedMonthMap,
+      budget: {
+        ...cachedBudget.budget,
+        is_needs_recalculation: true,
+        month_map: updatedMonthMap,
+      },
+    })
+  }
+}
+
+/**
+ * Update cache for setMonthInBudgetMap
+ */
+export function updateCacheWithMonth(budgetId: string, cleanedMonthMap: MonthMap): void {
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+  if (cachedBudget) {
+    queryClient.setQueryData<BudgetData>(budgetKey, {
+      ...cachedBudget,
+      monthMap: cleanedMonthMap,
+      budget: {
+        ...cachedBudget.budget,
+        month_map: cleanedMonthMap,
+      },
+    })
+  }
+}
+
+/**
+ * Update cache for markAllMonthsFromOrdinal
+ */
+export function updateCacheWithAllMonthsMarked(budgetId: string, updatedMonthMap: MonthMap): void {
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+  if (cachedBudget) {
+    queryClient.setQueryData<BudgetData>(budgetKey, {
+      ...cachedBudget,
+      isNeedsRecalculation: true,
+      monthMap: updatedMonthMap,
+      budget: {
+        ...cachedBudget.budget,
+        is_needs_recalculation: true,
+        month_map: updatedMonthMap,
+      },
+    })
+  }
+}
+

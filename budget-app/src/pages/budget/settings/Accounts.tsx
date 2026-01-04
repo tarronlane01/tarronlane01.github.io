@@ -1,19 +1,19 @@
 import { useState, useMemo, type DragEvent } from 'react'
-import { useAccountsPage } from '../../hooks'
+import { useAccountsPage } from '../../../hooks'
 import {
   ErrorAlert,
   Button,
   DropZone,
   formatCurrency,
   getBalanceColor,
-} from '../../components/ui'
-import { useIsMobile } from '../../hooks/useIsMobile'
+} from '../../../components/ui'
+import { useIsMobile } from '../../../hooks/useIsMobile'
 import {
   GroupForm,
   AccountGroupCard,
   UngroupedAccountsSection,
-} from '../../components/budget/Accounts'
-import { RecalculateAllButton } from '../../components/budget/Month'
+} from '../../../components/budget/Accounts'
+import { RecalculateAllButton } from '../../../components/budget/Month'
 
 type DragType = 'account' | 'group' | null
 
@@ -328,3 +328,4 @@ function Accounts() {
 }
 
 export default Accounts
+

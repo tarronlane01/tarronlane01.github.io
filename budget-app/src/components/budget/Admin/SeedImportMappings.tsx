@@ -8,7 +8,7 @@
 import { useMemo } from 'react'
 import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../../contexts/budget_context'
 import type { MappingEntry } from '../../../hooks/migrations/useSeedImport'
-import { ADJUSTMENT_CATEGORY_ID, ADJUSTMENT_CATEGORY_NAME, NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '../../../data/constants'
+import { NO_CATEGORY_ID, NO_CATEGORY_NAME, NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '../../../data/constants'
 
 // =============================================================================
 // TYPES
@@ -139,9 +139,9 @@ export function MappingSection({
   // Include special categories/accounts for all combined imports
   const sortedCategories = useMemo(() => {
     const catEntries = Object.entries(categories).sort((a, b) => a[1].name.localeCompare(b[1].name))
-    // Add Adjustment category at the top for spend records
+    // Add "No Category" at the top for spend records
     return [
-      [ADJUSTMENT_CATEGORY_ID, { name: ADJUSTMENT_CATEGORY_NAME, category_group_id: null, sort_order: -1 }] as const,
+      [NO_CATEGORY_ID, { name: NO_CATEGORY_NAME, category_group_id: null, sort_order: -1 }] as const,
       ...catEntries,
     ]
   }, [categories])

@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import useFirebaseAuth from '../../hooks/useFirebaseAuth'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '../../hooks'
+import useFirebaseAuth from '../../../hooks/useFirebaseAuth'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '../../../hooks'
 import {
   Spinner,
   DatabaseCleanupCard,
   FeedbackMigrationCard,
   DeleteAllMonthsCard,
   SeedImportCard,
-} from '../../components/budget/Admin'
-import { Modal, Button } from '../../components/ui'
+} from '../../../components/budget/Admin'
+import { Modal, Button } from '../../../components/ui'
 import { logUserAction } from '@utils/actionLogger'
 
 /**
@@ -32,7 +32,7 @@ function handleClearAllCachesAndReload() {
   window.location.reload()
 }
 
-function SettingsMigration() {
+function Migration() {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
   const [showReloadModal, setShowReloadModal] = useState(false)
@@ -215,4 +215,5 @@ function SettingsMigration() {
   )
 }
 
-export default SettingsMigration
+export default Migration
+

@@ -16,7 +16,7 @@ import type {
   CategoryMonthBalance,
   AccountMonthBalance,
 } from '@types'
-import { isAdjustmentCategory, isNoAccount } from '../constants'
+import { isNoCategory, isNoAccount } from '../constants'
 
 // ============================================================================
 // TYPES
@@ -97,23 +97,23 @@ export function recalculateMonth(
 
 /**
  * Recalculate category balances with correct start balances from previous month.
- * Note: The special Adjustment category is excluded as it doesn't track balances.
+ * Note: The special "No Category" is excluded as it doesn't track balances.
  */
 function recalculateCategoryBalances(
   currentBalances: CategoryMonthBalance[],
   prevCategoryEndBalances: Record<string, number>
 ): CategoryMonthBalance[] {
-  // Build map of existing balances (excluding Adjustment category)
+  // Build map of existing balances (excluding "No Category")
   const balanceMap = new Map<string, CategoryMonthBalance>()
   for (const cb of currentBalances) {
-    if (isAdjustmentCategory(cb.category_id)) continue
+    if (isNoCategory(cb.category_id)) continue
     balanceMap.set(cb.category_id, cb)
   }
 
-  // Update each existing balance with correct start_balance (excluding Adjustment)
+  // Update each existing balance with correct start_balance (excluding "No Category")
   // Note: spent is negative for money out, positive for money in
   const updated: CategoryMonthBalance[] = currentBalances
-    .filter(cb => !isAdjustmentCategory(cb.category_id))
+    .filter(cb => !isNoCategory(cb.category_id))
     .map(cb => {
       const startBalance = prevCategoryEndBalances[cb.category_id] ?? 0
       return {
@@ -123,9 +123,9 @@ function recalculateCategoryBalances(
       }
     })
 
-  // Add any categories from previous month that aren't in current (excluding Adjustment)
+  // Add any categories from previous month that aren't in current (excluding "No Category")
   for (const [catId, endBal] of Object.entries(prevCategoryEndBalances)) {
-    if (isAdjustmentCategory(catId)) continue
+    if (isNoCategory(catId)) continue
     if (!balanceMap.has(catId)) {
       updated.push({
         category_id: catId,
@@ -208,15 +208,15 @@ function recalculateAccountBalances(
 
 /**
  * Extract a snapshot from a month for passing to the next month's recalculation.
- * Note: The special Adjustment category and No Account are excluded as they don't track balances.
+ * Note: The special "No Category" and "No Account" are excluded as they don't track balances.
  */
 export function extractSnapshotFromMonth(month: MonthDocument): PreviousMonthSnapshot {
   const categoryEndBalances: Record<string, number> = {}
   const accountEndBalances: Record<string, number> = {}
 
   for (const cb of month.category_balances || []) {
-    // Skip the Adjustment category - it doesn't track balances
-    if (isAdjustmentCategory(cb.category_id)) continue
+    // Skip "No Category" - it doesn't track balances
+    if (isNoCategory(cb.category_id)) continue
     categoryEndBalances[cb.category_id] = cb.end_balance
   }
 

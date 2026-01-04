@@ -4,7 +4,7 @@
  * React Query hook for fetching all feedback items.
  * Uses fetchFeedback for the actual Firestore query.
  *
- * Used by the SettingsFeedback page for admin users.
+ * Used by the admin Feedback page for admin users.
  */
 
 import { useQuery } from '@tanstack/react-query'

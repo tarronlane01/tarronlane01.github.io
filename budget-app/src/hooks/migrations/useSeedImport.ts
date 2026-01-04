@@ -2,14 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import type { CategoriesMap, AccountsMap } from '../../contexts/budget_context'
-import { readDocByPath, writeDocByPath } from '../../data/firestore'
-import type { FirestoreData } from '../../data/firestore/types'
 import { queryClient, queryKeys } from '../../data/queryClient'
 
-import type { SeedImportStatus, ParsedSeedRow, MappingEntry, ImportDataMap, SeedImportResult, ImportProgress } from './seedImportTypes'
+import type { SeedImportStatus, ParsedSeedRow, MappingEntry, SeedImportResult, ImportProgress } from './seedImportTypes'
 import { parseCSV, parseRawCashFlowCSV } from './seedImportParser'
 import { findUnmappedEntities } from './seedImportProcessors'
 import { importSeedData } from './seedImportLogic'
+import { detectFileFormat, loadExistingMappings, saveMappings } from './useSeedImportHelpers'
 
 export type { SeedRecordType, SeedImportStatus, ParsedSeedRow, MappingEntry, ImportDataMap, SeedImportResult, ImportProgress } from './seedImportTypes'
 
@@ -31,103 +30,6 @@ export function useSeedImport(budgetId: string | null) {
   const isParsing = status === 'parsing'
   const isImporting = status === 'importing'
   const hasUnmappedEntities = unmappedCategories.length > 0 || unmappedAccounts.length > 0
-
-  // Load existing mappings from Firestore
-  const loadExistingMappings = useCallback(async (): Promise<{
-    categoryMappings: Map<string, MappingEntry>
-    accountMappings: Map<string, MappingEntry>
-  }> => {
-    if (!budgetId) return { categoryMappings: new Map(), accountMappings: new Map() }
-
-    try {
-      const { exists, data } = await readDocByPath<ImportDataMap>(
-        'data_mappings',
-        `${budgetId}_import_data_map`,
-        'loading existing import mappings'
-      )
-
-      if (!exists || !data) {
-        return { categoryMappings: new Map(), accountMappings: new Map() }
-      }
-
-      const catMap = new Map<string, MappingEntry>()
-      const accMap = new Map<string, MappingEntry>()
-
-      if (data.category_mappings) {
-        for (const [oldName, mapping] of Object.entries(data.category_mappings)) {
-          catMap.set(oldName, { oldName, newId: mapping.id, newName: mapping.name })
-        }
-      }
-
-      if (data.account_mappings) {
-        for (const [oldName, mapping] of Object.entries(data.account_mappings)) {
-          accMap.set(oldName, { oldName, newId: mapping.id, newName: mapping.name })
-        }
-      }
-
-      return { categoryMappings: catMap, accountMappings: accMap }
-    } catch (err) {
-      console.error('[useSeedImport] Failed to load existing mappings:', err)
-      return { categoryMappings: new Map(), accountMappings: new Map() }
-    }
-  }, [budgetId])
-
-  // Save mappings to Firestore
-  const saveMappings = useCallback(async (
-    catMappings: Map<string, MappingEntry>,
-    accMappings: Map<string, MappingEntry>
-  ) => {
-    if (!budgetId) return
-
-    const categoryMappingsObj: Record<string, { id: string; name: string }> = {}
-    const accountMappingsObj: Record<string, { id: string; name: string }> = {}
-
-    for (const [oldName, mapping] of catMappings) {
-      categoryMappingsObj[oldName] = { id: mapping.newId, name: mapping.newName }
-    }
-
-    for (const [oldName, mapping] of accMappings) {
-      accountMappingsObj[oldName] = { id: mapping.newId, name: mapping.newName }
-    }
-
-    const doc: ImportDataMap = {
-      category_mappings: categoryMappingsObj,
-      account_mappings: accountMappingsObj,
-      last_updated: new Date().toISOString(),
-    }
-
-    await writeDocByPath(
-      'data_mappings',
-      `${budgetId}_import_data_map`,
-      doc as unknown as FirestoreData,
-      'saving import mappings'
-    )
-  }, [budgetId])
-
-  /**
-   * Detect file format from content
-   * - Combined format starts with "type," (header) or valid type like "income,", "spend,", "allocation,"
-   * - Raw cash flow format starts with "Cash Flow" or "Date," header
-   */
-  const detectFileFormat = (content: string): 'combined' | 'raw_cash_flow' => {
-    const firstLine = content.split('\n')[0]?.toLowerCase().trim() || ''
-
-    // Check for raw cash flow format indicators
-    if (firstLine.startsWith('cash flow') || firstLine.startsWith('date,')) {
-      return 'raw_cash_flow'
-    }
-
-    // Check for combined format (starts with type column)
-    if (firstLine.startsWith('type,') ||
-        firstLine.startsWith('income,') ||
-        firstLine.startsWith('spend,') ||
-        firstLine.startsWith('allocation,')) {
-      return 'combined'
-    }
-
-    // Default to combined if unclear
-    return 'combined'
-  }
 
   // Parse file (auto-detects format: combined or raw cash flow)
   const parseFile = useCallback(async (
@@ -184,7 +86,7 @@ export function useSeedImport(budgetId: string | null) {
 
       // Load existing mappings (from saved mappings document)
       const { categoryMappings: existingCatMappings, accountMappings: existingAccMappings } =
-        await loadExistingMappings()
+        await loadExistingMappings(budgetId)
 
       // Build category name lookup (case-insensitive)
       const categoryNameToId = new Map<string, { id: string; name: string }>()
@@ -274,7 +176,7 @@ export function useSeedImport(budgetId: string | null) {
       setStatus('error')
       setParsedData(null)
     }
-  }, [loadExistingMappings])
+  }, [budgetId])
 
   // Set category mapping
   const setCategoryMapping = useCallback((oldName: string, newId: string, newName: string) => {
@@ -347,7 +249,7 @@ export function useSeedImport(budgetId: string | null) {
     })
 
     // Save mappings first
-    await saveMappings(categoryMappings, accountMappings)
+    await saveMappings(budgetId, categoryMappings, accountMappings)
 
     // Import the data (combined format - handles all record types)
     const result = await importSeedData(
@@ -371,7 +273,7 @@ export function useSeedImport(budgetId: string | null) {
     setImportProgress(prev => prev ? { ...prev, phase: 'complete', percentComplete: 100 } : null)
     setImportResult(result)
     setStatus(result.success ? 'complete' : 'error')
-  }, [budgetId, parsedData, categoryMappings, accountMappings, saveMappings])
+  }, [budgetId, parsedData, categoryMappings, accountMappings])
 
   // Reset
   const reset = useCallback(() => {

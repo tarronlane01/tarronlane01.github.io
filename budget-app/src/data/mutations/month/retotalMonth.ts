@@ -14,7 +14,7 @@
  */
 
 import type { MonthDocument, AccountMonthBalance, CategoryMonthBalance } from '@types'
-import { isAdjustmentCategory, isNoAccount } from '../../constants'
+import { isNoCategory, isNoAccount } from '../../constants'
 
 /**
  * Re-total a month document based on current transactions.
@@ -120,36 +120,36 @@ function retotalAccountBalances(month: MonthDocument): AccountMonthBalance[] {
  * Preserves start_balance and allocated, re-totals spent and end_balance.
  * Also creates new CategoryMonthBalance entries for categories with expenses
  * that don't yet have a balance entry.
- * Note: The special Adjustment category is excluded as it doesn't track balances.
+ * Note: The special "No Category" is excluded as it doesn't track balances.
  */
 function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
   const expenses = month.expenses || []
   const existingBalances = month.category_balances || []
 
-  // Build map of existing balances (excluding Adjustment category)
+  // Build map of existing balances (excluding "No Category")
   const balanceMap = new Map<string, CategoryMonthBalance>()
   for (const cb of existingBalances) {
-    if (isAdjustmentCategory(cb.category_id)) continue
+    if (isNoCategory(cb.category_id)) continue
     balanceMap.set(cb.category_id, cb)
   }
 
-  // Calculate spent per category from expenses (excluding Adjustment category)
+  // Calculate spent per category from expenses (excluding "No Category")
   // Note: expense.amount follows CSV convention: negative = money out, positive = money in
   const spentByCategory = new Map<string, number>()
   for (const exp of expenses) {
-    if (isAdjustmentCategory(exp.category_id)) continue
+    if (isNoCategory(exp.category_id)) continue
     const current = spentByCategory.get(exp.category_id) || 0
     spentByCategory.set(exp.category_id, current + exp.amount)
   }
 
-  // Collect all category IDs (from existing balances AND from expenses, excluding Adjustment)
+  // Collect all category IDs (from existing balances AND from expenses, excluding "No Category")
   const allCategoryIds = new Set<string>()
   for (const cb of existingBalances) {
-    if (isAdjustmentCategory(cb.category_id)) continue
+    if (isNoCategory(cb.category_id)) continue
     allCategoryIds.add(cb.category_id)
   }
   for (const exp of expenses) {
-    if (isAdjustmentCategory(exp.category_id)) continue
+    if (isNoCategory(exp.category_id)) continue
     allCategoryIds.add(exp.category_id)
   }
 

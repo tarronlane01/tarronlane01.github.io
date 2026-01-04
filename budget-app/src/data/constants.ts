@@ -5,25 +5,25 @@
  */
 
 // =============================================================================
-// ADJUSTMENT CATEGORY
+// NO CATEGORY (ghost category for spend without a real category)
 // =============================================================================
 
 /**
- * Special "Adjustment" category ID for spend entries that don't need a real category.
+ * Special "No Category" ID for spend entries that don't need a real category.
  * Used for things like adding starting account balances, corrections, etc.
  * This category:
  * - Appears in category selection for spend entries
  * - Does NOT track a balance (excluded from category balance calculations)
  * - Does NOT appear in the regular category list
  */
-export const ADJUSTMENT_CATEGORY_ID = '__NO_CATEGORY__'
-export const ADJUSTMENT_CATEGORY_NAME = 'No Category'
+export const NO_CATEGORY_ID = '__NO_CATEGORY__'
+export const NO_CATEGORY_NAME = 'No Category'
 
 /**
- * Check if a category ID is the special Adjustment category
+ * Check if a category ID is the special "No Category"
  */
-export function isAdjustmentCategory(categoryId: string | null | undefined): boolean {
-  return categoryId === ADJUSTMENT_CATEGORY_ID
+export function isNoCategory(categoryId: string | null | undefined): boolean {
+  return categoryId === NO_CATEGORY_ID
 }
 
 // =============================================================================

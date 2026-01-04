@@ -9,7 +9,7 @@ import type { CategoriesMap, AccountsMap } from '../../contexts/budget_context'
 import type { ParsedSeedRow, MappingEntry } from './seedImportTypes'
 import { formatDateForStorage } from './seedImportParser'
 import { retotalMonth } from '../../data/mutations/month/retotalMonth'
-import { NO_ACCOUNT_ID, ADJUSTMENT_CATEGORY_ID } from '../../data/constants'
+import { NO_ACCOUNT_ID, NO_CATEGORY_ID } from '../../data/constants'
 
 // Common N/A values that should map to special accounts/categories
 const NA_VALUES = ['n/a', 'na', 'none', '-', '']
@@ -46,9 +46,9 @@ export function resolveCategoryId(
   categories: CategoriesMap,
   mappings: Map<string, MappingEntry>
 ): string | null {
-  // Auto-map N/A values to the special "Adjustment" category
+  // Auto-map N/A values to the special "No Category"
   if (NA_VALUES.includes(name.toLowerCase().trim())) {
-    return ADJUSTMENT_CATEGORY_ID
+    return NO_CATEGORY_ID
   }
 
   // Check mappings first
@@ -322,7 +322,7 @@ export function findUnmappedEntities(
       const isKnown = categoryNames.has(catName)
       const isMapped = existingCategoryMappings.has(row.category)
       const isNAValue = NA_VALUES.includes(catName)
-      // Skip N/A values - they auto-map to Adjustment category
+      // Skip N/A values - they auto-map to "No Category"
       if (!isKnown && !isMapped && !isNAValue && row.category) {
         unmappedCategories.add(row.category)
       }
