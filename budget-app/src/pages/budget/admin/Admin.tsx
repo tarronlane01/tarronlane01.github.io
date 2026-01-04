@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
-import { useBudget, type AdminTab } from '../../../contexts/budget_context'
+import { useBudget, type AdminTab } from '@contexts/budget_context'
 import { TabNavigation, type Tab } from '../../../components/ui'
 
 const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests']

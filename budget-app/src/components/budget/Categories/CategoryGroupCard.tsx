@@ -1,13 +1,13 @@
 import type { DragEvent } from 'react'
-import type { Category, CategoryGroup } from '../../../contexts/budget_context'
+import type { Category, CategoryGroup } from '@contexts/budget_context'
 import { Button, DraggableCard } from '../../ui'
-import { listContainer, colors } from '../../../styles/shared'
+import { listContainer, colors } from '@styles/shared'
 import { CategoryForm, type CategoryFormData } from './CategoryForm'
 import { CategoryGroupForm, type CategoryGroupFormData } from './CategoryGroupForm'
 import { CategoryEndDropZone } from './CategoryEndDropZone'
 import { CategoryCardContent } from './CategoryCardContent'
 import { CategoryGroupHeader } from './CategoryGroupHeader'
-import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
+import type { CategoryBalance } from '@hooks'
 import { logUserAction } from '@utils'
 
 type CategoryEntry = [string, Category]

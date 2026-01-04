@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { BudgetInvite } from '@types'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface PendingInvitesScreenProps {
   invites: BudgetInvite[]

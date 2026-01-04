@@ -13,12 +13,12 @@
  */
 
 import { useCallback, useEffect } from 'react'
-import { useApp } from '../contexts/app_context'
+import { useApp } from '@contexts'
 import {
   useMonthQuery,
   queryClient,
   queryKeys,
-} from '../data'
+} from '@data'
 import {
   useAddIncome,
   useUpdateIncome,

@@ -13,10 +13,10 @@ import {
   CategoryAutocomplete,
   Checkbox,
 } from '../../ui'
-import { useScreenWidth } from '../../../hooks'
-import { colors } from '../../../styles/shared'
+import { useScreenWidth } from '@hooks'
+import { colors } from '@styles/shared'
 import { logUserAction } from '@utils'
-import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME, NO_CATEGORY_ID } from '../../../data/constants'
+import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME, NO_CATEGORY_ID } from '@data/constants'
 
 export type AccountEntry = [string, FinancialAccount]
 

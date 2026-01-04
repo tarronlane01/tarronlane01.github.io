@@ -1,5 +1,5 @@
 import { useState, useMemo, type DragEvent } from 'react'
-import { useAccountsPage } from '../../../hooks'
+import { useAccountsPage } from '@hooks'
 import {
   ErrorAlert,
   Button,
@@ -7,7 +7,7 @@ import {
   formatCurrency,
   getBalanceColor,
 } from '../../../components/ui'
-import { useIsMobile } from '../../../hooks/useIsMobile'
+import { useIsMobile } from '@hooks'
 import {
   GroupForm,
   AccountGroupCard,

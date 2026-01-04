@@ -6,7 +6,7 @@
 
 import type { Category, CategoryMonthBalance } from '@types'
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 // Shared styles for full-height field containers with centered content
 const fieldContainer = {

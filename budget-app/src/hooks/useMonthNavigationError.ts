@@ -73,7 +73,6 @@ export function useMonthNavigationError({
     // If no months in budget, can't redirect - just show error
     // Use queueMicrotask to avoid synchronous setState in effect
     if (!earliest || !latest) {
-      console.log('[useMonthNavigationError] Cannot redirect - no months in budget')
       queueMicrotask(() => setError(`Error loading month: ${monthError.message}`))
       return
     }

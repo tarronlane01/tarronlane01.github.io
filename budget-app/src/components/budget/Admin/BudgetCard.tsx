@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import type { BudgetSummary } from '../../../contexts/budget_context'
+import type { BudgetSummary } from '@contexts/budget_context'
 
 export interface BudgetCardProps {
   budget: BudgetSummary

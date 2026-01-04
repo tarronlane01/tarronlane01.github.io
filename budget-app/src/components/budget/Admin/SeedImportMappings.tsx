@@ -6,9 +6,9 @@
  */
 
 import { useMemo } from 'react'
-import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '../../../contexts/budget_context'
-import type { MappingEntry } from '../../../hooks/migrations/useSeedImport'
-import { NO_CATEGORY_ID, NO_CATEGORY_NAME, NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '../../../data/constants'
+import type { CategoriesMap, AccountsMap, AccountGroupsMap } from '@contexts/budget_context'
+import type { MappingEntry } from '@hooks/migrations/useSeedImport'
+import { NO_CATEGORY_ID, NO_CATEGORY_NAME, NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '@data/constants'
 
 // =============================================================================
 // TYPES

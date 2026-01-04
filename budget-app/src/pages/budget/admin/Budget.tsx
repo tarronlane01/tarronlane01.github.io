@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { useApp } from '../../../contexts/app_context'
-import { useBudget } from '../../../contexts/budget_context'
-import { useBudgetData } from '../../../hooks'
+import { useApp } from '@contexts'
+import { useBudget } from '@contexts'
+import { useBudgetData } from '@hooks'
 
 function Budget() {
   const { addLoadingHold, removeLoadingHold } = useApp()

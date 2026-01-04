@@ -38,3 +38,19 @@ export function getYearMonthOrdinal(year: number, month: number): string {
   return `${year}${month.toString().padStart(2, '0')}`
 }
 
+/**
+ * Format an ISO date string for display
+ * @param isoString - ISO date string
+ * @returns Formatted date string (e.g., "Jan 3, 2025, 2:30 PM")
+ */
+export function formatDate(isoString: string) {
+  const date = new Date(isoString)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+

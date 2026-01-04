@@ -32,15 +32,3 @@ export { ContentContainer } from './ContentContainer'
 export { SectionTotalHeader } from './SectionTotalHeader'
 export { DebtBorder } from './DebtBorder'
 
-// Utility functions
-export function formatDate(isoString: string) {
-  const date = new Date(isoString)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-

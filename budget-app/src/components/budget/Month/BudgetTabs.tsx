@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { type BudgetTab } from '../../../contexts/budget_context'
+import { type BudgetTab } from '@contexts'
 import { TabNavigation, type Tab } from '../../ui'
 
 // Re-export for backward compatibility

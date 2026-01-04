@@ -1,5 +1,5 @@
 import { Modal, Button, formatCurrency } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 export interface RecalcResults {
   status: 'confirming' | 'pending' | 'finding_months' | 'processing_months' | 'updating_budget' | 'done' | 'error'

@@ -1,7 +1,8 @@
 /** Helper functions for seed import hook - File format detection and mappings persistence. */
 
-import { readDocByPath, writeDocByPath } from '../../data/firestore'
-import type { FirestoreData } from '../../data/firestore/types'
+// eslint-disable-next-line no-restricted-imports -- Migration utility needs direct Firestore access
+import { readDocByPath, writeDocByPath } from '@firestore'
+import type { FirestoreData } from '@types'
 import type { MappingEntry, ImportDataMap } from './seedImportTypes'
 
 /**

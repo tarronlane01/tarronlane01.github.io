@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useBudget } from '../../../contexts/budget_context'
-import { useBudgetData, useBudgetMonth } from '../../../hooks'
-import { useIsMobile } from '../../../hooks/useIsMobile'
-import { usePayeesQuery } from '../../../data'
+import { useBudget } from '@contexts'
+import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useIsMobile } from '@hooks'
+import { usePayeesQuery } from '@data'
 import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, getBalanceColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 import { IncomeForm } from '../Income'
 import { IncomeGridRow } from './IncomeGridRow'
 import { logUserAction } from '@utils'
-import { isNoAccount, NO_ACCOUNT_NAME } from '../../../data/constants'
+import { isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {

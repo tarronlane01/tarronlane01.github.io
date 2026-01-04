@@ -12,7 +12,7 @@
  */
 
 import { useState } from 'react'
-import { useBudget } from '../contexts/budget_context'
+import { useBudget } from '@contexts'
 import type { Category, CategoriesMap, CategoryGroup } from '@types'
 import { useBudgetData } from './useBudgetData'
 import { useCategoryBalances } from './useCategoryBalances'

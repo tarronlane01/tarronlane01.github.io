@@ -10,9 +10,9 @@ import {
   iconButtonDanger,
   reorderButton,
   reorderButtonGroup,
-} from '../../styles/shared'
+} from '@styles/shared'
 import { Button } from './Button'
-import { useIsMobile } from '../../hooks/useIsMobile'
+import { useIsMobile } from '@hooks'
 import { logUserAction } from '@utils/actionLogger'
 
 interface DraggableCardProps {

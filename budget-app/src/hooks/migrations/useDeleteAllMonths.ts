@@ -12,7 +12,7 @@ import { useState } from 'react'
 // eslint-disable-next-line no-restricted-imports
 import { batchDeleteDocs, queryCollection, readDocByPath, writeDocByPath } from '@firestore'
 import type { FirestoreData } from '@types'
-import { queryClient } from '../../data/queryClient'
+import { queryClient } from '@data/queryClient'
 
 // Budget document structure (simplified for reset)
 interface BudgetDocument {

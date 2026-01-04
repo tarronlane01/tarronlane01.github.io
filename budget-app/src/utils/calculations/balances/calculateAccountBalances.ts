@@ -1,4 +1,4 @@
-import type { FinancialAccount } from '../../../contexts/budget_context'
+import type { FinancialAccount } from '@contexts/budget_context'
 import type { AccountMonthBalance, MonthDocument } from '@types'
 
 /**

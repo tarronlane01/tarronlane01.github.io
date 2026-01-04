@@ -3,9 +3,9 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { input as inputStyle, colors } from '../../styles/shared'
+import { input as inputStyle, colors } from '@styles/shared'
 import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from './autocompleteHelpers'
-import { NO_CATEGORY_ID, NO_CATEGORY_NAME } from '../../data/constants'
+import { NO_CATEGORY_ID, NO_CATEGORY_NAME } from '@data/constants'
 
 // Category item for autocomplete
 interface CategoryItem {

@@ -1,4 +1,4 @@
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface ThreeStateCheckboxProps {
   label: string

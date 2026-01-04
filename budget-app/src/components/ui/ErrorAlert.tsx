@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import { errorAlert, errorAlertDismiss } from '../../styles/shared'
+import { errorAlert, errorAlertDismiss } from '@styles/shared'
 
 interface ErrorAlertProps {
   message?: string

@@ -4,10 +4,10 @@
  * Displays category name, description, default allocation, and balance info.
  */
 
-import type { Category } from '../../../contexts/budget_context'
+import type { Category } from '@contexts/budget_context'
 import { formatCurrency, formatBalanceCurrency, getCategoryBalanceColor } from '../../ui'
-import { itemTitle, colors } from '../../../styles/shared'
-import type { CategoryBalance } from '../../../hooks/useCategoriesPage'
+import { itemTitle, colors } from '@styles/shared'
+import type { CategoryBalance } from '@hooks'
 
 interface CategoryCardContentProps {
   category: Category

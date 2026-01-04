@@ -18,7 +18,7 @@ import {
   queryClient,
   queryKeys,
   type BudgetData,
-} from '../data'
+} from '@data'
 import {
   useUpdateAccounts,
   useUpdateAccountGroups,

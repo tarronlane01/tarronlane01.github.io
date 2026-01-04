@@ -7,7 +7,7 @@
 
 import type { FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 // Helper color functions - consistent: positive=green, negative=red, zero=grey
 function getIncomeColor(value: number): string {

@@ -20,6 +20,3 @@ export const featureFlags = {
   logUserActions: false,
 } as const
 
-// Type for feature flag keys
-export type FeatureFlagKey = keyof typeof featureFlags
-

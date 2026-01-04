@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useBudget } from '../../contexts/budget_context'
+import { useBudget } from '@contexts'
 import { DropdownMenu, type MenuItem } from './DropdownMenu'
 import { logUserAction } from '@utils'
 

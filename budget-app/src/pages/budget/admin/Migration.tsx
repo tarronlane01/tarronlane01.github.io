@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import useFirebaseAuth from '../../../hooks/useFirebaseAuth'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '../../../hooks'
+import { useFirebaseAuth } from '@hooks'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '@hooks'
 import {
   Spinner,
   DatabaseCleanupCard,

@@ -1,5 +1,5 @@
 import type { AccountGroup } from '@types'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface GroupOverrideFlagsProps {
   group: AccountGroup

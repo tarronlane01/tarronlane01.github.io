@@ -5,11 +5,12 @@
  * Extracted from seedImportLogic for better organization.
  */
 
-import { readDocByPath, writeDocByPath } from '../../data/firestore'
-import type { FirestoreData, MonthDocument, MonthMap } from '../../data/firestore/types'
-import { queryClient, queryKeys } from '../../data/queryClient'
-import type { PreviousMonthSnapshot } from '../../data/recalculation/recalculateMonth'
-import type { BudgetData } from '../../data/queries/budget'
+// eslint-disable-next-line no-restricted-imports -- Migration utility needs direct Firestore access
+import { readDocByPath, writeDocByPath } from '@firestore'
+import type { FirestoreData, MonthDocument, MonthMap } from '@types'
+import { queryClient, queryKeys } from '@data/queryClient'
+import type { PreviousMonthSnapshot } from '@data/recalculation/recalculateMonth'
+import type { BudgetData } from '@data/queries/budget'
 
 import type { ParsedSeedRow } from './seedImportTypes'
 

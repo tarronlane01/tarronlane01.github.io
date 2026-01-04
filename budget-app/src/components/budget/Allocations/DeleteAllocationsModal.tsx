@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Modal, Button, ErrorAlert } from '../../ui'
-import { useApp } from '../../../contexts/app_context'
-import { useBudget } from '../../../contexts/budget_context'
-import { useDeleteAllocations } from '../../../data/mutations/month/allocations'
+import { useApp } from '@contexts'
+import { useBudget } from '@contexts'
+import { useDeleteAllocations } from '@data/mutations/month/allocations'
 
 interface DeleteAllocationsModalProps {
   isOpen: boolean

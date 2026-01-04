@@ -6,7 +6,7 @@
 
 import type { IncomeTransaction } from '@types'
 import { formatCurrency } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface IncomeGridRowProps {
   income: IncomeTransaction

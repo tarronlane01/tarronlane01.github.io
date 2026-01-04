@@ -2,14 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
 
-import { AppProvider, useApp } from './contexts/app_context'
-import UserContext from './contexts/user_context'
-import { QueryProvider } from './data'
-import { BudgetProvider } from './contexts/budget_context'
-import useFirebaseAuth from './hooks/useFirebaseAuth'
+import { AppProvider, useApp, UserContext, BudgetProvider } from '@contexts'
+import { QueryProvider } from '@data'
+import { useFirebaseAuth } from '@hooks'
 
 import Home from './pages/Home'
-import SqlTest from './pages/SqlTest'
 import Account from './pages/Account'
 import Budget from './pages/budget/Budget'
 import Analytics from './pages/budget/Analytics'
@@ -78,7 +75,6 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/account" element={<Account />} />
-              <Route path="/sql-test" element={<SqlTest />} />
 
               {/* Protected budget routes */}
               <Route path="/budget" element={<ProtectedRoute />}>

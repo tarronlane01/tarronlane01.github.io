@@ -3,7 +3,7 @@
  */
 
 import { Button, formatCurrency, getBalanceColor } from '../../ui'
-import { sectionHeader, reorderButton, reorderButtonGroup } from '../../../styles/shared'
+import { sectionHeader, reorderButton, reorderButtonGroup } from '@styles/shared'
 import { GroupOverrideFlags } from './GroupOverrideFlags'
 import type { GroupWithId } from './AccountForm'
 import { logUserAction } from '@utils'

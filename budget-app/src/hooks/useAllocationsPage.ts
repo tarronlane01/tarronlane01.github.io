@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useApp } from '../contexts/app_context'
-import { useBudget } from '../contexts/budget_context'
+import { useApp, useBudget } from '@contexts'
 import type { Category, CategoriesMap, MonthDocument } from '@types'
 import { useBudgetData, useBudgetMonth } from './index'
 import {

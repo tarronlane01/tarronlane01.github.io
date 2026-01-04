@@ -4,12 +4,12 @@
  * Functions for processing income, spend, and allocation rows during import.
  */
 
-import type { MonthDocument, IncomeTransaction, ExpenseTransaction, CategoryMonthBalance } from '../../data/firestore/types'
-import type { CategoriesMap, AccountsMap } from '../../contexts/budget_context'
+import type { MonthDocument, IncomeTransaction, ExpenseTransaction, CategoryMonthBalance } from '@types'
+import type { CategoriesMap, AccountsMap } from '@contexts'
 import type { ParsedSeedRow, MappingEntry } from './seedImportTypes'
 import { formatDateForStorage } from './seedImportParser'
-import { retotalMonth } from '../../data/mutations/month/retotalMonth'
-import { NO_ACCOUNT_ID, NO_CATEGORY_ID } from '../../data/constants'
+import { retotalMonth } from '@data/mutations/month/retotalMonth'
+import { NO_ACCOUNT_ID, NO_CATEGORY_ID } from '@data/constants'
 
 // Common N/A values that should map to special accounts/categories
 const NA_VALUES = ['n/a', 'na', 'none', '-', '']

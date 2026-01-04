@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { ExpenseTransaction } from '@types'
 import { formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 import { BREAKPOINTS } from '@constants'
 
 interface ExpenseItemProps {

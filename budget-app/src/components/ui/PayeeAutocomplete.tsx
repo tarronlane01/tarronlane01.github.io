@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { input as inputStyle, colors } from '../../styles/shared'
+import { input as inputStyle, colors } from '@styles/shared'
 import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from './autocompleteHelpers'
 
 interface PayeeAutocompleteProps {

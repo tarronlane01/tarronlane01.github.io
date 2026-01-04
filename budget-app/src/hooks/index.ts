@@ -1,6 +1,6 @@
 // Re-export all hooks
 export { default as useFirebaseAuth } from './useFirebaseAuth'
-export { useIsMobile, BREAKPOINTS } from './useIsMobile'
+export { useIsMobile } from './useIsMobile'
 export { useScreenWidth } from './useScreenWidth'
 
 // Budget data hooks - import these directly in components

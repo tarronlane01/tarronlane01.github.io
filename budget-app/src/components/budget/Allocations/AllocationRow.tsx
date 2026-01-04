@@ -1,6 +1,6 @@
 import type { Category } from '@types'
 import { formatCurrency, DebtBorder } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface AllocationRowProps {
   category: Category

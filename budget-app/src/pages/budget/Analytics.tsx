@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useBudget } from '../../contexts/budget_context'
-import { colors } from '../../styles/shared'
+import { useBudget } from '@contexts'
+import { colors } from '@styles/shared'
 
 function Analytics() {
   const { setPageTitle } = useBudget()

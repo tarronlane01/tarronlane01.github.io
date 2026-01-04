@@ -4,9 +4,9 @@ import { useState } from 'react'
 // cache results and interfere with testing actual security behavior.
 // eslint-disable-next-line no-restricted-imports
 import { readDocByPath, updateDocByPath } from '@firestore'
-import { useBudget } from '../../../contexts/budget_context'
+import { useBudget } from '@contexts'
 import { Button, ErrorAlert } from '../../../components/ui'
-import { pageSubtitle } from '../../../styles/shared'
+import { pageSubtitle } from '@styles/shared'
 import { logUserAction } from '@utils/actionLogger'
 import { TestButton, TestSummary, type TestResult } from './TestsComponents'
 

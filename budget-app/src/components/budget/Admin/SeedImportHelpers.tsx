@@ -4,8 +4,8 @@
  * Sub-components for the SeedImportCard - extracted for file size management.
  */
 
-import type { ImportProgress } from '../../../hooks/migrations/useSeedImport'
-import type { RecalculationProgress } from '../../../data/recalculation'
+import type { ImportProgress } from '@hooks/migrations/useSeedImport'
+import type { RecalculationProgress } from '@data/recalculation'
 import { StatusBox } from './MigrationComponents'
 import { Button } from '../../../components/ui'
 import { LoadingOverlay, ProgressBar, StatItem, StatGrid, PercentLabel } from '../../app/LoadingOverlay'

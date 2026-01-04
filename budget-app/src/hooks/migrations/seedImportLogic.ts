@@ -5,18 +5,19 @@
  * Handles the actual data import to Firestore including month creation and recalculation.
  */
 
-import type { CategoriesMap, AccountsMap } from '../../contexts/budget_context'
-import { batchWriteDocs, type BatchWriteDoc } from '../../data/firestore'
-import type { FirestoreData, MonthDocument } from '../../data/firestore/types'
-import { readMonthForEdit } from '../../data'
-import { createMonth } from '../../data/mutations/month/createMonth'
-import { getMonthDocId, getYearMonthOrdinal } from '../../utils'
+import type { CategoriesMap, AccountsMap } from '@contexts'
+// eslint-disable-next-line no-restricted-imports -- Migration utility needs direct Firestore access
+import { batchWriteDocs, type BatchWriteDoc } from '@firestore'
+import type { FirestoreData, MonthDocument } from '@types'
+import { readMonthForEdit } from '@data'
+import { createMonth } from '@data/mutations/month/createMonth'
+import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import {
   recalculateMonth,
   extractSnapshotFromMonth,
   EMPTY_SNAPSHOT,
   type PreviousMonthSnapshot,
-} from '../../data/recalculation/recalculateMonth'
+} from '@data/recalculation/recalculateMonth'
 
 import type { ParsedSeedRow, MappingEntry, SeedImportResult, ImportProgress } from './seedImportTypes'
 import { MONTH_NAMES } from './seedImportTypes'

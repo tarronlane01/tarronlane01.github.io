@@ -2,7 +2,7 @@
  * MonthCategories - Shared styles and helpers
  */
 
-import type { RecalculationProgress } from '../../../data/recalculation'
+import type { RecalculationProgress } from '@data/recalculation'
 
 // Column header style for the grid
 export const columnHeaderStyle: React.CSSProperties = {

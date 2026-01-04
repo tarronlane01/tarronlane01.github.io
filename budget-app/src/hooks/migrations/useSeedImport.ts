@@ -1,8 +1,8 @@
 /** Seed Import Hook - Handles CSV parsing, entity mapping, and data import for combined seed files. */
 
 import { useState, useCallback } from 'react'
-import type { CategoriesMap, AccountsMap } from '../../contexts/budget_context'
-import { queryClient, queryKeys } from '../../data/queryClient'
+import type { CategoriesMap, AccountsMap } from '@contexts'
+import { queryClient, queryKeys } from '@data/queryClient'
 
 import type { SeedImportStatus, ParsedSeedRow, MappingEntry, SeedImportResult, ImportProgress } from './seedImportTypes'
 import { parseCSV, parseRawCashFlowCSV } from './seedImportParser'

@@ -56,7 +56,6 @@ export async function markMonthsNeedRecalculation(
 
   // OPTIMIZATION: Check if all future months are already marked in cache
   if (areAllFutureMonthsAlreadyMarkedInCache(budgetId, editedMonthOrdinal)) {
-    console.log(`[markMonthsNeedRecalculation] All future months already marked in cache, skipping write`)
     return { markedCount: 0, budgetUpdated: false }
   }
 
@@ -98,7 +97,6 @@ export async function markMonthsNeedRecalculation(
 
   // If nothing changed AND budget is already marked, skip the write
   if (markedCount === 0 && budgetAlreadyMarked) {
-    console.log(`[markMonthsNeedRecalculation] No new months to mark and budget already marked, skipping write`)
     return { markedCount: 0, budgetUpdated: false }
   }
 
@@ -208,11 +206,8 @@ export async function markAllMonthsFromOrdinal(
   }
 
   if (markedCount === 0) {
-    console.log(`[markAllMonthsFromOrdinal] No months to mark from ${startingOrdinal}`)
     return { markedCount: 0, budgetUpdated: false }
   }
-
-  console.log(`[markAllMonthsFromOrdinal] Marking ${markedCount} months from ${startingOrdinal} as needing recalculation`)
 
   updateCacheWithAllMonthsMarked(budgetId, updatedMonthMap)
 

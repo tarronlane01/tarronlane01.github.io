@@ -1,5 +1,5 @@
 import type { ReactNode, CSSProperties } from 'react'
-import { statsCard, statLabel, statValue } from '../../styles/shared'
+import { statsCard, statLabel, statValue } from '@styles/shared'
 
 interface StatItemProps {
   label: string

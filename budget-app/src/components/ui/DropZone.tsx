@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react'
-import { dropZoneEnd, dropZoneLine, dropZoneLabel } from '../../styles/shared'
+import { dropZoneEnd, dropZoneLine, dropZoneLabel } from '@styles/shared'
 
 interface DropZoneProps {
   isActive: boolean

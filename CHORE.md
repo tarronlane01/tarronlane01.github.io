@@ -1,6 +1,13 @@
 # Deploy
 
-Let's deploy this code with a git message of "Fixed import category balances" using the deploy.sh script. Before doing this, let's make sure all files are under 500 lines, and that we've resolved all build and linter errors.
+Let's deploy this code with a one sentence git message reflecting high-level what we did, using the deploy.sh script. After making sure we're compliant with the following:
+
+- build is successful
+- file line count under limit
+- linter is successful
+- barrel files and vite path aliases for imports
+- no console prints except the firestore read/write/query built-in-logging
+- Remove any dead code
 
 # Integration Testing
 - Organize page files into folder structure matching site URLs (e.g., settings/ for /budget/settings/*, admin/ for /budget/admin/*)
@@ -15,24 +22,15 @@ Let's deploy this code with a git message of "Fixed import category balances" us
 
 ## General Architecture Review
 
-You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws applicable to low-user count architecture (max 1-5 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues.
-- Remove dead code
-- Clean up import patterns, with barrel files and Vite path aliases
-- Suggest better code organization standards to follow best practices
-
----
+You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws (avoid issues specific to larger user counts, as this will be a low-user count architecture (max 10 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues. Suggest better code organization and architecture standards to follow best practices.
 
 ## React Organization
 
 You're a React expert who specializes in organizing React projects to stay under the recommended line counts for their files. Where can this project improve to break things into more modular files without ballooning complexity or traceability? Where can we make use of shareable components to reduce repetition? How can we organize our CSS and styles better to consolidate our styles? Make sure components handle mostly UI logic, with data and other logic moved out into separate hooks. Make components small to keep file size small, breaking out into multiple components when needed.
 
----
-
 ## UI/UX Review
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
-
----
 
 ## Firebase Reads/Writes
 

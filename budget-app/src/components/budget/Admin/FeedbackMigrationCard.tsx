@@ -1,4 +1,4 @@
-import type { FeedbackMigrationResult, FeedbackMigrationStatus } from '../../../hooks/migrations/useFeedbackMigration'
+import type { FeedbackMigrationResult, FeedbackMigrationStatus } from '@hooks/migrations/useFeedbackMigration'
 import { MigrationCard, StatusBox, ActionButton, type MigrationCardStatus } from './MigrationComponents'
 
 interface FeedbackMigrationCardProps {

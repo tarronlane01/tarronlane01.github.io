@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors, sectionHeader } from '../../../styles/shared'
+import { colors, sectionHeader } from '@styles/shared'
 
 interface AccountBalancesViewProps {
   accounts: AccountsMap

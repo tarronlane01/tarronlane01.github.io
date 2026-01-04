@@ -6,7 +6,7 @@
 
 import type { Category, CategoryMonthBalance } from '@types'
 import { Button, formatCurrency, formatBalanceCurrency, getBalanceColor, getCategoryBalanceColor } from '../../ui'
-import { colors, sectionHeader } from '../../../styles/shared'
+import { colors, sectionHeader } from '@styles/shared'
 import { MobileBalanceRow, DesktopBalanceRow } from './CategoryBalanceRows'
 
 // =============================================================================

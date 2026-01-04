@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { useBudget } from '../../../contexts/budget_context'
-import { useBudgetData } from '../../../hooks'
+import { useBudget } from '@contexts'
+import { useBudgetData } from '@hooks'
 import { logUserAction } from '@utils/actionLogger'
 
 function Users() {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { MONTH_NAMES } from '../../../constants'
-import type { MonthInfo, DeleteProgress } from '../../../hooks/migrations/useDeleteAllMonths'
+import { MONTH_NAMES } from '@constants'
+import type { MonthInfo, DeleteProgress } from '@hooks/migrations/useDeleteAllMonths'
 import { MigrationCard, StatusBox, ActionButton, type MigrationCardStatus } from './MigrationComponents'
 import { LoadingOverlay, ProgressBar, StatItem, StatGrid, PercentLabel } from '../../app/LoadingOverlay'
 import { Modal, Button } from '../../ui'

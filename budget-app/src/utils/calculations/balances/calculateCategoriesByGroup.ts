@@ -1,4 +1,4 @@
-import type { Category } from '../../../contexts/budget_context'
+import type { Category } from '@contexts/budget_context'
 
 export type CategoryEntry = [string, Category]
 

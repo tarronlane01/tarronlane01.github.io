@@ -1,8 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { useApp } from '../../contexts/app_context'
-import { useBudget, type BudgetTab } from '../../contexts/budget_context'
-import { useBudgetData, useBudgetMonth } from '../../hooks'
+import { useApp, useBudget, type BudgetTab } from '@contexts'
+import { useBudgetData, useBudgetMonth } from '@hooks'
 import { ErrorAlert, ContentContainer } from '../../components/ui'
 import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
 import {
@@ -144,8 +143,6 @@ function Budget() {
 
     // Check if this is a "can't create month too far in past" error
     if (errorMsg.includes('months in the past') || errorMsg.includes('Refusing to create month')) {
-      console.log(`[Budget] Month creation failed: ${errorMsg}`)
-
       // Defer state updates to avoid synchronous setState in effect
       queueMicrotask(() => {
         // Add loading hold during redirect
@@ -154,7 +151,6 @@ function Budget() {
 
         // Redirect to current month
         const { year: nowYear, month: nowMonth } = getCurrentMonth()
-        console.log(`[Budget] Redirecting from ${currentYear}/${currentMonthNumber} to current month: ${nowYear}/${nowMonth}`)
 
         setError(`Cannot create month ${currentYear}/${currentMonthNumber} - it's too far in the past. Redirected to current month.`)
         setCurrentYear(nowYear)

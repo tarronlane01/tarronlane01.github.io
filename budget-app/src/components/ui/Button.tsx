@@ -5,7 +5,7 @@ import {
   buttonSecondary,
   buttonDanger,
   buttonSmall,
-} from '../../styles/shared'
+} from '@styles/shared'
 import { logUserAction } from '@utils'
 
 type ButtonVariant = 'primary' | 'primary-large' | 'secondary' | 'danger' | 'small'

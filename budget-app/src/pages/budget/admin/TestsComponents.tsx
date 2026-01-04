@@ -3,7 +3,7 @@
  */
 
 import { Button } from '../../../components/ui'
-import { card, colors } from '../../../styles/shared'
+import { card, colors } from '@styles/shared'
 
 export interface TestResult {
   name: string

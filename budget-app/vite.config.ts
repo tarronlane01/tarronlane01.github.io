@@ -15,6 +15,10 @@ export default defineConfig({
       '@queries': path.resolve(__dirname, './src/data/queries'),
       '@data': path.resolve(__dirname, './src/data'),
       '@types': path.resolve(__dirname, './src/types'),
+      '@components': path.resolve(__dirname, './src/components'),
+      '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@contexts': path.resolve(__dirname, './src/contexts'),
+      '@styles': path.resolve(__dirname, './src/styles'),
     },
   },
   build: {

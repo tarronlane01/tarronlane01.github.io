@@ -10,14 +10,14 @@ import {
   listContainer,
   itemTitle,
   colors,
-} from '../../../styles/shared'
-import { useIsMobile } from '../../../hooks/useIsMobile'
+} from '@styles/shared'
+import { useIsMobile } from '@hooks'
 import { AccountForm } from './AccountForm'
 import { GroupForm } from './GroupForm'
 import { AccountFlags } from './AccountFlags'
 import { AccountEndDropZone } from './AccountEndDropZone'
 import { GroupHeader } from './AccountGroupHeader'
-import type { AccountFormData, GroupFormData, GroupWithId, AccountWithId } from '../../../hooks/useAccountsPage'
+import type { AccountFormData, GroupFormData, GroupWithId, AccountWithId } from '@hooks/useAccountsPage'
 import { logUserAction } from '@utils'
 
 // Helper to check if a balance is unexpected

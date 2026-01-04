@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
-import { useApp } from '../../../contexts/app_context'
-import { useBudget, type SettingsTab } from '../../../contexts/budget_context'
-import { useBudgetData } from '../../../hooks'
+import { useApp } from '@contexts'
+import { useBudget, type SettingsTab } from '@contexts/budget_context'
+import { useBudgetData } from '@hooks'
 import { TabNavigation, type Tab, ContentContainer } from '../../../components/ui'
 
 const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']

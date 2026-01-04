@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface CreateFirstBudgetScreenProps {
   onCreateNew: (name?: string) => Promise<void>

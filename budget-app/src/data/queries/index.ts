@@ -77,23 +77,3 @@ export {
   useAccessibleBudgetsQuery,
   type AccessibleBudgetsData,
 } from './accessibleBudgets'
-
-// ============================================================================
-// RE-EXPORTS FROM RELATED MODULES
-// ============================================================================
-
-// Month write - in mutations/month/
-export {
-  writeMonthData,
-  type WriteMonthParams,
-} from '../mutations/month'
-
-// Recalculation - in recalculation/
-export {
-  triggerRecalculation,
-  markMonthsNeedRecalculation,
-  setMonthInBudgetMap,
-} from '../recalculation'
-
-// Date utilities
-export { getPreviousMonth, getNextMonth } from '@utils'

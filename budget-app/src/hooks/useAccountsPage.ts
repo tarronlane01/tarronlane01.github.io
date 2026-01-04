@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useBudget } from '../contexts/budget_context'
+import { useBudget } from '@contexts'
 import { useBudgetData } from './useBudgetData'
 import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '@types'
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'

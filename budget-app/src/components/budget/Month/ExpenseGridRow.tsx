@@ -6,7 +6,7 @@
 
 import type { ExpenseTransaction } from '@types'
 import { formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface ExpenseGridRowProps {
   expense: ExpenseTransaction

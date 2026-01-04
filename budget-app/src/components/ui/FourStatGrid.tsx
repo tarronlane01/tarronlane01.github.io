@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useIsMobile } from '../../hooks/useIsMobile'
+import { useIsMobile } from '@hooks'
 
 export interface StatGridItem {
   label: string

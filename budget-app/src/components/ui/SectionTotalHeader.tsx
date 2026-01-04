@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useIsMobile } from '../../hooks/useIsMobile'
+import { useIsMobile } from '@hooks'
 
 interface SectionTotalHeaderProps {
   label: string

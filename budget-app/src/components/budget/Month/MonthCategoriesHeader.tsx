@@ -3,7 +3,7 @@
  */
 
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 
 interface GrandTotalsRowProps {

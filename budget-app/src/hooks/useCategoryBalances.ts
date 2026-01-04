@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import type { CategoriesMap } from '@types'
-import { calculateCategoryBalances } from '../data'
+import { calculateCategoryBalances } from '@data'
 
 // Balance object for each category showing current (spendable now) and total (including future)
 export interface CategoryBalance {

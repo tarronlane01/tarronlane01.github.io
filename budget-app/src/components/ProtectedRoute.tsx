@@ -1,7 +1,6 @@
 import { useContext, useEffect } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
-import { useApp } from "../contexts/app_context"
-import UserContext from "../contexts/user_context"
+import { useApp, UserContext } from '@contexts'
 import { ENABLE_AUTH_PROTECTION } from '@constants'
 
 interface ProtectedRouteProps {

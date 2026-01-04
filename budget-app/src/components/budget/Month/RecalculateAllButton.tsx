@@ -5,16 +5,16 @@
  */
 
 import { useState } from 'react'
-import { useBudget } from '../../../contexts/budget_context'
-import { useBudgetData } from '../../../hooks'
-import { queryClient, queryKeys, getFutureMonths, writeMonthData } from '../../../data'
+import { useBudget } from '@contexts'
+import { useBudgetData } from '@hooks'
+import { queryClient, queryKeys, getFutureMonths, writeMonthData } from '@data'
 // eslint-disable-next-line no-restricted-imports -- Recalculation needs direct Firestore access
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getPreviousMonth, logUserAction } from '@utils'
 import type { CategoriesMap, AccountsMap, FirestoreData } from '@types'
-import { MONTH_NAMES } from '../../../constants'
+import { MONTH_NAMES } from '@constants'
 import { RecalculateModal, type RecalcResults } from './RecalculateModal'
-import { processMonth, calculateAccountBalancesFromAllMonths } from '../../../data/recalculation/recalculateAllHelpers'
+import { processMonth, calculateAccountBalancesFromAllMonths } from '@data/recalculation/recalculateAllHelpers'
 
 interface RecalculateAllButtonProps {
   isDisabled?: boolean

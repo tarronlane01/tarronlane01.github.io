@@ -10,11 +10,11 @@ import {
   itemTitle,
   sectionHeader,
   colors,
-} from '../../../styles/shared'
+} from '@styles/shared'
 import { AccountForm } from './AccountForm'
 import { AccountFlags } from './AccountFlags'
 import { AccountEndDropZone } from './AccountEndDropZone'
-import type { AccountFormData, GroupWithId, AccountWithId } from '../../../hooks/useAccountsPage'
+import type { AccountFormData, GroupWithId, AccountWithId } from '@hooks/useAccountsPage'
 import { logUserAction } from '@utils'
 
 interface UngroupedAccountsSectionProps {

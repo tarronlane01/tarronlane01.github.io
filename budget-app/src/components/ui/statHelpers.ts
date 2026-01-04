@@ -1,7 +1,7 @@
 // Helper functions for stat card formatting
 // Separated from components to satisfy react-refresh/only-export-components
 
-import { colors } from '../../styles/shared'
+import { colors } from '@styles/shared'
 
 // Helper for formatting currency
 // Formats a currency amount. Always uses absolute value - callers should handle sign display.

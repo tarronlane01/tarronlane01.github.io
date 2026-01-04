@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { colors } from '../../styles/shared'
+import { colors } from '@styles/shared'
 import { logUserAction } from '@utils'
 
 export interface Tab {

@@ -9,7 +9,7 @@
  */
 
 import type { CSSProperties, ReactNode } from 'react'
-import { colors } from '../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface DebtBorderProps {
   children: ReactNode

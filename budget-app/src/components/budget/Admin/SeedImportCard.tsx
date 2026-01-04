@@ -16,11 +16,11 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 import { MigrationCard, StatusBox, ActionButton, Spinner } from './MigrationComponents'
 import { ImportResults, ImportConfirmationContent, ImportProgressOverlay, type RecordTypeCounts } from './SeedImportHelpers'
 import { MappingSection } from './SeedImportMappings'
-import { Modal } from '../../../components/ui'
+import { Modal } from '@components/ui'
 import type { MigrationCardStatus } from './MigrationComponents'
-import { useBudget } from '../../../contexts/budget_context'
-import { useBudgetQuery } from '../../../data'
-import { useSeedImport } from '../../../hooks/migrations/useSeedImport'
+import { useBudget } from '@contexts'
+import { useBudgetQuery } from '@data'
+import { useSeedImport } from '@hooks/migrations/useSeedImport'
 
 // =============================================================================
 // MAIN COMPONENT

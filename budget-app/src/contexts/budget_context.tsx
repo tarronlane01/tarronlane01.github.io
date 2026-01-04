@@ -16,12 +16,12 @@
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import useFirebaseAuth from '../hooks/useFirebaseAuth'
+import useFirebaseAuth from '@hooks/useFirebaseAuth'
 import {
   useUserQuery,
   useAccessibleBudgetsQuery,
   fetchBudgetInviteStatus,
-} from '../data'
+} from '@data'
 
 // Import types from centralized types file
 import type {

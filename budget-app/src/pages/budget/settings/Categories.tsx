@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useCategoriesPage } from '../../../hooks'
-import { useApp } from '../../../contexts/app_context'
+import { useCategoriesPage } from '@hooks'
+import { useApp } from '@contexts'
 import {
   ErrorAlert,
   Button,
@@ -8,8 +8,8 @@ import {
   formatCurrency,
   getBalanceColor,
 } from '../../../components/ui'
-import { colors } from '../../../styles/shared'
-import { useIsMobile } from '../../../hooks/useIsMobile'
+import { colors } from '@styles/shared'
+import { useIsMobile } from '@hooks'
 import {
   CategoryGroupForm,
   CategoryGroupCard,

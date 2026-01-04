@@ -1,5 +1,5 @@
 import type { DragEvent } from 'react'
-import { colors } from '../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface CategoryEndDropZoneProps {
   groupId: string

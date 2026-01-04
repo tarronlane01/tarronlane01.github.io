@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import { useApp } from '../contexts/app_context'
-import { useBudget } from '../contexts/budget_context'
-import { useBudgetData } from '../hooks'
+import { useApp, useBudget } from '@contexts'
+import { useBudgetData } from '@hooks'
 import { BudgetNavBar } from './ui'
-import { pageContainer } from '../styles/shared'
+import { pageContainer } from '@styles/shared'
 
 export default function BudgetLayout() {
   const { addLoadingHold, removeLoadingHold } = useApp()

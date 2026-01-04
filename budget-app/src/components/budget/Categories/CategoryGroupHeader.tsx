@@ -3,9 +3,9 @@
  */
 
 import type { DragEvent } from 'react'
-import type { CategoryGroup } from '../../../contexts/budget_context'
+import type { CategoryGroup } from '@contexts/budget_context'
 import { Button } from '../../ui'
-import { sectionHeader, reorderButton, reorderButtonGroup } from '../../../styles/shared'
+import { sectionHeader, reorderButton, reorderButtonGroup } from '@styles/shared'
 import { logUserAction } from '@utils'
 
 interface CategoryGroupHeaderProps {

@@ -1,8 +1,4 @@
 import type { CSSProperties } from 'react'
-import { BREAKPOINTS } from '@constants'
-
-// Re-export breakpoints for backwards compatibility
-export { BREAKPOINTS }
 
 // Colors
 export const colors = {

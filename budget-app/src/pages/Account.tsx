@@ -1,10 +1,10 @@
 import { useContext, useState, useEffect, type FormEvent } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 
-import UserContext from "../contexts/user_context"
-import useFirebaseAuth from "../hooks/useFirebaseAuth"
+import { UserContext } from '@contexts'
+import { useFirebaseAuth } from '@hooks'
 import { DropdownMenu, type MenuItem } from "../components/ui"
-import { pageContainer } from "../styles/shared"
+import { pageContainer } from '@styles/shared'
 
 export default function Account() {
     const user_context = useContext(UserContext)

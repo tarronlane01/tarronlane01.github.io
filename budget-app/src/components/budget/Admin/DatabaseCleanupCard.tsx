@@ -1,5 +1,5 @@
-import { MONTH_NAMES } from '../../../constants'
-import type { DatabaseCleanupStatus, DatabaseCleanupResult } from '../../../hooks/migrations/useDatabaseCleanup'
+import { MONTH_NAMES } from '@constants'
+import type { DatabaseCleanupStatus, DatabaseCleanupResult } from '@hooks/migrations/useDatabaseCleanup'
 import { MigrationCard, StatusBox, ActionButton, type MigrationCardStatus } from './MigrationComponents'
 
 interface DatabaseCleanupCardProps {

@@ -1,7 +1,7 @@
 import type { DragEvent } from 'react'
-import type { FlattenedFeedbackItem } from '../../../data'
-import { formatDate } from '../../ui'
-import { card, dragHandle, dropIndicator, colors } from '../../../styles/shared'
+import type { FlattenedFeedbackItem } from '@data'
+import { formatDate } from '@utils'
+import { card, dragHandle, dropIndicator, colors } from '@styles/shared'
 import { feedbackTypeConfig, type FeedbackType } from './feedbackTypes'
 
 export function FeedbackTypeBadge({ type, onClick }: { type?: FeedbackType | string; onClick?: () => void }) {
