@@ -22,6 +22,10 @@ export interface DatabaseCleanupStatus {
   futureMonthsToDelete: FutureMonthInfo[]
   monthsWithSchemaIssues: number
   monthsWithOldRecalcField: number
+
+  // Data Mappings
+  totalDataMappings: number
+  dataMappingsMissingBudgetId: number
 }
 
 export interface FutureMonthInfo {
@@ -45,6 +49,9 @@ export interface DatabaseCleanupResult {
   futureMonthsDeleted: number
   monthsFixed: number
   oldRecalcFieldsRemoved: number
+
+  // Data Mappings
+  dataMappingsFixed: number
 
   errors: string[]
 }

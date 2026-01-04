@@ -37,7 +37,8 @@ export function DatabaseCleanupCard({
       result.deprecatedFieldsRemoved > 0 ||
       result.futureMonthsDeleted > 0 ||
       result.monthsFixed > 0 ||
-      result.oldRecalcFieldsRemoved > 0
+      result.oldRecalcFieldsRemoved > 0 ||
+      result.dataMappingsFixed > 0
     )) return 'complete'
     if (!hasIssues) return 'clean'
     return 'needs-action'
@@ -51,13 +52,14 @@ export function DatabaseCleanupCard({
     result.deprecatedFieldsRemoved +
     result.futureMonthsDeleted +
     result.monthsFixed +
-    result.oldRecalcFieldsRemoved
+    result.oldRecalcFieldsRemoved +
+    result.dataMappingsFixed
   ) : 0
 
   return (
     <MigrationCard
       title="🗄️ Database Cleanup"
-      description="Validates and fixes all budget and month documents to match the expected schema. Converts legacy formats, adds missing default values, and removes invalid future months."
+      description="Validates and fixes all budget, month, and data mapping documents to match the expected schema. Converts legacy formats, adds missing default values, removes invalid future months, and ensures data mappings have required security fields."
       status={getStatus()}
       onRefresh={onRefresh}
       isRefreshing={isRefreshing}
@@ -101,6 +103,9 @@ export function DatabaseCleanupCard({
               )}
               {result.oldRecalcFieldsRemoved > 0 && (
                 <li>{result.oldRecalcFieldsRemoved} month{result.oldRecalcFieldsRemoved !== 1 ? 's' : ''} had old recalc field removed</li>
+              )}
+              {result.dataMappingsFixed > 0 && (
+                <li>{result.dataMappingsFixed} data mapping{result.dataMappingsFixed !== 1 ? 's' : ''} had budget_id added</li>
               )}
               {totalFixed === 0 && <li>No changes needed</li>}
             </ul>
@@ -184,9 +189,14 @@ export function DatabaseCleanupCard({
                     {status!.monthsWithOldRecalcField} month{status!.monthsWithOldRecalcField !== 1 ? 's' : ''} with deprecated is_needs_recalculation field
                   </li>
                 )}
+                {status!.dataMappingsMissingBudgetId > 0 && (
+                  <li>
+                    {status!.dataMappingsMissingBudgetId} data mapping{status!.dataMappingsMissingBudgetId !== 1 ? 's' : ''} missing budget_id (security fix)
+                  </li>
+                )}
               </ul>
               <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-                Scanned {status!.totalBudgets} budgets and {status!.totalMonths} months.
+                Scanned {status!.totalBudgets} budgets, {status!.totalMonths} months, and {status!.totalDataMappings} data mappings.
               </p>
             </div>
           </StatusBox>
@@ -205,7 +215,7 @@ export function DatabaseCleanupCard({
           <div>
             ✅ Database is clean
             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
-              All {status!.totalBudgets} budgets and {status!.totalMonths} months match expected schema.
+              All {status!.totalBudgets} budgets, {status!.totalMonths} months, and {status!.totalDataMappings} data mappings match expected schema.
             </p>
           </div>
         </StatusBox>

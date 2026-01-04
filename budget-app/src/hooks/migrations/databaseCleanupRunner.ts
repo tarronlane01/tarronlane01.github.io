@@ -202,7 +202,6 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
         updates.month_map = monthMap
         needsUpdate = true
         monthMapsUpdated++
-        console.log(`[DatabaseCleanup] Added complete month_map to budget ${budgetDoc.id} with ${Object.keys(monthMap).length} months`)
       }
 
       // Remove any old/deprecated fields from the updates object
@@ -234,7 +233,6 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
           `database cleanup: removing deprecated earliest_month from budget ${budgetDoc.id}`
         )
         deprecatedFieldsRemoved++
-        console.log(`[DatabaseCleanup] Removed deprecated earliest_month from budget ${budgetDoc.id}`)
       }
     } catch (err) {
       errors.push(`Budget ${budgetDoc.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -292,10 +290,65 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
           `database cleanup: removing is_needs_recalculation from month ${year}/${month}`
         )
         oldRecalcFieldsRemoved++
-        console.log(`[DatabaseCleanup] Removed is_needs_recalculation from month ${year}/${month}`)
       }
     } catch (err) {
       errors.push(`Month ${monthDoc.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  // ========================================
+  // CLEANUP DATA MAPPINGS
+  // ========================================
+  // Add budget_id to any data_mappings documents missing it (required for security rules)
+  let dataMappingsFixed = 0
+
+  const dataMappingsResult = await queryCollection<FirestoreData>(
+    'data_mappings',
+    'database cleanup: reading all data mappings'
+  )
+
+  for (const mappingDoc of dataMappingsResult.docs) {
+    try {
+      const data = mappingDoc.data
+
+      // Skip if already has budget_id
+      if (data.budget_id !== undefined) continue
+
+      // Extract budget_id from document ID format: {budgetId}_import_data_map
+      const docId = mappingDoc.id
+      const suffixIndex = docId.lastIndexOf('_import_data_map')
+      if (suffixIndex === -1) {
+        errors.push(`Data mapping ${docId}: Cannot extract budget_id from document ID (unexpected format)`)
+        continue
+      }
+
+      const budgetId = docId.substring(0, suffixIndex)
+
+      // Verify the budget exists
+      const { exists: budgetExists } = await readDocByPath(
+        'budgets',
+        budgetId,
+        `database cleanup: verifying budget exists for data mapping ${docId}`
+      )
+
+      if (!budgetExists) {
+        errors.push(`Data mapping ${docId}: Referenced budget ${budgetId} does not exist`)
+        continue
+      }
+
+      // Add budget_id to the document
+      await writeDocByPath(
+        'data_mappings',
+        docId,
+        {
+          ...data,
+          budget_id: budgetId,
+        },
+        `database cleanup: adding budget_id to data mapping ${docId}`
+      )
+      dataMappingsFixed++
+    } catch (err) {
+      errors.push(`Data mapping ${mappingDoc.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -310,6 +363,7 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
     futureMonthsDeleted,
     monthsFixed,
     oldRecalcFieldsRemoved,
+    dataMappingsFixed,
     errors,
   }
 }

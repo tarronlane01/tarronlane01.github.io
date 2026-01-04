@@ -35,6 +35,7 @@ export interface MappingEntry {
 
 /** Stored mapping document structure */
 export interface ImportDataMap {
+  budget_id: string // Required for Firestore security rules validation
   category_mappings: Record<string, { id: string; name: string }>
   account_mappings: Record<string, { id: string; name: string }>
   last_updated: string

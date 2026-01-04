@@ -49,8 +49,6 @@ export function useSeedImport(budgetId: string | null) {
         ? parseRawCashFlowCSV(content)
         : parseCSV(content)
 
-      console.log(`[useSeedImport] Detected format: ${format}, parsed ${rows.length} rows`)
-
       if (rows.length === 0) {
         setStatus('error')
         setParsedData(null)

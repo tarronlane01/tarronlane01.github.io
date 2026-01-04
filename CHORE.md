@@ -1,6 +1,6 @@
 # Deploy
 
-Let's deploy this code with a one sentence git message reflecting high-level what we did, using the deploy.sh script. After making sure we're compliant with the following:
+Let's deploy this code with a one sentence git message reflecting high-level (summary, not-specific, not verbose, max 10 words) what we did, using the deploy.sh script, after making sure we're compliant with the following:
 
 - build is successful
 - file line count under limit
@@ -44,73 +44,19 @@ You're a Firebase expert specializing in making sure our reads/writes are minima
 
 ## CRUD Organization
 
-You're a CRUD expert for web applications whose goal is to keep things organized, maintainable, and avoid spaghetti CRUD code. All mutations should follow our established pattern in `budget-app/src/data/mutations/`:
+You're a CRUD expert for react single-page firestore web applications whose goal is to keep things organized, maintainable, and avoid spaghetti CRUD code. All mutations should follow the main established common code, to avoid rogue patterns. Identify any issues with compliance with this and detail possible solutions.
 
-**Structure:**
-```
-data/mutations/
-  budget/        # Budget doc mutations
-    accounts/      # useUpdateAccounts, useUpdateAccountGroups, useUpdateAccountBalance
-    categories/    # useUpdateCategories, useUpdateCategoryGroups
-    useRenameBudget.ts
-  month/         # Month doc mutations
-    income/        # useAddIncome, useUpdateIncome, useDeleteIncome
-    expenses/      # useAddExpense, useUpdateExpense, useDeleteExpense
-    allocations/   # useSaveDraftAllocations, useFinalizeAllocations, useDeleteAllocations
-    useWriteMonthData.ts  # Core write utility (shared by all month mutations)
-  user/          # User-related mutations
-    useCreateBudget, useAcceptInvite, useInviteUser, useRevokeUser, etc.
-  feedback/      # Feedback mutations
-    useSubmitFeedback, useToggleFeedback, useUpdateSortOrder
-  payees/        # Payee mutations
-    savePayeeIfNew
-```
+- All operations that hit firebase should be logged, along with the count of record numbers, so we can track reads and writes to stay below the daily limit.
+- Reads should be cached to avoid re-hitting the database unless necessary
+- pre-write reads should bypass the cache
+- edits that don't actually change anything should avoid firestore writes
+- recalculation should happen when saving allocations, or when going to ANY month or balance category/accounts view
+- writes to any month should mark all future months as needing recalculation
+- writes to month should include as part of that write the recalc'ed values for that month, to avoid needing a follow-up recalc write.
 
-**Rules:**
-- **One file per operation** (e.g., `useAddIncome.ts`, `useUpdateAccounts.ts`) - filename should clearly indicate what it does
-- **No combiner hooks** - Import individual hooks directly where needed, don't create wrapper hooks that aggregate multiple mutations
-- **Month mutations** use `useWriteMonthData` for the core write which handles cascade marking of future months/budget
-- **Pre-write reads** use `readMonthForEdit()` for month documents, or `readDocByPath` with 'PRE-EDIT-READ' description for others
-- **Vite aliases** - Use `@data`, `@types`, `@firestore`, `@utils` etc. instead of relative paths
 
 ---
 
 ## Firebase Security Rules
 
-You're a Firebase expert, making sure my Firebase rules handle security for this app, making sure unauthorized users aren't able to create/edit/read any data they shouldn't.
-
----
-
-## User Action Tracing Audit
-
-You're helping maintain the user action tracing system for AI-assisted debugging. The goal is to log user interactions to the console so that when errors occur, the user can copy/paste console output to show the AI exactly what actions led up to the error.
-
-**Feature flag:** `featureFlags.logUserActions` in `@constants/featureFlags`
-
-**Core utility:** `@utils/actionLogger.ts` provides:
-- `logUserAction(type, name, context?)` - Direct logging function
-- `trackedClick(name, onClick, options?)` - Wrapper for click handlers
-- `trackedChange(name, onChange, options?)` - Wrapper for value change handlers
-- `trackedInputChange(name, onChange, options?)` - Wrapper for input event handlers
-- `trackedSubmit(name, onSubmit, options?)` - Wrapper for form submissions
-
-**Built-in component support:**
-- `<Button actionName="...">` - Auto-logs clicks when actionName provided
-- `<FormWrapper actionName="...">` - Auto-logs form submissions when actionName provided
-
-**Audit checklist:**
-1. All `<Button>` components with meaningful actions should have `actionName` props
-2. All `<FormWrapper>` components should have `actionName` props
-3. Important form field changes should use `trackedChange` or `trackedInputChange`
-4. Modal opens/closes, navigation, and toggles should call `logUserAction` directly
-5. Action names should be descriptive: "Save Budget", "Delete Category", not just "Click"
-
-**Console output format:**
-```
-[14:32:05.123] [User] CLICK: Save Budget
-[14:32:06.456] [User] CHANGE: Amount = "$500"
-[14:32:07.789] [User] SUBMIT: Add Income Form
-```
-
-**Action types:** CLICK, CHANGE, SUBMIT, SELECT, TOGGLE, EXPAND, COLLAPSE, NAVIGATE, OPEN, CLOSE
-
+You're a Firebase expert, making sure my Firebase rules handle security for this app, making sure unauthorized users aren't able to create/edit/read any data they shouldn't. Check for any improvements we can make to the rules.

@@ -12,7 +12,10 @@
  *
  * 2. Month Schema Validation:
  *    - Ensures months have all required fields
- *    - Removes months more than 2 months in the future
+ *    - Removes months beyond MAX_FUTURE_MONTHS (defined in @constants/date)
+ *
+ * 3. Data Mappings Validation:
+ *    - Ensures data_mappings documents have required budget_id field
  *
  * All operations go directly to Firestore - no React Query caching.
  */
@@ -74,6 +77,7 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
         futureMonthsDeleted: 0,
         monthsFixed: 0,
         oldRecalcFieldsRemoved: 0,
+        dataMappingsFixed: 0,
         errors: [err instanceof Error ? err.message : 'Unknown error'],
       })
     } finally {
@@ -91,7 +95,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.budgetsWithDeprecatedEarliestMonth > 0 ||
     status.futureMonthsToDelete.length > 0 ||
     status.monthsWithSchemaIssues > 0 ||
-    status.monthsWithOldRecalcField > 0
+    status.monthsWithOldRecalcField > 0 ||
+    status.dataMappingsMissingBudgetId > 0
   )
 
   const totalIssues = status !== null ? (
@@ -103,7 +108,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     status.budgetsWithDeprecatedEarliestMonth +
     status.futureMonthsToDelete.length +
     status.monthsWithSchemaIssues +
-    status.monthsWithOldRecalcField
+    status.monthsWithOldRecalcField +
+    status.dataMappingsMissingBudgetId
   ) : 0
 
   return {

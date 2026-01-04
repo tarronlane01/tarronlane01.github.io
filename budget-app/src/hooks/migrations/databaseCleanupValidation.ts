@@ -5,6 +5,7 @@
  */
 
 import type { FirestoreData } from '@types'
+import { MAX_FUTURE_MONTHS } from '@constants'
 
 export function accountNeedsDefaults(account: FirestoreData): boolean {
   return (
@@ -59,17 +60,17 @@ export function monthNeedsDefaults(month: FirestoreData): boolean {
 }
 
 /**
- * Get cutoff date (2 months from now) - anything beyond should be deleted
+ * Get cutoff date (MAX_FUTURE_MONTHS from now) - anything beyond should be deleted
  */
 export function getFutureMonthCutoff(): { year: number; month: number } {
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
 
-  let cutoffMonth = currentMonth + 2
+  let cutoffMonth = currentMonth + MAX_FUTURE_MONTHS
   let cutoffYear = currentYear
 
-  if (cutoffMonth > 12) {
+  while (cutoffMonth > 12) {
     cutoffMonth -= 12
     cutoffYear += 1
   }

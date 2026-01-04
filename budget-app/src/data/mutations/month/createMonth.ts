@@ -8,6 +8,7 @@
 import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
 import { readDocByPath, writeDocByPath } from '@firestore'
 import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
+import { MAX_FUTURE_MONTHS, MAX_PAST_MONTHS } from '@constants'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
@@ -16,7 +17,7 @@ import { setMonthInBudgetMap } from '@data/recalculation'
 /** Options for createMonth */
 export interface CreateMonthOptions {
   /**
-   * Bypass the 3-month date limit safeguard.
+   * Bypass the date limit safeguard (MAX_FUTURE_MONTHS/MAX_PAST_MONTHS).
    * Use only for seed data imports or migrations that need to create historical months.
    */
   bypassDateLimit?: boolean
@@ -30,7 +31,7 @@ export interface CreateMonthOptions {
  * @param month - Month (1-12)
  * @param options - Optional settings (e.g., bypassDateLimit for seed imports)
  * @returns The created month document
- * @throws Error if the month is more than 3 months in the future or past (unless bypassed)
+ * @throws Error if the month is beyond MAX_FUTURE_MONTHS/MAX_PAST_MONTHS (unless bypassed)
  */
 export async function createMonth(
   budgetId: string,
@@ -40,7 +41,7 @@ export async function createMonth(
 ): Promise<MonthDocument> {
   const { bypassDateLimit = false } = options ?? {}
 
-  // Safeguard: Prevent creating months more than 3 months in the future or past
+  // Safeguard: Prevent creating months beyond the allowed range
   // This catches bugs like double-incrementing the year during navigation
   // Can be bypassed for seed data imports
   const now = new Date()
@@ -50,17 +51,17 @@ export async function createMonth(
   // Calculate months from now (positive = future, negative = past)
   const monthsFromNow = (year - currentYear) * 12 + (month - currentMonth)
 
-  if (!bypassDateLimit && monthsFromNow > 3) {
+  if (!bypassDateLimit && monthsFromNow > MAX_FUTURE_MONTHS) {
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
-      `it's ${monthsFromNow} months in the future (max allowed: 3). ` +
+      `it's ${monthsFromNow} months in the future (max allowed: ${MAX_FUTURE_MONTHS}). ` +
       `This likely indicates a bug in month navigation.`
     console.error(errorMsg)
     throw new Error(errorMsg)
   }
 
-  if (!bypassDateLimit && monthsFromNow < -3) {
+  if (!bypassDateLimit && monthsFromNow < -MAX_PAST_MONTHS) {
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
-      `it's ${Math.abs(monthsFromNow)} months in the past (max allowed: 3). ` +
+      `it's ${Math.abs(monthsFromNow)} months in the past (max allowed: ${MAX_PAST_MONTHS}). ` +
       `Existing months can still be viewed, but new months cannot be created this far back.`
     console.error(errorMsg)
     throw new Error(errorMsg)

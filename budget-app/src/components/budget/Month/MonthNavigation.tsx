@@ -36,7 +36,7 @@ export function MonthNavigation({
   const { budget: currentBudget, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
-  // Navigation bounds: 3 months in past (or earliest in monthMap if older), 3 months in future
+  // Navigation bounds: MAX_PAST_MONTHS in past (or earliest in monthMap if older), MAX_FUTURE_MONTHS in future
   // This allows navigating to months that don't exist yet - they'll be created on demand
   const prevMonth = getPrevMonth(currentYear, currentMonthNumber)
   const nextMonth = getNextMonth(currentYear, currentMonthNumber)
@@ -224,7 +224,7 @@ export function MonthNavigation({
 
             {/* Month picker */}
             {showMonthPicker && (() => {
-              // Bounds: 3 months back (or earliest in map if older) to 3 months ahead
+              // Bounds: MAX_PAST_MONTHS back (or earliest in map if older) to MAX_FUTURE_MONTHS ahead
               const earliestYear = minAllowed.year
               const latestYear = maxAllowed.year
 
@@ -289,7 +289,7 @@ export function MonthNavigation({
                     const isCurrent = pickerYear === currentYear && monthNum === currentMonthNumber
                     const monthOrdinal = getYearMonthOrdinal(pickerYear, monthNum)
 
-                    // Grey out months outside the allowed range (3 months back to 3 months ahead)
+                    // Grey out months outside the allowed range (MAX_PAST_MONTHS back to MAX_FUTURE_MONTHS ahead)
                     const isBeforeMin = monthOrdinal < minOrdinal
                     const isAfterMax = monthOrdinal > maxOrdinal
                     const isDisabled = isBeforeMin || isAfterMax

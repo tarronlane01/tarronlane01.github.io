@@ -90,6 +90,7 @@ export async function saveMappings(
   }
 
   const doc: ImportDataMap = {
+    budget_id: budgetId,
     category_mappings: categoryMappingsObj,
     account_mappings: accountMappingsObj,
     last_updated: new Date().toISOString(),

@@ -6,9 +6,10 @@ import type { MonthMap } from '@types'
 import { queryClient, queryKeys } from '../queryClient'
 import type { BudgetData } from '../queries/budget'
 import { getYearMonthOrdinal } from '@utils'
+import { MAX_FUTURE_MONTHS, MAX_PAST_MONTHS } from '@constants'
 
 /**
- * Get the 7-month window (3 past, current, 3 future) ordinals.
+ * Get the month window (MAX_PAST_MONTHS past, current, MAX_FUTURE_MONTHS future) ordinals.
  */
 export function getMonthWindowOrdinals(): string[] {
   const now = new Date()
@@ -17,8 +18,8 @@ export function getMonthWindowOrdinals(): string[] {
 
   const ordinals: string[] = []
 
-  // 3 months in the past
-  for (let i = 3; i > 0; i--) {
+  // Past months
+  for (let i = MAX_PAST_MONTHS; i > 0; i--) {
     let year = currentYear
     let month = currentMonth - i
     while (month < 1) {
@@ -31,8 +32,8 @@ export function getMonthWindowOrdinals(): string[] {
   // Current month
   ordinals.push(getYearMonthOrdinal(currentYear, currentMonth))
 
-  // 3 months in the future
-  for (let i = 1; i <= 3; i++) {
+  // Future months
+  for (let i = 1; i <= MAX_FUTURE_MONTHS; i++) {
     let year = currentYear
     let month = currentMonth + i
     while (month > 12) {
@@ -46,7 +47,7 @@ export function getMonthWindowOrdinals(): string[] {
 }
 
 /**
- * The month_map now contains ALL months in the budget, not just the 7-month window.
+ * The month_map now contains ALL months in the budget, not just the navigation window.
  * This allows us to derive earliest_month, latest_month, etc. from the map.
  * No cleanup is needed - all months are preserved.
  */

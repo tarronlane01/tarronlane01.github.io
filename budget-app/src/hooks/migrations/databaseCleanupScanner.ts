@@ -145,6 +145,23 @@ export async function scanDatabaseStatus(): Promise<DatabaseCleanupStatus> {
     return a.month - b.month
   })
 
+  // ========================================
+  // SCAN DATA MAPPINGS
+  // ========================================
+  // Check for data_mappings documents missing budget_id field (security rule requirement)
+  const dataMappingsResult = await queryCollection<FirestoreData>(
+    'data_mappings',
+    'database cleanup: scanning all data mappings'
+  )
+
+  let dataMappingsMissingBudgetId = 0
+  for (const mappingDoc of dataMappingsResult.docs) {
+    const data = mappingDoc.data
+    if (data.budget_id === undefined) {
+      dataMappingsMissingBudgetId++
+    }
+  }
+
   return {
     totalBudgets: budgetsResult.docs.length,
     budgetsWithArrays,
@@ -160,6 +177,8 @@ export async function scanDatabaseStatus(): Promise<DatabaseCleanupStatus> {
     futureMonthsToDelete,
     monthsWithSchemaIssues,
     monthsWithOldRecalcField,
+    totalDataMappings: dataMappingsResult.docs.length,
+    dataMappingsMissingBudgetId,
   }
 }
 
