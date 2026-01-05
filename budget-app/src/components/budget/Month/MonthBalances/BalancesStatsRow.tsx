@@ -53,7 +53,6 @@ export function CategoryStatsRow({
       <span style={{
         fontWeight: 600,
         marginRight: '0.25rem',
-        ...(isDraftMode || isEditingAppliedAllocations ? tentativeValue : {}),
       }}>
         {isDraftMode || isEditingAppliedAllocations ? 'Allocations Worksheet:' : 'Month Summary:'}
       </span>

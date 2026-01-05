@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useApp, useBudget } from '@contexts'
 import { useBudgetData } from '@hooks'
-import { BudgetNavBar } from './ui'
+import { BudgetNavBar, ContentContainer } from './ui'
 import { pageContainer } from '@styles/shared'
 
 export default function BudgetLayout() {
@@ -38,8 +38,10 @@ export default function BudgetLayout() {
 
   return (
     <div style={{ ...pageContainer, paddingBottom: '5rem' }}>
-      <BudgetNavBar title={pageTitle} />
-      {isInitialized && <Outlet />}
+      <ContentContainer>
+        <BudgetNavBar title={pageTitle} />
+        {isInitialized && <Outlet />}
+      </ContentContainer>
     </div>
   )
 }

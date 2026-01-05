@@ -71,7 +71,7 @@ export function GrandTotalsRow({
       <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getSpendColor(balanceTotals.spent) }}>
         {formatSignedCurrency(balanceTotals.spent)}
       </div>
-      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange) }}>
+      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange), ...(isDraftMode ? tentativeValue : {}) }}>
         {formatSignedCurrencyAlways(netChange)}
       </div>
       <div style={{
@@ -80,6 +80,7 @@ export function GrandTotalsRow({
         color: getCategoryBalanceColor(balanceTotals.end),
         paddingRight: '1rem',
         borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+        ...(isDraftMode ? tentativeValue : {}),
       }}>
         {formatBalanceCurrency(balanceTotals.end)}
       </div>

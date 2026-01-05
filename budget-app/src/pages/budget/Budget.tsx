@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
 import { useBudgetData, useBudgetMonth } from '@hooks'
-import { ErrorAlert, ContentContainer } from '../../components/ui'
+import { ErrorAlert } from '../../components/ui'
 import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
 import {
   BudgetTabs,
@@ -221,7 +221,7 @@ function Budget() {
   }
 
   return (
-    <ContentContainer>
+    <>
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
       <MonthNavigation
@@ -239,7 +239,7 @@ function Budget() {
       {activeTab === 'categories' && <MonthCategories key={`${currentYear}-${currentMonthNumber}`} />}
       {activeTab === 'accounts' && <MonthAccounts key={`${currentYear}-${currentMonthNumber}`} />}
       {activeTab === 'spend' && <MonthSpend key={`${currentYear}-${currentMonthNumber}`} />}
-    </ContentContainer>
+    </>
   )
 }
 

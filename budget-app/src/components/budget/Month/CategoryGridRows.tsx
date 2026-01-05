@@ -93,7 +93,7 @@ export function CategoryGroupRows({
             <span style={groupTotalText}>{formatSignedCurrency(groupTotals.spent)}</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupNetChange) }}>
-            <span style={groupTotalText}>{formatSignedCurrencyAlways(groupNetChange)}</span>
+            <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatSignedCurrencyAlways(groupNetChange)}</span>
           </div>
           <div style={{
             ...groupHeaderCellStyle,
@@ -102,7 +102,7 @@ export function CategoryGroupRows({
             paddingRight: '1rem',
             borderRight: '2px solid rgba(128, 128, 128, 0.4)',
           }}>
-            <span style={groupTotalText}>{formatBalanceCurrency(groupTotals.end)}</span>
+            <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatBalanceCurrency(groupTotals.end)}</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupAllTime) }}>
             <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatBalanceCurrency(groupAllTime)}</span>
@@ -342,12 +342,12 @@ function CategoryGridRow({
       </div>
 
       {/* Net Change */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange) }}>
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange), ...(isDraftMode ? tentativeValue : {}) }}>
         {formatSignedCurrencyAlways(netChange)}
       </div>
 
       {/* End Balance (with border) */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getCategoryBalanceColor(balance.end_balance), paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getCategoryBalanceColor(balance.end_balance), paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)', ...(isDraftMode ? tentativeValue : {}) }}>
         {formatBalanceCurrency(balance.end_balance)}
       </div>
 
