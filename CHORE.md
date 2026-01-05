@@ -21,7 +21,7 @@ You're a React expert who specializes in organizing React projects to stay under
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
 
-- consistent styles, design elements, meaning, formats, etc with shared compoments to force conformtiy
+- consistent styles, design elements, meaning, formats, etc with shared compoments to force conformity.
 
 ## CRUD Organization
 
@@ -47,6 +47,7 @@ All user flow should result in "lazy" recalculation of budget values that need r
 - writes to any month should mark current and all future months as needing recalculation
 - recalculation logic should be to go the earlies not-marked-for-recalculation month, and then start from the next month and then walk through all months to get the final values and update the budget doc values as well. This should all happen in one batch read and one batch write
 - All saving of number values to firestore should round values to two decimals.
+- We should not attempt to update a local cache via optimistic write if there isn't a cache already there. That way we avoid a state were we write one item to create the local cache, but haven't pulled from the server with the full list, so we think we have a valid local cache but it never pulled.
 
 
 ---

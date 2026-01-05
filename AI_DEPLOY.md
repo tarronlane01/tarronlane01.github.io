@@ -1,10 +1,17 @@
 # Deploy
 
-Let's deploy this code with a one sentence git message reflecting high-level (summary, not-specific, not verbose, max 10 words) what we did, using the deploy.sh script, after making sure we're compliant with the following:
+Deploy using the publish script from the budget-app directory:
 
-- build is successful
-- file line count under limit
-- linter is successful
-- barrel files and vite path aliases for imports
-- no console prints except the firestore read/write/query built-in-logging
-- Remove any dead code
+```bash
+cd budget-app && ./scripts/publish.sh "your commit message"
+```
+
+The script automatically checks:
+- ✅ ESLint passes
+- ✅ File line count under limit (400 lines)
+- ✅ No rogue console statements (only allowed in logging/admin files)
+- ✅ No deep relative imports (use path aliases)
+- ✅ Build succeeds
+
+**Manual review before deploying:**
+- Remove any dead code introduced in this session

@@ -4,7 +4,7 @@
  */
 
 import { Button } from '../../../ui'
-import { colors } from '../../../../styles/shared'
+import { colors } from '@styles/shared'
 
 interface BalancesActionButtonsProps {
   isDraftMode: boolean

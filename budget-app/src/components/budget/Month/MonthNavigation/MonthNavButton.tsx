@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { colors } from '../../../../styles/shared'
+import { colors } from '@styles/shared'
 import { logUserAction } from '@utils'
 
 export type NavDirection = 'prev' | 'next'

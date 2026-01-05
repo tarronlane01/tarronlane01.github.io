@@ -77,6 +77,14 @@ export function useSubmitFeedback() {
       await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
       const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
 
+      // If no cached data exists, don't create a partial cache.
+      // This prevents the floating feedback button from initializing the cache
+      // with just one item, which would make the feedback page think it has
+      // valid cached data when it's actually incomplete.
+      if (!previousData) {
+        return { previousData: undefined, optimisticItemId: undefined }
+      }
+
       // Create optimistic feedback item
       const feedbackDocId = userEmail || userId
       const optimisticItem: FlattenedFeedbackItem = {
@@ -91,23 +99,23 @@ export function useSubmitFeedback() {
         user_email: userEmail,
       }
 
-      // Optimistically add to cache
+      // Optimistically add to existing cache
       queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
-        if (!oldData) {
-          return { items: [optimisticItem] }
-        }
-        return { items: [...oldData.items, optimisticItem] }
+        return { items: [...(oldData?.items || []), optimisticItem] }
       })
 
       return { previousData, optimisticItemId: optimisticItem.id }
     },
     onSuccess: (result, _variables, context) => {
+      // If we didn't add an optimistic item (no cache existed), nothing to update
+      if (!context?.optimisticItemId) return
+
       // Replace optimistic item with real item from server
       queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
         if (!oldData) return oldData
         return {
           items: oldData.items.map((item) =>
-            item.id === context?.optimisticItemId
+            item.id === context.optimisticItemId
               ? { ...result.feedbackItem, doc_id: result.docId, user_email: _variables.userEmail }
               : item
           ),

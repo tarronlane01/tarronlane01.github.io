@@ -4,7 +4,7 @@
  */
 
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor, getSpendColor, getAllocatedColor } from '../../../ui'
-import { colors, tentativeValue } from '../../../../styles/shared'
+import { colors, tentativeValue } from '@styles/shared'
 
 interface CategoryBalanceTotals {
   start: number
