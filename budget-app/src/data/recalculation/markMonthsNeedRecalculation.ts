@@ -3,11 +3,11 @@
  *
  * Marks months as needing recalculation in the budget's month_map.
  * This is a single write operation to the budget document that:
- * 1. Marks all months AFTER the specified month as needing recalculation
+ * 1. Marks the current month AND all months after as needing recalculation
  * 2. Marks the budget itself as needing recalculation
  *
  * WHEN TO CALL:
- * - After any month data changes that affect future months' start balances
+ * - After any month data changes that affect current or future months' balances
  * - Called automatically by writeMonthData
  */
 
@@ -81,10 +81,10 @@ export async function markMonthsNeedRecalculation(
     }
   }
 
-  // Mark months AFTER the edited month as needing recalculation
+  // Mark current month AND all months AFTER as needing recalculation
   let markedCount = 0
   for (const ordinal of windowOrdinals) {
-    if (ordinal > editedMonthOrdinal) {
+    if (ordinal >= editedMonthOrdinal) {
       if (!updatedMonthMap[ordinal]?.needs_recalculation) {
         updatedMonthMap[ordinal] = { needs_recalculation: true }
         markedCount++

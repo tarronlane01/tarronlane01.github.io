@@ -3,6 +3,10 @@
  *
  * Wraps the app with PersistQueryClientProvider for automatic
  * cache persistence to localStorage.
+ *
+ * Cache expiration: Persisted cache expires after 5 minutes (maxAge).
+ * This ensures data is never more than 5 minutes stale across devices/sessions.
+ *
  * Must be placed inside any auth provider but outside budget context.
  */
 
@@ -20,8 +24,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
       client={queryClient}
       persistOptions={{
         persister: localStoragePersister,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours - must match gcTime
-        buster: 'v1', // Increment this to invalidate all persisted caches
+        maxAge: 5 * 60 * 1000, // 5 minutes - persisted cache expires after this
+        buster: 'v2', // Increment this to invalidate all persisted caches
       }}
     >
       {children}

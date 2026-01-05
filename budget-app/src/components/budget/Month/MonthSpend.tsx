@@ -40,6 +40,10 @@ export function MonthSpend() {
   const [showAddExpense, setShowAddExpense] = useState(false)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
 
+  // Note: Recalculation is NOT triggered on this tab since it only shows raw transactions.
+  // Edits here will mark months for recalculation (via writeMonthData), and recalc
+  // will happen when the user navigates to Categories or Accounts tabs.
+
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddExpense || editingExpenseId !== null
   const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen })

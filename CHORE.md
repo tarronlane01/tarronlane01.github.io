@@ -15,14 +15,14 @@ Let's deploy this code with a one sentence git message reflecting high-level (su
 - make sure all file sizes uner 500
 - Make sure build is successful
 - make sure if we've changed urls or nav that the nav menus all work correctly (like not showing same page in nav menu if we're on that page)
-- Make sure we don't have any loading screens besides the globall oading screen, and we have a standard way to track progress / phases etc
+- Make sure we don't have any loading screens besides the globall oading screen, and we have a standard way to track progress / phases etc on this screen, and a standard interface that all importers use to control this screens behavior
 - Remove all console logging except the firebase operations (read/write/query/etc)
 - Make sure we have consistent number colors, with positive being red (except category debt which want orange) and positive being green, and zero being grey. Make sure we have the positive or negative sign before the dollar sign. Don't shade the cell green/red, but just keep the striping of the row it's on.
 - Make sure we aren't disabling any linting or rules that we should be complying with
 
 ## General Architecture Review
 
-You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws (avoid issues specific to larger user counts, as this will be a low-user count architecture (max 10 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues. Suggest better code organization and architecture standards to follow best practices.
+You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws (avoid issues specific to larger user counts, as this will be a low-user count architecture with max 10 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues. Suggest better code organization and architecture standards to follow best practices.
 
 ## React Organization
 
@@ -32,27 +32,30 @@ You're a React expert who specializes in organizing React projects to stay under
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
 
-## Firebase Reads/Writes
-
-You're a Firebase expert specializing in making sure our reads/writes are minimal and effective. Make sure all pre-write reads have the pre-write-read comment, and that they bypass the cache. Make sure all other reads DON'T bypass the cache.
-- Any doc reads should cache the document
-- Any doc reads should check for stale snapshots/flags and resolve them and re-write with resolved data and false for the stale flags
-- Any writes should also mark the budget or other month docs as stale if their data would be outdated based on the currently-writing change
-- All writes except stale-marking should do a pre-read (bypassing cache) before doing the write, to make sure we're writing latest data
-
----
-
 ## CRUD Organization
+
+Code organization:
 
 You're a CRUD expert for react single-page firestore web applications whose goal is to keep things organized, maintainable, and avoid spaghetti CRUD code. All mutations should follow the main established common code, to avoid rogue patterns. Identify any issues with compliance with this and detail possible solutions.
 
+- All caching (in-memory and local persistance) should be invalid after 5 minutes max, to ensure all users are synced at least every 5 minutes
+- Each doc has it's structure stored in a well-organized place, with comments about what the fields are used for
+- mutations and queries are consolidated and compoments will read/write using shared methods where possible.
+
+
+## Data integrity
+
+All user flow should result in "lazy" recalculation of budget values that need recalculation, while also ensuring that any data shown to the user is accurate while maintaining minimal read/write hits to the server.
+
+- retotaling is summing up values for a single month
+- recalcing is redoing the month history from a changed month to ensure all month balances add up and the budet document is accurate.
 - All operations that hit firebase should be logged, along with the count of record numbers, so we can track reads and writes to stay below the daily limit.
 - Reads should be cached to avoid re-hitting the database unless necessary
 - pre-write reads should bypass the cache
 - edits that don't actually change anything should avoid firestore writes
-- recalculation should happen when saving allocations, or when going to ANY month or balance category/accounts view
-- writes to any month should mark all future months as needing recalculation
-- writes to month should include as part of that write the recalc'ed values for that month, to avoid needing a follow-up recalc write.
+- recalculation should trigger when saving allocations, or when going to ANY month or balance category/accounts view, and should resolve all needing-recalc-marked months. Make sure nothing in the spend or income pages requires current recalc, so that we can only worry about recalc if a user is not looking at those pages.
+- writes to any month should mark current and all future months as needing recalculation
+- recalculation logic should be to go the earlies not-marked-for-recalculation month, and then start from the next month and then walk through all months to get the final values and update the budget doc values as well. This should all happen in one batch read and one batch write
 
 
 ---

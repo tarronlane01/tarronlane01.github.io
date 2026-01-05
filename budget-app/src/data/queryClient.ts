@@ -2,11 +2,12 @@
  * React Query Client Configuration
  *
  * Configures React Query with:
- * - Stale time of 5 minutes
- * - Cache time of 24 hours
- * - No automatic refetch on window focus (REQUIRED)
+ * - Stale time of 5 minutes (data considered fresh)
+ * - GC time of 30 minutes (how long to keep unused data)
+ * - No automatic refetch on window focus (avoids unnecessary reads)
+ * - Refetch on mount when data is stale (ensures max 5 min staleness)
  * - Refetch on reconnect
- * - LocalStorage persistence via sync storage persister
+ * - LocalStorage persistence via async storage persister (max 5 min age)
  */
 
 import { QueryClient } from '@tanstack/react-query'
@@ -14,7 +15,7 @@ import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persi
 
 // Cache timing constants
 export const STALE_TIME = 5 * 60 * 1000        // 5 minutes - data considered fresh
-export const GC_TIME = 24 * 60 * 60 * 1000     // 24 hours - how long to keep unused data
+export const GC_TIME = 30 * 60 * 1000          // 30 minutes - how long to keep unused data
 
 // Query client configuration per spec
 export const queryClient = new QueryClient({
@@ -22,10 +23,10 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: STALE_TIME,
       gcTime: GC_TIME,
-      refetchOnWindowFocus: false,      // REQUIRED: Do not refetch on tab focus
+      refetchOnWindowFocus: false,      // Don't refetch on tab focus (avoid unnecessary reads)
       refetchOnReconnect: true,         // Refetch when network reconnects
       retry: 1,                         // Only retry once on failure
-      refetchOnMount: false,            // Don't refetch when component mounts if data is fresh
+      refetchOnMount: true,             // Refetch when component mounts if data is stale
     },
     mutations: {
       retry: 1,

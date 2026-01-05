@@ -3,6 +3,7 @@
  *
  * Updates an existing income transaction.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Includes no-op detection to avoid unnecessary Firestore writes.
  */
 
 import { useQueryClient } from '@tanstack/react-query'
@@ -12,6 +13,34 @@ import { savePayeeIfNew } from '../../payees'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+
+/**
+ * Check if income values have actually changed (no-op detection)
+ */
+function hasIncomeChanges(
+  oldIncome: IncomeTransaction | undefined,
+  amount: number,
+  accountId: string,
+  date: string,
+  payee?: string,
+  description?: string
+): boolean {
+  if (!oldIncome) return true // New income, always save
+
+  // Normalize payee/description for comparison (undefined vs empty string)
+  const oldPayee = oldIncome.payee || undefined
+  const newPayee = payee?.trim() || undefined
+  const oldDescription = oldIncome.description || undefined
+  const newDescription = description || undefined
+
+  return (
+    amount !== oldIncome.amount ||
+    accountId !== oldIncome.account_id ||
+    date !== oldIncome.date ||
+    newPayee !== oldPayee ||
+    newDescription !== oldDescription
+  )
+}
 
 export function useUpdateIncome() {
   const queryClient = useQueryClient()
@@ -30,8 +59,14 @@ export function useUpdateIncome() {
   ) => {
     const monthData = await readMonthForEdit(budgetId, year, month, 'update income')
 
-    // Find old income to calculate delta
+    // Find old income to calculate delta and check for changes
     const oldIncome = (monthData.income || []).find(i => i.id === incomeId)
+
+    // No-op detection: skip write if nothing changed
+    if (!hasIncomeChanges(oldIncome, amount, accountId, date, payee, description)) {
+      return { updatedMonth: monthData, noOp: true }
+    }
+
     const oldAmount = oldIncome?.amount ?? 0
     const oldAccountId = oldIncome?.account_id ?? accountId
 
