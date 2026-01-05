@@ -17,6 +17,8 @@ You're an expert front-end JavaScript / React / Firebase engineer. Review this p
 
 You're a React expert who specializes in organizing React projects to stay under the recommended line counts for their files. Where can this project improve to break things into more modular files without ballooning complexity or traceability? Where can we make use of shareable components to reduce repetition? How can we organize our CSS and styles better to consolidate our styles? Make sure components handle mostly UI logic, with data and other logic moved out into separate hooks. Make components small to keep file size small, breaking out into multiple components when needed.
 
+- Reduce call depth (try to avoid unecessary import of import of import of.... ect) Ideally one level removed from the compoments it should be clear what is being done, in granular-enough methods to see the overall flow from there. In other words, the component should handle UI stuff like handleClick etc, and have the method calls shown there that detail what is being done from the click, so a develoer can se the impact of that click from there, with that set only being abstracted if multiple compoments need to follow the same algorithm
+
 ## UI/UX Review
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
