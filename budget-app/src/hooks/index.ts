@@ -18,9 +18,12 @@ export {
   useDatabaseCleanup,
   useFeedbackMigration,
   useDeleteAllMonths,
+  usePrecisionCleanup,
   type DatabaseCleanupStatus,
   type DatabaseCleanupResult,
   type FeedbackMigrationResult,
   type DeleteAllMonthsResult,
+  type PrecisionCleanupStatus,
+  type PrecisionCleanupResult,
 } from './migrations'
 

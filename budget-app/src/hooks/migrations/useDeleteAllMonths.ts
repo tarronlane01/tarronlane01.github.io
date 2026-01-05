@@ -5,14 +5,14 @@
  * This is a destructive operation - use with caution!
  *
  * After deletion, resets all affected budgets (balances to zero) and clears the cache.
- * All operations go directly to Firestore - no React Query caching.
+ * Uses the migration framework for cache invalidation.
  */
 
 import { useState } from 'react'
 // eslint-disable-next-line no-restricted-imports
 import { batchDeleteDocs, queryCollection, readDocByPath, writeDocByPath } from '@firestore'
 import type { FirestoreData } from '@types'
-import { queryClient } from '@data/queryClient'
+import { clearAllCaches } from './migrationRunner'
 
 // Budget document structure (simplified for reset)
 interface BudgetDocument {
@@ -244,7 +244,7 @@ export function useDeleteAllMonths({
       }
     }
 
-    // Phase 3: Clear cache (95-100%)
+    // Phase 3: Clear cache using migration framework (95-100%)
     setDeleteProgress({
       phase: 'clearing-cache',
       deleted,
@@ -255,18 +255,8 @@ export function useDeleteAllMonths({
       percentComplete: 95,
     })
 
-    // Clear both in-memory React Query cache AND localStorage persistence
-    try {
-      // Remove all queries from the in-memory cache
-      // This forces fresh fetches when navigating to budget/month pages
-      queryClient.removeQueries({ queryKey: ['budget'] })
-      queryClient.removeQueries({ queryKey: ['month'] })
-
-      // Also clear localStorage persistence
-      localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
-    } catch {
-      // Cache clearing is best-effort
-    }
+    // Use the migration framework's cache clearing (ensures consistency)
+    clearAllCaches()
 
     // Final progress update
     setDeleteProgress({

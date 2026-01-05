@@ -18,6 +18,20 @@ export const colors = {
   zero: 'rgba(255, 255, 255, 0.4)',
 }
 
+// Tentative value styling - for unsaved/projected/draft values
+export const tentativeValue: CSSProperties = {
+  textDecoration: 'underline',
+  textDecorationStyle: 'dotted',
+  textUnderlineOffset: '3px',
+}
+
+// Group total styling - for category/account group totals
+export const groupTotalText: CSSProperties = {
+  fontWeight: 700,
+  fontSize: '1.02em',
+}
+export const groupTotalRowBorder = '1px solid color-mix(in srgb, currentColor 20%, transparent)'
+
 // Layout styles - uses CSS variables from index.css for easy customization
 export const pageContainer: CSSProperties = {
   maxWidth: 'var(--page-max-width, 85rem)',

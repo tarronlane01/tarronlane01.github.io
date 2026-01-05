@@ -3,7 +3,7 @@
  */
 
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
-import { colors } from '@styles/shared'
+import { tentativeValue } from '@styles/shared'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 
 interface GrandTotalsRowProps {
@@ -83,7 +83,7 @@ export function GrandTotalsRow({
       }}>
         {formatBalanceCurrency(balanceTotals.end)}
       </div>
-      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: grandAllTime < 0 ? colors.debt : colors.primary }}>
+      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(grandAllTime), ...(isDraftMode ? tentativeValue : {}) }}>
         {formatBalanceCurrency(grandAllTime)}
       </div>
     </>

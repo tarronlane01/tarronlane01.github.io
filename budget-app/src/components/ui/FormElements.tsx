@@ -215,6 +215,7 @@ interface CurrencyInputProps {
   placeholder?: string
   required?: boolean
   autoFocus?: boolean
+  style?: React.CSSProperties
 }
 
 // Format number with commas and optional decimals
@@ -242,7 +243,7 @@ function parseCurrencyValue(formatted: string): string {
   return formatted.replace(/[$,]/g, '')
 }
 
-export function CurrencyInput({ id, value, onChange, placeholder = '$0.00', required, autoFocus }: CurrencyInputProps) {
+export function CurrencyInput({ id, value, onChange, placeholder = '$0.00', required, autoFocus, style }: CurrencyInputProps) {
   const [displayValue, setDisplayValue] = useState(() => formatCurrencyDisplay(value))
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -294,7 +295,7 @@ export function CurrencyInput({ id, value, onChange, placeholder = '$0.00', requ
       placeholder={placeholder}
       required={required}
       autoFocus={autoFocus}
-      style={inputStyle}
+      style={{ ...inputStyle, ...style }}
     />
   )
 }

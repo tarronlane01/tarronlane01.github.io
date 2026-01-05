@@ -38,9 +38,11 @@ export function useDeleteExpense() {
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'delete expense' })
 
-    // Update budget's account balance (deleting expense increases balance)
-    if (deletedAccountId && deletedAmount > 0) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId: deletedAccountId, delta: deletedAmount }])
+    // Update budget's account balance - reverse the deleted expense's effect
+    // Amounts are signed: negative = expense, positive = refund
+    // Reversing: delta = -deletedAmount
+    if (deletedAccountId && deletedAmount !== 0) {
+      await updateBudgetAccountBalances(budgetId, [{ accountId: deletedAccountId, delta: -deletedAmount }])
     }
 
     return { updatedMonth }

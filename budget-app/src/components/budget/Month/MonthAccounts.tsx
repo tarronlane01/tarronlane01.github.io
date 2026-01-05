@@ -267,7 +267,7 @@ export function MonthAccounts() {
         {Object.keys(accounts).length === 0 && (
           <p style={{ gridColumn: '1 / -1', opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
             No accounts yet.{' '}
-            <Link to="/budget/settings/accounts" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/settings/accounts" style={{ opacity: 1 }}>
               Add accounts →
             </Link>
           </p>

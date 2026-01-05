@@ -54,8 +54,9 @@ export function useAddExpense() {
 
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'add expense' })
 
-    // Update budget's account balance (expense decreases balance)
-    await updateBudgetAccountBalances(budgetId, [{ accountId, delta: -amount }])
+    // Update budget's account balance
+    // Amount is signed: negative for expense (decreases balance), positive for refund (increases balance)
+    await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
 
     // Save payee if new
     if (payee?.trim()) {

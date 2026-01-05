@@ -3,8 +3,8 @@
  * Shows different stats for category vs account view.
  */
 
-import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor, getSpendColor } from '../../../ui'
-import { colors } from '../../../../styles/shared'
+import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor, getSpendColor, getAllocatedColor } from '../../../ui'
+import { colors, tentativeValue } from '../../../../styles/shared'
 
 interface CategoryBalanceTotals {
   start: number
@@ -52,8 +52,8 @@ export function CategoryStatsRow({
       {/* Title */}
       <span style={{
         fontWeight: 600,
-        color: isDraftMode || isEditingAppliedAllocations ? colors.primary : 'inherit',
         marginRight: '0.25rem',
+        ...(isDraftMode || isEditingAppliedAllocations ? tentativeValue : {}),
       }}>
         {isDraftMode || isEditingAppliedAllocations ? 'Allocations Worksheet:' : 'Month Summary:'}
       </span>
@@ -69,7 +69,7 @@ export function CategoryStatsRow({
       <span>
         {isDraftMode && <span style={{ opacity: 0.6 }}>− </span>}
         <span style={{ opacity: 0.6 }}>{isDraftMode ? 'Draft: ' : 'Alloc: '}</span>
-        <span style={{ color: isDraftMode ? colors.primary : colors.success, fontWeight: 600 }}>
+        <span style={{ color: getAllocatedColor(isDraftMode ? displayDraftAmount : balanceTotals.allocated), fontWeight: 600, ...(isDraftMode ? tentativeValue : {}) }}>
           {isDraftMode ? '' : '+'}{formatCurrency(isDraftMode ? displayDraftAmount : balanceTotals.allocated)}
         </span>
         {isEditingAppliedAllocations && draftChangeAmount !== 0 && (
@@ -90,7 +90,7 @@ export function CategoryStatsRow({
         {isDraftMode && <span style={{ opacity: 0.6 }}>= </span>}
         <span style={{ opacity: 0.6 }}>{isDraftMode ? 'Remaining: ' : 'Net: '}</span>
         {isDraftMode
-          ? <span style={{ color: getBalanceColor(availableAfterApply), fontWeight: 600 }}>{formatCurrency(availableAfterApply)}</span>
+          ? <span style={{ color: getBalanceColor(availableAfterApply), fontWeight: 600, ...tentativeValue }}>{formatCurrency(availableAfterApply)}</span>
           : <span style={{ color: getBalanceColor(balanceTotals.allocated + balanceTotals.spent), fontWeight: 600 }}>{formatCurrency(balanceTotals.allocated + balanceTotals.spent)}</span>
         }
       </span>

@@ -1,14 +1,3 @@
-# Deploy
-
-Let's deploy this code with a one sentence git message reflecting high-level (summary, not-specific, not verbose, max 10 words) what we did, using the deploy.sh script, after making sure we're compliant with the following:
-
-- build is successful
-- file line count under limit
-- linter is successful
-- barrel files and vite path aliases for imports
-- no console prints except the firestore read/write/query built-in-logging
-- Remove any dead code
-
 # Integration Testing
 - Organize page files into folder structure matching site URLs (e.g., settings/ for /budget/settings/*, admin/ for /budget/admin/*)
 - Make Sure recalc writes happen effciently are won't happen more than once
@@ -32,6 +21,8 @@ You're a React expert who specializes in organizing React projects to stay under
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
 
+- consistent styles, design elements, meaning, formats, etc with shared compoments to force conformtiy
+
 ## CRUD Organization
 
 Code organization:
@@ -41,13 +32,12 @@ You're a CRUD expert for react single-page firestore web applications whose goal
 - All caching (in-memory and local persistance) should be invalid after 5 minutes max, to ensure all users are synced at least every 5 minutes
 - Each doc has it's structure stored in a well-organized place, with comments about what the fields are used for
 - mutations and queries are consolidated and compoments will read/write using shared methods where possible.
-
+- All writes should use optimisitc updates to immediately update values in cache before saving to firestore, to ensure we aren't looking at stale data, and don't need to refetch the exact values that we wrote.
 
 ## Data integrity
 
 All user flow should result in "lazy" recalculation of budget values that need recalculation, while also ensuring that any data shown to the user is accurate while maintaining minimal read/write hits to the server.
 
-- retotaling is summing up values for a single month
 - recalcing is redoing the month history from a changed month to ensure all month balances add up and the budet document is accurate.
 - All operations that hit firebase should be logged, along with the count of record numbers, so we can track reads and writes to stay below the daily limit.
 - Reads should be cached to avoid re-hitting the database unless necessary
@@ -56,6 +46,7 @@ All user flow should result in "lazy" recalculation of budget values that need r
 - recalculation should trigger when saving allocations, or when going to ANY month or balance category/accounts view, and should resolve all needing-recalc-marked months. Make sure nothing in the spend or income pages requires current recalc, so that we can only worry about recalc if a user is not looking at those pages.
 - writes to any month should mark current and all future months as needing recalculation
 - recalculation logic should be to go the earlies not-marked-for-recalculation month, and then start from the next month and then walk through all months to get the final values and update the budget doc values as well. This should all happen in one batch read and one batch write
+- All saving of number values to firestore should round values to two decimals.
 
 
 ---

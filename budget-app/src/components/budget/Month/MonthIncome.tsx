@@ -208,7 +208,7 @@ export function MonthIncome() {
               ? 'You need to create at least one account before adding income.'
               : 'No accounts are set up for income deposits. Edit an account and enable "Show in income deposit list".'
             }{' '}
-            <Link to="/budget/accounts" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/accounts" style={{ opacity: 1 }}>
               Manage accounts →
             </Link>
           </p>

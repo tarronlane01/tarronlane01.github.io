@@ -2,6 +2,8 @@
  * Database Cleanup Hook
  *
  * Consolidated migration that ensures all database documents match expected schemas.
+ * Uses the migration framework to ensure cache invalidation.
+ *
  * Combines functionality from multiple previous migrations:
  *
  * 1. Budget Schema Validation:
@@ -25,6 +27,7 @@ import { useState } from 'react'
 import type { DatabaseCleanupStatus, DatabaseCleanupResult, FutureMonthInfo } from './databaseCleanupTypes'
 import { scanDatabaseStatus } from './databaseCleanupScanner'
 import { runDatabaseCleanup } from './databaseCleanupRunner'
+import { runMigration } from './migrationRunner'
 
 // Re-export types for consumers
 export type { DatabaseCleanupStatus, DatabaseCleanupResult, FutureMonthInfo }
@@ -55,6 +58,7 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     }
   }
 
+  // Run the cleanup using the migration framework (guarantees cache invalidation)
   async function runCleanup(): Promise<void> {
     if (!currentUser) return
 
@@ -62,7 +66,8 @@ export function useDatabaseCleanup({ currentUser, onComplete }: UseDatabaseClean
     setResult(null)
 
     try {
-      const cleanupResult = await runDatabaseCleanup()
+      // runMigration automatically clears all caches after completion
+      const cleanupResult = await runMigration(() => runDatabaseCleanup())
       setResult(cleanupResult)
       onComplete?.()
     } catch (err) {

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useFirebaseAuth } from '@hooks'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths } from '@hooks'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, usePrecisionCleanup } from '@hooks'
 import {
   Spinner,
   DatabaseCleanupCard,
   FeedbackMigrationCard,
   DeleteAllMonthsCard,
   SeedImportCard,
+  PrecisionCleanupCard,
 } from '../../../components/budget/Admin'
 import { Modal, Button } from '../../../components/ui'
 import { logUserAction } from '@utils/actionLogger'
@@ -53,9 +54,14 @@ function Migration() {
     currentUser: current_user,
   })
 
+  // Precision cleanup - fixes floating point rounding issues
+  const precisionCleanup = usePrecisionCleanup({
+    currentUser: current_user,
+  })
+
   // Scanning state for all
-  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning
-  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting
+  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || precisionCleanup.isScanning
+  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || precisionCleanup.isRunning
 
   // Refresh all - scans all migration statuses
   const handleRefreshAll = async () => {
@@ -64,6 +70,7 @@ function Migration() {
       databaseCleanup.scanStatus(),
       feedbackMigration.scanStatus(),
       deleteAllMonths.scanStatus(),
+      precisionCleanup.scan(),
     ])
   }
 
@@ -100,6 +107,19 @@ function Migration() {
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
         Run migrations to validate and fix your database. Click "Refresh All" to scan Firestore directly.
       </p>
+
+      <PrecisionCleanupCard
+        hasData={precisionCleanup.hasData}
+        status={precisionCleanup.status}
+        hasIssues={precisionCleanup.hasIssues}
+        totalIssues={precisionCleanup.totalIssues}
+        isRunning={precisionCleanup.isRunning}
+        result={precisionCleanup.result}
+        onRunCleanup={precisionCleanup.runCleanup}
+        onRefresh={precisionCleanup.scan}
+        isRefreshing={precisionCleanup.isScanning}
+        disabled={!current_user}
+      />
 
       <DatabaseCleanupCard
         hasData={!!databaseCleanup.status}

@@ -12,7 +12,6 @@ import { useBudgetData, useAllocationsPage, useBudgetMonth } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
 import { ErrorAlert } from '../../ui'
-import { colors } from '@styles/shared'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 import { CategoryGroupRows } from './CategoryGridRows'
@@ -192,7 +191,7 @@ export function MonthCategories() {
         {/* Category Balances */}
         {Object.keys(categories).length === 0 && (
           <p style={{ gridColumn: '1 / -1', opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
-            No categories yet. <Link to="/budget/settings/categories" style={{ color: colors.primaryLight }}>Create categories →</Link>
+            No categories yet. <Link to="/budget/settings/categories" style={{ opacity: 1 }}>Create categories →</Link>
           </p>
         )}
 

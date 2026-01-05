@@ -6,11 +6,13 @@
  */
 
 import type { MonthDocument, CategoryMonthBalance } from '@types'
+import { roundCurrency } from '@utils'
 
 /**
  * Calculate category balances for a month.
  * Uses existing start_balance values from category_balances array,
  * applies allocations (if finalized), and subtracts expenses.
+ * All values are rounded to 2 decimal places.
  *
  * @param monthData - The month document
  * @param categoryIds - List of all category IDs to calculate for
@@ -37,16 +39,16 @@ export function calculateCategoryBalancesForMonth(
   return categoryIds.map(catId => {
     // Start balance comes from existing category balance (preserves previous month's end)
     const existingBal = existingBalances[catId]
-    const startBalance = existingBal?.start_balance ?? 0
+    const startBalance = roundCurrency(existingBal?.start_balance ?? 0)
 
-    // Allocated amount (only if finalized)
-    const allocated = allocationsFinalized ? (allocations[catId] ?? 0) : 0
+    // Allocated amount (only if finalized) - round the allocation value
+    const allocated = roundCurrency(allocationsFinalized ? (allocations[catId] ?? 0) : 0)
 
-    // Sum expenses for this category
+    // Sum expenses for this category (round the total)
     // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-    const spent = expenses
+    const spent = roundCurrency(expenses
       .filter(e => e.category_id === catId)
-      .reduce((sum, e) => sum + e.amount, 0)
+      .reduce((sum, e) => sum + e.amount, 0))
 
     // end_balance = start + allocated + spent (spent is negative for money out)
     return {
@@ -54,7 +56,7 @@ export function calculateCategoryBalancesForMonth(
       start_balance: startBalance,
       allocated,
       spent,
-      end_balance: startBalance + allocated + spent,
+      end_balance: roundCurrency(startBalance + allocated + spent),
     }
   })
 }

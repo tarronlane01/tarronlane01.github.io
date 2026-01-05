@@ -206,7 +206,7 @@ export function MonthSpend() {
               ? 'You need to create at least one account before adding expenses.'
               : 'No accounts are set up for expenses. Edit an account and enable "Show in expense list".'
             }{' '}
-            <Link to="/budget/accounts" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/accounts" style={{ opacity: 1 }}>
               Manage accounts →
             </Link>
           </p>
@@ -215,7 +215,7 @@ export function MonthSpend() {
         {Object.keys(categories).length === 0 && (
           <p style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1rem 0' }}>
             You need to create at least one category before adding expenses.{' '}
-            <Link to="/budget/settings/categories" style={{ color: colors.primaryLight }}>
+            <Link to="/budget/settings/categories" style={{ opacity: 1 }}>
               Create categories →
             </Link>
           </p>

@@ -9,6 +9,7 @@ import {
   type AllocationData,
   type AllocationProgress,
 } from '../data/mutations/month/allocations'
+import { roundCurrency } from '@utils'
 
 // Helper to compute allocations map from month and categories
 function computeAllocationsMap(
@@ -98,13 +99,14 @@ export function useAllocationsPage() {
   }, [currentMonth, categories])
 
   // Helper to get allocation amount for a category (handles percentage-based)
+  // Percentage-based allocations are rounded to 2 decimal places
   const getAllocationAmount = useCallback((catId: string, cat: Category): number => {
     if (cat.default_monthly_type === 'percentage' && cat.default_monthly_amount !== undefined) {
-      return (cat.default_monthly_amount / 100) * previousMonthIncome
+      return roundCurrency((cat.default_monthly_amount / 100) * previousMonthIncome)
     }
     const val = localAllocations[catId]
     const num = parseFloat(val || '0')
-    return isNaN(num) ? 0 : num
+    return isNaN(num) ? 0 : roundCurrency(num)
   }, [localAllocations, previousMonthIncome])
 
   // Calculate allocation totals (includes both manual and percentage-based)

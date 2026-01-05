@@ -17,6 +17,7 @@ import type {
   AccountMonthBalance,
 } from '@types'
 import { isNoCategory, isNoAccount } from '../constants'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -112,14 +113,19 @@ function recalculateCategoryBalances(
 
   // Update each existing balance with correct start_balance (excluding "No Category")
   // Note: spent is negative for money out, positive for money in
+  // All values are rounded to 2 decimal places to avoid floating point precision issues
   const updated: CategoryMonthBalance[] = currentBalances
     .filter(cb => !isNoCategory(cb.category_id))
     .map(cb => {
-      const startBalance = prevCategoryEndBalances[cb.category_id] ?? 0
+      const startBalance = roundCurrency(prevCategoryEndBalances[cb.category_id] ?? 0)
+      const allocated = roundCurrency(cb.allocated)
+      const spent = roundCurrency(cb.spent)
       return {
         ...cb,
         start_balance: startBalance,
-        end_balance: startBalance + cb.allocated + cb.spent,
+        allocated,
+        spent,
+        end_balance: roundCurrency(startBalance + allocated + spent),
       }
     })
 
@@ -127,12 +133,13 @@ function recalculateCategoryBalances(
   for (const [catId, endBal] of Object.entries(prevCategoryEndBalances)) {
     if (isNoCategory(catId)) continue
     if (!balanceMap.has(catId)) {
+      const startBalance = roundCurrency(endBal)
       updated.push({
         category_id: catId,
-        start_balance: endBal,
+        start_balance: startBalance,
         allocated: 0,
         spent: 0,
-        end_balance: endBal,
+        end_balance: startBalance,
       })
     }
   }
@@ -173,21 +180,21 @@ function recalculateAccountBalances(
   const balances: AccountMonthBalance[] = []
 
   for (const accountId of accountIds) {
-    const startBalance = prevAccountEndBalances[accountId] ?? 0
+    const startBalance = roundCurrency(prevAccountEndBalances[accountId] ?? 0)
 
-    // Sum income for this account
-    const incomeTotal = (month.income || [])
+    // Sum income for this account (round the total)
+    const incomeTotal = roundCurrency((month.income || [])
       .filter(i => i.account_id === accountId)
-      .reduce((sum, i) => sum + i.amount, 0)
+      .reduce((sum, i) => sum + i.amount, 0))
 
-    // Sum expenses for this account
+    // Sum expenses for this account (round the total)
     // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-    const expensesTotal = (month.expenses || [])
+    const expensesTotal = roundCurrency((month.expenses || [])
       .filter(e => e.account_id === accountId)
-      .reduce((sum, e) => sum + e.amount, 0)
+      .reduce((sum, e) => sum + e.amount, 0))
 
     // Net change = income + expenses (expenses is negative for money out)
-    const netChange = incomeTotal + expensesTotal
+    const netChange = roundCurrency(incomeTotal + expensesTotal)
 
     balances.push({
       account_id: accountId,
@@ -195,7 +202,7 @@ function recalculateAccountBalances(
       income: incomeTotal,
       expenses: expensesTotal,
       net_change: netChange,
-      end_balance: startBalance + netChange,
+      end_balance: roundCurrency(startBalance + netChange),
     })
   }
 
@@ -217,19 +224,19 @@ export function extractSnapshotFromMonth(month: MonthDocument): PreviousMonthSna
   for (const cb of month.category_balances || []) {
     // Skip "No Category" - it doesn't track balances
     if (isNoCategory(cb.category_id)) continue
-    categoryEndBalances[cb.category_id] = cb.end_balance
+    categoryEndBalances[cb.category_id] = roundCurrency(cb.end_balance)
   }
 
   for (const ab of month.account_balances || []) {
     // Skip the No Account - it doesn't track balances
     if (isNoAccount(ab.account_id)) continue
-    accountEndBalances[ab.account_id] = ab.end_balance
+    accountEndBalances[ab.account_id] = roundCurrency(ab.end_balance)
   }
 
   return {
     categoryEndBalances,
     accountEndBalances,
-    totalIncome: month.total_income,
+    totalIncome: roundCurrency(month.total_income),
   }
 }
 

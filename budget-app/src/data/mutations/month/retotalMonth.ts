@@ -15,6 +15,7 @@
 
 import type { MonthDocument, AccountMonthBalance, CategoryMonthBalance } from '@types'
 import { isNoCategory, isNoAccount } from '../../constants'
+import { roundCurrency } from '@utils'
 
 /**
  * Re-total a month document based on current transactions.
@@ -30,9 +31,9 @@ export function retotalMonth(month: MonthDocument): MonthDocument {
   const income = month.income || []
   const expenses = month.expenses || []
 
-  // Re-total income and expenses
-  const totalIncome = income.reduce((sum, inc) => sum + inc.amount, 0)
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+  // Re-total income and expenses (round to 2 decimal places)
+  const totalIncome = roundCurrency(income.reduce((sum, inc) => sum + inc.amount, 0))
+  const totalExpenses = roundCurrency(expenses.reduce((sum, exp) => sum + exp.amount, 0))
 
   // Re-total account balances
   const accountBalances = retotalAccountBalances(month)
@@ -82,25 +83,25 @@ function retotalAccountBalances(month: MonthDocument): AccountMonthBalance[] {
     accountIds.add(ab.account_id)
   }
 
-  // Calculate balances for each account
+  // Calculate balances for each account (all values rounded to 2 decimal places)
   const balances: AccountMonthBalance[] = []
   for (const accountId of accountIds) {
     const existing = balanceMap.get(accountId)
-    const startBalance = existing?.start_balance ?? 0
+    const startBalance = roundCurrency(existing?.start_balance ?? 0)
 
     // Sum income for this account
-    const incomeTotal = income
+    const incomeTotal = roundCurrency(income
       .filter(i => i.account_id === accountId)
-      .reduce((sum, i) => sum + i.amount, 0)
+      .reduce((sum, i) => sum + i.amount, 0))
 
     // Sum expenses for this account
     // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-    const expensesTotal = expenses
+    const expensesTotal = roundCurrency(expenses
       .filter(e => e.account_id === accountId)
-      .reduce((sum, e) => sum + e.amount, 0)
+      .reduce((sum, e) => sum + e.amount, 0))
 
     // Net change = income + expenses (expenses is negative for money out)
-    const netChange = incomeTotal + expensesTotal
+    const netChange = roundCurrency(incomeTotal + expensesTotal)
 
     balances.push({
       account_id: accountId,
@@ -108,7 +109,7 @@ function retotalAccountBalances(month: MonthDocument): AccountMonthBalance[] {
       income: incomeTotal,
       expenses: expensesTotal,
       net_change: netChange,
-      end_balance: startBalance + netChange,
+      end_balance: roundCurrency(startBalance + netChange),
     })
   }
 
@@ -135,6 +136,7 @@ function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
 
   // Calculate spent per category from expenses (excluding "No Category")
   // Note: expense.amount follows CSV convention: negative = money out, positive = money in
+  // Values are rounded when used, not during accumulation to avoid compound rounding errors
   const spentByCategory = new Map<string, number>()
   for (const exp of expenses) {
     if (isNoCategory(exp.category_id)) continue
@@ -153,19 +155,23 @@ function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
     allCategoryIds.add(exp.category_id)
   }
 
-  // Build updated balances for all categories
+  // Build updated balances for all categories (all values rounded to 2 decimal places)
   const balances: CategoryMonthBalance[] = []
   for (const categoryId of allCategoryIds) {
     const existing = balanceMap.get(categoryId)
-    const spent = spentByCategory.get(categoryId) ?? 0
+    const spent = roundCurrency(spentByCategory.get(categoryId) ?? 0)
 
     if (existing) {
       // Update existing balance with new spent amount
       // Note: spent is negative for money out, positive for money in
+      const startBalance = roundCurrency(existing.start_balance)
+      const allocated = roundCurrency(existing.allocated)
       balances.push({
         ...existing,
+        start_balance: startBalance,
+        allocated,
         spent,
-        end_balance: existing.start_balance + existing.allocated + spent,
+        end_balance: roundCurrency(startBalance + allocated + spent),
       })
     } else {
       // Create new balance entry for category that only has expenses (no allocation yet)

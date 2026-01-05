@@ -117,8 +117,7 @@ export function BudgetCard({
               <span style={{ fontWeight: 600 }}>{budget.name}</span>
               {budget.isOwner && (
                 <span style={{
-                  background: 'color-mix(in srgb, #646cff 20%, transparent)',
-                  color: '#a5b4fc',
+                  background: 'color-mix(in srgb, currentColor 15%, transparent)',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '4px',
                   fontSize: '0.65rem',

@@ -7,7 +7,7 @@
 
 import type { Category, CategoryMonthBalance } from '@types'
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
-import { colors } from '@styles/shared'
+import { colors, tentativeValue, groupTotalText, groupTotalRowBorder } from '@styles/shared'
 import { MobileBalanceRow } from './CategoryBalanceRows'
 
 // =============================================================================
@@ -51,6 +51,7 @@ export function CategoryGroupRows({
     paddingRight: '0.5rem',
     marginTop: '1.25rem',
     borderTop: '1px solid rgba(255,255,255,0.2)',
+    borderBottom: groupTotalRowBorder,
     background: 'rgba(255,255,255,0.04)',
     display: 'flex',
     alignItems: 'center',
@@ -79,20 +80,20 @@ export function CategoryGroupRows({
       {!isMobile && (
         <>
           <div style={{ ...groupHeaderCellStyle, paddingLeft: '0.5rem', opacity: isUngrouped ? 0.7 : 1 }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{name}</span>
+            <span>{name}</span>
             <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({categories.length})</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupTotals.start) }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatBalanceCurrency(groupTotals.start)}</span>
+            <span style={groupTotalText}>{formatBalanceCurrency(groupTotals.start)}</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: isDraftMode ? 'center' : 'flex-end', color: getAllocatedColor(groupTotals.allocated) }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>+{formatCurrency(groupTotals.allocated)}</span>
+            <span style={groupTotalText}>+{formatCurrency(groupTotals.allocated)}</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getSpendColor(groupTotals.spent) }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrency(groupTotals.spent)}</span>
+            <span style={groupTotalText}>{formatSignedCurrency(groupTotals.spent)}</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupNetChange) }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrencyAlways(groupNetChange)}</span>
+            <span style={groupTotalText}>{formatSignedCurrencyAlways(groupNetChange)}</span>
           </div>
           <div style={{
             ...groupHeaderCellStyle,
@@ -101,10 +102,10 @@ export function CategoryGroupRows({
             paddingRight: '1rem',
             borderRight: '2px solid rgba(128, 128, 128, 0.4)',
           }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatBalanceCurrency(groupTotals.end)}</span>
+            <span style={groupTotalText}>{formatBalanceCurrency(groupTotals.end)}</span>
           </div>
-          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: groupAllTime < 0 ? colors.debt : colors.primary }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatBalanceCurrency(groupAllTime)}</span>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupAllTime) }}>
+            <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatBalanceCurrency(groupAllTime)}</span>
           </div>
         </>
       )}
@@ -119,16 +120,17 @@ export function CategoryGroupRows({
           paddingRight: '0.5rem',
           marginTop: '1.25rem',
           borderTop: '1px solid rgba(255,255,255,0.2)',
+          borderBottom: groupTotalRowBorder,
           background: 'rgba(255,255,255,0.04)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
           <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1 }}>
-            <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{name}</span>
+            {name}
             <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({categories.length})</span>
           </span>
-          <span style={{ fontWeight: 600, color: getCategoryBalanceColor(groupTotals.end), borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>
+          <span style={{ ...groupTotalText, color: getCategoryBalanceColor(groupTotals.end) }}>
             {formatBalanceCurrency(groupTotals.end)}
           </span>
         </div>
@@ -272,9 +274,9 @@ function CategoryGridRow({
         <div style={{ ...cellStyle, justifyContent: 'center', flexDirection: 'column', gap: '0.1rem', paddingTop: '0.35rem', paddingBottom: '0.35rem' }}>
           {isPercentageBased ? (
             <span style={{ fontSize: '0.85rem' }}>
-              <span style={{ color: colors.primary }}>{category.default_monthly_amount}%</span>
+              <span style={{ color: colors.success, ...tentativeValue }}>{category.default_monthly_amount}%</span>
               <span style={{ opacity: 0.5 }}> = </span>
-              <span style={{ color: colors.primary }}>{formatCurrency(calculatedAmount)}</span>
+              <span style={{ color: colors.success, ...tentativeValue }}>{formatCurrency(calculatedAmount)}</span>
             </span>
           ) : (
             <>
@@ -350,7 +352,7 @@ function CategoryGridRow({
       </div>
 
       {/* All-Time Balance */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: allTimeBalance < 0 ? colors.debt : colors.primary }}>
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(allTimeBalance), ...(isDraftMode ? tentativeValue : {}) }}>
         {formatBalanceCurrency(allTimeBalance)}
       </div>
     </div>

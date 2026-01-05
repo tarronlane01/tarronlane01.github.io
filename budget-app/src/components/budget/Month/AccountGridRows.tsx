@@ -7,7 +7,7 @@
 
 import type { FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors } from '@styles/shared'
+import { colors, groupTotalText, groupTotalRowBorder } from '@styles/shared'
 
 // Helper color functions - consistent: positive=green, negative=red, zero=grey
 function getIncomeColor(value: number): string {
@@ -44,6 +44,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
     padding: '0.6rem 0.5rem',
     marginTop: '1.25rem',
     borderTop: '1px solid rgba(255,255,255,0.2)',
+    borderBottom: groupTotalRowBorder,
     background: 'rgba(255,255,255,0.04)',
     display: 'flex',
     alignItems: 'center',
@@ -55,23 +56,23 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
     <div style={{ display: 'contents' }}>
       {/* Group header row */}
       <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1 }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{name}</span>
+        <span>{name}</span>
         <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.start) }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatCurrency(groupTotals.start)}</span>
+        <span style={groupTotalText}>{formatCurrency(groupTotals.start)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getIncomeColor(groupTotals.income) }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>+{formatCurrency(groupTotals.income)}</span>
+        <span style={groupTotalText}>+{formatCurrency(groupTotals.income)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getExpenseColor(groupTotals.expenses) }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrency(groupTotals.expenses)}</span>
+        <span style={groupTotalText}>{formatSignedCurrency(groupTotals.expenses)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(groupTotals.netChange) }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>
+        <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>
       </div>
       <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
-        <span style={{ borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>{formatCurrency(groupTotals.end)}</span>
+        <span style={groupTotalText}>{formatCurrency(groupTotals.end)}</span>
       </div>
 
       {/* Account rows */}

@@ -14,4 +14,5 @@ export {
   trackedClick,
   trackedSubmit,
 } from './actionLogger'
+export { roundCurrency, needsPrecisionFix } from './currency'
 

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import type { CategoriesMap, AccountsMap } from '@contexts'
-import { queryClient, queryKeys } from '@data/queryClient'
+import { clearAllCaches } from './migrationRunner'
 
 import type { SeedImportStatus, ParsedSeedRow, MappingEntry, SeedImportResult, ImportProgress } from './seedImportTypes'
 import { parseCSV, parseRawCashFlowCSV } from './seedImportParser'
@@ -260,13 +260,8 @@ export function useSeedImport(budgetId: string | null) {
       (progress) => setImportProgress(progress)
     )
 
-    // Remove all month queries from cache after import
-    // Using removeQueries instead of invalidateQueries to avoid triggering refetches
-    // for months that might be cached but weren't part of the import
-    queryClient.removeQueries({ queryKey: ['month'] })
-
-    // Also remove budget query so fresh data is fetched when navigating
-    queryClient.removeQueries({ queryKey: queryKeys.budget(budgetId) })
+    // Clear all caches using the migration framework (ensures consistency)
+    clearAllCaches()
 
     setImportProgress(prev => prev ? { ...prev, phase: 'complete', percentComplete: 100 } : null)
     setImportResult(result)

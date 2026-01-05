@@ -4,11 +4,14 @@
  * Fixes feedback documents with issues:
  * 1. Sanitized doc IDs (e.g., "user_gmail.com" -> "user@gmail.com")
  * 2. Corrupted arrayUnion sentinels in items field
+ *
+ * Uses the migration framework to ensure cache invalidation.
  */
 
 import { useState } from 'react'
 // eslint-disable-next-line no-restricted-imports
 import { readDocByPath, writeDocByPath, queryCollection, deleteDocByPath } from '@firestore'
+import { runMigration } from './migrationRunner'
 
 // Types
 interface FeedbackItem {
@@ -179,7 +182,7 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
   }
 
   /**
-   * Fix feedback documents:
+   * Fix feedback documents using the migration framework (guarantees cache invalidation):
    * 1. Fix corrupted arrayUnion sentinels
    * 2. Merge sanitized doc IDs into proper email format
    */
@@ -188,125 +191,141 @@ export function useFeedbackMigration({ currentUser }: UseFeedbackMigrationOption
 
     setIsMigratingFeedback(true)
 
-    const result: FeedbackMigrationResult = feedbackMigrationResult
-      ? { ...feedbackMigrationResult, mergedItems: 0, deletedDocuments: 0, fixedDocuments: 0, errors: [] }
-      : { documentsFound: 0, sanitizedDocuments: [], corruptedDocuments: [], mergedItems: 0, deletedDocuments: 0, fixedDocuments: 0, errors: [] }
-
     try {
-      const feedbackResult = await queryCollection<{
-        items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
-        user_email?: string
-        created_at?: string
-        updated_at?: string
-      }>(
-        'feedback',
-        'feedback migration: listing all documents'
-      )
+      // runMigration automatically clears all caches after completion
+      const result = await runMigration(async () => {
+        const migrationResult: FeedbackMigrationResult = {
+          documentsFound: 0,
+          sanitizedDocuments: [],
+          corruptedDocuments: [],
+          mergedItems: 0,
+          deletedDocuments: 0,
+          fixedDocuments: 0,
+          errors: [],
+        }
 
-      result.documentsFound = feedbackResult.docs.length
-      result.sanitizedDocuments = []
-      result.corruptedDocuments = []
+        const feedbackResult = await queryCollection<{
+          items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
+          user_email?: string
+          created_at?: string
+          updated_at?: string
+        }>(
+          'feedback',
+          'feedback migration: listing all documents'
+        )
 
-      // First pass: Fix corrupted documents (but not sanitized ones)
-      for (const docSnap of feedbackResult.docs) {
-        const isSanitized = isSanitizedEmailDocId(docSnap.id)
-        const isCorrupted = isCorruptedArrayUnion(docSnap.data.items)
+        migrationResult.documentsFound = feedbackResult.docs.length
 
-        if (isCorrupted && !isSanitized) {
-          result.corruptedDocuments.push(docSnap.id)
-          const extractedItems = extractItemsFromCorrupted(docSnap.data.items as { _methodName: string; vc: FeedbackItem[] })
+        // First pass: Fix corrupted documents (but not sanitized ones)
+        for (const docSnap of feedbackResult.docs) {
+          const isSanitized = isSanitizedEmailDocId(docSnap.id)
+          const isCorrupted = isCorruptedArrayUnion(docSnap.data.items)
 
-          try {
-            await writeDocByPath(
-              'feedback',
-              docSnap.id,
-              {
-                items: extractedItems,
-                user_email: docSnap.data.user_email || docSnap.id,
-                created_at: docSnap.data.created_at || new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              `feedback migration: fixing corrupted arrayUnion in ${docSnap.id}`
-            )
-            result.fixedDocuments++
-          } catch (err) {
-            result.errors.push(`Failed to fix ${docSnap.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          if (isCorrupted && !isSanitized) {
+            migrationResult.corruptedDocuments.push(docSnap.id)
+            const extractedItems = extractItemsFromCorrupted(docSnap.data.items as { _methodName: string; vc: FeedbackItem[] })
+
+            try {
+              await writeDocByPath(
+                'feedback',
+                docSnap.id,
+                {
+                  items: extractedItems,
+                  user_email: docSnap.data.user_email || docSnap.id,
+                  created_at: docSnap.data.created_at || new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+                `feedback migration: fixing corrupted arrayUnion in ${docSnap.id}`
+              )
+              migrationResult.fixedDocuments++
+            } catch (err) {
+              migrationResult.errors.push(`Failed to fix ${docSnap.id}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            }
           }
         }
-      }
 
-      // Second pass: Migrate sanitized documents
-      for (const docSnap of feedbackResult.docs) {
-        if (isSanitizedEmailDocId(docSnap.id)) {
-          result.sanitizedDocuments.push(docSnap.id)
+        // Second pass: Migrate sanitized documents
+        for (const docSnap of feedbackResult.docs) {
+          if (isSanitizedEmailDocId(docSnap.id)) {
+            migrationResult.sanitizedDocuments.push(docSnap.id)
 
-          const sanitizedId = docSnap.id
-          const properEmailId = unsanitizeDocId(sanitizedId)
-          const sanitizedItems = getItemsFromDoc(docSnap.data)
+            const sanitizedId = docSnap.id
+            const properEmailId = unsanitizeDocId(sanitizedId)
+            const sanitizedItems = getItemsFromDoc(docSnap.data)
 
-          const { exists: properExists, data: properData } = await readDocByPath<{
-            items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
-            user_email?: string
-            created_at?: string
-            updated_at?: string
-          }>(
-            'feedback',
-            properEmailId,
-            `feedback migration: checking if ${properEmailId} exists`
-          )
+            const { exists: properExists, data: properData } = await readDocByPath<{
+              items?: FeedbackItem[] | { _methodName: string; vc: FeedbackItem[] }
+              user_email?: string
+              created_at?: string
+              updated_at?: string
+            }>(
+              'feedback',
+              properEmailId,
+              `feedback migration: checking if ${properEmailId} exists`
+            )
 
-          if (properExists && properData) {
-            const existingItems = getItemsFromDoc(properData)
-            const existingIds = new Set(existingItems.map(i => i.id))
-            const newItems = sanitizedItems.filter(item => !existingIds.has(item.id))
+            if (properExists && properData) {
+              const existingItems = getItemsFromDoc(properData)
+              const existingIds = new Set(existingItems.map(i => i.id))
+              const newItems = sanitizedItems.filter(item => !existingIds.has(item.id))
 
-            if (newItems.length > 0 || isCorruptedArrayUnion(properData.items)) {
-              const mergedItems = [...existingItems, ...newItems]
+              if (newItems.length > 0 || isCorruptedArrayUnion(properData.items)) {
+                const mergedItems = [...existingItems, ...newItems]
+                await writeDocByPath(
+                  'feedback',
+                  properEmailId,
+                  {
+                    ...properData,
+                    items: mergedItems,
+                    updated_at: new Date().toISOString(),
+                  },
+                  `feedback migration: merging ${newItems.length} items from ${sanitizedId}`
+                )
+                migrationResult.mergedItems += newItems.length
+              }
+            } else if (sanitizedItems.length > 0) {
               await writeDocByPath(
                 'feedback',
                 properEmailId,
                 {
-                  ...properData,
-                  items: mergedItems,
+                  items: sanitizedItems,
+                  user_email: properEmailId,
+                  created_at: docSnap.data.created_at || new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                 },
-                `feedback migration: merging ${newItems.length} items from ${sanitizedId}`
+                `feedback migration: creating ${properEmailId} from ${sanitizedId}`
               )
-              result.mergedItems += newItems.length
+              migrationResult.mergedItems += sanitizedItems.length
             }
-          } else if (sanitizedItems.length > 0) {
-            await writeDocByPath(
-              'feedback',
-              properEmailId,
-              {
-                items: sanitizedItems,
-                user_email: properEmailId,
-                created_at: docSnap.data.created_at || new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              `feedback migration: creating ${properEmailId} from ${sanitizedId}`
-            )
-            result.mergedItems += sanitizedItems.length
-          }
 
-          // Delete the sanitized document
-          try {
-            await deleteDocByPath(
-              'feedback',
-              sanitizedId,
-              `feedback migration: deleting sanitized document ${sanitizedId}`
-            )
-            result.deletedDocuments++
-          } catch (err) {
-            result.errors.push(`Failed to delete ${sanitizedId}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            // Delete the sanitized document
+            try {
+              await deleteDocByPath(
+                'feedback',
+                sanitizedId,
+                `feedback migration: deleting sanitized document ${sanitizedId}`
+              )
+              migrationResult.deletedDocuments++
+            } catch (err) {
+              migrationResult.errors.push(`Failed to delete ${sanitizedId}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+            }
           }
         }
-      }
+
+        return migrationResult
+      })
 
       setFeedbackMigrationResult(result)
     } catch (err) {
-      result.errors.push(err instanceof Error ? err.message : 'Migration failed')
-      setFeedbackMigrationResult(result)
+      setFeedbackMigrationResult({
+        documentsFound: 0,
+        sanitizedDocuments: [],
+        corruptedDocuments: [],
+        mergedItems: 0,
+        deletedDocuments: 0,
+        fixedDocuments: 0,
+        errors: [err instanceof Error ? err.message : 'Migration failed'],
+      })
     } finally {
       setIsMigratingFeedback(false)
     }

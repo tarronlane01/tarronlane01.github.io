@@ -68,6 +68,7 @@ export function ExpenseForm({
         showCleared: true,
         showNoCategoryOption: true,
         showNoAccountOption: true,
+        showSignToggle: true,
         accountLabel: 'Pay From',
         payeePlaceholder: 'e.g., Grocery Store',
         descriptionPlaceholder: 'e.g., Weekly groceries',

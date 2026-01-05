@@ -100,15 +100,15 @@ export function useUpdateExpense() {
     await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update expense' })
 
     // Update budget's account balance
-    // For expenses: old expense added to balance (+), new expense subtracted (-)
-    // If account changed: add oldAmount to old account, subtract newAmount from new account
-    // If same account: apply delta (oldAmount - newAmount) since expenses decrease balance
+    // Amounts are signed: negative = expense (money out), positive = refund (money in)
+    // To update: reverse old effect (-oldAmount) and apply new effect (+amount)
+    // Delta = amount - oldAmount
     if (oldAccountId === accountId) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: oldAmount - amount }])
+      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount - oldAmount }])
     } else {
       await updateBudgetAccountBalances(budgetId, [
-        { accountId: oldAccountId, delta: oldAmount },  // Restore old account
-        { accountId, delta: -amount },                   // Deduct from new account
+        { accountId: oldAccountId, delta: -oldAmount },  // Reverse old account effect
+        { accountId, delta: amount },                     // Apply new account effect
       ])
     }
 

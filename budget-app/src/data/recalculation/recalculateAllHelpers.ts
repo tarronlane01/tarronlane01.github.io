@@ -4,7 +4,7 @@
 
 import type { AccountsMap, MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
 import { readDocByPath } from '@firestore'
-import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { getMonthDocId, getYearMonthOrdinal, roundCurrency } from '@utils'
 
 interface MonthData {
   year: number
@@ -36,13 +36,13 @@ export async function processMonth(
 
   if (!exists || !fullMonthData) return null
 
-  // Recalculate totals
+  // Recalculate totals (round to 2 decimal places)
   const income = fullMonthData.income || []
   const expenses = fullMonthData.expenses || []
   const areAllocationsFinalized = fullMonthData.are_allocations_finalized || false
 
-  const newTotalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0)
-  const newTotalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0)
+  const newTotalIncome = roundCurrency(income.reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0))
+  const newTotalExpenses = roundCurrency(expenses.reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0))
 
   // Get existing allocations from category_balances
   const existingCategoryBalances: Record<string, { allocated: number }> = {}
@@ -52,22 +52,22 @@ export async function processMonth(
     }
   }
 
-  // Build category_balances using running balances for start
+  // Build category_balances using running balances for start (all values rounded)
   const monthCategoryBalances: CategoryMonthBalance[] = categoryIds.map(catId => {
-    const startBalance = runningCategoryBalances[catId] ?? 0
+    const startBalance = roundCurrency(runningCategoryBalances[catId] ?? 0)
     let allocated = 0
     if (areAllocationsFinalized && existingCategoryBalances[catId]) {
-      allocated = existingCategoryBalances[catId].allocated
+      allocated = roundCurrency(existingCategoryBalances[catId].allocated)
     }
 
     let spent = 0
     if (expenses.length > 0) {
-      spent = expenses
+      spent = roundCurrency(expenses
         .filter((e: { category_id: string }) => e.category_id === catId)
-        .reduce((sum: number, e: { amount: number }) => sum + e.amount, 0)
+        .reduce((sum: number, e: { amount: number }) => sum + e.amount, 0))
     }
 
-    const endBalance = startBalance + allocated + spent
+    const endBalance = roundCurrency(startBalance + allocated + spent)
     return { category_id: catId, start_balance: startBalance, allocated, spent, end_balance: endBalance }
   })
 
@@ -76,25 +76,25 @@ export async function processMonth(
     runningCategoryBalances[cb.category_id] = cb.end_balance
   })
 
-  // Build account_balances
+  // Build account_balances (all values rounded)
   const accountIds = Object.keys(accounts)
   const monthAccountBalances: AccountMonthBalance[] = accountIds.map(accountId => {
-    const accountIncome = income
+    const accountIncome = roundCurrency(income
       .filter((inc: { account_id: string }) => inc.account_id === accountId)
-      .reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0)
+      .reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0))
 
-    const accountExpenses = expenses
+    const accountExpenses = roundCurrency(expenses
       .filter((exp: { account_id: string }) => exp.account_id === accountId)
-      .reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0)
+      .reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0))
 
-    const netChange = accountIncome + accountExpenses
+    const netChange = roundCurrency(accountIncome + accountExpenses)
 
     let startBalance = 0
     if (fullMonthData.account_balances) {
       const existing = fullMonthData.account_balances.find(
         (ab: { account_id: string }) => ab.account_id === accountId
       )
-      if (existing) startBalance = existing.start_balance ?? 0
+      if (existing) startBalance = roundCurrency(existing.start_balance ?? 0)
     }
 
     return {
@@ -103,7 +103,7 @@ export async function processMonth(
       income: accountIncome,
       expenses: accountExpenses,
       net_change: netChange,
-      end_balance: startBalance + netChange,
+      end_balance: roundCurrency(startBalance + netChange),
     }
   })
 
@@ -171,6 +171,11 @@ export async function calculateAccountBalancesFromAllMonths(
         accountBalances[exp.account_id] -= exp.amount
       }
     }
+  }
+
+  // Round all final balances
+  for (const accId of Object.keys(accountBalances)) {
+    accountBalances[accId] = roundCurrency(accountBalances[accId])
   }
 
   return accountBalances

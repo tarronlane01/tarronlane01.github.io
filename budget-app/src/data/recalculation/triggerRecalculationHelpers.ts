@@ -4,7 +4,7 @@
 
 import type { FirestoreData, MonthMap } from '@types'
 import { readDocByPath, writeDocByPath } from '@firestore'
-import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { getMonthDocId, getYearMonthOrdinal, roundCurrency } from '@utils'
 import { queryClient, queryKeys } from '../queryClient'
 import type { BudgetData } from '../queries/budget'
 import type { BudgetDocument, MonthWithId } from './triggerRecalculationTypes'
@@ -94,20 +94,21 @@ export function calculateTotalAvailable(accounts: FirestoreData, categories: Fir
     const balance = (cat as { balance?: number }).balance ?? 0
     return sum + (balance > 0 ? balance : 0)
   }, 0)
-  return onBudgetAccountTotal - totalPositiveCategoryBalances
+  return roundCurrency(onBudgetAccountTotal - totalPositiveCategoryBalances)
 }
 
 export async function updateBudgetBalances(budgetId: string, accountBalances: Record<string, number>, categoryBalances: Record<string, number>, monthMap: MonthMap): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget for balance update')
   if (!exists || !data) return
 
+  // Round all balances to 2 decimal places
   const updatedAccounts = { ...data.accounts }
   for (const [accountId, balance] of Object.entries(accountBalances)) {
-    if (updatedAccounts[accountId]) updatedAccounts[accountId] = { ...updatedAccounts[accountId], balance }
+    if (updatedAccounts[accountId]) updatedAccounts[accountId] = { ...updatedAccounts[accountId], balance: roundCurrency(balance) }
   }
   const updatedCategories = { ...data.categories }
   for (const [categoryId, balance] of Object.entries(categoryBalances)) {
-    if (updatedCategories[categoryId]) updatedCategories[categoryId] = { ...updatedCategories[categoryId], balance }
+    if (updatedCategories[categoryId]) updatedCategories[categoryId] = { ...updatedCategories[categoryId], balance: roundCurrency(balance) }
   }
 
   const clearedMonthMap = clearMonthMapFlags(monthMap)

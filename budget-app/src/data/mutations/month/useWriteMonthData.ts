@@ -92,6 +92,7 @@ export async function writeMonthData(params: WriteMonthParams): Promise<void> {
   )
 
   // Mark future months and budget as needing recalculation (unless disabled)
+  // Note: markMonthsNeedRecalculation internally updates the budget cache via updateCacheWithMarking
   if (cascadeRecalculation) {
     await cascadeRecalculationMarking(budgetId, month.year, month.month)
   }
@@ -132,6 +133,7 @@ export function useWriteMonthData() {
 
     onSuccess: async ({ budgetId, year, month, cascadeRecalculation }) => {
       if (!cascadeRecalculation) return
+      // markMonthsNeedRecalculation internally updates the budget cache via updateCacheWithMarking
       await cascadeRecalculationMarking(budgetId, year, month)
     },
 

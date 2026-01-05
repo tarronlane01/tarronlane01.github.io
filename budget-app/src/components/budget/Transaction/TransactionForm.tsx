@@ -27,6 +27,8 @@ export interface TransactionFieldConfig {
   showNoCategoryOption?: boolean
   /** Show the special "No Account" option (for spend entries) */
   showNoAccountOption?: boolean
+  /** Show toggle for switching between expense (negative) and refund (positive) */
+  showSignToggle?: boolean
   accountLabel?: string
   payeePlaceholder?: string
   descriptionPlaceholder?: string
@@ -97,6 +99,25 @@ const deleteBtnStyle = {
   borderRadius: '4px',
 }
 
+// Sign toggle button styles
+const signToggleStyle = (isNegative: boolean): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '2.25rem',
+  height: '100%',
+  minHeight: '2.25rem',
+  background: isNegative ? `color-mix(in srgb, ${colors.error} 15%, transparent)` : `color-mix(in srgb, ${colors.success} 15%, transparent)`,
+  border: `1px solid ${isNegative ? colors.errorBorder : 'rgba(74, 222, 128, 0.4)'}`,
+  borderRadius: '4px 0 0 4px',
+  cursor: 'pointer',
+  fontSize: '1rem',
+  fontWeight: 600,
+  color: isNegative ? colors.error : colors.success,
+  transition: 'all 0.15s ease',
+  flexShrink: 0,
+})
+
 export function TransactionForm({
   accounts, accountGroups, categories, categoryGroups, payees,
   initialData, defaultAccountId, defaultDate, config,
@@ -104,7 +125,7 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const { isWide } = useScreenWidth()
   const {
-    showCategory = false, showCleared = false,
+    showCategory = false, showCleared = false, showSignToggle = false,
     accountLabel = 'Account', payeePlaceholder = 'Payee name',
     descriptionPlaceholder = 'Optional note', submitLabel,
   } = config
@@ -114,9 +135,18 @@ export function TransactionForm({
   const [payee, setPayee] = useState(initialData?.payee || '')
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || '')
   const [accountId, setAccountId] = useState(initialData?.accountId || defaultAccountId || (accounts[0] ? accounts[0][0] : ''))
-  const [amount, setAmount] = useState(initialData?.amount?.toString() || '')
+  // For amount, store absolute value; sign is tracked separately when showSignToggle is enabled
+  const initialAmount = initialData?.amount !== undefined ? Math.abs(initialData.amount) : undefined
+  const [amount, setAmount] = useState(initialAmount?.toString() || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [cleared, setCleared] = useState(initialData?.cleared || false)
+  // Sign state: true = negative (expense), false = positive (refund/credit)
+  // Default to negative (expense) unless editing an existing positive amount
+  const [isNegative, setIsNegative] = useState(() => {
+    if (!showSignToggle) return true
+    if (initialData?.amount !== undefined) return initialData.amount < 0
+    return true // Default to negative (expense)
+  })
 
   // Group accounts
   const accountsByGroup: Record<string, AccountEntry[]> = {}
@@ -143,10 +173,12 @@ export function TransactionForm({
       // Both cannot be "No" options - need at least one real category or account
       return
     }
+    // Apply sign when sign toggle is enabled
+    const finalAmount = showSignToggle && isNegative ? -parsedAmount : parsedAmount
     onSubmit({
       date, payee: payee.trim() || undefined,
       categoryId: showCategory ? categoryId : undefined,
-      accountId, amount: parsedAmount,
+      accountId, amount: finalAmount,
       description: description.trim() || undefined,
       cleared: showCleared ? cleared : undefined,
     })
@@ -237,8 +269,37 @@ export function TransactionForm({
             <FormField label="Date" htmlFor="txn-date">
               <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required />
             </FormField>
-            <FormField label="Amount" htmlFor="txn-amount">
-              <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+            <FormField label={showSignToggle ? (isNegative ? 'Amount (Expense)' : 'Amount (Refund)') : 'Amount'} htmlFor="txn-amount">
+              {showSignToggle ? (
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsNegative(!isNegative)}
+                    style={signToggleStyle(isNegative)}
+                    title={isNegative ? 'Click to make this a refund (+)' : 'Click to make this an expense (-)'}
+                  >
+                    {isNegative ? '−' : '+'}
+                  </button>
+                  <div style={{ flex: 1 }}>
+                    <CurrencyInput
+                      id="txn-amount"
+                      value={amount}
+                      onChange={setAmount}
+                      placeholder="$0.00"
+                      required
+                      autoFocus
+                      style={{
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: 'none',
+                        color: isNegative ? colors.error : colors.success,
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+              )}
             </FormField>
           </div>
           <FormField label="Payee" htmlFor="txn-payee">
@@ -265,13 +326,15 @@ export function TransactionForm({
 
   // Wide layout (single row) - only when there's plenty of room (>= 1400px)
   // Use minmax() for consistent column sizing
+  // Amount column is wider when sign toggle is shown (to accommodate toggle button)
+  const amountWidth = showSignToggle ? '8.25rem' : '6rem'
   const wideGridCols = hasCategory
     ? (showCleared
-        ? '6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 6rem minmax(10rem, 2fr) auto auto'
-        : '6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) 6rem minmax(10rem, 2fr) auto')
+        ? `6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) ${amountWidth} minmax(10rem, 2fr) auto auto`
+        : `6rem minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, 1fr) ${amountWidth} minmax(10rem, 2fr) auto`)
     : (showCleared
-        ? '6rem minmax(10rem, 1fr) minmax(10rem, 1fr) 6rem minmax(12rem, 2fr) auto auto'
-        : '6rem minmax(10rem, 1fr) minmax(10rem, 1fr) 6rem minmax(12rem, 2fr) auto')
+        ? `6rem minmax(10rem, 1fr) minmax(10rem, 1fr) ${amountWidth} minmax(12rem, 2fr) auto auto`
+        : `6rem minmax(10rem, 1fr) minmax(10rem, 1fr) ${amountWidth} minmax(12rem, 2fr) auto`)
 
   return (
     <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
@@ -284,8 +347,37 @@ export function TransactionForm({
         </FormField>
         {categoryField}
         <FormField label={accountLabel} htmlFor="txn-account">{accountSelect}</FormField>
-        <FormField label="Amount" htmlFor="txn-amount">
-          <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+        <FormField label={showSignToggle ? (isNegative ? 'Amount (−)' : 'Amount (+)') : 'Amount'} htmlFor="txn-amount">
+          {showSignToggle ? (
+            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+              <button
+                type="button"
+                onClick={() => setIsNegative(!isNegative)}
+                style={signToggleStyle(isNegative)}
+                title={isNegative ? 'Click to make this a refund (+)' : 'Click to make this an expense (-)'}
+              >
+                {isNegative ? '−' : '+'}
+              </button>
+              <div style={{ flex: 1 }}>
+                <CurrencyInput
+                  id="txn-amount"
+                  value={amount}
+                  onChange={setAmount}
+                  placeholder="$0.00"
+                  required
+                  autoFocus
+                  style={{
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    borderLeft: 'none',
+                    color: isNegative ? colors.error : colors.success,
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+          )}
         </FormField>
         <FormField label="Description" htmlFor="txn-description">
           <TextInput id="txn-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={descriptionPlaceholder} style={inputStyle} />

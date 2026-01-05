@@ -83,7 +83,7 @@ function Settings() {
           Only the budget owner can access this section.
         </p>
         <p style={{ marginTop: '1rem' }}>
-          <Link to="/budget/settings/categories" style={{ color: '#646cff' }}>
+          <Link to="/budget/settings/categories">
             Go to Categories →
           </Link>
         </p>

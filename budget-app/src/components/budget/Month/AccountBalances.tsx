@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors, sectionHeader } from '@styles/shared'
+import { sectionHeader } from '@styles/shared'
 
 interface AccountBalancesViewProps {
   accounts: AccountsMap
@@ -53,7 +53,7 @@ export function AccountBalancesView({
       {Object.keys(accounts).length === 0 && (
         <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
           No accounts yet.{' '}
-          <Link to="/budget/settings/accounts" style={{ color: colors.primaryLight }}>
+          <Link to="/budget/settings/accounts" style={{ opacity: 1 }}>
             Add accounts →
           </Link>
         </p>

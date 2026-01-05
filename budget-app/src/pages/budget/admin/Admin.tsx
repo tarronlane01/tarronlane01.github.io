@@ -63,7 +63,7 @@ function Admin() {
           Only administrators can access this section.
         </p>
         <p style={{ marginTop: '1rem' }}>
-          <Link to="/budget" style={{ color: '#646cff' }}>
+          <Link to="/budget">
             Go to Budget →
           </Link>
         </p>
@@ -80,7 +80,7 @@ function Admin() {
           Only test users can access this section.
         </p>
         <p style={{ marginTop: '1rem' }}>
-          <Link to="/budget/admin/budget" style={{ color: '#646cff' }}>
+          <Link to="/budget/admin/budget">
             Go to Admin →
           </Link>
         </p>

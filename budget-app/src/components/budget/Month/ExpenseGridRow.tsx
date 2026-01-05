@@ -60,8 +60,7 @@ export function ExpenseGridRow({ expense, categoryName, accountName, accountGrou
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{
               fontSize: '0.7rem',
-              background: `color-mix(in srgb, ${colors.primary} 20%, transparent)`,
-              color: colors.primaryLight,
+              background: 'color-mix(in srgb, currentColor 15%, transparent)',
               padding: '0.1rem 0.4rem',
               borderRadius: '3px',
             }}>
@@ -108,8 +107,7 @@ export function ExpenseGridRow({ expense, categoryName, accountName, accountGrou
       <div style={{ ...cellStyle, justifyContent: 'center' }}>
         <span style={{
           fontSize: '0.8rem',
-          background: `color-mix(in srgb, ${colors.primary} 15%, transparent)`,
-          color: colors.primaryLight,
+          background: 'color-mix(in srgb, currentColor 15%, transparent)',
           padding: '0.2rem 0.5rem',
           borderRadius: '4px',
           overflow: 'hidden',

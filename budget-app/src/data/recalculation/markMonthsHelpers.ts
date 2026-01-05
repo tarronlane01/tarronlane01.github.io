@@ -57,25 +57,25 @@ export function cleanupMonthMap(monthMap: MonthMap): MonthMap {
 }
 
 /**
- * Check if ALL months after the specified ordinal are already marked in cache.
+ * Check if the edited month AND all months after are already marked in cache.
  * Returns true only if the cache exists AND all relevant months are already marked.
  *
  * This optimization prevents unnecessary Firestore writes when the user
  * makes multiple edits to the same month in quick succession.
  */
-export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, afterOrdinal: string): boolean {
+export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, editedMonthOrdinal: string): boolean {
   const budgetKey = queryKeys.budget(budgetId)
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (!cachedBudget?.monthMap) return false
 
-  // Check if any future month in the cache is NOT marked
+  // Check if the edited month or any future month in the cache is NOT marked
   for (const [ordinal, info] of Object.entries(cachedBudget.monthMap)) {
-    if (ordinal > afterOrdinal && !info.needs_recalculation) {
-      return false // Found a future month that's not marked
+    if (ordinal >= editedMonthOrdinal && !info.needs_recalculation) {
+      return false // Found a month that needs marking
     }
   }
 
-  return true // All future months (if any) are already marked
+  return true // Edited month and all future months are already marked
 }
 
 /**

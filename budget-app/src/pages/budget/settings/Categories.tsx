@@ -7,8 +7,8 @@ import {
   DropZone,
   formatCurrency,
   getBalanceColor,
+  getAllocatedColor,
 } from '../../../components/ui'
-import { colors } from '@styles/shared'
 import { useIsMobile } from '@hooks'
 import {
   CategoryGroupForm,
@@ -126,7 +126,7 @@ function Categories() {
             </span>
             <span>
               <span style={{ opacity: 0.6 }}>Allocated: </span>
-              <span style={{ color: colors.primary, fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}</span>
+              <span style={{ color: getAllocatedColor(totalCurrentAllocated), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}</span>
               {hasFutureAllocations && <span style={{ opacity: 0.5, fontSize: '0.8rem' }}> ({formatCurrency(totalAllocated)} total)</span>}
             </span>
             <span>

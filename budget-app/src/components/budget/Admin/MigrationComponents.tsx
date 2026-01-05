@@ -167,9 +167,9 @@ const statusBoxStyles: Record<StatusBoxType, { bg: string; border: string; color
     color: '#fbbf24',
   },
   running: {
-    bg: 'rgba(100, 108, 255, 0.1)',
-    border: 'rgba(100, 108, 255, 0.3)',
-    color: '#a5b4fc',
+    bg: 'rgba(200, 200, 200, 0.1)',
+    border: 'rgba(200, 200, 200, 0.3)',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   success: {
     bg: 'rgba(34, 197, 94, 0.1)',
