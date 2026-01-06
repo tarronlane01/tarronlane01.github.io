@@ -8,12 +8,14 @@ import {
   formatCurrency,
   getBalanceColor,
   getAllocatedColor,
+  CollapsibleSection,
 } from '../../../components/ui'
 import { useIsMobile } from '@hooks'
 import {
   CategoryGroupForm,
   CategoryGroupCard,
   UncategorizedSection,
+  CategoryForm,
 } from '../../../components/budget/Categories'
 import { RecalculateAllButton } from '../../../components/budget/Month'
 
@@ -24,6 +26,7 @@ function Categories() {
     categories,
     categoryGroups,
     categoriesByGroup,
+    hiddenCategories,
     sortedGroups,
     categoryBalances,
     isLoading,
@@ -242,6 +245,71 @@ function Categories() {
           hasGroups={categoryGroups.length > 0}
         />
       </div>
+
+      {/* Hidden categories section */}
+      {hiddenCategories.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <CollapsibleSection title="Hidden Categories" count={hiddenCategories.length}>
+            <div style={{
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              background: 'color-mix(in srgb, currentColor 5%, transparent)',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+            }}>
+              <p style={{ margin: '0 0 0.5rem 0', opacity: 0.8 }}>
+                <strong>🙈 Hidden categories</strong> are excluded from dropdowns and balance displays.
+                They're useful for historical categories that you want to keep for record-keeping but don't need in everyday use.
+              </p>
+              <p style={{ margin: 0, opacity: 0.6 }}>
+                To unhide a category, click it to edit and uncheck "Hidden category".
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {hiddenCategories.map(([catId, category]) => (
+                editingCategoryId === catId ? (
+                  <CategoryForm
+                    key={catId}
+                    initialData={{
+                      name: category.name,
+                      description: category.description,
+                      category_group_id: category.category_group_id,
+                      default_monthly_amount: category.default_monthly_amount,
+                      default_monthly_type: category.default_monthly_type,
+                      is_hidden: category.is_hidden,
+                    }}
+                    onSubmit={(data) => { handleUpdateCategory(catId, data); setEditingCategoryId(null) }}
+                    onCancel={() => setEditingCategoryId(null)}
+                    submitLabel="Save"
+                    categoryGroups={categoryGroups}
+                    showGroupSelector={true}
+                  />
+                ) : (
+                  <div
+                    key={catId}
+                    onClick={() => setEditingCategoryId(catId)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: 'color-mix(in srgb, currentColor 3%, transparent)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      opacity: 0.7,
+                    }}
+                  >
+                    <span>{category.name}</span>
+                    <span style={{ color: getBalanceColor(category.balance), fontWeight: 500 }}>
+                      {formatCurrency(category.balance)}
+                    </span>
+                  </div>
+                )
+              ))}
+            </div>
+          </CollapsibleSection>
+        </div>
+      )}
 
       {/* Add Group button/form */}
       {showCreateGroupForm ? (

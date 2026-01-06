@@ -192,7 +192,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
       display: 'flex',
       alignItems: 'stretch',
       padding: '0.6rem 0.75rem',
-      background: isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)',
+      background: isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)',
     }}>
       {/* Category name */}
       <div style={{ ...fieldContainer, flex: 2, minWidth: 0, overflow: 'hidden' }}>

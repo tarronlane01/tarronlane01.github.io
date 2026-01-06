@@ -129,7 +129,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
 // =============================================================================
 
 function AccountGridRow({ account, balance, isEvenRow }: { account: FinancialAccount; balance: AccountMonthBalance; isEvenRow: boolean }) {
-  const rowBg = isEvenRow ? 'rgba(255,255,255,0.02)' : 'transparent'
+  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem 0.5rem',
     background: rowBg,

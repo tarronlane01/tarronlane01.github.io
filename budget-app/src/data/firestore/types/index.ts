@@ -36,6 +36,8 @@ export type {
 export type {
   IncomeTransaction,
   ExpenseTransaction,
+  TransferTransaction,
+  AdjustmentTransaction,
   CategoryMonthBalance,
   AccountMonthBalance,
   MonthDocument,

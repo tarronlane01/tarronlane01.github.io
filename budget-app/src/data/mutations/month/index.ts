@@ -5,6 +5,8 @@
  * - allocations/ - Allocation operations (save draft, finalize, delete)
  * - income/ - Income transaction operations (add, update, delete)
  * - expenses/ - Expense transaction operations (add, update, delete)
+ * - transfers/ - Transfer transaction operations (add, update, delete)
+ * - adjustments/ - Adjustment transaction operations (add, update, delete)
  *
  * Core utilities:
  * - useWriteMonthData - Core hook for writing month documents
@@ -48,3 +50,17 @@ export {
   useUpdateExpense,
   useDeleteExpense,
 } from './expenses'
+
+// Transfer mutations
+export {
+  useAddTransfer,
+  useUpdateTransfer,
+  useDeleteTransfer,
+} from './transfers'
+
+// Adjustment mutations
+export {
+  useAddAdjustment,
+  useUpdateAdjustment,
+  useDeleteAdjustment,
+} from './adjustments'

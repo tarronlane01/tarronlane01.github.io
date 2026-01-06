@@ -7,22 +7,37 @@
  * ARCHITECTURE:
  * All migrations MUST use these frameworks to ensure correctness:
  *
- * 1. CACHE INVALIDATION (migrationRunner):
- *    - Use `runMigration()` to wrap migration logic (auto-clears cache after)
- *    - Use `clearAllCaches()` for explicit cache clearing when progress tracking is needed
+ * 1. PROGRESS REPORTING (migrationProgress) - PRIMARY:
+ *    - Use `useMigrationProgress()` hook and `runMigrationWithProgress()` for ALL migrations
+ *    - This automatically shows a progress modal that cannot be dismissed while running
+ *    - Migrations MUST use the ProgressReporter to report their progress
  *
- * 2. BATCH READ/WRITE (migrationDataHelpers):
+ * 2. CACHE INVALIDATION (migrationRunner) - LEGACY:
+ *    - `runMigration()` is now deprecated - use runMigrationWithProgress instead
+ *    - `clearAllCaches()` is still available but called automatically by progress system
+ *
+ * 3. BATCH READ/WRITE (migrationDataHelpers):
  *    - Use `readAllBudgetsAndMonths()` for batch reading
  *    - Use `batchWriteBudgets()` and `batchWriteMonths()` for batch writing
  *    - Use `recalculateAndWriteBudget()` to properly handle needs_recalculation flags
  *
  * These ensure:
+ * - Progress is ALWAYS shown to users during migrations
  * - Cache is always invalidated after migrations
  * - Data is read/written efficiently in batches
  * - Recalculation flags are properly set/cleared
  */
 
-// Migration Runner Framework - REQUIRED for all migrations
+// Migration Progress System - REQUIRED for all migrations (shows progress modal)
+export {
+  MigrationProgressProvider,
+  useMigrationProgress,
+  type ProgressReporter,
+  type MigrationProgressState,
+} from './migrationProgress'
+
+// Migration Runner Framework - DEPRECATED: Use useMigrationProgress instead
+// Still exported for backwards compatibility during transition
 export { runMigration, clearAllCaches, type MigrationResultBase, type MigrationHookOptions } from './migrationRunner'
 
 // Migration Data Helpers - REQUIRED for batch read/write and recalculation
@@ -59,6 +74,12 @@ export {
 export { useFeedbackMigration, type FeedbackMigrationResult, type FeedbackMigrationStatus } from './useFeedbackMigration'
 export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo, type DeleteProgress, type DeletePhase } from './useDeleteAllMonths'
 export { usePrecisionCleanup, type PrecisionCleanupStatus, type PrecisionCleanupResult } from './usePrecisionCleanup'
+export { useExpenseToAdjustmentMigration, type ExpenseToAdjustmentStatus, type ExpenseToAdjustmentResult } from './useExpenseToAdjustmentMigration'
+export { useOrphanedIdCleanup, type OrphanedIdCleanupStatus, type OrphanedIdCleanupResult } from './useOrphanedIdCleanup'
+export { useAdjustmentsToTransfersMigration, type AdjustmentsToTransfersStatus, type AdjustmentsToTransfersResult } from './useAdjustmentsToTransfersMigration'
+export { useAccountCategoryValidation, type ValidationStatus, type TransactionViolation } from './useAccountCategoryValidation'
+export { useHiddenFieldMigration, type HiddenFieldMigrationStatus, type HiddenFieldMigrationResult } from './useHiddenFieldMigration'
+export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
 
 // Seed data import
 export {

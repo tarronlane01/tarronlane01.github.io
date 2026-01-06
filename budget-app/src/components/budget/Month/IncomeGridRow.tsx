@@ -24,7 +24,7 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
     : '—'
 
   const accountDisplay = accountGroupName ? `${accountGroupName} / ${accountName}` : accountName
-  const rowBg = isEvenRow ? 'color-mix(in srgb, currentColor 3%, transparent)' : 'color-mix(in srgb, currentColor 6%, transparent)'
+  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
 
   // Mobile: Card-like view (tappable)
   if (isMobile) {
@@ -66,7 +66,7 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
 
   // Desktop: Grid row using display: contents
   const cellStyle: React.CSSProperties = {
-    padding: '0.6rem 0.25rem',
+    padding: '0.6rem 0.5rem',
     background: rowBg,
     display: 'flex',
     alignItems: 'center',
@@ -76,8 +76,8 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
   return (
     <div style={{ display: 'contents' }}>
       {/* Date */}
-      <div style={{ ...cellStyle, fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
-        {formattedDate}
+      <div style={{ ...cellStyle, fontSize: '0.85rem', fontFamily: 'monospace' }}>
+        <span style={{ opacity: 0.6 }}>{formattedDate}</span>
       </div>
 
       {/* Payee */}
@@ -88,8 +88,8 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
       </div>
 
       {/* Account */}
-      <div style={{ ...cellStyle, opacity: 0.7, overflow: 'hidden' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+      <div style={{ ...cellStyle, overflow: 'hidden' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem', opacity: 0.7 }}>
           {accountDisplay}
         </span>
       </div>
@@ -100,8 +100,8 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
       </div>
 
       {/* Description */}
-      <div style={{ ...cellStyle, paddingLeft: '0.5rem', opacity: 0.6, overflow: 'hidden' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+      <div style={{ ...cellStyle, paddingLeft: '0.5rem', overflow: 'hidden' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem', opacity: 0.6 }}>
           {income.description || '—'}
         </span>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFirebaseAuth } from '@hooks'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, usePrecisionCleanup } from '@hooks'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, usePrecisionCleanup, useExpenseToAdjustmentMigration, useOrphanedIdCleanup, useAdjustmentsToTransfersMigration, useAccountCategoryValidation, useHiddenFieldMigration, useDiagnosticDownload } from '@hooks'
 import {
   Spinner,
   DatabaseCleanupCard,
@@ -8,6 +8,11 @@ import {
   DeleteAllMonthsCard,
   SeedImportCard,
   PrecisionCleanupCard,
+  ExpenseToAdjustmentCard,
+  OrphanedIdCleanupCard,
+  AdjustmentsToTransfersCard,
+  AccountCategoryValidationCard,
+  HiddenFieldMigrationCard,
 } from '../../../components/budget/Admin'
 import { Modal, Button } from '../../../components/ui'
 import { logUserAction } from '@utils/actionLogger'
@@ -59,9 +64,39 @@ function Migration() {
     currentUser: current_user,
   })
 
+  // Orphaned ID cleanup - fixes references to deleted categories/accounts
+  const orphanedIdCleanup = useOrphanedIdCleanup({
+    currentUser: current_user,
+  })
+
+  // Expense to adjustment migration - moves no-account/no-category expenses
+  const expenseToAdjustment = useExpenseToAdjustmentMigration({
+    currentUser: current_user,
+  })
+
+  // Adjustments to transfers migration - converts matching adjustment pairs to transfers
+  const adjustmentsToTransfers = useAdjustmentsToTransfersMigration({
+    currentUser: current_user,
+  })
+
+  // Account/category validation - scans for invalid account/category combinations
+  const accountCategoryValidation = useAccountCategoryValidation({
+    currentUser: current_user,
+  })
+
+  // Hidden field migration - adds is_hidden field and creates hidden accounts/categories
+  const hiddenFieldMigration = useHiddenFieldMigration({
+    currentUser: current_user,
+  })
+
+  // Diagnostic download - downloads all data for troubleshooting
+  const diagnosticDownload = useDiagnosticDownload({
+    currentUser: current_user,
+  })
+
   // Scanning state for all
-  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || precisionCleanup.isScanning
-  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || precisionCleanup.isRunning
+  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || precisionCleanup.isScanning || expenseToAdjustment.isScanning || orphanedIdCleanup.isScanning || adjustmentsToTransfers.isScanning || hiddenFieldMigration.isScanning
+  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || precisionCleanup.isRunning || expenseToAdjustment.isRunning || orphanedIdCleanup.isRunning || adjustmentsToTransfers.isRunning || hiddenFieldMigration.isRunning
 
   // Refresh all - scans all migration statuses
   const handleRefreshAll = async () => {
@@ -71,6 +106,10 @@ function Migration() {
       feedbackMigration.scanStatus(),
       deleteAllMonths.scanStatus(),
       precisionCleanup.scan(),
+      orphanedIdCleanup.scanStatus(),
+      expenseToAdjustment.scanStatus(),
+      adjustmentsToTransfers.scanStatus(),
+      hiddenFieldMigration.scanStatus(),
     ])
   }
 
@@ -107,6 +146,66 @@ function Migration() {
       <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
         Run migrations to validate and fix your database. Click "Refresh All" to scan Firestore directly.
       </p>
+
+      <AccountCategoryValidationCard
+        hasData={!!accountCategoryValidation.status}
+        status={accountCategoryValidation.status}
+        report={accountCategoryValidation.report}
+        hasViolations={accountCategoryValidation.hasViolations}
+        violationCount={accountCategoryValidation.violationCount}
+        isScanning={accountCategoryValidation.isScanning}
+        onScan={accountCategoryValidation.scan}
+        disabled={!current_user}
+      />
+
+      <HiddenFieldMigrationCard
+        hasData={!!hiddenFieldMigration.status}
+        status={hiddenFieldMigration.status}
+        needsMigration={hiddenFieldMigration.needsMigration}
+        totalItemsToFix={hiddenFieldMigration.totalItemsToFix}
+        isRunning={hiddenFieldMigration.isRunning}
+        result={hiddenFieldMigration.result}
+        onRunMigration={hiddenFieldMigration.runMigration}
+        onRefresh={hiddenFieldMigration.scanStatus}
+        isRefreshing={hiddenFieldMigration.isScanning}
+        disabled={!current_user}
+      />
+
+      <OrphanedIdCleanupCard
+        hasData={!!orphanedIdCleanup.status}
+        status={orphanedIdCleanup.status}
+        hasItemsToFix={orphanedIdCleanup.hasItemsToFix}
+        isRunning={orphanedIdCleanup.isRunning}
+        result={orphanedIdCleanup.result}
+        onRunMigration={orphanedIdCleanup.runMigration}
+        onRefresh={orphanedIdCleanup.scanStatus}
+        isRefreshing={orphanedIdCleanup.isScanning}
+        disabled={!current_user}
+      />
+
+      <ExpenseToAdjustmentCard
+        hasData={!!expenseToAdjustment.status}
+        status={expenseToAdjustment.status}
+        hasItemsToMigrate={expenseToAdjustment.hasItemsToMigrate}
+        isRunning={expenseToAdjustment.isRunning}
+        result={expenseToAdjustment.result}
+        onRunMigration={expenseToAdjustment.runMigration}
+        onRefresh={expenseToAdjustment.scanStatus}
+        isRefreshing={expenseToAdjustment.isScanning}
+        disabled={!current_user}
+      />
+
+      <AdjustmentsToTransfersCard
+        hasData={!!adjustmentsToTransfers.status}
+        status={adjustmentsToTransfers.status}
+        hasPairsToConvert={adjustmentsToTransfers.hasPairsToConvert}
+        isRunning={adjustmentsToTransfers.isRunning}
+        result={adjustmentsToTransfers.result}
+        onRunMigration={adjustmentsToTransfers.runMigration}
+        onRefresh={adjustmentsToTransfers.scanStatus}
+        isRefreshing={adjustmentsToTransfers.isScanning}
+        disabled={!current_user}
+      />
 
       <PrecisionCleanupCard
         hasData={precisionCleanup.hasData}
@@ -163,32 +262,81 @@ function Migration() {
         disabled={!current_user}
       />
 
-      {/* Info about migration scope */}
+      {/* Diagnostic Download Card */}
       <div style={{
-        background: 'color-mix(in srgb, currentColor 3%, transparent)',
-        padding: '1rem',
+        background: 'color-mix(in srgb, currentColor 5%, transparent)',
         borderRadius: '8px',
-        fontSize: '0.85rem',
+        padding: '1rem',
+        marginBottom: '1rem',
+        border: '1px solid color-mix(in srgb, #17a2b8 30%, transparent)',
       }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', color: '#17a2b8' }}>
+              📊 Diagnostic Download
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>
+              Downloads all budget and month data as JSON for troubleshooting balance discrepancies.
+              Includes stored vs calculated balances, transfers, adjustments, and full month breakdowns.
+            </p>
+            {diagnosticDownload.error && (
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#dc3545' }}>
+                Error: {diagnosticDownload.error}
+              </p>
+            )}
+            {diagnosticDownload.progress && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{
+                  background: 'rgba(0,0,0,0.2)',
+                  borderRadius: '4px',
+                  height: '6px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    background: '#17a2b8',
+                    height: '100%',
+                    width: `${diagnosticDownload.progress.percentComplete}%`,
+                    transition: 'width 0.3s',
+                  }} />
+                </div>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.7 }}>
+                  {diagnosticDownload.progress.phase === 'reading' && 'Reading data from Firestore...'}
+                  {diagnosticDownload.progress.phase === 'analyzing' && `Analyzing budget ${diagnosticDownload.progress.current}/${diagnosticDownload.progress.total}...`}
+                  {diagnosticDownload.progress.phase === 'complete' && 'Download complete!'}
+                </p>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="secondary"
+            actionName="Download Diagnostics"
+            onClick={diagnosticDownload.downloadDiagnostics}
+            disabled={!current_user || diagnosticDownload.isDownloading}
+            style={{ flexShrink: 0 }}
+          >
+            {diagnosticDownload.isDownloading ? (
+              <>
+                <Spinner noMargin /> Downloading...
+              </>
+            ) : (
+              '⬇️ Download JSON'
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Info about migration scope */}
+      <div style={{ background: 'color-mix(in srgb, currentColor 3%, transparent)', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
         <p style={{ margin: 0, opacity: 0.7 }}>
-          <strong>Note:</strong> These migrations will process <strong>all budgets and months</strong> in the system,
-          not just the ones you own or are invited to.
+          <strong>Note:</strong> These migrations will process <strong>all budgets and months</strong> in the system, not just the ones you own or are invited to.
         </p>
       </div>
 
       {/* Clear all caches button */}
-      <div style={{
-        marginTop: '1.5rem',
-        padding: '1rem',
-        background: 'color-mix(in srgb, #ff6b6b 10%, transparent)',
-        borderRadius: '8px',
-        border: '1px solid color-mix(in srgb, #ff6b6b 30%, transparent)',
-      }}>
+      <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'color-mix(in srgb, #ff6b6b 10%, transparent)', borderRadius: '8px', border: '1px solid color-mix(in srgb, #ff6b6b 30%, transparent)' }}>
         <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem' }}>
           <strong>🗑️ Clear All Caches</strong>
-          <span style={{ opacity: 0.7, display: 'block', marginTop: '0.25rem' }}>
-            If you're seeing stale data after running migrations, clear all cached data and reload to fetch fresh data from Firestore.
-          </span>
+          <span style={{ opacity: 0.7, display: 'block', marginTop: '0.25rem' }}>If you're seeing stale data after running migrations, clear all cached data and reload to fetch fresh data from Firestore.</span>
         </p>
         <Button
           variant="danger"

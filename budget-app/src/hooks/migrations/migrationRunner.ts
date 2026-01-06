@@ -1,22 +1,33 @@
 /**
  * Migration Runner Framework
  *
- * All migrations MUST use this framework to ensure cache invalidation happens
- * after every migration. This prevents stale data issues and ensures the
- * next load will get the cleaned data from Firestore.
+ * ⚠️ DEPRECATED: Use `useMigrationProgress()` from `migrationProgress.tsx` instead.
  *
- * ARCHITECTURE:
- * - Migrations are pure async functions that return a result
- * - The runMigration wrapper handles cache invalidation automatically
- * - You cannot run a migration without the cache being invalidated after
+ * The new progress system ensures that ALL migrations show a progress modal,
+ * making it impossible to add silent migrations. See migrationProgress.tsx.
  *
- * USAGE:
+ * NEW USAGE:
+ * ```ts
+ * const { runMigrationWithProgress } = useMigrationProgress()
+ *
+ * const result = await runMigrationWithProgress('My Migration', async (progress) => {
+ *   progress.setStage('Processing items...')
+ *   progress.updateItemProgress(1, 10, 'Item 1')
+ *   // Your migration logic here
+ *   return { errors: [] }
+ * })
+ * ```
+ *
+ * LEGACY USAGE (deprecated):
  * ```ts
  * const result = await runMigration(async () => {
  *   // Your migration logic here
  *   return { success: true, itemsFixed: 42 }
  * })
  * ```
+ *
+ * This file is kept for backwards compatibility. `clearAllCaches()` is still
+ * used by the new progress system internally.
  */
 
 import { queryClient } from '@data/queryClient'

@@ -23,6 +23,7 @@ export interface AccountFormData {
   is_outgo_default?: boolean
   on_budget?: boolean
   is_active?: boolean
+  is_hidden?: boolean
 }
 
 interface AccountFormProps {
@@ -48,6 +49,7 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
     is_outgo_default: false,
     on_budget: true,
     is_active: true,
+    is_hidden: false,
   })
 
   // Find the current group to check for overrides
@@ -154,6 +156,20 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
                   Set by account type "{currentGroup!.name}"
                 </p>
               )}
+            </div>
+
+            {/* Hidden checkbox */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <Checkbox
+                id="is-hidden"
+                checked={formData.is_hidden || false}
+                onChange={(e) => setFormData({ ...formData, is_hidden: e.target.checked })}
+              >
+                Hidden account
+              </Checkbox>
+              <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem' }}>
+                Hidden accounts don't appear in dropdowns or balance displays. Use for historical accounts that aren't actively used.
+              </p>
             </div>
           </div>
 

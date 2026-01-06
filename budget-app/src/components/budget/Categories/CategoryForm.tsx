@@ -9,6 +9,7 @@ import {
   SelectInput,
   FormButtonGroup,
   CurrencyInput,
+  Checkbox,
 } from '../../ui'
 
 export interface CategoryFormData {
@@ -17,6 +18,7 @@ export interface CategoryFormData {
   category_group_id: string | null
   default_monthly_amount?: number
   default_monthly_type?: DefaultAmountType
+  is_hidden?: boolean
 }
 
 interface CategoryFormProps {
@@ -29,7 +31,7 @@ interface CategoryFormProps {
 }
 
 export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGroups = [], showGroupSelector = false }: CategoryFormProps) {
-  const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '', category_group_id: null })
+  const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '', category_group_id: null, is_hidden: false })
   const [defaultAmount, setDefaultAmount] = useState(initialData?.default_monthly_amount?.toString() || '')
   const [defaultType, setDefaultType] = useState<DefaultAmountType>(initialData?.default_monthly_type || 'fixed')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -126,6 +128,24 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
             : 'Percentage of previous month\'s total income'}
         </p>
       </FormField>
+      {showGroupSelector && (
+        <div style={{
+          padding: '0.75rem',
+          background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          borderRadius: '8px',
+        }}>
+          <Checkbox
+            id="is-hidden"
+            checked={formData.is_hidden || false}
+            onChange={(e) => setFormData({ ...formData, is_hidden: e.target.checked })}
+          >
+            Hidden category
+          </Checkbox>
+          <p style={{ margin: '0.25rem 0 0 2rem', fontSize: '0.7rem', opacity: 0.6 }}>
+            Hidden categories don't appear in dropdowns or balance displays. Use for historical categories that aren't actively used.
+          </p>
+        </div>
+      )}
       <FormButtonGroup>
         <Button type="submit" actionName={submitLabel === 'Create' ? 'Create Category' : 'Save Category'} isLoading={isSubmitting}>{submitLabel}</Button>
         <Button type="button" variant="secondary" actionName="Cancel Category Form" onClick={onCancel}>Cancel</Button>

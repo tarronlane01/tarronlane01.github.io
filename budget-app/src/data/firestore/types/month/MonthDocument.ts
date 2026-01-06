@@ -1,5 +1,7 @@
 import type { IncomeTransaction } from './IncomeTransaction'
 import type { ExpenseTransaction } from './ExpenseTransaction'
+import type { TransferTransaction } from './TransferTransaction'
+import type { AdjustmentTransaction } from './AdjustmentTransaction'
 import type { CategoryMonthBalance } from './CategoryMonthBalance'
 import type { AccountMonthBalance } from './AccountMonthBalance'
 
@@ -19,6 +21,12 @@ export interface MonthDocument {
 
   expenses: ExpenseTransaction[]
   total_expenses: number
+
+  // Transfers move money between accounts/categories (both from/to required)
+  transfers: TransferTransaction[]
+
+  // Adjustments are one-sided corrections (allow no-account or no-category)
+  adjustments: AdjustmentTransaction[]
 
   account_balances: AccountMonthBalance[]
   category_balances: CategoryMonthBalance[]

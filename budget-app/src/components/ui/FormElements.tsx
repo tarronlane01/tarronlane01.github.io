@@ -3,7 +3,7 @@ import { formGroup, label as labelStyle, input as inputStyle, select as selectSt
 import { logUserAction } from '@utils'
 
 // Re-export autocomplete components from their own file
-export { PayeeAutocomplete, CategoryAutocomplete } from './Autocomplete'
+export { PayeeAutocomplete, CategoryAutocomplete, AccountAutocomplete } from './Autocomplete'
 
 // =============================================================================
 // FORM WRAPPER

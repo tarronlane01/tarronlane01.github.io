@@ -102,6 +102,7 @@ export function useCategoriesPage() {
       default_monthly_amount: formData.default_monthly_amount ?? 0,
       default_monthly_type: formData.default_monthly_type ?? 'fixed',
       balance: 0,
+      is_hidden: formData.is_hidden ?? false,
     }
 
     const newCategories: CategoriesMap = { ...categories, [newCategoryId]: newCategory }
@@ -150,6 +151,7 @@ export function useCategoriesPage() {
           sort_order: newSortOrder,
           default_monthly_amount: formData.default_monthly_amount ?? 0,
           default_monthly_type: formData.default_monthly_type ?? 'fixed',
+          is_hidden: formData.is_hidden ?? false,
         },
       }
       setCategoriesOptimistic(newCategories)
@@ -303,13 +305,21 @@ export function useCategoriesPage() {
   // COMPUTED VALUES
   // ==========================================================================
 
-  // Organize categories by group
-  const categoriesByGroup = Object.entries(categories).reduce((acc, [catId, category]) => {
-    const groupId = category.category_group_id || 'ungrouped'
-    if (!acc[groupId]) acc[groupId] = []
-    acc[groupId].push([catId, category] as CategoryEntry)
-    return acc
-  }, {} as Record<string, CategoryEntry[]>)
+  // Organize categories by group (excluding hidden categories)
+  const categoriesByGroup = Object.entries(categories)
+    .filter(([, category]) => !category.is_hidden)
+    .reduce((acc, [catId, category]) => {
+      const groupId = category.category_group_id || 'ungrouped'
+      if (!acc[groupId]) acc[groupId] = []
+      acc[groupId].push([catId, category] as CategoryEntry)
+      return acc
+    }, {} as Record<string, CategoryEntry[]>)
+
+  // Hidden categories list
+  const hiddenCategories = Object.entries(categories)
+    .filter(([, category]) => category.is_hidden)
+    .map(([catId, category]) => [catId, category] as CategoryEntry)
+    .sort((a, b) => a[1].sort_order - b[1].sort_order)
 
   // Sort groups by sort_order
   const sortedGroups = [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
@@ -320,6 +330,7 @@ export function useCategoriesPage() {
     categories,
     categoryGroups,
     categoriesByGroup,
+    hiddenCategories,
     sortedGroups,
     categoryBalances,
     isLoading,

@@ -56,6 +56,8 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     previous_month_income: data.previous_month_income ?? 0,
     expenses: data.expenses || [],
     total_expenses: data.total_expenses ?? 0,
+    transfers: data.transfers || [],
+    adjustments: data.adjustments || [],
     account_balances: data.account_balances || [],
     category_balances: data.category_balances || [],
     are_allocations_finalized: data.are_allocations_finalized ?? false,

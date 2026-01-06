@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Modal, Button, formatCurrency } from '../../ui'
 import { colors } from '@styles/shared'
 
@@ -16,14 +17,17 @@ export interface RecalcResults {
   error?: string
 }
 
+export type RecalcMode = 'from_current' | 'all_months'
+
 interface RecalculateModalProps {
   isOpen: boolean
   onClose: () => void
-  onProceed: () => void
+  onProceed: (mode: RecalcMode) => void
   results: RecalcResults | null
 }
 
 export function RecalculateModal({ isOpen, onClose, onProceed, results }: RecalculateModalProps) {
+  const [selectedMode, setSelectedMode] = useState<RecalcMode>('from_current')
   const isConfirming = !results || results.status === 'confirming'
   const isProcessing = results && !['confirming', 'done', 'error'].includes(results.status)
   const canClose = isConfirming || results?.status === 'done' || results?.status === 'error'
@@ -31,7 +35,13 @@ export function RecalculateModal({ isOpen, onClose, onProceed, results }: Recalc
   function handleClose() {
     if (canClose) {
       onClose()
+      // Reset mode selection when closing
+      setSelectedMode('from_current')
     }
+  }
+
+  function handleProceed() {
+    onProceed(selectedMode)
   }
 
   return (
@@ -46,11 +56,25 @@ export function RecalculateModal({ isOpen, onClose, onProceed, results }: Recalc
         {isConfirming && (
           <>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', lineHeight: 1.5 }}>
-              This will recalculate category balances and account balances from the <strong>current month forward</strong>.
+              Choose what to recalculate:
             </p>
-            <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', opacity: 0.7 }}>
-              Use this if your data seems out of sync or after fixing bugs. Past months will not be modified.
-            </p>
+
+            {/* Mode Selection */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <ModeOption
+                selected={selectedMode === 'from_current'}
+                onClick={() => setSelectedMode('from_current')}
+                title="From current month forward"
+                description="Recalculate from this month onward. Use for quick fixes."
+              />
+              <ModeOption
+                selected={selectedMode === 'all_months'}
+                onClick={() => setSelectedMode('all_months')}
+                title="All months from beginning"
+                description="Recalculate entire history. Use after migrations or data repairs."
+                recommended
+              />
+            </div>
 
             {/* Preview of steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -63,7 +87,7 @@ export function RecalculateModal({ isOpen, onClose, onProceed, results }: Recalc
               <Button variant="secondary" actionName="Cancel Recalculation" onClick={onClose}>
                 Cancel
               </Button>
-              <Button actionName="Proceed with Recalculation" onClick={onProceed}>
+              <Button actionName="Proceed with Recalculation" onClick={handleProceed}>
                 Proceed
               </Button>
             </div>
@@ -200,6 +224,70 @@ function ProgressStep({ status, label, detail, isError }: ProgressStepProps) {
         )}
       </div>
     </div>
+  )
+}
+
+interface ModeOptionProps {
+  selected: boolean
+  onClick: () => void
+  title: string
+  description: string
+  recommended?: boolean
+}
+
+function ModeOption({ selected, onClick, title, description, recommended }: ModeOptionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '0.75rem',
+        padding: '0.75rem 1rem',
+        background: selected
+          ? 'color-mix(in srgb, #646cff 15%, transparent)'
+          : 'color-mix(in srgb, currentColor 5%, transparent)',
+        border: selected ? '2px solid #646cff' : '2px solid transparent',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        textAlign: 'left',
+        width: '100%',
+        transition: 'all 0.15s ease',
+      }}
+    >
+      <span style={{
+        width: '20px',
+        height: '20px',
+        borderRadius: '50%',
+        border: selected ? '6px solid #646cff' : '2px solid rgba(128,128,128,0.5)',
+        flexShrink: 0,
+        marginTop: '2px',
+        background: selected ? 'white' : 'transparent',
+      }} />
+      <div style={{ flex: 1 }}>
+        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem' }}>
+          {title}
+          {recommended && (
+            <span style={{
+              marginLeft: '0.5rem',
+              padding: '0.15rem 0.5rem',
+              background: colors.success,
+              color: 'white',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              verticalAlign: 'middle',
+            }}>
+              RECOMMENDED
+            </span>
+          )}
+        </p>
+        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', opacity: 0.7 }}>
+          {description}
+        </p>
+      </div>
+    </button>
   )
 }
 

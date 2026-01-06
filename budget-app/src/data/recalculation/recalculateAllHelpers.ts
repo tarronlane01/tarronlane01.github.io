@@ -2,7 +2,7 @@
  * Helpers for RecalculateAllButton - Month processing logic
  */
 
-import type { AccountsMap, MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
+import type { AccountsMap, MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance, TransferTransaction, AdjustmentTransaction } from '@types'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal, roundCurrency } from '@utils'
 
@@ -16,6 +16,54 @@ interface ProcessMonthResult {
   updatedMonth: MonthDocument
   totalIncome: number
   totalExpenses: number
+  /** Net changes per account for this month (for running balance tracking) */
+  accountNetChanges: Record<string, number>
+}
+
+/**
+ * Check if a category ID is the special "No Category"
+ */
+function isNoCategory(categoryId: string): boolean {
+  return categoryId === 'no_category' || categoryId === 'NO_CATEGORY'
+}
+
+/**
+ * Calculate category adjustments from transfers and adjustments arrays.
+ * Returns a map of category_id -> net adjustment amount.
+ * - Transfers: from_category subtracts, to_category adds
+ * - Adjustments: adds/subtracts based on amount sign
+ */
+function calculateCategoryAdjustments(
+  transfers: TransferTransaction[],
+  adjustments: AdjustmentTransaction[]
+): Record<string, number> {
+  const result: Record<string, number> = {}
+
+  // Process transfers (both from and to affect category balances)
+  for (const transfer of transfers) {
+    // Subtract from source category (if real category)
+    if (!isNoCategory(transfer.from_category_id)) {
+      result[transfer.from_category_id] = (result[transfer.from_category_id] || 0) - transfer.amount
+    }
+    // Add to destination category (if real category)
+    if (!isNoCategory(transfer.to_category_id)) {
+      result[transfer.to_category_id] = (result[transfer.to_category_id] || 0) + transfer.amount
+    }
+  }
+
+  // Process adjustments (one-sided, only affects real categories)
+  for (const adjustment of adjustments) {
+    if (!isNoCategory(adjustment.category_id)) {
+      result[adjustment.category_id] = (result[adjustment.category_id] || 0) + adjustment.amount
+    }
+  }
+
+  // Round all values
+  for (const catId of Object.keys(result)) {
+    result[catId] = roundCurrency(result[catId])
+  }
+
+  return result
 }
 
 /**
@@ -27,6 +75,7 @@ export async function processMonth(
   categoryIds: string[],
   accounts: AccountsMap,
   runningCategoryBalances: Record<string, number>,
+  runningAccountBalances: Record<string, number>,
   previousMonthIncome: number
 ): Promise<ProcessMonthResult | null> {
   const monthDocId = getMonthDocId(budgetId, monthData.year, monthData.month)
@@ -39,6 +88,8 @@ export async function processMonth(
   // Recalculate totals (round to 2 decimal places)
   const income = fullMonthData.income || []
   const expenses = fullMonthData.expenses || []
+  const transfers = (fullMonthData.transfers || []) as TransferTransaction[]
+  const adjustments = (fullMonthData.adjustments || []) as AdjustmentTransaction[]
   const areAllocationsFinalized = fullMonthData.are_allocations_finalized || false
 
   const newTotalIncome = roundCurrency(income.reduce((sum: number, inc: { amount: number }) => sum + inc.amount, 0))
@@ -51,6 +102,9 @@ export async function processMonth(
       existingCategoryBalances[cb.category_id] = { allocated: cb.allocated ?? 0 }
     }
   }
+
+  // Calculate category adjustments from transfers and adjustments
+  const categoryAdjustments = calculateCategoryAdjustments(transfers, adjustments)
 
   // Build category_balances using running balances for start (all values rounded)
   const monthCategoryBalances: CategoryMonthBalance[] = categoryIds.map(catId => {
@@ -67,7 +121,11 @@ export async function processMonth(
         .reduce((sum: number, e: { amount: number }) => sum + e.amount, 0))
     }
 
-    const endBalance = roundCurrency(startBalance + allocated + spent)
+    // Get adjustment for this category (from transfers and adjustments)
+    const adjustment = categoryAdjustments[catId] ?? 0
+
+    // end_balance = start + allocated + spent + adjustments (from transfers/adjustments)
+    const endBalance = roundCurrency(startBalance + allocated + spent + adjustment)
     return { category_id: catId, start_balance: startBalance, allocated, spent, end_balance: endBalance }
   })
 
@@ -77,7 +135,11 @@ export async function processMonth(
   })
 
   // Build account_balances (all values rounded)
+  // Includes income, expenses, transfers, and adjustments
+  // Uses running balances from previous months for accurate start_balance
   const accountIds = Object.keys(accounts)
+  const accountNetChanges: Record<string, number> = {}
+
   const monthAccountBalances: AccountMonthBalance[] = accountIds.map(accountId => {
     const accountIncome = roundCurrency(income
       .filter((inc: { account_id: string }) => inc.account_id === accountId)
@@ -87,15 +149,27 @@ export async function processMonth(
       .filter((exp: { account_id: string }) => exp.account_id === accountId)
       .reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0))
 
-    const netChange = roundCurrency(accountIncome + accountExpenses)
+    // Calculate transfer effects for this account
+    // Transfers out (from_account) subtract, transfers in (to_account) add
+    const transfersOut = roundCurrency(transfers
+      .filter(t => t.from_account_id === accountId)
+      .reduce((sum, t) => sum - t.amount, 0))
 
-    let startBalance = 0
-    if (fullMonthData.account_balances) {
-      const existing = fullMonthData.account_balances.find(
-        (ab: { account_id: string }) => ab.account_id === accountId
-      )
-      if (existing) startBalance = roundCurrency(existing.start_balance ?? 0)
-    }
+    const transfersIn = roundCurrency(transfers
+      .filter(t => t.to_account_id === accountId)
+      .reduce((sum, t) => sum + t.amount, 0))
+
+    // Calculate adjustment effects for this account
+    const adjustmentTotal = roundCurrency(adjustments
+      .filter(a => a.account_id === accountId)
+      .reduce((sum, a) => sum + a.amount, 0))
+
+    // Net change includes all transaction types
+    const netChange = roundCurrency(accountIncome + accountExpenses + transfersOut + transfersIn + adjustmentTotal)
+    accountNetChanges[accountId] = netChange
+
+    // Use running balance for start (from previous month's end balance)
+    const startBalance = roundCurrency(runningAccountBalances[accountId] ?? 0)
 
     return {
       account_id: accountId,
@@ -107,6 +181,11 @@ export async function processMonth(
     }
   })
 
+  // Update running account balances for next month
+  for (const ab of monthAccountBalances) {
+    runningAccountBalances[ab.account_id] = ab.end_balance
+  }
+
   const updatedMonth: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: getYearMonthOrdinal(monthData.year, monthData.month),
@@ -117,6 +196,8 @@ export async function processMonth(
     previous_month_income: previousMonthIncome,
     expenses: expenses,
     total_expenses: newTotalExpenses,
+    transfers: transfers,
+    adjustments: adjustments,
     account_balances: monthAccountBalances,
     category_balances: monthCategoryBalances,
     are_allocations_finalized: areAllocationsFinalized,
@@ -124,7 +205,7 @@ export async function processMonth(
     updated_at: new Date().toISOString(),
   }
 
-  return { updatedMonth, totalIncome: newTotalIncome, totalExpenses: newTotalExpenses }
+  return { updatedMonth, totalIncome: newTotalIncome, totalExpenses: newTotalExpenses, accountNetChanges }
 }
 
 /**

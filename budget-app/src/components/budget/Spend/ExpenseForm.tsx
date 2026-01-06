@@ -66,8 +66,8 @@ export function ExpenseForm({
       config={{
         showCategory: true,
         showCleared: true,
-        showNoCategoryOption: true,
-        showNoAccountOption: true,
+        showNoCategoryOption: false,  // No Category only available on Adjustments tab
+        showNoAccountOption: false,   // No Account only available on Adjustments tab
         showSignToggle: true,
         accountLabel: 'Pay From',
         payeePlaceholder: 'e.g., Grocery Store',

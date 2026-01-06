@@ -6,3 +6,4 @@
 
 export { PayeeAutocomplete } from './PayeeAutocomplete'
 export { CategoryAutocomplete } from './CategoryAutocomplete'
+export { AccountAutocomplete } from './AccountAutocomplete'

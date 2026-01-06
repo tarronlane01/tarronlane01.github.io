@@ -226,7 +226,7 @@ function CategoryGridRow({
   const showBreakdown = hasDebt && allocationAmount > 0 && toBalanceAmount > 0
 
   // Keep normal row striping - don't shade based on debt
-  const rowBg = isEvenRow ? 'rgba(255,255,255,0.02)' : 'transparent'
+  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
 
   const cellStyle: React.CSSProperties = {
     paddingTop: '0.6rem',

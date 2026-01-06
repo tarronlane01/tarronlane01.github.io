@@ -10,6 +10,8 @@ export interface FinancialAccount {
   is_outgo_default: boolean
   on_budget: boolean
   is_active: boolean
+  /** Hidden accounts are excluded from dropdowns and balance displays, shown in a collapsed section in settings */
+  is_hidden?: boolean
 }
 
 export type AccountsMap = Record<string, FinancialAccount>

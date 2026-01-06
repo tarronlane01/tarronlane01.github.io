@@ -25,6 +25,7 @@ function cleanCategoriesForFirestore(categories: CategoriesMap): FirestoreData {
     if (cat.description !== undefined) cleaned[catId].description = cat.description
     if (cat.default_monthly_amount !== undefined) cleaned[catId].default_monthly_amount = cat.default_monthly_amount
     if (cat.default_monthly_type !== undefined) cleaned[catId].default_monthly_type = cat.default_monthly_type
+    if (cat.is_hidden !== undefined) cleaned[catId].is_hidden = cat.is_hidden
   })
   return cleaned
 }

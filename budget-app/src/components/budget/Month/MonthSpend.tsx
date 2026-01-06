@@ -19,8 +19,7 @@ const columnHeaderStyle: React.CSSProperties = {
   opacity: 0.6,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  paddingTop: '0.5rem',
-  paddingBottom: '0.5rem',
+  padding: '0.5rem',
   borderTop: '1px solid rgba(255,255,255,0.1)',
 }
 
@@ -163,6 +162,9 @@ export function MonthSpend() {
           }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
               <span style={{ fontWeight: 600 }}>Expenses:</span>
+              <span style={{ opacity: 0.6, fontSize: '0.8rem' }}>
+                Transactions that should be factored into spend calculations
+              </span>
               <span>
                 <span style={{ opacity: 0.6 }}>Total: </span>
                 <span style={{ color: getBalanceColor(totalMonthlyExpenses), fontWeight: 600 }}>

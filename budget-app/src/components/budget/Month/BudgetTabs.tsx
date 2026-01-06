@@ -14,6 +14,8 @@ const TAB_TO_SECTION: Record<BudgetTab, TopLevelSection> = {
   accounts: 'balances',
   income: 'transactions',
   spend: 'transactions',
+  transfers: 'transactions',
+  adjustments: 'transactions',
 }
 
 // Default sub-tab for each section
@@ -51,6 +53,8 @@ export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: Bu
   const transactionsTabs: Tab[] = useMemo(() => [
     { id: 'income', label: 'Income' },
     { id: 'spend', label: 'Spend' },
+    { id: 'transfers', label: 'Transfers' },
+    { id: 'adjustments', label: 'Adjustments' },
   ], [])
 
   const handleTopTabChange = (sectionId: string) => {

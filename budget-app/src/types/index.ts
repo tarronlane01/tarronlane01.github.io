@@ -25,10 +25,15 @@ export type {
   MonthMap,
   IncomeTransaction,
   ExpenseTransaction,
+  TransferTransaction,
+  AdjustmentTransaction,
   CategoryMonthBalance,
   AccountMonthBalance,
   MonthDocument,
 } from '../data/firestore/types'
+
+// Alias for BudgetCategory (same as Category)
+export type { Category as BudgetCategory } from '../data/firestore/types'
 
 // Auth types
 export type { type_firebase_auth_hook } from './type_firebase_auth_hook'

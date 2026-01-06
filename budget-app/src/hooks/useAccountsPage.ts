@@ -28,14 +28,24 @@ export function useAccountsPage() {
 
   const [error, setError] = useState<string | null>(null)
 
-  // Organize accounts by group
+  // Organize accounts by group (excluding hidden)
   const accountsByGroup = useMemo(() => {
-    return Object.entries(accounts).reduce((acc, [accId, account]) => {
-      const groupId = account.account_group_id || 'ungrouped'
-      if (!acc[groupId]) acc[groupId] = []
-      acc[groupId].push({ ...account, id: accId })
-      return acc
-    }, {} as Record<string, AccountWithId[]>)
+    return Object.entries(accounts)
+      .filter(([, account]) => !account.is_hidden) // Exclude hidden accounts from normal view
+      .reduce((acc, [accId, account]) => {
+        const groupId = account.account_group_id || 'ungrouped'
+        if (!acc[groupId]) acc[groupId] = []
+        acc[groupId].push({ ...account, id: accId })
+        return acc
+      }, {} as Record<string, AccountWithId[]>)
+  }, [accounts])
+
+  // Hidden accounts list
+  const hiddenAccounts = useMemo(() => {
+    return Object.entries(accounts)
+      .filter(([, account]) => account.is_hidden)
+      .map(([accId, account]) => ({ ...account, id: accId }))
+      .sort((a, b) => a.sort_order - b.sort_order)
   }, [accounts])
 
   // Sort groups by sort_order
@@ -65,6 +75,7 @@ export function useAccountsPage() {
       is_outgo_default: formData.is_outgo_default ?? false,
       on_budget: formData.on_budget !== false,
       is_active: formData.is_active !== false,
+      is_hidden: formData.is_hidden ?? false,
     }
 
     const newAccounts: AccountsMap = { ...accounts }
@@ -99,7 +110,8 @@ export function useAccountsPage() {
         newAccounts[accId] = { ...acc, nickname: formData.nickname, account_group_id: newGroupId, sort_order: newSortOrder,
           is_income_account: formData.is_income_account ?? false, is_income_default: formData.is_income_default ?? false,
           is_outgo_account: formData.is_outgo_account ?? false, is_outgo_default: formData.is_outgo_default ?? false,
-          on_budget: formData.on_budget !== false, is_active: formData.is_active !== false }
+          on_budget: formData.on_budget !== false, is_active: formData.is_active !== false,
+          is_hidden: formData.is_hidden ?? false }
       } else {
         newAccounts[accId] = { ...acc }
         if (formData.is_income_default && !account.is_income_default) newAccounts[accId].is_income_default = false
@@ -194,7 +206,7 @@ export function useAccountsPage() {
   })
 
   return {
-    accounts, accountGroups, accountsByGroup, sortedGroups, currentBudget, error, setError,
+    accounts, accountGroups, accountsByGroup, hiddenAccounts, sortedGroups, currentBudget, error, setError,
     handleCreateAccount, handleUpdateAccount, handleDeleteAccount, handleMoveAccount,
     handleCreateGroup, handleUpdateGroup, handleDeleteGroup, handleMoveGroup,
     reorderAccountsInGroup, reorderGroups,

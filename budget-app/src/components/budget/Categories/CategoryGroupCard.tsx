@@ -141,8 +141,8 @@ export function CategoryGroupCard({
               {groupCategories.map(([catId, category]) => (
                 editingCategoryId === catId ? (
                   <CategoryForm key={catId}
-                    initialData={{ name: category.name, description: category.description, category_group_id: category.category_group_id, default_monthly_amount: category.default_monthly_amount, default_monthly_type: category.default_monthly_type }}
-                    onSubmit={(data) => handleUpdateCategory(catId, data)} onCancel={() => setEditingCategoryId(null)} submitLabel="Save" categoryGroups={categoryGroups} showGroupSelector={true}
+                    initialData={{ name: category.name, description: category.description, category_group_id: category.category_group_id, default_monthly_amount: category.default_monthly_amount, default_monthly_type: category.default_monthly_type, is_hidden: category.is_hidden }}
+                    onSubmit={(data) => { handleUpdateCategory(catId, data); setEditingCategoryId(null) }} onCancel={() => setEditingCategoryId(null)} submitLabel="Save" categoryGroups={categoryGroups} showGroupSelector={true}
                   />
                 ) : (
                   <DraggableCard key={catId}

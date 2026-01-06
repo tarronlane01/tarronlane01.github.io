@@ -1,31 +1,38 @@
 /**
  * CategoryAutocomplete - Fuzzy search for categories with grouping
+ *
+ * Sorting matches the order used on the budget Categories page:
+ * - Groups sorted by sort_order
+ * - Categories sorted by sort_order within their group
+ * - Ungrouped categories appear at the end
  */
 
 import { useState, useRef, useEffect } from 'react'
 import { input as inputStyle, colors } from '@styles/shared'
-import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from './autocompleteHelpers'
+import {
+  type AutocompleteItem,
+  filterAndSortItems,
+  groupItemsForDisplay,
+  dropdownContainerStyle,
+  suggestionItemStyle,
+} from './autocompleteHelpers'
 import { NO_CATEGORY_ID, NO_CATEGORY_NAME } from '@data/constants'
 
-// Category item for autocomplete
-interface CategoryItem {
-  id: string
-  name: string
-  groupId: string | null
-  groupName: string | null
-  sortOrder: number
-}
+// Category item uses the shared AutocompleteItem interface
+type CategoryItem = AutocompleteItem
 
 interface CategoryAutocompleteProps {
   id?: string
   value: string // categoryId
   onChange: (categoryId: string) => void
-  categories: Record<string, { name: string; category_group_id: string | null; sort_order: number }>
+  categories: Record<string, { name: string; category_group_id: string | null; sort_order: number; is_hidden?: boolean }>
   categoryGroups: { id: string; name: string; sort_order: number }[]
   placeholder?: string
   required?: boolean
   /** Show the special "No Category" option (for spend entries) */
   showNoCategoryOption?: boolean
+  /** Include hidden categories in the list (default: false) */
+  showHiddenCategories?: boolean
 }
 
 export function CategoryAutocomplete({
@@ -37,34 +44,32 @@ export function CategoryAutocomplete({
   placeholder = 'Search categories...',
   required,
   showNoCategoryOption = false,
+  showHiddenCategories = false,
 }: CategoryAutocompleteProps) {
-  // Build a lookup map for group names
+  // Build lookup maps for group info
   const groupNameMap = Object.fromEntries(categoryGroups.map(g => [g.id, g.name]))
+  const groupSortOrderMap = Object.fromEntries(categoryGroups.map(g => [g.id, g.sort_order]))
 
-  // Build flat list of categories with group info
-  const categoryItems: CategoryItem[] = Object.entries(categories).map(([catId, cat]) => ({
+  // Filter out hidden categories unless showHiddenCategories is true
+  const visibleCategories = showHiddenCategories
+    ? categories
+    : Object.fromEntries(Object.entries(categories).filter(([, cat]) => !cat.is_hidden))
+
+  // Build flat list of categories with group info (excluding No Category - handled separately)
+  const categoryItems: CategoryItem[] = Object.entries(visibleCategories).map(([catId, cat]) => ({
     id: catId,
     name: cat.name,
     groupId: cat.category_group_id,
     groupName: cat.category_group_id ? groupNameMap[cat.category_group_id] || null : null,
     sortOrder: cat.sort_order,
+    groupSortOrder: cat.category_group_id ? groupSortOrderMap[cat.category_group_id] ?? 999 : 999,
   }))
-
-  // Add special "No Category" option if enabled
-  if (showNoCategoryOption) {
-    categoryItems.unshift({
-      id: NO_CATEGORY_ID,
-      name: NO_CATEGORY_NAME,
-      groupId: null,
-      groupName: null,
-      sortOrder: -1,
-    })
-  }
 
   // Get selected category name for display
   const isNoCategorySelected = value === NO_CATEGORY_ID
   const selectedCategory = isNoCategorySelected ? null : (value ? categories[value] : null)
-  const displayValue = isNoCategorySelected ? NO_CATEGORY_NAME : (selectedCategory?.name || '')
+  // When "No Category" is selected, show empty input with placeholder instead
+  const displayValue = isNoCategorySelected ? '' : (selectedCategory?.name || '')
 
   const [inputValue, setInputValue] = useState(displayValue)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -75,51 +80,22 @@ export function CategoryAutocomplete({
   // Sync input value when external value changes
   useEffect(() => {
     if (value === NO_CATEGORY_ID) {
-      setInputValue(NO_CATEGORY_NAME)
+      setInputValue('')
     } else {
       const selectedCat = value ? categories[value] : null
       setInputValue(selectedCat?.name || '')
     }
   }, [value, categories])
 
-  // Sort helper for categories
-  const sortCategories = (items: CategoryItem[]) => {
-    return items.sort((a, b) => {
-      if (a.groupId !== b.groupId) {
-        if (!a.groupId) return 1
-        if (!b.groupId) return -1
-        const nameCompare = (a.groupName || '').localeCompare(b.groupName || '')
-        if (nameCompare !== 0) return nameCompare
-        return a.groupId.localeCompare(b.groupId)
-      }
-      return a.sortOrder - b.sortOrder
-    })
-  }
+  // Get filtered and sorted suggestions using shared helper
+  const suggestions: CategoryItem[] = filterAndSortItems(
+    categoryItems,
+    inputValue,
+    (item) => [item.name, item.groupName || ''].filter(Boolean)
+  )
 
-  // Get filtered and sorted suggestions based on input
-  const suggestions: CategoryItem[] = inputValue.trim()
-    ? categoryItems
-        .map(cat => ({
-          ...cat,
-          ...fuzzyMatch(inputValue, cat.name),
-          groupMatch: cat.groupName ? fuzzyMatch(inputValue, cat.groupName) : { match: false, score: 0 },
-        }))
-        .filter(item => item.match || item.groupMatch.match)
-        .sort((a, b) => {
-          const scoreA = Math.max(a.score, a.groupMatch.score * 0.5)
-          const scoreB = Math.max(b.score, b.groupMatch.score * 0.5)
-          if (scoreB !== scoreA) return scoreB - scoreA
-          if (a.groupId !== b.groupId) {
-            if (!a.groupId) return 1
-            if (!b.groupId) return -1
-            const nameCompare = (a.groupName || '').localeCompare(b.groupName || '')
-            if (nameCompare !== 0) return nameCompare
-            return a.groupId.localeCompare(b.groupId)
-          }
-          return a.sortOrder - b.sortOrder
-        })
-        .slice(0, 10)
-    : sortCategories([...categoryItems]).slice(0, 10)
+  // Group suggestions for display using shared helper
+  const groupedSuggestions = groupItemsForDisplay(suggestions)
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -127,7 +103,7 @@ export function CategoryAutocomplete({
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowSuggestions(false)
         if (value === NO_CATEGORY_ID) {
-          setInputValue(NO_CATEGORY_NAME)
+          setInputValue('')
         } else {
           const selectedCat = value ? categories[value] : null
           setInputValue(selectedCat?.name || '')
@@ -159,7 +135,7 @@ export function CategoryAutocomplete({
       setShowSuggestions(false)
       setHighlightedIndex(-1)
       if (value === NO_CATEGORY_ID) {
-        setInputValue(NO_CATEGORY_NAME)
+        setInputValue('')
       } else {
         const selectedCat = value ? categories[value] : null
         setInputValue(selectedCat?.name || '')
@@ -174,10 +150,17 @@ export function CategoryAutocomplete({
 
   function selectCategory(cat: CategoryItem) {
     onChange(cat.id)
-    setInputValue(cat.name)
+    setInputValue(cat.id === NO_CATEGORY_ID ? '' : cat.name)
     setShowSuggestions(false)
     setHighlightedIndex(-1)
     inputRef.current?.focus()
+  }
+
+  function selectNoCategory() {
+    onChange(NO_CATEGORY_ID)
+    setInputValue('')
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -196,17 +179,6 @@ export function CategoryAutocomplete({
       setHighlightedIndex(0)
     }
   }
-
-  // Group suggestions by category group for display
-  const groupedSuggestions: { groupId: string | null; groupName: string | null; items: CategoryItem[] }[] = []
-  let currentGroupId: string | null = '__initial__'
-  suggestions.forEach(cat => {
-    if (cat.groupId !== currentGroupId) {
-      currentGroupId = cat.groupId
-      groupedSuggestions.push({ groupId: cat.groupId, groupName: cat.groupName, items: [] })
-    }
-    groupedSuggestions[groupedSuggestions.length - 1].items.push(cat)
-  })
 
   // Calculate flat index for keyboard navigation
   let flatIndex = -1
@@ -230,8 +202,26 @@ export function CategoryAutocomplete({
           borderColor: required && !value ? colors.error : undefined,
         }}
       />
-      {showSuggestions && suggestions.length > 0 && (
+      {showSuggestions && (
         <div style={{ ...dropdownContainerStyle, maxHeight: '250px', overflowY: 'auto' }}>
+          {/* Always show No Category option at top when enabled */}
+          {showNoCategoryOption && (
+            <div
+              onClick={selectNoCategory}
+              onMouseEnter={() => setHighlightedIndex(-1)}
+              style={{
+                ...suggestionItemStyle,
+                opacity: 0.7,
+                fontStyle: 'italic',
+                borderBottom: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+                background: highlightedIndex === -1
+                  ? `color-mix(in srgb, ${colors.primary} 20%, transparent)`
+                  : 'transparent',
+              }}
+            >
+              {NO_CATEGORY_NAME}
+            </div>
+          )}
           {groupedSuggestions.map((group, groupIndex) => (
             <div key={`group-${groupIndex}`}>
               {group.groupName && (
@@ -269,19 +259,13 @@ export function CategoryAutocomplete({
               })}
             </div>
           ))}
-        </div>
-      )}
-      {showSuggestions && suggestions.length === 0 && inputValue.trim() && (
-        <div style={{
-          ...dropdownContainerStyle,
-          padding: '0.6rem 0.8rem',
-          opacity: 0.6,
-          fontStyle: 'italic',
-        }}>
-          No matching categories
+          {suggestions.length === 0 && inputValue.trim() && !showNoCategoryOption && (
+            <div style={{ padding: '0.6rem 0.8rem', opacity: 0.6, fontStyle: 'italic' }}>
+              No matching categories
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
-

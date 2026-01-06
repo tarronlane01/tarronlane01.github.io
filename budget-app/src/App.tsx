@@ -4,7 +4,8 @@ import type { User } from 'firebase/auth'
 
 import { AppProvider, useApp, UserContext, BudgetProvider } from '@contexts'
 import { QueryProvider } from '@data'
-import { useFirebaseAuth } from '@hooks'
+import { useFirebaseAuth, MigrationProgressProvider } from '@hooks'
+import { MigrationProgressModal } from './components/budget/Admin'
 
 import Home from './pages/Home'
 import Account from './pages/Account'
@@ -15,7 +16,7 @@ import { Settings, Accounts, Categories, Users as SettingsUsers } from './pages/
 import { Admin, AdminBudget, AdminFeedback, AdminMigration, AdminTests } from './pages/budget/admin'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
-import { FeedbackButton } from './components/ui'
+import { FeedbackButton, CacheInvalidateButton } from './components/ui'
 import { LoadingOverlay } from './components/app/LoadingOverlay'
 import type { type_user_context } from '@types'
 
@@ -71,39 +72,43 @@ function AppContent() {
     <UserContext.Provider value={user_context}>
       <QueryProvider>
         <BudgetProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/account" element={<Account />} />
+          <MigrationProgressProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/account" element={<Account />} />
 
-              {/* Protected budget routes */}
-              <Route path="/budget" element={<ProtectedRoute />}>
-                <Route element={<BudgetLayout />}>
-                  <Route index element={<Budget />} />
-                  <Route path=":year/:month/:tab/:view?" element={<Budget />} />
-                  <Route path="analytics" element={<Analytics />} />
-                  <Route path="my-budgets" element={<MyBudgets />} />
+                {/* Protected budget routes */}
+                <Route path="/budget" element={<ProtectedRoute />}>
+                  <Route element={<BudgetLayout />}>
+                    <Route index element={<Budget />} />
+                    <Route path=":year/:month/:tab/:view?" element={<Budget />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="my-budgets" element={<MyBudgets />} />
 
-                  {/* Budget Settings routes */}
-                  <Route path="settings" element={<Settings />}>
-                    <Route index element={<Navigate to="categories" replace />} />
-                    <Route path="accounts" element={<Accounts />} />
-                    <Route path="categories" element={<Categories />} />
-                    <Route path="users" element={<SettingsUsers />} />
-                  </Route>
+                    {/* Budget Settings routes */}
+                    <Route path="settings" element={<Settings />}>
+                      <Route index element={<Navigate to="categories" replace />} />
+                      <Route path="accounts" element={<Accounts />} />
+                      <Route path="categories" element={<Categories />} />
+                      <Route path="users" element={<SettingsUsers />} />
+                    </Route>
 
-                  {/* Admin routes (admin-only) */}
-                  <Route path="admin" element={<Admin />}>
-                    <Route path="budget" element={<AdminBudget />} />
-                    <Route path="feedback" element={<AdminFeedback />} />
-                    <Route path="migration" element={<AdminMigration />} />
-                    <Route path="tests" element={<AdminTests />} />
+                    {/* Admin routes (admin-only) */}
+                    <Route path="admin" element={<Admin />}>
+                      <Route path="budget" element={<AdminBudget />} />
+                      <Route path="feedback" element={<AdminFeedback />} />
+                      <Route path="migration" element={<AdminMigration />} />
+                      <Route path="tests" element={<AdminTests />} />
+                    </Route>
                   </Route>
                 </Route>
-              </Route>
-            </Routes>
-            <FeedbackButton />
-          </BrowserRouter>
+              </Routes>
+              <CacheInvalidateButton />
+              <FeedbackButton />
+              <MigrationProgressModal />
+            </BrowserRouter>
+          </MigrationProgressProvider>
         </BudgetProvider>
       </QueryProvider>
     </UserContext.Provider>

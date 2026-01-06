@@ -122,7 +122,6 @@ export function TabNavigation(props: TabNavigationProps) {
         boxSizing: 'border-box',
         outline: 'none',
         marginBottom: isActive ? '-1px' : '0',
-        zIndex: isActive ? 1 : 0,
       }
     }
 
@@ -187,7 +186,7 @@ export function TabNavigation(props: TabNavigationProps) {
       return `
         .${className} {
           display: flex;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           margin-bottom: 1rem;
           border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
           justify-content: flex-start;
@@ -214,10 +213,27 @@ export function TabNavigation(props: TabNavigationProps) {
           transform: perspective(50px) rotateX(5deg);
           transform-origin: bottom center;
           transition: background 0.15s;
+          box-shadow: -1px 0 0 #242424, 1px 0 0 #242424;
+        }
+        .${className} > button:nth-child(1),
+        .${className} > a:nth-child(1) {
+          z-index: 4;
+        }
+        .${className} > button:nth-child(2),
+        .${className} > a:nth-child(2) {
+          z-index: 3;
+        }
+        .${className} > button:nth-child(3),
+        .${className} > a:nth-child(3) {
+          z-index: 2;
+        }
+        .${className} > button:nth-child(4),
+        .${className} > a:nth-child(4) {
+          z-index: 1;
         }
         .${className} > button.tab-active,
         .${className} > a.tab-active {
-          z-index: 2;
+          z-index: 10;
         }
         .${className} > button.tab-active::before,
         .${className} > a.tab-active::before {
@@ -230,6 +246,19 @@ export function TabNavigation(props: TabNavigationProps) {
         .${className} > button:not(.tab-active):hover::before,
         .${className} > a:not(.tab-active):hover::before {
           background: var(--tab-bg-hover);
+        }
+        @media (max-width: 480px) {
+          .${className} {
+            padding-left: 0;
+            padding-right: 0;
+          }
+          .${className} > button,
+          .${className} > a {
+            flex: 0 0 27% !important;
+            min-width: 27% !important;
+            padding: 0.55rem 0.5rem 0.65rem !important;
+            font-size: 0.8rem !important;
+          }
         }
       `
     }

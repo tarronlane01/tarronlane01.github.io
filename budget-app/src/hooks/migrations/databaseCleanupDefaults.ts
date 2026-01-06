@@ -28,6 +28,7 @@ export function applyAccountDefaults(account: FirestoreData): FinancialAccount {
     is_outgo_default: account.is_outgo_default ?? false,
     on_budget: account.on_budget ?? true,
     is_active: account.is_active ?? true,
+    is_hidden: account.is_hidden ?? false,
   }
 }
 
@@ -43,6 +44,7 @@ export function applyCategoryDefaults(category: FirestoreData): Category {
     default_monthly_amount: category.default_monthly_amount ?? 0,
     default_monthly_type: category.default_monthly_type ?? 'fixed',
     balance: category.balance ?? 0,
+    is_hidden: category.is_hidden ?? false,
   }
 }
 
@@ -82,6 +84,9 @@ export function applyMonthDefaults(month: FirestoreData, docId: string): MonthDo
 
     expenses: Array.isArray(month.expenses) ? month.expenses : [],
     total_expenses: month.total_expenses ?? 0,
+
+    transfers: Array.isArray(month.transfers) ? month.transfers : [],
+    adjustments: Array.isArray(month.adjustments) ? month.adjustments : [],
 
     account_balances: Array.isArray(month.account_balances) ? month.account_balances : [],
     category_balances: Array.isArray(month.category_balances) ? month.category_balances : [],

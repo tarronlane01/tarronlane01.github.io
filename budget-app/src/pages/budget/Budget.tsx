@@ -9,11 +9,13 @@ import {
   MonthNavigation,
   MonthIncome,
   MonthSpend,
+  MonthTransfers,
+  MonthAdjustments,
   MonthCategories,
   MonthAccounts,
 } from '../../components/budget/Month'
 
-const VALID_TABS: BudgetTab[] = ['income', 'categories', 'accounts', 'spend']
+const VALID_TABS: BudgetTab[] = ['income', 'categories', 'accounts', 'spend', 'transfers', 'adjustments']
 
 function parsePathParams(params: { year?: string; month?: string; tab?: string }) {
   const year = params.year ? parseInt(params.year, 10) : null
@@ -239,6 +241,8 @@ function Budget() {
       {activeTab === 'categories' && <MonthCategories key={`${currentYear}-${currentMonthNumber}`} />}
       {activeTab === 'accounts' && <MonthAccounts key={`${currentYear}-${currentMonthNumber}`} />}
       {activeTab === 'spend' && <MonthSpend key={`${currentYear}-${currentMonthNumber}`} />}
+      {activeTab === 'transfers' && <MonthTransfers key={`${currentYear}-${currentMonthNumber}`} />}
+      {activeTab === 'adjustments' && <MonthAdjustments key={`${currentYear}-${currentMonthNumber}`} />}
     </>
   )
 }

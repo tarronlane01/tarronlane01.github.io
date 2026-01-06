@@ -31,8 +31,7 @@ const columnHeaderStyle: React.CSSProperties = {
   opacity: 0.6,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  paddingTop: '0.5rem',
-  paddingBottom: '0.5rem',
+  padding: '0.5rem',
   borderBottom: '2px solid rgba(255,255,255,0.2)',
 }
 
@@ -101,15 +100,17 @@ export function MonthAccounts() {
       .sort((a, b) => a.sort_order - b.sort_order)
   }, [accountGroups])
 
-  // Organize accounts by group
+  // Organize accounts by group (excluding hidden accounts)
   const accountsByGroup = useMemo(() => {
     const result: Record<string, Array<[string, FinancialAccount]>> = {}
 
-    Object.entries(accounts).forEach(([accountId, account]) => {
-      const groupId = account.account_group_id || 'ungrouped'
-      if (!result[groupId]) result[groupId] = []
-      result[groupId].push([accountId, account])
-    })
+    Object.entries(accounts)
+      .filter(([, account]) => !account.is_hidden) // Exclude hidden accounts
+      .forEach(([accountId, account]) => {
+        const groupId = account.account_group_id || 'ungrouped'
+        if (!result[groupId]) result[groupId] = []
+        result[groupId].push([accountId, account])
+      })
 
     // Sort accounts within each group by sort_order
     Object.keys(result).forEach(groupId => {
