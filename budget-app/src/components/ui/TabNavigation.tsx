@@ -15,6 +15,8 @@ interface BaseProps {
   tabs: Tab[]
   activeTab: string
   accentColor?: string
+  /** Visual style variant: 'primary' for main tabs, 'secondary' for sub-tabs, 'segmented' for full-width sections */
+  variant?: 'primary' | 'secondary' | 'segmented'
 }
 
 interface ButtonTabsProps extends BaseProps {
@@ -49,7 +51,7 @@ const getColumnsOnWrap = (tabCount: number): number => {
 }
 
 export function TabNavigation(props: TabNavigationProps) {
-  const { tabs, activeTab } = props
+  const { tabs, activeTab, variant = 'primary' } = props
   const visibleTabs = tabs.filter(tab => !tab.hidden)
   const tabCount = visibleTabs.length
 
@@ -57,30 +59,97 @@ export function TabNavigation(props: TabNavigationProps) {
   const columnsOnWrap = getColumnsOnWrap(tabCount)
   const widthPercent = Math.floor(100 / columnsOnWrap)
 
-  // Generate unique class name based on tab count
-  const className = `tab-nav-${tabCount}`
+  // Generate unique class name based on tab count and variant
+  const className = `tab-nav-${tabCount}-${variant}`
 
-  const getTabStyle = (isActive: boolean): React.CSSProperties => ({
-    flex: '1 1 0',
-    padding: '0.6rem 0.5rem',
-    border: 'none',
-    borderRadius: 0,
-    background: 'transparent',
-    cursor: 'pointer',
-    fontWeight: isActive ? 600 : 400,
-    fontSize: '0.9rem',
-    color: 'inherit',
-    opacity: isActive ? 1 : 0.5,
-    transition: 'all 0.15s',
-    textDecoration: 'none',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.25rem',
-    position: 'relative',
-    boxSizing: 'border-box',
-    outline: 'none',
-  })
+  const isPrimary = variant === 'primary'
+  const isSecondary = variant === 'secondary'
+  const isSegmented = variant === 'segmented'
+
+  const getTabStyle = (isActive: boolean): React.CSSProperties => {
+    // Shared shading values for consistency
+    const selectedBg = 'color-mix(in srgb, currentColor 10%, transparent)'
+    const unselectedBg = 'color-mix(in srgb, currentColor 3%, transparent)'
+
+    if (isSegmented) {
+      return {
+        flex: '1 1 0',
+        padding: '0.75rem 1rem',
+        border: 'none',
+        borderRadius: 0,
+        background: isActive ? selectedBg : unselectedBg,
+        cursor: 'pointer',
+        fontWeight: isActive ? 600 : 400,
+        fontSize: '0.95rem',
+        color: 'inherit',
+        opacity: isActive ? 1 : 0.55,
+        transition: 'all 0.15s',
+        textDecoration: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.25rem',
+        position: 'relative',
+        boxSizing: 'border-box',
+        outline: 'none',
+        borderBottom: isActive
+          ? '2px solid currentColor'
+          : '2px solid transparent',
+      }
+    }
+
+    if (isSecondary) {
+      return {
+        flex: 'none',
+        minWidth: '8.5rem', // Consistent width for all sub-tabs
+        padding: '0.55rem 1rem 0.65rem',
+        border: 'none',
+        borderRadius: '10px 10px 0 0',
+        background: 'transparent',
+        cursor: 'pointer',
+        fontWeight: 600, // Always bold to prevent size change
+        fontSize: '0.85rem',
+        color: isActive
+          ? 'inherit'
+          : 'color-mix(in srgb, currentColor 55%, transparent)',
+        transition: 'color 0.15s',
+        textDecoration: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.25rem',
+        position: 'relative',
+        boxSizing: 'border-box',
+        outline: 'none',
+        marginBottom: isActive ? '-1px' : '0',
+        zIndex: isActive ? 1 : 0,
+      }
+    }
+
+    // Primary (default)
+    return {
+      flex: '1 1 0',
+      padding: '0.7rem 0.75rem',
+      border: 'none',
+      borderRadius: 0,
+      background: 'transparent',
+      cursor: 'pointer',
+      fontWeight: isActive ? 600 : 400,
+      fontSize: '1rem',
+      letterSpacing: '0.01em',
+      color: 'inherit',
+      opacity: isActive ? 1 : 0.6,
+      transition: 'all 0.15s',
+      textDecoration: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.25rem',
+      position: 'relative',
+      boxSizing: 'border-box',
+      outline: 'none',
+    }
+  }
 
   const renderTabContent = (tab: Tab, isActive: boolean) => (
     <>
@@ -88,12 +157,13 @@ export function TabNavigation(props: TabNavigationProps) {
       {tab.checkmark && (
         <span style={{ color: colors.success, fontWeight: 600 }}>✓</span>
       )}
-      {isActive && (
+      {/* Underline indicator for primary variant only */}
+      {isPrimary && isActive && (
         <span style={{
           position: 'absolute',
           bottom: '-1px',
-          left: '15%',
-          right: '15%',
+          left: '10%',
+          right: '10%',
           height: '3px',
           background: 'white',
           borderRadius: '2px',
@@ -102,15 +172,89 @@ export function TabNavigation(props: TabNavigationProps) {
     </>
   )
 
-  return (
-    <>
-      <style>{`
+  const getContainerStyle = (): string => {
+    if (isSegmented) {
+      return `
+        .${className} {
+          display: flex;
+          margin-bottom: 0.75rem;
+          border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        }
+      `
+    }
+
+    if (isSecondary) {
+      return `
         .${className} {
           display: flex;
           flex-wrap: wrap;
-          margin-bottom: 1.5rem;
-          border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+          margin-bottom: 1rem;
+          border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+          justify-content: flex-start;
+          padding-left: 0.75rem;
+          position: relative;
         }
+        .${className} > button,
+        .${className} > a {
+          margin-right: -8px;
+          isolation: isolate;
+        }
+        .${className} > button:last-child,
+        .${className} > a:last-child {
+          margin-right: 0;
+        }
+        .${className} > button::before,
+        .${className} > a::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: var(--tab-bg);
+          border-radius: 10px 10px 0 0;
+          z-index: -1;
+          transform: perspective(50px) rotateX(5deg);
+          transform-origin: bottom center;
+          transition: background 0.15s;
+        }
+        .${className} > button.tab-active,
+        .${className} > a.tab-active {
+          z-index: 2;
+        }
+        .${className} > button.tab-active::before,
+        .${className} > a.tab-active::before {
+          background: var(--tab-bg-active);
+        }
+        .${className} > button:not(.tab-active):hover,
+        .${className} > a:not(.tab-active):hover {
+          color: color-mix(in srgb, currentColor 80%, transparent);
+        }
+        .${className} > button:not(.tab-active):hover::before,
+        .${className} > a:not(.tab-active):hover::before {
+          background: var(--tab-bg-hover);
+        }
+      `
+    }
+
+    // Primary
+    return `
+      .${className} {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 0;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      }
+      @media (max-width: ${breakpoint}px) {
+        .${className} > * {
+          flex: 1 1 ${widthPercent}% !important;
+          min-width: ${widthPercent}% !important;
+        }
+      }
+    `
+  }
+
+  return (
+    <>
+      <style>{`
+        ${getContainerStyle()}
         .${className} > button,
         .${className} > a {
           border: none !important;
@@ -123,12 +267,8 @@ export function TabNavigation(props: TabNavigationProps) {
         .${className} > a:focus {
           border: none !important;
           border-color: transparent !important;
-        }
-        @media (max-width: ${breakpoint}px) {
-          .${className} > * {
-            flex: 1 1 ${widthPercent}% !important;
-            min-width: ${widthPercent}% !important;
-          }
+          ${isPrimary ? 'opacity: 0.85;' : ''}
+          ${isSegmented ? 'background: color-mix(in srgb, currentColor 7%, transparent);' : ''}
         }
       `}</style>
       <div className={className}>
@@ -142,6 +282,7 @@ export function TabNavigation(props: TabNavigationProps) {
                 to={`${props.linkPrefix}/${tab.id}`}
                 onClick={() => logUserAction('NAVIGATE', `Tab: ${tab.label}`)}
                 style={getTabStyle(isActive)}
+                className={isActive ? 'tab-active' : ''}
               >
                 {renderTabContent(tab, isActive)}
               </Link>
@@ -153,6 +294,7 @@ export function TabNavigation(props: TabNavigationProps) {
               key={tab.id}
               onClick={() => { logUserAction('NAVIGATE', `Tab: ${tab.label}`); props.onTabChange(tab.id) }}
               style={getTabStyle(isActive)}
+              className={isActive ? 'tab-active' : ''}
             >
               {renderTabContent(tab, isActive)}
             </button>
