@@ -1,6 +1,10 @@
 # Deploy
 
-Deploy using the publish script from the budget-app directory:
+**Manual review before deploying:**
+- Remove any dead code introduced in this session
+
+**Then**
+Deploy using the publish script from the budget-app directory, ensuring commit message is 10 words or less:
 
 ```bash
 cd budget-app && ./scripts/publish.sh "your commit message"
@@ -12,6 +16,3 @@ The script automatically checks:
 - ✅ No rogue console statements (only allowed in logging/admin files)
 - ✅ No deep relative imports (use path aliases)
 - ✅ Build succeeds
-
-**Manual review before deploying:**
-- Remove any dead code introduced in this session

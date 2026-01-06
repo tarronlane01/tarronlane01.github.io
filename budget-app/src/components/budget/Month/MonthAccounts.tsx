@@ -200,15 +200,15 @@ export function MonthAccounts() {
         // Account, Start, Income, Expenses, Net Change, End
         gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr',
       }}>
-        {/* Sticky wrapper using subgrid */}
+        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
           gridColumn: '1 / -1',
           position: 'sticky',
           top: 0,
           zIndex: 49,
           backgroundColor: '#242424',
-          display: 'grid',
-          gridTemplateColumns: 'subgrid',
+          display: isMobile ? 'block' : 'grid',
+          gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
           {/* Column headers row - uses grid columns (above stats) */}
           {!isMobile && (

@@ -150,12 +150,24 @@ export function MonthCategories() {
         <div style={{ gridColumn: '1 / -1', position: 'sticky', top: 0, zIndex: 49, backgroundColor: '#242424', display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : 'subgrid' }}>
           {/* Draft mode: Stats + Buttons row */}
           {isDraftMode && (
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem', fontSize: '0.85rem', paddingTop: '0.5rem', paddingBottom: !isMobile ? '0.25rem' : '0.5rem' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              flexWrap: 'wrap',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: isMobile ? '0.5rem' : '0.5rem 1rem',
+              fontSize: '0.85rem',
+              paddingTop: '0.5rem',
+              paddingBottom: isMobile ? '0.5rem' : '0.25rem',
+            }}>
+              {/* Equation row */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: isMobile ? undefined : 1, alignItems: 'center' }}>
                 <CategoryStatsRow isDraftMode={isDraftMode} isEditingAppliedAllocations={isEditingAppliedAllocations}
                   availableNow={availableNow} currentMonthIncome={currentMonthIncome} balanceTotals={balanceTotals}
                   draftChangeAmount={draftChangeAmount} availableAfterApply={availableAfterApply} currentDraftTotal={currentDraftTotal} />
               </div>
+              {/* Buttons row */}
               <BalancesActionButtons isDraftMode={isDraftMode} isEditingAppliedAllocations={isEditingAppliedAllocations}
                 allocationsFinalized={allocationsFinalized} {...actionButtonHandlers} />
             </div>

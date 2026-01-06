@@ -54,26 +54,53 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
 
   return (
     <div style={{ display: 'contents' }}>
-      {/* Group header row */}
-      <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1 }}>
-        <span>{name}</span>
-        <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
-      </div>
-      <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.start) }}>
-        <span style={groupTotalText}>{formatCurrency(groupTotals.start)}</span>
-      </div>
-      <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getIncomeColor(groupTotals.income) }}>
-        <span style={groupTotalText}>+{formatCurrency(groupTotals.income)}</span>
-      </div>
-      <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getExpenseColor(groupTotals.expenses) }}>
-        <span style={groupTotalText}>{formatSignedCurrency(groupTotals.expenses)}</span>
-      </div>
-      <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(groupTotals.netChange) }}>
-        <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>
-      </div>
-      <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
-        <span style={groupTotalText}>{formatCurrency(groupTotals.end)}</span>
-      </div>
+      {/* Desktop: Group header row with totals in each column */}
+      {!isMobile && (
+        <>
+          <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1 }}>
+            <span>{name}</span>
+            <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.start) }}>
+            <span style={groupTotalText}>{formatCurrency(groupTotals.start)}</span>
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getIncomeColor(groupTotals.income) }}>
+            <span style={groupTotalText}>+{formatCurrency(groupTotals.income)}</span>
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getExpenseColor(groupTotals.expenses) }}>
+            <span style={groupTotalText}>{formatSignedCurrency(groupTotals.expenses)}</span>
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(groupTotals.netChange) }}>
+            <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
+            <span style={groupTotalText}>{formatCurrency(groupTotals.end)}</span>
+          </div>
+        </>
+      )}
+
+      {/* Mobile: Simplified group header */}
+      {isMobile && (
+        <div style={{
+          gridColumn: '1 / -1',
+          padding: '0.6rem 0.5rem',
+          marginTop: '1.25rem',
+          borderTop: '1px solid rgba(255,255,255,0.2)',
+          borderBottom: groupTotalRowBorder,
+          background: 'rgba(255,255,255,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1 }}>
+            {name}
+            <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
+          </span>
+          <span style={{ ...groupTotalText, color: getBalanceColor(groupTotals.end) }}>
+            {formatCurrency(groupTotals.end)}
+          </span>
+        </div>
+      )}
 
       {/* Account rows */}
       {accounts.map(([accountId, account], index) => {

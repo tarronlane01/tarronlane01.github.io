@@ -139,7 +139,7 @@ export function MonthSpend() {
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '5rem 1.5fr 7rem 1fr 6rem 1fr 3rem 4rem',
       }}>
-        {/* Sticky wrapper using subgrid */}
+        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
           gridColumn: '1 / -1',
           position: 'sticky',
@@ -147,8 +147,8 @@ export function MonthSpend() {
           zIndex: 49,
           backgroundColor: '#242424',
           borderBottom: '1px solid rgba(255,255,255,0.15)',
-          display: 'grid',
-          gridTemplateColumns: 'subgrid',
+          display: isMobile ? 'block' : 'grid',
+          gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
           {/* Stats + Button row - spans all columns */}
           <div style={{

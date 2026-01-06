@@ -129,7 +129,7 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>End</span>
-          <span style={{ color: getCategoryBalanceColor(balance.end_balance) }}>
+          <span style={{ color: getCategoryBalanceColor(balance.end_balance), ...(isDraftMode ? tentativeValue : {}) }}>
             {formatBalanceCurrency(balance.end_balance)}
           </span>
         </div>
