@@ -65,7 +65,7 @@ export function GrandTotalsRow({
       <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balanceTotals.start) }}>
         {formatBalanceCurrency(balanceTotals.start)}
       </div>
-      <div style={{ ...grandTotalsCellStyle, justifyContent: isDraftMode ? 'center' : 'flex-end', color: getAllocatedColor(balanceTotals.allocated) }}>
+      <div style={{ ...grandTotalsCellStyle, justifyContent: isDraftMode ? 'center' : 'flex-end', color: getAllocatedColor(balanceTotals.allocated), ...(isDraftMode ? tentativeValue : {}) }}>
         +{formatCurrency(balanceTotals.allocated)}
       </div>
       <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getSpendColor(balanceTotals.spent) }}>

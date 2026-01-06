@@ -16,6 +16,7 @@ import { AccountFlags } from './AccountFlags'
 import { AccountEndDropZone } from './AccountEndDropZone'
 import type { AccountFormData, GroupWithId, AccountWithId } from '@hooks/useAccountsPage'
 import { logUserAction } from '@utils'
+import { featureFlags } from '@constants'
 
 interface UngroupedAccountsSectionProps {
   accounts: AccountWithId[]
@@ -126,7 +127,7 @@ export function UngroupedAccountsSection({
           <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400, fontSize: '0.9rem' }}>
             ({sortedAccounts.length})
           </span>
-          {sortedAccounts.length > 0 && (
+          {featureFlags.showGroupTotals && sortedAccounts.length > 0 && (
             <span style={{
               marginLeft: '0.5rem',
               fontWeight: 600,

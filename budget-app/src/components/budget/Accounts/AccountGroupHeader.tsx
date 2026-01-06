@@ -7,6 +7,7 @@ import { sectionHeader, reorderButton, reorderButtonGroup } from '@styles/shared
 import { GroupOverrideFlags } from './GroupOverrideFlags'
 import type { GroupWithId } from './AccountForm'
 import { logUserAction } from '@utils'
+import { featureFlags } from '@constants'
 
 interface GroupHeaderProps {
   group: GroupWithId
@@ -56,17 +57,19 @@ export function GroupHeader({
         <span style={{ opacity: 0.5, fontWeight: 400, fontSize: '0.9rem', flexShrink: 0 }}>
           ({accountCount})
         </span>
-        <span style={{
-          marginLeft: '0.5rem',
-          fontWeight: 600,
-          fontSize: '0.9rem',
-          color: getBalanceColor(groupTotal),
-          flexShrink: 0,
-          borderBottom: '2px solid currentColor',
-          paddingBottom: '2px',
-        }}>
-          {formatCurrency(groupTotal)}
-        </span>
+        {featureFlags.showGroupTotals && (
+          <span style={{
+            marginLeft: '0.5rem',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+            color: getBalanceColor(groupTotal),
+            flexShrink: 0,
+            borderBottom: '2px solid currentColor',
+            paddingBottom: '2px',
+          }}>
+            {formatCurrency(groupTotal)}
+          </span>
+        )}
         <GroupOverrideFlags group={group} />
       </h3>
       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'center' }}>

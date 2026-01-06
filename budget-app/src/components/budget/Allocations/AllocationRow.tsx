@@ -1,6 +1,6 @@
 import type { Category } from '@types'
 import { formatCurrency, DebtBorder } from '../../ui'
-import { colors, tentativeValue } from '@styles/shared'
+import { colors } from '@styles/shared'
 
 interface AllocationRowProps {
   category: Category
@@ -93,7 +93,6 @@ export function AllocationRow({ category, value, onChange, previousMonthIncome, 
             fontWeight: 500,
             color: colors.success,
             fontSize: '0.9rem',
-            ...(!readOnly ? tentativeValue : {}),
           }}>
             {formatCurrency(amount)}
           </span>

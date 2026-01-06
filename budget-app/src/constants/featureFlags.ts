@@ -18,5 +18,11 @@ export const featureFlags = {
    * what actions led up to an error.
    */
   logUserActions: false,
+
+  /**
+   * Show group subtotals in category and account listings.
+   * When false, only individual items and grand totals are shown.
+   */
+  showGroupTotals: false,
 } as const
 

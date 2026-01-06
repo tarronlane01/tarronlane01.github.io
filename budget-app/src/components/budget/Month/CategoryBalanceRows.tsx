@@ -129,13 +129,13 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>End</span>
-          <span style={{ color: getCategoryBalanceColor(balance.end_balance), ...(isDraftMode ? tentativeValue : {}) }}>
+          <span style={{ color: getCategoryBalanceColor(balance.end_balance), ...(isDraftMode && !isPercentageBased ? tentativeValue : {}) }}>
             {formatBalanceCurrency(balance.end_balance)}
           </span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</span>
-          <span style={{ color: getCategoryBalanceColor(allTimeBalance), ...(isDraftMode ? tentativeValue : {}) }}>
+          <span style={{ color: getCategoryBalanceColor(allTimeBalance), ...(isDraftMode && !isPercentageBased ? tentativeValue : {}) }}>
             {formatBalanceCurrency(allTimeBalance)}
           </span>
         </div>
@@ -146,9 +146,9 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontSize: '0.8rem' }}>
             <span style={{ opacity: 0.6 }}>{formatCurrency(previousMonthIncome)} × </span>
-            <span style={{ color: colors.success, ...tentativeValue }}>{category.default_monthly_amount}%</span>
+            <span style={{ color: colors.success }}>{category.default_monthly_amount}%</span>
             <span style={{ opacity: 0.6 }}> = </span>
-            <span style={{ color: colors.success, ...tentativeValue }}>{formatCurrency(calculatedAmount)}</span>
+            <span style={{ color: colors.success }}>{formatCurrency(calculatedAmount)}</span>
           </span>
         </div>
       )}
@@ -211,9 +211,9 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         <div style={{ ...fieldContainer, width: '200px', justifyContent: 'center', flexDirection: 'column', gap: '0.15rem' }}>
           {isPercentageBased ? (
             <span style={{ fontSize: '0.8rem' }}>
-              <span style={{ color: colors.success, ...tentativeValue }}>{category.default_monthly_amount}%</span>
+              <span style={{ color: colors.success }}>{category.default_monthly_amount}%</span>
               <span style={{ opacity: 0.5 }}> = </span>
-              <span style={{ color: colors.success, ...tentativeValue }}>{formatCurrency(calculatedAmount)}</span>
+              <span style={{ color: colors.success }}>{formatCurrency(calculatedAmount)}</span>
             </span>
           ) : (
             <>
@@ -301,7 +301,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         justifyContent: 'flex-end',
         fontSize: '0.9rem',
         color: getCategoryBalanceColor(allTimeBalance),
-        ...(isDraftMode ? tentativeValue : {}),
+        ...(isDraftMode && !isPercentageBased ? tentativeValue : {}),
       }}>
         {formatBalanceCurrency(allTimeBalance)}
       </div>

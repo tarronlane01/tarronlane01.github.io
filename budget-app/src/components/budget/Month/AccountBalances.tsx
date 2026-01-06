@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { sectionHeader } from '@styles/shared'
+import { featureFlags } from '@constants'
 
 interface AccountBalancesViewProps {
   accounts: AccountsMap
@@ -162,17 +163,19 @@ function AccountGroupBlock({
             ({accounts.length})
           </span>
         </h3>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <span style={{
-            fontSize: '0.8rem',
-            color: getBalanceColor(groupTotals.netChange),
-          }}>
-            {formatSignedCurrencyAlways(groupTotals.netChange)}
-          </span>
-          <span style={{ fontWeight: 600, color: getBalanceColor(groupTotals.end) }}>
-            {formatCurrency(groupTotals.end)}
-          </span>
-        </div>
+        {featureFlags.showGroupTotals && (
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span style={{
+              fontSize: '0.8rem',
+              color: getBalanceColor(groupTotals.netChange),
+            }}>
+              {formatSignedCurrencyAlways(groupTotals.netChange)}
+            </span>
+            <span style={{ fontWeight: 600, color: getBalanceColor(groupTotals.end) }}>
+              {formatCurrency(groupTotals.end)}
+            </span>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
