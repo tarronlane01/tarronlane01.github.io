@@ -80,6 +80,7 @@ export { useAdjustmentsToTransfersMigration, type AdjustmentsToTransfersStatus, 
 export { useAccountCategoryValidation, type ValidationStatus, type TransactionViolation } from './useAccountCategoryValidation'
 export { useHiddenFieldMigration, type HiddenFieldMigrationStatus, type HiddenFieldMigrationResult } from './useHiddenFieldMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
+export { useRestoreFromDiagnostic, type RestoreStatus, type RestoreResult } from './useRestoreFromDiagnostic'
 
 // Seed data import
 export {

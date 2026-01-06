@@ -23,5 +23,6 @@ export { OrphanedIdCleanupCard } from './OrphanedIdCleanupCard'
 export { AdjustmentsToTransfersCard } from './AdjustmentsToTransfersCard'
 export { AccountCategoryValidationCard } from './AccountCategoryValidationCard'
 export { HiddenFieldMigrationCard } from './HiddenFieldMigrationCard'
+export { RestoreFromDiagnosticCard } from './RestoreFromDiagnosticCard'
 export { MigrationProgressModal } from './MigrationProgressModal'
 

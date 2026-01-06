@@ -65,10 +65,11 @@ export interface BudgetDiagnostic {
 export interface RawMonthData {
   year: number
   month: number
-  income: Array<{ id: string; amount: number; account_id: string; date: string; description?: string }>
-  expenses: Array<{ id: string; amount: number; account_id: string; category_id: string; date: string; payee?: string; description?: string }>
-  transfers: Array<{ id: string; amount: number; from_account_id: string; to_account_id: string; from_category_id: string; to_category_id: string; date: string; description?: string }>
-  adjustments: Array<{ id: string; amount: number; account_id: string; category_id: string; date: string; description?: string }>
+  // Full transaction objects - all fields from Firestore are preserved
+  income: Array<{ id: string; amount: number; account_id: string; date: string; payee?: string; description?: string; cleared?: boolean; created_at?: string }>
+  expenses: Array<{ id: string; amount: number; account_id: string; category_id: string; date: string; payee?: string; description?: string; cleared?: boolean; created_at?: string }>
+  transfers: Array<{ id: string; amount: number; from_account_id: string; to_account_id: string; from_category_id: string; to_category_id: string; date: string; description?: string; cleared?: boolean; created_at?: string }>
+  adjustments: Array<{ id: string; amount: number; account_id: string; category_id: string; date: string; description?: string; cleared?: boolean; created_at?: string }>
   categoryBalances: Array<{ category_id: string; start_balance: number; allocated: number; spent: number; end_balance: number }>
   accountBalances: Array<{ account_id: string; start_balance: number; income: number; expenses: number; net_change: number; end_balance: number }>
   areAllocationsFinalized: boolean

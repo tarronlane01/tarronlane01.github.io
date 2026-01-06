@@ -118,15 +118,14 @@ export function useMonthQuery(
   month: number,
   options?: { enabled?: boolean }
 ) {
-  const query = useQuery({
+  const isEnabled = !!budgetId && (options?.enabled !== false)
+
+  return useQuery({
     queryKey: budgetId ? queryKeys.month(budgetId, year, month) : ['month', 'none'],
     queryFn: async (): Promise<MonthQueryData> => {
       const monthData = await fetchMonth(budgetId!, year, month)
       return { month: monthData }
     },
-    enabled: !!budgetId && (options?.enabled !== false),
+    enabled: isEnabled,
   })
-
-  return query
 }
-

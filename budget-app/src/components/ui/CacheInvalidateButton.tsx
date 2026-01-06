@@ -1,23 +1,37 @@
 import { useState, useEffect } from 'react'
 import { useBudget } from '@contexts'
+import { queryClient } from '@data/queryClient'
 import { logUserAction } from '@utils'
 
 const CONFIRMATION_TIMEOUT_MS = 1500
 
 /**
- * Clear ALL React Query caches (in-memory and localStorage) and reload page.
- * This ensures the app fetches fresh data from Firestore for everything.
+ * Clear ALL caches and force refetch.
+ * Uses a URL parameter to tell QueryProvider to skip hydration on reload.
  */
-function clearAllCachesAndReload() {
-  // Clear localStorage persistence FIRST (before any async operations)
+function invalidateAllCaches() {
+  console.info('[CacheInvalidate] Starting full cache invalidation...')
+
+  // 1. Cancel any in-flight queries
+  queryClient.cancelQueries()
+
+  // 2. Clear ALL cached data (removes everything from memory)
+  queryClient.clear()
+  console.info('[CacheInvalidate] Cleared in-memory cache')
+
+  // 3. Remove localStorage persistence
   try {
     localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+    console.info('[CacheInvalidate] Cleared localStorage cache')
   } catch (err) {
-    console.warn('Failed to clear localStorage cache:', err)
+    console.warn('[CacheInvalidate] Failed to clear localStorage:', err)
   }
 
-  // Reload immediately - in-memory cache is cleared on reload anyway
-  window.location.reload()
+  // 4. Reload with cacheBust param - this tells QueryProvider to skip hydration
+  const url = new URL(window.location.href)
+  url.searchParams.set('cacheBust', '1')
+  console.info('[CacheInvalidate] Reloading with cache bust...')
+  window.location.href = url.toString()
 }
 
 export function CacheInvalidateButton() {
@@ -38,10 +52,8 @@ export function CacheInvalidateButton() {
   function handleClick() {
     logUserAction('CLICK', 'Cache Invalidate Button')
     setShowConfirmation(true)
-    // Small delay so user sees feedback before reload
-    setTimeout(() => {
-      clearAllCachesAndReload()
-    }, 200)
+    // Invalidate caches and reload immediately
+    invalidateAllCaches()
   }
 
   return (
@@ -68,7 +80,7 @@ export function CacheInvalidateButton() {
           }}
         >
           <span>🔄</span>
-          <span>Clearing cache & reloading...</span>
+          <span>Cache cleared & refetching...</span>
         </div>
       )}
 

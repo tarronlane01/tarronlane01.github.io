@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useFirebaseAuth } from '@hooks'
 import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, usePrecisionCleanup, useExpenseToAdjustmentMigration, useOrphanedIdCleanup, useAdjustmentsToTransfersMigration, useAccountCategoryValidation, useHiddenFieldMigration, useDiagnosticDownload } from '@hooks'
+import { useRestoreFromDiagnostic } from '../../../hooks/migrations/useRestoreFromDiagnostic'
 import {
   Spinner,
   DatabaseCleanupCard,
@@ -13,28 +14,14 @@ import {
   AdjustmentsToTransfersCard,
   AccountCategoryValidationCard,
   HiddenFieldMigrationCard,
+  RestoreFromDiagnosticCard,
 } from '../../../components/budget/Admin'
 import { Modal, Button } from '../../../components/ui'
 import { logUserAction } from '@utils/actionLogger'
 
-/**
- * Clear ALL React Query caches (in-memory and localStorage) and reload page.
- * This ensures the app fetches fresh data from Firestore for everything.
- *
- * IMPORTANT: We clear localStorage FIRST and reload immediately.
- * Do NOT call queryClient.clear() before reload - the async persister might
- * write back to localStorage after we clear it, creating a race condition.
- */
+/** Clear ALL React Query caches and reload. Clears localStorage FIRST to avoid race condition with persister. */
 function handleClearAllCachesAndReload() {
-  // Clear localStorage persistence FIRST (before any async operations)
-  try {
-    localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
-    console.log('[Cache] Cleared React Query cache from localStorage')
-  } catch (err) {
-    console.warn('Failed to clear localStorage cache:', err)
-  }
-
-  // Reload immediately - in-memory cache is cleared on reload anyway
+  try { localStorage.removeItem('BUDGET_APP_QUERY_CACHE') } catch { /* ignore */ }
   window.location.reload()
 }
 
@@ -93,6 +80,9 @@ function Migration() {
   const diagnosticDownload = useDiagnosticDownload({
     currentUser: current_user,
   })
+
+  // Restore from diagnostic - restores transfers/adjustments from diagnostic file
+  const restoreFromDiagnostic = useRestoreFromDiagnostic()
 
   // Scanning state for all
   const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || precisionCleanup.isScanning || expenseToAdjustment.isScanning || orphanedIdCleanup.isScanning || adjustmentsToTransfers.isScanning || hiddenFieldMigration.isScanning
@@ -324,6 +314,17 @@ function Migration() {
           </Button>
         </div>
       </div>
+
+      {/* Restore from Diagnostic Card */}
+      <RestoreFromDiagnosticCard
+        status={restoreFromDiagnostic.status}
+        result={restoreFromDiagnostic.result}
+        isScanning={restoreFromDiagnostic.isScanning}
+        isRunning={restoreFromDiagnostic.isRunning}
+        onScan={restoreFromDiagnostic.scan}
+        onRun={restoreFromDiagnostic.run}
+        disabled={!current_user}
+      />
 
       {/* Info about migration scope */}
       <div style={{ background: 'color-mix(in srgb, currentColor 3%, transparent)', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
