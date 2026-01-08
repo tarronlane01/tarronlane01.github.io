@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useFirebaseAuth } from '@hooks'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, usePrecisionCleanup, useExpenseToAdjustmentMigration, useOrphanedIdCleanup, useAdjustmentsToTransfersMigration, useAccountCategoryValidation, useHiddenFieldMigration, useDiagnosticDownload } from '@hooks'
+import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, useDeleteSampleUserBudget, usePrecisionCleanup, useExpenseToAdjustmentMigration, useOrphanedIdCleanup, useAdjustmentsToTransfersMigration, useAccountCategoryValidation, useHiddenFieldMigration, useDiagnosticDownload } from '@hooks'
 import { useRestoreFromDiagnostic } from '../../../hooks/migrations/useRestoreFromDiagnostic'
 import {
   Spinner,
   DatabaseCleanupCard,
   FeedbackMigrationCard,
   DeleteAllMonthsCard,
+  DeleteSampleUserBudgetCard,
   SeedImportCard,
   PrecisionCleanupCard,
   ExpenseToAdjustmentCard,
@@ -30,63 +31,23 @@ function Migration() {
   const current_user = firebase_auth_hook.get_current_firebase_user()
   const [showReloadModal, setShowReloadModal] = useState(false)
 
-  // Database cleanup - consolidated migration for budget/month schema validation
-  const databaseCleanup = useDatabaseCleanup({
-    currentUser: current_user,
-  })
-
-  // Feedback migration - special case for email document IDs
-  const feedbackMigration = useFeedbackMigration({
-    currentUser: current_user,
-  })
-
-  // Delete all months - destructive utility
-  // Automatically recalculates budgets and clears cache after deletion
-  const deleteAllMonths = useDeleteAllMonths({
-    currentUser: current_user,
-  })
-
-  // Precision cleanup - fixes floating point rounding issues
-  const precisionCleanup = usePrecisionCleanup({
-    currentUser: current_user,
-  })
-
-  // Orphaned ID cleanup - fixes references to deleted categories/accounts
-  const orphanedIdCleanup = useOrphanedIdCleanup({
-    currentUser: current_user,
-  })
-
-  // Expense to adjustment migration - moves no-account/no-category expenses
-  const expenseToAdjustment = useExpenseToAdjustmentMigration({
-    currentUser: current_user,
-  })
-
-  // Adjustments to transfers migration - converts matching adjustment pairs to transfers
-  const adjustmentsToTransfers = useAdjustmentsToTransfersMigration({
-    currentUser: current_user,
-  })
-
-  // Account/category validation - scans for invalid account/category combinations
-  const accountCategoryValidation = useAccountCategoryValidation({
-    currentUser: current_user,
-  })
-
-  // Hidden field migration - adds is_hidden field and creates hidden accounts/categories
-  const hiddenFieldMigration = useHiddenFieldMigration({
-    currentUser: current_user,
-  })
-
-  // Diagnostic download - downloads all data for troubleshooting
-  const diagnosticDownload = useDiagnosticDownload({
-    currentUser: current_user,
-  })
-
-  // Restore from diagnostic - restores transfers/adjustments from diagnostic file
+  // Migration hooks
+  const databaseCleanup = useDatabaseCleanup({ currentUser: current_user })
+  const feedbackMigration = useFeedbackMigration({ currentUser: current_user })
+  const deleteAllMonths = useDeleteAllMonths({ currentUser: current_user })
+  const deleteSampleUserBudget = useDeleteSampleUserBudget({ currentUser: current_user })
+  const precisionCleanup = usePrecisionCleanup({ currentUser: current_user })
+  const orphanedIdCleanup = useOrphanedIdCleanup({ currentUser: current_user })
+  const expenseToAdjustment = useExpenseToAdjustmentMigration({ currentUser: current_user })
+  const adjustmentsToTransfers = useAdjustmentsToTransfersMigration({ currentUser: current_user })
+  const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
+  const hiddenFieldMigration = useHiddenFieldMigration({ currentUser: current_user })
+  const diagnosticDownload = useDiagnosticDownload({ currentUser: current_user })
   const restoreFromDiagnostic = useRestoreFromDiagnostic()
 
   // Scanning state for all
-  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || precisionCleanup.isScanning || expenseToAdjustment.isScanning || orphanedIdCleanup.isScanning || adjustmentsToTransfers.isScanning || hiddenFieldMigration.isScanning
-  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || precisionCleanup.isRunning || expenseToAdjustment.isRunning || orphanedIdCleanup.isRunning || adjustmentsToTransfers.isRunning || hiddenFieldMigration.isRunning
+  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || deleteSampleUserBudget.isScanning || precisionCleanup.isScanning || expenseToAdjustment.isScanning || orphanedIdCleanup.isScanning || adjustmentsToTransfers.isScanning || hiddenFieldMigration.isScanning
+  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || deleteSampleUserBudget.isDeleting || precisionCleanup.isRunning || expenseToAdjustment.isRunning || orphanedIdCleanup.isRunning || adjustmentsToTransfers.isRunning || hiddenFieldMigration.isRunning
 
   // Refresh all - scans all migration statuses
   const handleRefreshAll = async () => {
@@ -95,6 +56,7 @@ function Migration() {
       databaseCleanup.scanStatus(),
       feedbackMigration.scanStatus(),
       deleteAllMonths.scanStatus(),
+      deleteSampleUserBudget.scanStatus(),
       precisionCleanup.scan(),
       orphanedIdCleanup.scanStatus(),
       expenseToAdjustment.scanStatus(),
@@ -246,6 +208,18 @@ function Migration() {
         disabled={!current_user}
         deleteResult={deleteAllMonths.deleteResult}
         deleteProgress={deleteAllMonths.deleteProgress}
+      />
+
+      <DeleteSampleUserBudgetCard
+        hasData={!!deleteSampleUserBudget.status}
+        status={deleteSampleUserBudget.status}
+        isDeleting={deleteSampleUserBudget.isDeleting}
+        onDelete={deleteSampleUserBudget.deleteSampleUserBudget}
+        onRefresh={deleteSampleUserBudget.scanStatus}
+        isRefreshing={deleteSampleUserBudget.isScanning}
+        disabled={!current_user}
+        deleteResult={deleteSampleUserBudget.deleteResult}
+        deleteProgress={deleteSampleUserBudget.deleteProgress}
       />
 
       <SeedImportCard

@@ -2,6 +2,12 @@
  * Firestore Logging Utility
  *
  * Internal logging for Firebase operations with source context and document count.
+ *
+ * Toggle flags in featureFlags.ts:
+ * - logFirebaseOperations: Enable/disable all Firebase logging
+ * - logFirebaseSource: Show source descriptions (e.g., "← loading budget")
+ * - logFirebaseFullPath: Show full document paths vs shortened versions
+ * - logFirebaseData: Log the actual data being read/written (verbose!)
  */
 
 import { featureFlags } from '@constants/featureFlags'
@@ -14,21 +20,26 @@ import { featureFlags } from '@constants/featureFlags'
  * @param source - Description of why this operation is happening
  * @param docCount - Number of documents (default 1)
  * @param exists - For READ operations, whether the document exists (undefined = not applicable)
+ * @param data - Optional data being read/written (only logged if logFirebaseData is true)
  */
 export function logFirebase(
   operation: string,
   path: string,
   source: string,
   docCount: number = 1,
-  exists?: boolean
+  exists?: boolean,
+  data?: unknown
 ): void {
-  if (featureFlags.logFirebaseOperations) {
+  if (!featureFlags.logFirebaseOperations) return
+
+  // Use full path or clean it up based on flag
+  let displayPath = path
+  if (!featureFlags.logFirebaseFullPath) {
     // Clean up the path for readability:
     // - budgets/budget_xxx → budgets
     // - months/budget_xxx_2025_12 → months/2025/12
-    let cleanPath = path
     if (path.startsWith('budgets/')) {
-      cleanPath = 'budgets'
+      displayPath = 'budgets'
     } else if (path.startsWith('months/')) {
       // Extract year/month from doc ID (format: budgetId_YYYY_MM)
       const docId = path.replace('months/', '')
@@ -36,14 +47,22 @@ export function logFirebase(
       if (parts.length >= 2) {
         const month = parts[parts.length - 1]
         const year = parts[parts.length - 2]
-        cleanPath = `months/${year}/${month}`
+        displayPath = `months/${year}/${month}`
       }
     }
+  }
 
-    // Add existence indicator for READ operations
-    const existsIndicator = exists === false ? ' [NOT FOUND]' : ''
+  // Add existence indicator for READ operations
+  const existsIndicator = exists === false ? ' [NOT FOUND]' : ''
 
-    console.log(`[Firebase] ${operation}(${docCount}): ${cleanPath}${existsIndicator} ← ${source}`)
+  // Conditionally include source description
+  const sourceText = featureFlags.logFirebaseSource ? ` ← ${source}` : ''
+
+  console.log(`[Firebase] ${operation}(${docCount}): ${displayPath}${existsIndicator}${sourceText}`)
+
+  // Log data if flag is enabled and data is provided
+  if (featureFlags.logFirebaseData && data !== undefined) {
+    console.log(`[Firebase] ${operation} data:`, data)
   }
 }
 

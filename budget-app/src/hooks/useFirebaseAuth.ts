@@ -27,12 +27,24 @@ export default function useFirebaseAuth() {
         return firebase_auth.currentUser
     }
 
+    /**
+     * Get the current user's email, throwing if not available.
+     * Use this when email is required (e.g., creating a budget).
+     */
+    function requireUserEmail(): string {
+        const user = firebase_auth.currentUser
+        if (!user) throw new Error('Not authenticated')
+        if (!user.email) throw new Error('Email is required but not available for this account')
+        return user.email
+    }
+
     const firebase_auth_hook: type_firebase_auth_hook = {
         set_user_listener,
         delete_firebase_user,
         login_firebase_user,
         logout_firebase_user,
         get_current_firebase_user,
+        requireUserEmail,
     }
 
     return firebase_auth_hook

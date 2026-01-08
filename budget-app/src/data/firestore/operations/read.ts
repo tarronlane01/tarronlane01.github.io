@@ -18,13 +18,14 @@ export async function readDocByPath<T = FirestoreData>(
   const path = `${collectionPath}/${docId}`
   const snapshot = await getDoc(docRef)
   const exists = snapshot.exists()
+  const data = exists ? (snapshot.data() as T) : null
 
-  // Log after read so we can include existence info
-  logFirebase('READ', path, source, 1, exists)
+  // Log after read so we can include existence info and optionally the data
+  logFirebase('READ', path, source, 1, exists, data)
 
   return {
     exists,
-    data: exists ? (snapshot.data() as T) : null,
+    data,
     ref: docRef,
   }
 }
@@ -48,19 +49,19 @@ export async function queryCollection<T = FirestoreData>(
 
   const snapshot = await getDocs(q)
 
-  // Log AFTER query to show document count
+  const results = snapshot.docs.map(docSnap => ({
+    id: docSnap.id,
+    data: docSnap.data() as T,
+  }))
+
+  // Log AFTER query to show document count and optionally the data
   let logDescription = collectionPath
   if (whereClauses && whereClauses.length > 0) {
     const clauseStr = whereClauses.map(c => `${c.field} ${c.op} ${JSON.stringify(c.value)}`).join(', ')
     logDescription += ` WHERE ${clauseStr}`
   }
-  logFirebase('QUERY', logDescription, source, snapshot.docs.length)
+  logFirebase('QUERY', logDescription, source, snapshot.docs.length, undefined, results)
 
-  return {
-    docs: snapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      data: docSnap.data() as T,
-    })),
-  }
+  return { docs: results }
 }
 

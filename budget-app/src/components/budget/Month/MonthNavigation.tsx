@@ -5,14 +5,19 @@ import { useBudgetData, useBudgetMonth } from '@hooks'
 import { colors } from '@styles/shared'
 import { MONTH_NAMES } from '@constants'
 import { RecalculateAllButton } from './RecalculateAllButton'
-import { logUserAction, getYearMonthOrdinal } from '@utils'
+import { logUserAction, getYearMonthOrdinal, getMonthDocId } from '@utils'
 import {
   MonthNavButton,
+  MonthPicker,
+  DeleteMonthModal,
   getPrevMonth,
   getNextMonth,
   getEffectiveMinMonth,
   getMaxAllowedMonth,
 } from './MonthNavigation/index'
+// eslint-disable-next-line no-restricted-imports
+import { deleteDocByPath } from '@firestore'
+import { queryClient, queryKeys } from '@data/queryClient'
 
 interface MonthNavigationProps {
   onPreviousMonth: () => void
@@ -29,27 +34,21 @@ export function MonthNavigation({
     currentMonthNumber,
     isAdmin,
     selectedBudgetId,
-    currentUserId,
     setCurrentYear,
     setCurrentMonthNumber,
   } = useBudget()
-  const { budget: currentBudget, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
+  const { budget: currentBudget, monthMap } = useBudgetData()
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
 
-  // Navigation bounds: MAX_PAST_MONTHS in past (or earliest in monthMap if older), MAX_FUTURE_MONTHS in future
-  // This allows navigating to months that don't exist yet - they'll be created on demand
+  // Navigation bounds
   const prevMonth = getPrevMonth(currentYear, currentMonthNumber)
   const nextMonth = getNextMonth(currentYear, currentMonthNumber)
-
   const minAllowed = getEffectiveMinMonth(monthMap)
   const maxAllowed = getMaxAllowedMonth()
-
-  const minOrdinal = getYearMonthOrdinal(minAllowed.year, minAllowed.month)
-  const maxOrdinal = getYearMonthOrdinal(maxAllowed.year, maxAllowed.month)
-
-  const prevOrdinal = getYearMonthOrdinal(prevMonth.year, prevMonth.month)
-  const nextOrdinal = getYearMonthOrdinal(nextMonth.year, nextMonth.month)
-
+  const minOrdinal = Number(getYearMonthOrdinal(minAllowed.year, minAllowed.month))
+  const maxOrdinal = Number(getYearMonthOrdinal(maxAllowed.year, maxAllowed.month))
+  const prevOrdinal = Number(getYearMonthOrdinal(prevMonth.year, prevMonth.month))
+  const nextOrdinal = Number(getYearMonthOrdinal(nextMonth.year, nextMonth.month))
   const isPrevDisabled = prevOrdinal < minOrdinal
   const isNextDisabled = nextOrdinal > maxOrdinal
 
@@ -57,7 +56,42 @@ export function MonthNavigation({
   const [showMonthPicker, setShowMonthPicker] = useState(false)
   const [pickerYear, setPickerYear] = useState(currentYear)
   const [pickerMonth, setPickerMonth] = useState(currentMonthNumber)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const monthMenuRef = useRef<HTMLDivElement>(null)
+
+  // Determine if current month is the last (latest) month in the budget
+  const isLastMonth = (() => {
+    if (!monthMap || Object.keys(monthMap).length === 0) return false
+    const currentOrdinal = getYearMonthOrdinal(currentYear, currentMonthNumber)
+    const maxOrdinalInMap = Math.max(...Object.keys(monthMap).map(Number))
+    return Number(currentOrdinal) === maxOrdinalInMap
+  })()
+
+  async function handleDeleteMonth() {
+    if (!selectedBudgetId) return
+    setIsDeleting(true)
+    try {
+      const monthDocId = getMonthDocId(selectedBudgetId, currentYear, currentMonthNumber)
+      await deleteDocByPath('months', monthDocId, `deleting month ${currentYear}/${currentMonthNumber}`)
+      logUserAction('DELETE', 'Delete Month', { details: `${currentYear}/${currentMonthNumber}` })
+
+      // Clear caches
+      queryClient.removeQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
+      localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+
+      const prev = getPrevMonth(currentYear, currentMonthNumber)
+      setShowDeleteConfirm(false)
+      setShowMonthMenu(false)
+      window.location.href = `/budget/${prev.year}/${prev.month}/categories`
+    } catch (error) {
+      console.error('Failed to delete month:', error)
+      alert(`Failed to delete month: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Close month menu when clicking outside
   useEffect(() => {
@@ -74,7 +108,6 @@ export function MonthNavigation({
 
   function handleOpenPicker() {
     if (!showMonthPicker) {
-      // Initialize picker to current month when opening
       setPickerYear(currentYear)
       setPickerMonth(currentMonthNumber)
     }
@@ -93,11 +126,7 @@ export function MonthNavigation({
     if (!currentMonth || !currentBudget) return
     const monthData = {
       ...currentMonth,
-      _meta: {
-        downloaded_at: new Date().toISOString(),
-        budget_id: currentBudget.id,
-        budget_name: currentBudget.name,
-      }
+      _meta: { downloaded_at: new Date().toISOString(), budget_id: currentBudget.id, budget_name: currentBudget.name }
     }
     const blob = new Blob([JSON.stringify(monthData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -154,231 +183,88 @@ export function MonthNavigation({
             ▼
           </button>
         </div>
+
         {isLoading && (
           <>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-              marginTop: '0.35rem',
-            }}>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '14px',
-                  height: '14px',
-                  border: '2px solid color-mix(in srgb, currentColor 20%, transparent)',
-                  borderTopColor: colors.primary,
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite',
-                }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.35rem' }}>
+              <span style={{
+                display: 'inline-block', width: '14px', height: '14px',
+                border: '2px solid color-mix(in srgb, currentColor 20%, transparent)',
+                borderTopColor: colors.primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+              }} />
               <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Loading...</span>
             </div>
           </>
         )}
+
         {/* Month options menu */}
         {showMonthMenu && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              marginTop: '0.5rem',
-              background: 'var(--background, #242424)',
-              border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
-              borderRadius: '8px',
-              padding: '0.25rem',
-              zIndex: 100,
-              minWidth: '160px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            }}
-          >
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+            marginTop: '0.5rem', background: 'var(--background, #242424)',
+            border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
+            borderRadius: '8px', padding: '0.25rem', zIndex: 100, minWidth: '160px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}>
             <RecalculateAllButton isDisabled={isLoading} onCloseMenu={() => setShowMonthMenu(false)} />
 
-            {/* Go to Month button */}
             <button
               onClick={handleOpenPicker}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '0.5rem 0.75rem',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                color: 'inherit',
-                textAlign: 'left',
-                transition: 'background 0.15s',
+                display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                background: 'transparent', border: 'none', borderRadius: '6px',
+                padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
+                color: 'inherit', textAlign: 'left', transition: 'background 0.15s',
               }}
               title="Jump to a specific month"
             >
               📅 Go to Month
             </button>
 
-            {/* Month picker */}
-            {showMonthPicker && (() => {
-              // Bounds: MAX_PAST_MONTHS back (or earliest in map if older) to MAX_FUTURE_MONTHS ahead
-              const earliestYear = minAllowed.year
-              const latestYear = maxAllowed.year
+            {showMonthPicker && (
+              <MonthPicker
+                pickerYear={pickerYear}
+                pickerMonth={pickerMonth}
+                currentYear={currentYear}
+                currentMonthNumber={currentMonthNumber}
+                minOrdinal={minOrdinal}
+                maxOrdinal={maxOrdinal}
+                minAllowed={minAllowed}
+                maxAllowed={maxAllowed}
+                onYearChange={setPickerYear}
+                onMonthChange={setPickerMonth}
+                onGo={handleGoToMonth}
+              />
+            )}
 
-              const canGoPrevYear = pickerYear > earliestYear
-              const canGoNextYear = pickerYear < latestYear
-
-              return (
-              <div style={{
-                padding: '0.75rem',
-                borderTop: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-                marginTop: '0.25rem',
-              }}>
-                {/* Year selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <button
-                    onClick={() => setPickerYear(y => y - 1)}
-                    disabled={!canGoPrevYear}
-                    style={{
-                      background: 'color-mix(in srgb, currentColor 10%, transparent)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '0.25rem 0.5rem',
-                      cursor: canGoPrevYear ? 'pointer' : 'not-allowed',
-                      fontSize: '0.8rem',
-                      opacity: canGoPrevYear ? 1 : 0.3,
-                    }}
-                    title={canGoPrevYear ? 'Previous year' : 'Cannot go further back'}
-                  >
-                    ←
-                  </button>
-                  <span style={{ flex: 1, textAlign: 'center', fontSize: '0.9rem', fontWeight: 500 }}>
-                    {pickerYear}
-                  </span>
-                  <button
-                    onClick={() => setPickerYear(y => y + 1)}
-                    disabled={!canGoNextYear}
-                    style={{
-                      background: 'color-mix(in srgb, currentColor 10%, transparent)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '0.25rem 0.5rem',
-                      cursor: canGoNextYear ? 'pointer' : 'not-allowed',
-                      fontSize: '0.8rem',
-                      opacity: canGoNextYear ? 1 : 0.3,
-                    }}
-                    title={canGoNextYear ? 'Next year' : 'Cannot go further ahead'}
-                  >
-                    →
-                  </button>
-                </div>
-
-                {/* Month grid */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '0.25rem',
-                  marginBottom: '0.5rem',
-                }}>
-                  {MONTH_NAMES.map((name, idx) => {
-                    const monthNum = idx + 1
-                    const isSelected = monthNum === pickerMonth
-                    const isCurrent = pickerYear === currentYear && monthNum === currentMonthNumber
-                    const monthOrdinal = getYearMonthOrdinal(pickerYear, monthNum)
-
-                    // Grey out months outside the allowed range (MAX_PAST_MONTHS back to MAX_FUTURE_MONTHS ahead)
-                    const isBeforeMin = monthOrdinal < minOrdinal
-                    const isAfterMax = monthOrdinal > maxOrdinal
-                    const isDisabled = isBeforeMin || isAfterMax
-
-                    let title: string = name
-                    if (isBeforeMin) {
-                      title = 'Too far in the past'
-                    } else if (isAfterMax) {
-                      title = 'Too far in the future'
-                    }
-
-                    return (
-                      <button
-                        key={monthNum}
-                        onClick={() => setPickerMonth(monthNum)}
-                        disabled={isDisabled}
-                        style={{
-                          background: isSelected
-                            ? colors.primary
-                            : 'color-mix(in srgb, currentColor 8%, transparent)',
-                          border: isCurrent ? `1px solid ${colors.primary}` : '1px solid transparent',
-                          borderRadius: '4px',
-                          padding: '0.35rem 0.25rem',
-                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                          fontSize: '0.7rem',
-                          color: isSelected ? '#fff' : 'inherit',
-                          opacity: isDisabled ? 0.3 : 1,
-                          transition: 'background 0.15s',
-                        }}
-                        title={title}
-                      >
-                        {name.slice(0, 3)}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {/* Go button */}
-                {(() => {
-                  // Check if selected month is within allowed range
-                  const selectedOrdinal = getYearMonthOrdinal(pickerYear, pickerMonth)
-                  const isSelectedValid = selectedOrdinal >= minOrdinal && selectedOrdinal <= maxOrdinal
-
-                  return (
-                    <button
-                      onClick={handleGoToMonth}
-                      disabled={!isSelectedValid}
-                      style={{
-                        width: '100%',
-                        background: isSelectedValid ? colors.primary : 'color-mix(in srgb, currentColor 20%, transparent)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.5rem',
-                        cursor: isSelectedValid ? 'pointer' : 'not-allowed',
-                        fontSize: '0.85rem',
-                        color: isSelectedValid ? '#fff' : 'inherit',
-                        fontWeight: 500,
-                        opacity: isSelectedValid ? 1 : 0.5,
-                      }}
-                    >
-                      Go to {MONTH_NAMES[pickerMonth - 1]} {pickerYear}
-                    </button>
-                  )
-                })()}
-              </div>
-            )})()}
-
-            {/* Admin-only: Download month data */}
             {isAdmin && currentMonth && (
               <button
                 onClick={() => { logUserAction('CLICK', 'Download Month JSON'); handleDownloadJson() }}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  width: '100%',
-                  background: 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '0.5rem 0.75rem',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  color: 'inherit',
-                  textAlign: 'left',
-                  transition: 'background 0.15s',
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  background: 'transparent', border: 'none', borderRadius: '6px',
+                  padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
+                  color: 'inherit', textAlign: 'left', transition: 'background 0.15s',
                 }}
                 title="Download month document as JSON (for debugging)"
               >
                 📥 Download JSON
+              </button>
+            )}
+
+            {isAdmin && currentMonth && isLastMonth && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  background: 'transparent', border: 'none', borderRadius: '6px',
+                  padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
+                  color: '#ef4444', textAlign: 'left', transition: 'background 0.15s',
+                }}
+                title="Delete this month (last month only)"
+              >
+                🗑️ Delete Month
               </button>
             )}
           </div>
@@ -391,6 +277,15 @@ export function MonthNavigation({
         isLoading={isLoading}
         disabledReason="Cannot create months more than 3 months into the future"
         onNavigate={onNextMonth}
+      />
+
+      <DeleteMonthModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        year={currentYear}
+        month={currentMonthNumber}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteMonth}
       />
     </div>
   )

@@ -54,6 +54,11 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
  *
  * This bypasses queryClient.fetchQuery to avoid deadlocking with useQuery.
  * The useQuery hook itself handles caching - we don't need another cache layer.
+ *
+ * NOTE: Permission errors are caught and treated as "not found" to allow
+ * month creation to proceed. This handles the case where non-admin users
+ * try to read a non-existent month document - the security rule fails because
+ * it can't access resource.data.budget_id on a non-existent document.
  */
 async function readMonthDirect(
   budgetId: string,
@@ -62,17 +67,33 @@ async function readMonthDirect(
 ): Promise<MonthDocument | null> {
   const monthDocId = getMonthDocId(budgetId, year, month)
 
-  const { exists, data } = await readDocByPath<FirestoreData>(
-    'months',
-    monthDocId,
-    `loading month ${year}/${month}`
-  )
+  try {
+    const { exists, data } = await readDocByPath<FirestoreData>(
+      'months',
+      monthDocId,
+      `loading month ${year}/${month}`
+    )
 
-  if (!exists || !data) {
-    return null
+    if (!exists || !data) {
+      return null
+    }
+
+    return parseMonthData(data, budgetId, year, month)
+  } catch (error) {
+    // Treat permission errors as "not found" - this allows month creation to proceed
+    // This handles non-admin users reading non-existent months where the security
+    // rule fails because resource.data.budget_id doesn't exist
+    const isPermissionError = error instanceof Error &&
+      error.message.includes('Missing or insufficient permissions')
+
+    if (isPermissionError) {
+      console.warn(`[readMonthDirect] Permission error reading month ${year}/${month}, treating as not found`)
+      return null
+    }
+
+    // Re-throw other errors
+    throw error
   }
-
-  return parseMonthData(data, budgetId, year, month)
 }
 
 /**

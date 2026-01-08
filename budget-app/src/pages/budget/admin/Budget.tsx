@@ -5,7 +5,7 @@ import { useBudgetData } from '@hooks'
 
 function Budget() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, isAdmin } = useBudget()
+  const { isAdmin } = useBudget()
 
   const {
     budget: currentBudget,
@@ -15,7 +15,7 @@ function Budget() {
     categoryGroups,
     isOwner,
     isLoading: loading,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   // Add loading hold while loading
   useEffect(() => {

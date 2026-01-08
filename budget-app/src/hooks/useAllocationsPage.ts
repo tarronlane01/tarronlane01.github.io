@@ -40,8 +40,8 @@ function computeAllocationsMap(
 
 export function useAllocationsPage() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, getOnBudgetTotal, totalAvailable } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { categories, getOnBudgetTotal, totalAvailable } = useBudgetData()
   const {
     month: currentMonth,
     isLoading: monthLoading,

@@ -3,16 +3,19 @@
  *
  * Creates a new month document with start balances from the previous month.
  * This is a write operation, so it lives in mutations.
+ *
+ * IMPORTANT: Validates that the budget exists before creating the month.
+ * This prevents orphaned month documents if a budget was deleted.
  */
 
-import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance, MonthMap } from '@types'
+import { readDocByPath, writeDocByPath, updateDocByPath } from '@firestore'
 import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
 import { MAX_FUTURE_MONTHS, MAX_PAST_MONTHS } from '@constants'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
-import { setMonthInBudgetMap } from '@data/recalculation'
+import { updateCacheWithMonth, cleanupMonthMap } from '@data/recalculation/markMonthsHelpers'
 
 /** Options for createMonth */
 export interface CreateMonthOptions {
@@ -67,6 +70,25 @@ export async function createMonth(
     throw new Error(errorMsg)
   }
 
+  // FIRST: Validate that the budget exists before creating the month
+  // This prevents orphaned month documents if the budget was deleted from another browser
+  // We also use this data to update the month_map later (avoiding a second read)
+  const { exists: budgetExists, data: budgetData } = await readDocByPath<FirestoreData>(
+    'budgets',
+    budgetId,
+    'validating budget exists before creating month'
+  )
+
+  if (!budgetExists || !budgetData) {
+    // Clear the user's cached data since their budget no longer exists
+    queryClient.removeQueries({ queryKey: queryKeys.budget(budgetId) })
+    localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+
+    const errorMsg = `[createMonth] Budget ${budgetId} does not exist. ` +
+      `It may have been deleted. Please refresh the page.`
+    console.error(errorMsg)
+    throw new Error(errorMsg)
+  }
 
   const nowIso = now.toISOString()
   const monthDocId = getMonthDocId(budgetId, year, month)
@@ -83,37 +105,51 @@ export async function createMonth(
     const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month)
     const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
 
-    const { exists, data: prevData } = await readDocByPath<FirestoreData>(
-      'months',
-      prevMonthDocId,
-      'fetching previous month to create start balances for new month'
-    )
+    try {
+      const { exists, data: prevData } = await readDocByPath<FirestoreData>(
+        'months',
+        prevMonthDocId,
+        'fetching previous month to create start balances for new month'
+      )
 
-    if (exists && prevData) {
-      // Parse the previous month data to extract balances
-      const prevMonthData: MonthDocument = {
-        budget_id: budgetId,
-        year_month_ordinal: prevData.year_month_ordinal ?? getYearMonthOrdinal(prevYear, prevMonth),
-        year: prevData.year ?? prevYear,
-        month: prevData.month ?? prevMonth,
-        income: prevData.income || [],
-        total_income: prevData.total_income ?? 0,
-        previous_month_income: prevData.previous_month_income ?? 0,
-        expenses: prevData.expenses || [],
-        total_expenses: prevData.total_expenses ?? 0,
-        transfers: prevData.transfers || [],
-        adjustments: prevData.adjustments || [],
-        account_balances: prevData.account_balances || [],
-        category_balances: prevData.category_balances || [],
-        are_allocations_finalized: prevData.are_allocations_finalized ?? false,
-        created_at: prevData.created_at,
-        updated_at: prevData.updated_at,
+      if (exists && prevData) {
+        // Parse the previous month data to extract balances
+        const prevMonthData: MonthDocument = {
+          budget_id: budgetId,
+          year_month_ordinal: prevData.year_month_ordinal ?? getYearMonthOrdinal(prevYear, prevMonth),
+          year: prevData.year ?? prevYear,
+          month: prevData.month ?? prevMonth,
+          income: prevData.income || [],
+          total_income: prevData.total_income ?? 0,
+          previous_month_income: prevData.previous_month_income ?? 0,
+          expenses: prevData.expenses || [],
+          total_expenses: prevData.total_expenses ?? 0,
+          transfers: prevData.transfers || [],
+          adjustments: prevData.adjustments || [],
+          account_balances: prevData.account_balances || [],
+          category_balances: prevData.category_balances || [],
+          are_allocations_finalized: prevData.are_allocations_finalized ?? false,
+          created_at: prevData.created_at,
+          updated_at: prevData.updated_at,
+        }
+
+        previousMonthIncome = prevMonthData.total_income
+        const { categoryEndBalances, accountEndBalances } = getEndBalancesFromMonth(prevMonthData)
+        categoryStartBalances = categoryEndBalances
+        accountStartBalances = accountEndBalances
       }
+    } catch (error) {
+      // Treat permission errors as "previous month doesn't exist" - start with zero balances
+      // This handles non-admin users where the security rule fails for non-existent months
+      const isPermissionError = error instanceof Error &&
+        error.message.includes('Missing or insufficient permissions')
 
-      previousMonthIncome = prevMonthData.total_income
-      const { categoryEndBalances, accountEndBalances } = getEndBalancesFromMonth(prevMonthData)
-      categoryStartBalances = categoryEndBalances
-      accountStartBalances = accountEndBalances
+      if (isPermissionError) {
+        console.warn(`[createMonth] Permission error reading previous month ${prevYear}/${prevMonth}, starting with zero balances`)
+      } else {
+        // Re-throw other errors
+        throw error
+      }
     }
   }
 
@@ -193,8 +229,20 @@ export async function createMonth(
   )
 
   // Add this month to the budget's month_map
-  // The month_map now contains ALL months (not just the 7-month window)
-  await setMonthInBudgetMap(budgetId, year, month, false)
+  // We already have the budget data from our initial read, so no need to read again
+  const monthOrdinal = getYearMonthOrdinal(year, month)
+  const existingMonthMap: MonthMap = budgetData.month_map || {}
+  const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: { needs_recalculation: false } }
+  const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
+
+  // Update cache
+  updateCacheWithMonth(budgetId, cleanedMonthMap)
+
+  // Write to Firestore
+  await updateDocByPath('budgets', budgetId, {
+    month_map: cleanedMonthMap,
+    updated_at: nowIso,
+  }, `adding month ${year}/${month} to budget month_map`)
 
   return newMonth
 }

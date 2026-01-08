@@ -24,8 +24,8 @@ const columnHeaderStyle: React.CSSProperties = {
 }
 
 export function MonthIncome() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
-  const { accounts, accountGroups } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
+  const { accounts, accountGroups } = useBudgetData()
   const {
     month: currentMonth,
     isLoading: monthLoading,

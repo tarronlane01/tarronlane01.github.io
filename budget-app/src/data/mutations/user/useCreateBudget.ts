@@ -12,7 +12,7 @@ import type { UserDocument } from '@types'
 interface CreateBudgetParams {
   name: string
   userId: string
-  userEmail: string | null
+  userEmail: string
 }
 
 export function useCreateBudget() {
@@ -34,6 +34,10 @@ export function useCreateBudget() {
         account_groups: {},
         categories: {},
         category_groups: [],
+        // Initialize calculated fields
+        total_available: 0,
+        is_needs_recalculation: false,
+        month_map: {},
         created_at: now,
         updated_at: now,
       }

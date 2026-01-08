@@ -54,8 +54,8 @@ function getNetChangeColor(value: number): string {
 }
 
 export function MonthAccounts() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { accounts, accountGroups, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { accounts, accountGroups, monthMap } = useBudgetData()
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 

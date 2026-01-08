@@ -73,6 +73,7 @@ export {
 // Special-purpose migrations
 export { useFeedbackMigration, type FeedbackMigrationResult, type FeedbackMigrationStatus } from './useFeedbackMigration'
 export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo, type DeleteProgress, type DeletePhase } from './useDeleteAllMonths'
+export { useDeleteSampleUserBudget, type DeleteSampleUserBudgetStatus, type DeleteSampleUserBudgetResult, type SampleBudgetInfo, type DeleteSampleProgress, type DeleteSamplePhase } from './useDeleteSampleUserBudget'
 export { usePrecisionCleanup, type PrecisionCleanupStatus, type PrecisionCleanupResult } from './usePrecisionCleanup'
 export { useExpenseToAdjustmentMigration, type ExpenseToAdjustmentStatus, type ExpenseToAdjustmentResult } from './useExpenseToAdjustmentMigration'
 export { useOrphanedIdCleanup, type OrphanedIdCleanupStatus, type OrphanedIdCleanupResult } from './useOrphanedIdCleanup'

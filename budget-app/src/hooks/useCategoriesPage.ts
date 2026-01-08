@@ -31,7 +31,7 @@ export type { CategoryBalance } from './useCategoryBalances'
 
 export function useCategoriesPage() {
   // Context: identifiers and current month
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
 
   // Hook: budget data and mutations
   const {
@@ -45,7 +45,7 @@ export function useCategoriesPage() {
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
     getOnBudgetTotal,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   const [error, setError] = useState<string | null>(null)
 

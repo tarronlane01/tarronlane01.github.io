@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useBudget } from '@contexts'
 import { useBudgetData } from './useBudgetData'
 import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '@types'
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'
@@ -14,7 +13,6 @@ export interface AccountWithId extends FinancialAccount {
 }
 
 export function useAccountsPage() {
-  const { selectedBudgetId, currentUserId } = useBudget()
   const {
     budget: currentBudget,
     accounts,
@@ -24,7 +22,7 @@ export function useAccountsPage() {
     saveAccountsAndGroups,
     setAccountsOptimistic,
     setAccountGroupsOptimistic,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   const [error, setError] = useState<string | null>(null)
 

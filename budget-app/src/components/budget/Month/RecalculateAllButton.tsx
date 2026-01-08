@@ -22,8 +22,8 @@ interface RecalculateAllButtonProps {
 }
 
 export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAllButtonProps) {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, accounts, saveCategories, saveAccounts } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { categories, accounts, saveCategories, saveAccounts } = useBudgetData()
 
   const [isRecomputing, setIsRecomputing] = useState(false)
   const [showModal, setShowModal] = useState(false)

@@ -122,7 +122,7 @@ interface BudgetContextType {
   isTest: boolean
 
   // Budget management utilities
-  loadAccessibleBudgets: () => Promise<void>
+  loadAccessibleBudgets: (options?: { force?: boolean }) => Promise<void>
   switchToBudget: (budgetId: string) => void
   checkBudgetInvite: (budgetId: string) => Promise<BudgetInvite | null>
 
@@ -280,12 +280,18 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // BUDGET MANAGEMENT UTILITIES
   // ==========================================================================
 
-  const loadAccessibleBudgets = useCallback(async () => {
-    await accessibleBudgetsQuery.refetch()
+  const loadAccessibleBudgets = useCallback(async (options?: { force?: boolean }) => {
+    // If force=true (e.g., after mutations), always refetch
+    // Otherwise, only refetch if we don't have data yet (prevents duplicate queries)
+    if (options?.force || !accessibleBudgetsQuery.data) {
+      await accessibleBudgetsQuery.refetch()
+    }
   }, [accessibleBudgetsQuery])
 
   const switchToBudget = useCallback((budgetId: string) => {
     setSelectedBudgetId(budgetId)
+    // If switching to a budget, we clearly don't need to create a first budget
+    setNeedsFirstBudget(false)
   }, [])
 
   const checkBudgetInvite = useCallback(async (budgetId: string): Promise<BudgetInvite | null> => {

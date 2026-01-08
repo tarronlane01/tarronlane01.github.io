@@ -24,8 +24,8 @@ import { GrandTotalsRow, MobileGrandTotals } from './MonthCategoriesHeader'
 import { columnHeaderStyle, getRecalcPhaseLabel } from './MonthCategoriesStyles'
 
 export function MonthCategories() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, categoryGroups, monthMap } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { categories, categoryGroups, monthMap } = useBudgetData()
   const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 

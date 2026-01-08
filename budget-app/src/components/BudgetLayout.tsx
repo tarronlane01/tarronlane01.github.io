@@ -7,10 +7,10 @@ import { pageContainer } from '@styles/shared'
 
 export default function BudgetLayout() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, isInitialized, pageTitle } = useBudget()
+  const { isInitialized, pageTitle } = useBudget()
 
   // Hook: budget data and refresh
-  const { isLoading: loading, error } = useBudgetData(selectedBudgetId, currentUserId)
+  const { isLoading: loading, error } = useBudgetData()
 
   // Add loading hold during initialization
   useEffect(() => {

@@ -18,9 +18,8 @@ export async function writeDocByPath(
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const path = `${collectionPath}/${docId}`
-  // Putting this here so that all writes to firebase will always have a console log
-  // So I can see how often writes are happening
-  logFirebase('WRITE', path, source)
+  // Log before write so we can see what's being written
+  logFirebase('WRITE', path, source, 1, undefined, data)
   return setDoc(docRef, data, options ?? {})
 }
 
@@ -53,7 +52,7 @@ export async function batchWriteDocs(
       batch.set(docRef, data)
     }
 
-    logFirebase('BATCH_WRITE', `${chunk.length} docs`, source, chunk.length)
+    logFirebase('BATCH_WRITE', `${chunk.length} docs`, source, chunk.length, undefined, chunk)
     await batch.commit()
   }
 }
@@ -66,8 +65,8 @@ export async function updateDocByPath(
 ): Promise<void> {
   const docRef = doc(getDb(), collectionPath, docId)
   const path = `${collectionPath}/${docId}`
-  // Putting this here so I can easily track firebase reads in the console
-  logFirebase('UPDATE', path, source)
+  // Log before update so we can see what's being updated
+  logFirebase('UPDATE', path, source, 1, undefined, data)
   return updateDoc(docRef, data)
 }
 

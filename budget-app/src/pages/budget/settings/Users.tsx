@@ -5,7 +5,7 @@ import { logUserAction } from '@utils/actionLogger'
 
 function Users() {
   // Context: identifiers only
-  const { selectedBudgetId, currentUserId } = useBudget()
+  const { currentUserId } = useBudget()
 
   // Hook: budget data and mutations
   const {
@@ -14,7 +14,7 @@ function Users() {
     acceptedUserIds,
     inviteUser,
     revokeUser,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   const [newUserId, setNewUserId] = useState('')
   const [isInviting, setIsInviting] = useState(false)

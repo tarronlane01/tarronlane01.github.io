@@ -3,7 +3,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
 import { useBudgetData, useBudgetMonth } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
-import { CreateFirstBudgetScreen, PendingInvitesScreen } from '../../components/budget/Onboarding'
 import {
   BudgetTabs,
   MonthNavigation,
@@ -45,8 +44,8 @@ function Budget() {
   const { addLoadingHold, removeLoadingHold } = useApp()
 
   const {
-    currentUserId,
     selectedBudgetId,
+    setSelectedBudgetId,
     currentYear,
     currentMonthNumber,
     lastActiveTab,
@@ -57,16 +56,13 @@ function Budget() {
     goToPreviousMonth,
     goToNextMonth,
     hasPendingInvites,
-    pendingInvites,
     needsFirstBudget,
   } = useBudget()
 
   const {
     budget: currentBudget,
     isLoading: isBudgetLoading,
-    createBudget,
-    acceptInvite,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   // Budget data is loaded when not loading (monthMap might be empty if no months exist)
   const isBudgetDataLoaded = !isBudgetLoading
@@ -136,12 +132,23 @@ function Budget() {
     currentMonthNumber
   )
 
-  // Handle month loading errors - redirect to current month if can't create
+  // Handle month loading errors - redirect based on error type
   // Use queueMicrotask to avoid synchronous setState in effect (ESLint react-hooks/set-state-in-effect)
   useEffect(() => {
     if (!monthError || isRedirecting) return
 
     const errorMsg = monthError.message || ''
+
+    // Check if budget doesn't exist - redirect to My Budgets page
+    if (errorMsg.includes('Budget') && errorMsg.includes('does not exist')) {
+      queueMicrotask(() => {
+        // Clear the selected budget since it doesn't exist
+        setSelectedBudgetId(null)
+        // Navigate to My Budgets page with context
+        navigate('/budget/my-budgets?context=budget-not-found', { replace: true })
+      })
+      return
+    }
 
     // Check if this is a "can't create month too far in past" error
     if (errorMsg.includes('months in the past') || errorMsg.includes('Refusing to create month')) {
@@ -159,7 +166,7 @@ function Budget() {
         setCurrentMonthNumber(nowMonth)
       })
     }
-  }, [monthError, isRedirecting, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber, addLoadingHold])
+  }, [monthError, isRedirecting, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber, addLoadingHold, setSelectedBudgetId, navigate])
 
   // Clear redirect state and loading hold once we've successfully loaded a month after redirect
   // Use queueMicrotask to avoid synchronous setState in effect
@@ -177,38 +184,38 @@ function Budget() {
     setPageTitle(currentBudget?.name || 'Budget')
   }, [currentBudget?.name, setPageTitle])
 
-  async function handleAcceptInvite(budgetId: string) {
-    try {
-      await acceptInvite(budgetId)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invite')
+  // Redirect to My Budgets page if user has no budget selected
+  // This handles: new users, users with pending invites, budget-not-found scenarios
+  useEffect(() => {
+    if (!isBudgetDataLoaded) return // Wait for data to load
+    if (isRedirecting) return // Don't double-redirect
+
+    // No current budget and no budget selected - go to My Budgets
+    if (!currentBudget && !selectedBudgetId) {
+      navigate('/budget/my-budgets', { replace: true })
+      return
     }
-  }
 
-  async function handleCreateNewBudget(name?: string) {
-    try {
-      await createBudget(name || 'My Budget')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create budget')
+    // Has pending invites but no budget - go to My Budgets
+    if (!currentBudget && hasPendingInvites) {
+      navigate('/budget/my-budgets', { replace: true })
+      return
     }
-  }
 
-  if (!currentBudget && hasPendingInvites) {
-    return (
-      <PendingInvitesScreen
-        invites={pendingInvites}
-        onAccept={handleAcceptInvite}
-        onCreateNew={handleCreateNewBudget}
-      />
-    )
-  }
-
-  if (!currentBudget && needsFirstBudget) {
-    return <CreateFirstBudgetScreen onCreateNew={handleCreateNewBudget} />
-  }
+    // Needs first budget - go to My Budgets
+    if (needsFirstBudget) {
+      navigate('/budget/my-budgets', { replace: true })
+      return
+    }
+  }, [isBudgetDataLoaded, isRedirecting, currentBudget, selectedBudgetId, hasPendingInvites, needsFirstBudget, navigate])
 
   // Don't render content while budget data is loading or redirecting (loading overlay shows via loading hold)
   if (!isBudgetDataLoaded || isRedirecting) {
+    return null
+  }
+
+  // Don't render if no budget (redirect will happen via effect above)
+  if (!currentBudget) {
     return null
   }
 

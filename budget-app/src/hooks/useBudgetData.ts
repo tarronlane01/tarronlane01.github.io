@@ -2,14 +2,13 @@
  * useBudgetData Hook
  *
  * Provides budget-level data and mutations.
- * Components import this hook directly instead of going through context.
+ * Gets selectedBudgetId and currentUserId from BudgetContext internally.
  *
  * Usage:
- *   const { selectedBudgetId } = useBudget() // from context
  *   const {
  *     budget, accounts, categories, isLoading,
- *     saveAccounts, saveCategories, ...
- *   } = useBudgetData(selectedBudgetId, currentUserId)
+ *     saveAccounts, saveCategories, createBudget, ...
+ *   } = useBudgetData()
  */
 
 import { useCallback, useMemo } from 'react'
@@ -19,6 +18,8 @@ import {
   queryKeys,
   type BudgetData,
 } from '@data'
+import { useBudget } from '@contexts'
+import useFirebaseAuth from './useFirebaseAuth'
 import {
   useUpdateAccounts,
   useUpdateAccountGroups,
@@ -97,10 +98,13 @@ interface UseBudgetDataReturn {
   getOnBudgetTotal: () => number
 }
 
-export function useBudgetData(
-  budgetId: string | null,
-  currentUserId: string | null
-): UseBudgetDataReturn {
+export function useBudgetData(): UseBudgetDataReturn {
+  // Get IDs from context
+  const { selectedBudgetId: budgetId, currentUserId } = useBudget()
+
+  // Auth (for requireUserEmail)
+  const { requireUserEmail } = useFirebaseAuth()
+
   // Query
   const budgetQuery = useBudgetQuery(budgetId)
 
@@ -198,10 +202,10 @@ export function useBudgetData(
     const result = await createBudgetOp.mutateAsync({
       name: name.trim() || 'My Budget',
       userId: currentUserId,
-      userEmail: null, // Will be filled by mutation if available
+      userEmail: requireUserEmail(),
     })
     return result
-  }, [currentUserId, createBudgetOp])
+  }, [currentUserId, requireUserEmail, createBudgetOp])
 
   const inviteUser = useCallback(async (userId: string) => {
     if (!budgetId) throw new Error('No budget selected')

@@ -9,7 +9,7 @@ const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
 
 function Settings() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, lastSettingsTab, setLastSettingsTab, setPageTitle } = useBudget()
+  const { lastSettingsTab, setLastSettingsTab, setPageTitle } = useBudget()
 
   // Set page title for layout header
   useLayoutEffect(() => { setPageTitle('Budget Settings') }, [setPageTitle])
@@ -18,7 +18,7 @@ function Settings() {
   const {
     isOwner,
     isLoading: loading,
-  } = useBudgetData(selectedBudgetId, currentUserId)
+  } = useBudgetData()
 
   // Add loading hold while loading
   useEffect(() => {

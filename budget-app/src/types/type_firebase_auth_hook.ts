@@ -6,4 +6,6 @@ export type type_firebase_auth_hook = {
     login_firebase_user: (username: string, password: string) => Promise<UserCredential>,
     logout_firebase_user: () => Promise<void>,
     get_current_firebase_user: () => User | null,
+    /** Get the current user's email, throwing if not available */
+    requireUserEmail: () => string,
 }

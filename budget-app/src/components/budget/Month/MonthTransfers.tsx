@@ -23,8 +23,8 @@ const columnHeaderStyle: React.CSSProperties = {
 }
 
 export function MonthTransfers() {
-  const { selectedBudgetId, currentUserId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
-  const { accounts, accountGroups, categories, categoryGroups } = useBudgetData(selectedBudgetId, currentUserId)
+  const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
+  const { accounts, accountGroups, categories, categoryGroups } = useBudgetData()
   const {
     month: currentMonth,
     isLoading: monthLoading,
