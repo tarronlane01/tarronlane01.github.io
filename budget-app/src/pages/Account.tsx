@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { UserContext } from '@contexts'
 import { useFirebaseAuth } from '@hooks'
+import { queryClient } from '@data/queryClient'
 import { DropdownMenu, type MenuItem } from "../components/ui"
 import { pageContainer } from '@styles/shared'
 
@@ -25,7 +26,12 @@ export default function Account() {
     function logout_action() {
         set_is_logging_out(true)
         firebase_auth_hook.logout_firebase_user().then(function() {
-            set_is_logging_out(false)
+            // Clear all React Query cache
+            queryClient.clear()
+            // Clear persisted cache from localStorage
+            localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+            // Reload to fully clear app state
+            window.location.href = '/'
         })
     }
 
@@ -67,6 +73,7 @@ function LoginForm() {
     const firebase_auth_hook = useFirebaseAuth()
     const [username, set_username] = useState("")
     const [password, set_password] = useState("")
+    const [show_password, set_show_password] = useState(false)
     const [is_loading, set_is_loading] = useState(false)
     const [error_message, set_error_message] = useState("")
 
@@ -82,6 +89,11 @@ function LoginForm() {
         event.preventDefault()
         set_is_loading(true)
         set_error_message("")
+
+        // Clear any stale cache from previous sessions before logging in
+        queryClient.clear()
+        localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+
         firebase_auth_hook.login_firebase_user(username, password).then(
             function() {
                 // Login successful - auth state listener will update context
@@ -106,7 +118,32 @@ function LoginForm() {
             </div>
             <div>
                 <label htmlFor="password">Password: </label>
-                <input id="password" type="password" value={password} onChange={handle_password_input}/>
+                <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                    <input
+                        id="password"
+                        type={show_password ? "text" : "password"}
+                        value={password}
+                        onChange={handle_password_input}
+                        style={{ paddingRight: '2rem' }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => set_show_password(!show_password)}
+                        style={{
+                            position: 'absolute',
+                            right: '0.25rem',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.25rem',
+                            opacity: 0.6,
+                            fontSize: '1rem',
+                        }}
+                        title={show_password ? "Hide password" : "Show password"}
+                    >
+                        {show_password ? '🙈' : '👁️'}
+                    </button>
+                </div>
             </div>
             {
                 is_loading

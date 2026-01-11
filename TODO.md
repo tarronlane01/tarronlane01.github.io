@@ -1,13 +1,3 @@
-# Can't create transfer (no category/account not counting as valid)
-
-- Payee form needs to showing dropwdown. Not showing in the adjustments
-- We should use a common component for payee dropoowns so they all behave the same (such as income and spend forms, that also have that field)
-- Let's create a user story for that element as well
-- Let's group the form behavior into a form folder under user stories
-
-# When logout, invalidate all cache and reload to clear everything so we don't see old data
-
-
 # Off-budget transfers.
 
 Allow transfers to off-budget accounts, and update in the notes on that page and on the spend page to indicate where the correctd place is to put money going to off-budget accounts. Flag those accounts with maybe a differnet pill color so we can see them in the list more easily (as well as in the dropdown, maybe make their text a slighly different color that mirrors the differnece in the pill color as well).
