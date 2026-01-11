@@ -3,13 +3,18 @@
  *
  * Updates a single account's balance by a delta amount.
  * Used after income/expense changes to adjust account balances.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import type { FirestoreData } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { writeBudgetData, readBudgetForEdit } from '../writeBudgetData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface UpdateAccountBalanceParams {
   budgetId: string
@@ -17,83 +22,91 @@ interface UpdateAccountBalanceParams {
   delta: number
 }
 
-export function useUpdateAccountBalance() {
-  const queryClient = useQueryClient()
+interface UpdateAccountBalanceResult {
+  accountId: string
+  newBalance: number
+}
 
-  const updateAccountBalance = useMutation({
-    mutationFn: async ({ budgetId, accountId, delta }: UpdateAccountBalanceParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useUpdateAccountBalanceInternal = createOptimisticMutation<
+  UpdateAccountBalanceParams,
+  UpdateAccountBalanceResult,
+  BudgetData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, accountId, delta } = params
 
-      const accounts = data.accounts || {}
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData?.accounts?.[accountId]) {
+          return cachedData as BudgetData
+        }
 
-      if (!accounts[accountId]) {
-        throw new Error('Account not found')
-      }
-
-      const updatedAccounts = {
-        ...accounts,
-        [accountId]: {
-          ...accounts[accountId],
-          balance: accounts[accountId].balance + delta,
-        },
-      }
-
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          accounts: updatedAccounts,
-        },
-        'saving updated account balance'
-      )
-
-      return updatedAccounts
-    },
-    onMutate: async ({ budgetId, accountId, delta }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData && previousData.accounts[accountId]) {
         const updatedAccounts = {
-          ...previousData.accounts,
+          ...cachedData.accounts,
           [accountId]: {
-            ...previousData.accounts[accountId],
-            balance: previousData.accounts[accountId].balance + delta,
+            ...cachedData.accounts[accountId],
+            balance: cachedData.accounts[accountId].balance + delta,
           },
         }
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
-          accounts: updatedAccounts,
-        })
-      }
 
-      return { previousData }
-    },
-    onSuccess: (data, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...currentData,
-          accounts: data,
-        })
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+        return {
+          ...cachedData,
+          accounts: updatedAccounts,
+        }
+      },
+    }
+  },
+
+  mutationFn: async (params) => {
+    const { budgetId, accountId, delta } = params
+
+    // Read fresh data
+    const freshData = await readBudgetForEdit(budgetId, 'update account balance')
+    const accounts = freshData.accounts || {}
+
+    if (!accounts[accountId]) {
+      throw new Error('Account not found')
+    }
+
+    const newBalance = accounts[accountId].balance + delta
+    const updatedAccounts = {
+      ...accounts,
+      [accountId]: {
+        ...accounts[accountId],
+        balance: newBalance,
+      },
+    }
+
+    await writeBudgetData({
+      budgetId,
+      updates: { accounts: updatedAccounts },
+      description: 'saving updated account balance',
+    })
+
+    return { accountId, newBalance }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useUpdateAccountBalance() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateAccountBalanceInternal()
+
+  const updateAccountBalance = {
+    mutate: (params: UpdateAccountBalanceParams) => mutate(params),
+    mutateAsync: (params: UpdateAccountBalanceParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { updateAccountBalance }
 }
-

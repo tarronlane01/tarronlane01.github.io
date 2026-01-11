@@ -2,87 +2,107 @@
  * Rename Budget Mutation Hook
  *
  * Provides mutation function to rename a budget.
- * Uses optimistic updates and updates the cache with server response.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
+ * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
+ * 2. Updates cache instantly (UI reflects change immediately)
+ * 3. In background: reads fresh data from Firestore, merges, writes
+ * 4. On error: automatic rollback to previous cache state
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import type { FirestoreData } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { writeBudgetData } from './writeBudgetData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface RenameBudgetParams {
   budgetId: string
   newName: string
 }
 
-/**
- * Hook providing mutation function to rename a budget
- */
-export function useRenameBudget() {
-  const queryClient = useQueryClient()
+interface RenameBudgetResult {
+  newName: string
+}
 
-  const renameBudget = useMutation({
-    mutationFn: async ({ budgetId, newName }: RenameBudgetParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK - Created via factory with REQUIRED optimistic update
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useRenameBudgetInternal = createOptimisticMutation<
+  RenameBudgetParams,
+  RenameBudgetResult,
+  BudgetData
+>({
+  // =========================================================================
+  // REQUIRED: Optimistic update function
+  // This is the enforcement mechanism - factory won't work without it
+  // =========================================================================
+  optimisticUpdate: (params) => {
+    const { budgetId, newName } = params
 
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          name: newName.trim(),
-        },
-        `renaming budget to "${newName.trim()}"`
-      )
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as BudgetData
+        }
 
-      return newName.trim()
-    },
-    onMutate: async ({ budgetId, newName }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
+        return {
+          ...cachedData,
           budget: {
-            ...previousData.budget,
+            ...cachedData.budget,
             name: newName.trim(),
           },
-        })
-      }
+        }
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onSuccess: (data, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...currentData,
-          budget: {
-            ...currentData.budget,
-            name: data,
-          },
-        })
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+  // =========================================================================
+  // REQUIRED: Actual mutation function
+  // =========================================================================
+  mutationFn: async (params) => {
+    const { budgetId, newName } = params
+    const trimmedName = newName.trim()
+
+    await writeBudgetData({
+      budgetId,
+      updates: { name: trimmedName },
+      description: `renaming budget to "${trimmedName}"`,
+    })
+
+    return { newName: trimmedName }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK - Maintains backwards-compatible API
+// ============================================================================
+
+/**
+ * Hook providing mutation function to rename a budget.
+ *
+ * Returns an object with renameBudget mutation that can be called with
+ * mutate() or mutateAsync().
+ */
+export function useRenameBudget() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useRenameBudgetInternal()
+
+  // Wrap in an object to maintain the same API as before
+  const renameBudget = {
+    mutate: (params: RenameBudgetParams) => mutate(params),
+    mutateAsync: (params: RenameBudgetParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return {
     renameBudget,
   }
 }
-

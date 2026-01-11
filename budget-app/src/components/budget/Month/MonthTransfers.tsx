@@ -65,6 +65,7 @@ export function MonthTransfers() {
   ) as AccountEntry[]
 
   // Handle transfer operations
+  // Note: Mutations handle optimistic cache updates internally
   function handleAddTransfer(
     amount: number,
     fromAccountId: string,
@@ -76,19 +77,19 @@ export function MonthTransfers() {
     cleared?: boolean
   ) {
     setError(null)
-    setShowAddTransfer(false)
+    setShowAddTransfer(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this transfer belongs to
     const [transferYear, transferMonth] = date.split('-').map(Number)
 
+    // Navigate to target month if different
+    if (transferYear !== currentYear || transferMonth !== currentMonthNumber) {
+      setCurrentYear(transferYear)
+      setCurrentMonthNumber(transferMonth)
+    }
+
+    // Mutation handles optimistic update and Firestore write
     addTransfer(amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
-      .then(() => {
-        // Navigate to the target month if different from current view
-        if (transferYear !== currentYear || transferMonth !== currentMonthNumber) {
-          setCurrentYear(transferYear)
-          setCurrentMonthNumber(transferMonth)
-        }
-      })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add transfer')
       })
@@ -106,15 +107,20 @@ export function MonthTransfers() {
     cleared?: boolean
   ) {
     setError(null)
-    setEditingTransferId(null)
-    updateTransfer(transferId, amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to update transfer')
-    })
+    setEditingTransferId(null) // Close form immediately - mutation handles optimistic update
+
+    // Mutation handles optimistic update and Firestore write
+    updateTransfer(transferId, amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to update transfer')
+      })
   }
 
   function handleDeleteTransfer(transferId: string) {
     if (!confirm('Are you sure you want to delete this transfer?')) return
     setError(null)
+
+    // Mutation handles optimistic update and Firestore delete
     deleteTransfer(transferId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete transfer')
     })

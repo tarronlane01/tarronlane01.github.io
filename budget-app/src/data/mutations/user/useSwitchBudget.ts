@@ -2,74 +2,88 @@
  * Switch Budget Mutation
  *
  * Switches the active budget by moving it to the front of the user's budget_ids list.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
-import { readDocByPath, writeDocByPath } from '@firestore'
 import type { UserDocument } from '@types'
+import { writeUserData, readUserForEdit } from './writeUserData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface SwitchBudgetParams {
   budgetId: string
   userId: string
 }
 
+interface SwitchBudgetResult {
+  budgetId: string
+}
+
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
+
+const useSwitchBudgetInternal = createOptimisticMutation<
+  SwitchBudgetParams,
+  SwitchBudgetResult,
+  UserDocument
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, userId } = params
+
+    return {
+      cacheKey: queryKeys.user(userId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as UserDocument
+        }
+
+        return {
+          ...cachedData,
+          budget_ids: [budgetId, ...cachedData.budget_ids.filter(id => id !== budgetId)],
+        }
+      },
+    }
+  },
+
+  mutationFn: async (params) => {
+    const { budgetId, userId } = params
+
+    // Read fresh data to get current budget_ids
+    const userData = await readUserForEdit(userId, 'switch budget')
+
+    const updatedBudgetIds = [budgetId, ...userData.budget_ids.filter(id => id !== budgetId)]
+
+    await writeUserData({
+      userId,
+      updates: { budget_ids: updatedBudgetIds },
+      description: 'reordering budget list to make selected budget active',
+    })
+
+    return { budgetId }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
 export function useSwitchBudget() {
-  const queryClient = useQueryClient()
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useSwitchBudgetInternal()
 
-  const switchBudget = useMutation({
-    mutationFn: async ({ budgetId, userId }: SwitchBudgetParams) => {
-      const { exists, data: userData } = await readDocByPath<UserDocument>(
-        'users',
-        userId,
-        'PRE-EDIT-READ'
-      )
-
-      if (!exists || !userData) {
-        throw new Error('User document not found')
-      }
-
-      const updatedBudgetIds = [budgetId, ...userData.budget_ids.filter(id => id !== budgetId)]
-
-      await writeDocByPath(
-        'users',
-        userId,
-        {
-          ...userData,
-          budget_ids: updatedBudgetIds,
-          updated_at: new Date().toISOString(),
-        },
-        'reordering budget list to make selected budget active'
-      )
-
-      return { budgetId }
-    },
-    onMutate: async ({ budgetId, userId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.user(userId) })
-      const previousData = queryClient.getQueryData<UserDocument>(queryKeys.user(userId))
-
-      if (previousData) {
-        queryClient.setQueryData<UserDocument>(queryKeys.user(userId), {
-          ...previousData,
-          budget_ids: [budgetId, ...previousData.budget_ids.filter(id => id !== budgetId)],
-        })
-      }
-
-      return { previousData }
-    },
-    onSuccess: (_, { userId }) => {
-      const currentData = queryClient.getQueryData<UserDocument>(queryKeys.user(userId))
-      if (currentData) {
-        queryClient.setQueryData(queryKeys.user(userId), currentData)
-      }
-    },
-    onError: (_err, { userId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.user(userId), context.previousData)
-      }
-    },
-  })
+  const switchBudget = {
+    mutate: (params: SwitchBudgetParams) => mutate(params),
+    mutateAsync: (params: SwitchBudgetParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { switchBudget }
 }
-

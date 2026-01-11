@@ -23,6 +23,8 @@ You're a React expert who specializes in organizing React projects to stay under
 
 You're a UI expert. How can we improve the usability of this website? What elements are unusual and clunky? What changes can we make to have the site behave how a user will want/expect it to behave?
 
+
+- All actions should have instant feedback (optimistic) with async operations happening behind the scenes and showing errors if that doesn't work, to minimize loading screens unless we're directly fetching data we need to display.
 - consistent styles, design elements, meaning, formats, etc with shared compoments to force conformity.
 
 ## CRUD Organization

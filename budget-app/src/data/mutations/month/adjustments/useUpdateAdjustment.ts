@@ -22,11 +22,14 @@ function hasAdjustmentChanges(
   accountId: string,
   categoryId: string,
   date: string,
+  payee?: string,
   description?: string,
   cleared?: boolean
 ): boolean {
   if (!oldAdjustment) return true // New adjustment, always save
 
+  const oldPayee = oldAdjustment.payee || undefined
+  const newPayee = payee?.trim() || undefined
   const oldDescription = oldAdjustment.description || undefined
   const newDescription = description || undefined
 
@@ -35,6 +38,7 @@ function hasAdjustmentChanges(
     accountId !== oldAdjustment.account_id ||
     categoryId !== oldAdjustment.category_id ||
     date !== oldAdjustment.date ||
+    newPayee !== oldPayee ||
     newDescription !== oldDescription ||
     cleared !== oldAdjustment.cleared
   )
@@ -52,6 +56,7 @@ export function useUpdateAdjustment() {
     accountId: string,
     categoryId: string,
     date: string,
+    payee?: string,
     description?: string,
     cleared?: boolean
   ) => {
@@ -61,7 +66,7 @@ export function useUpdateAdjustment() {
     const oldAdjustment = (monthData.adjustments || []).find(a => a.id === adjustmentId)
 
     // No-op detection: skip write if nothing changed
-    if (!hasAdjustmentChanges(oldAdjustment, amount, accountId, categoryId, date, description, cleared)) {
+    if (!hasAdjustmentChanges(oldAdjustment, amount, accountId, categoryId, date, payee, description, cleared)) {
       return { updatedMonth: monthData, noOp: true }
     }
 
@@ -76,6 +81,7 @@ export function useUpdateAdjustment() {
       date,
       created_at: monthData.adjustments?.find(a => a.id === adjustmentId)?.created_at || new Date().toISOString(),
     }
+    if (payee?.trim()) updatedAdjustment.payee = payee.trim()
     if (description) updatedAdjustment.description = description
     if (cleared !== undefined) updatedAdjustment.cleared = cleared
 

@@ -2,79 +2,92 @@
  * Invite User Mutation
  *
  * Invites a user to a budget by adding them to the user_ids list.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import { readDocByPath, writeDocByPath } from '@firestore'
-import type { FirestoreData } from '@types'
+import { writeBudgetData, readBudgetForEdit } from '../budget/writeBudgetData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface InviteUserParams {
   budgetId: string
   userId: string
 }
 
-export function useInviteUser() {
-  const queryClient = useQueryClient()
+interface InviteUserResult {
+  budgetId: string
+}
 
-  const inviteUser = useMutation({
-    mutationFn: async ({ budgetId, userId }: InviteUserParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useInviteUserInternal = createOptimisticMutation<
+  InviteUserParams,
+  InviteUserResult,
+  BudgetData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, userId } = params
 
-      if (data.user_ids?.includes(userId)) {
-        throw new Error('User is already invited')
-      }
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as BudgetData
+        }
 
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          user_ids: [...(data.user_ids || []), userId],
-        },
-        'adding user to budget\'s invited users list'
-      )
-
-      return { budgetId }
-    },
-    onMutate: async ({ budgetId, userId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
+        return {
+          ...cachedData,
           budget: {
-            ...previousData.budget,
-            user_ids: [...previousData.budget.user_ids, userId],
+            ...cachedData.budget,
+            user_ids: [...cachedData.budget.user_ids, userId],
           },
-        })
-      }
+        }
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onSuccess: (_, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), currentData)
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+  mutationFn: async (params) => {
+    const { budgetId, userId } = params
+
+    const freshData = await readBudgetForEdit(budgetId, 'invite user')
+
+    if (freshData.user_ids?.includes(userId)) {
+      throw new Error('User is already invited')
+    }
+
+    await writeBudgetData({
+      budgetId,
+      updates: { user_ids: [...(freshData.user_ids || []), userId] },
+      description: "adding user to budget's invited users list",
+    })
+
+    return { budgetId }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useInviteUser() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useInviteUserInternal()
+
+  const inviteUser = {
+    mutate: (params: InviteUserParams) => mutate(params),
+    mutateAsync: (params: InviteUserParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { inviteUser }
 }
-

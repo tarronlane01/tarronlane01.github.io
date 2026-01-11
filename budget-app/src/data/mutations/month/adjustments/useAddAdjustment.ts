@@ -4,18 +4,139 @@
  * Adds a new adjustment transaction to the month.
  * Adjustments are one-sided corrections that can affect account and/or category balances.
  * Allows NO_ACCOUNT_ID or NO_CATEGORY_ID for adjustments that don't affect one side.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
+ * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
+ * 2. Updates cache instantly (form can close immediately)
+ * 3. In background: reads fresh data from Firestore, merges, writes
+ * 4. On error: automatic rollback to previous cache state
  */
 
-import { readMonthForEdit } from '@data'
+import { createOptimisticMutation } from '../../infrastructure'
+import { readMonthForEdit, writeMonthData } from '@data'
+import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, AdjustmentTransaction } from '@types'
-import { useWriteMonthData } from '..'
+import type { MonthQueryData } from '@data/queries/month'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface AddAdjustmentParams {
+  budgetId: string
+  year: number
+  month: number
+  amount: number
+  accountId: string
+  categoryId: string
+  date: string
+  payee?: string
+  description?: string
+  cleared?: boolean
+  // Internal: used to share adjustment ID between optimistic update and mutation
+  _adjustmentId?: string
+}
+
+interface AddAdjustmentResult {
+  updatedMonth: MonthDocument
+  newAdjustment: AdjustmentTransaction
+}
+
+// ============================================================================
+// HELPER: Create adjustment object
+// ============================================================================
+
+function createAdjustmentObject(
+  params: AddAdjustmentParams,
+  adjustmentId: string
+): AdjustmentTransaction {
+  const newAdjustment: AdjustmentTransaction = {
+    id: adjustmentId,
+    amount: params.amount,
+    account_id: params.accountId,
+    category_id: params.categoryId,
+    date: params.date,
+    created_at: new Date().toISOString(),
+  }
+  if (params.payee?.trim()) newAdjustment.payee = params.payee.trim()
+  if (params.description) newAdjustment.description = params.description
+  if (params.cleared !== undefined) newAdjustment.cleared = params.cleared
+  return newAdjustment
+}
+
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
+
+const useAddAdjustmentInternal = createOptimisticMutation<
+  AddAdjustmentParams,
+  AddAdjustmentResult,
+  MonthQueryData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, year, month } = params
+
+    // Generate adjustment ID upfront so optimistic and actual use same ID
+    const adjustmentId = `adjustment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    params._adjustmentId = adjustmentId
+
+    const newAdjustment = createAdjustmentObject(params, adjustmentId)
+
+    return {
+      cacheKey: queryKeys.month(budgetId, year, month),
+      transform: (cachedData) => {
+        if (!cachedData?.month) {
+          return cachedData as MonthQueryData
+        }
+
+        const optimisticMonth: MonthDocument = retotalMonth({
+          ...cachedData.month,
+          adjustments: [...(cachedData.month.adjustments || []), newAdjustment],
+          updated_at: new Date().toISOString(),
+        })
+
+        return { month: optimisticMonth }
+      },
+    }
+  },
+
+  mutationFn: async (params) => {
+    const { budgetId, year, month, accountId, amount, _adjustmentId } = params
+
+    const adjustmentId = _adjustmentId!
+    const newAdjustment = createAdjustmentObject(params, adjustmentId)
+
+    // Read fresh data from Firestore, merge, write
+    const freshMonthData = await readMonthForEdit(budgetId, year, month, 'add adjustment')
+
+    const updatedAdjustments = [...(freshMonthData.adjustments || []), newAdjustment]
+    const updatedMonth: MonthDocument = retotalMonth({
+      ...freshMonthData,
+      adjustments: updatedAdjustments,
+      updated_at: new Date().toISOString(),
+    })
+
+    // Write to Firestore
+    await writeMonthData({ budgetId, month: updatedMonth, description: 'add adjustment' })
+
+    // Update budget's account balance for real accounts
+    if (!isNoAccount(accountId)) {
+      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
+    }
+
+    return { updatedMonth, newAdjustment }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
 export function useAddAdjustment() {
-  const { writeData } = useWriteMonthData()
+  const { mutateAsync, isPending, isError, error } = useAddAdjustmentInternal()
 
   const addAdjustment = async (
     budgetId: string,
@@ -25,47 +146,28 @@ export function useAddAdjustment() {
     accountId: string,
     categoryId: string,
     date: string,
+    payee?: string,
     description?: string,
     cleared?: boolean
   ) => {
-    const monthData = await readMonthForEdit(budgetId, year, month, 'add adjustment')
-
-    const newAdjustment: AdjustmentTransaction = {
-      id: `adjustment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    return mutateAsync({
+      budgetId,
+      year,
+      month,
       amount,
-      account_id: accountId,
-      category_id: categoryId,
+      accountId,
+      categoryId,
       date,
-      created_at: new Date().toISOString(),
-    }
-    if (description) newAdjustment.description = description
-    if (cleared !== undefined) newAdjustment.cleared = cleared
-
-    const updatedAdjustments = [...(monthData.adjustments || []), newAdjustment]
-
-    // Re-total to update all derived values
-    const updatedMonth: MonthDocument = retotalMonth({
-      ...monthData,
-      adjustments: updatedAdjustments,
-      updated_at: new Date().toISOString(),
+      payee,
+      description,
+      cleared,
     })
-
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'add adjustment' })
-
-    // Update budget's account balance for real accounts
-    if (!isNoAccount(accountId)) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
-    }
-
-    return { updatedMonth, newAdjustment }
   }
 
   return {
     addAdjustment,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending,
+    isError,
+    error,
   }
 }
-
-

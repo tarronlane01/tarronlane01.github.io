@@ -87,7 +87,6 @@ export default defineConfig([
 
   // ============================================================================
   // LAYER 2: data/ folder (except firestore/) can import from @firestore
-  // Note: This must come BEFORE the firestore config to allow it to be overridden
   // ============================================================================
   {
     files: ['src/data/**/*.{ts,tsx}'],
@@ -101,13 +100,96 @@ export default defineConfig([
             message: 'Direct Firebase imports only allowed in src/data/firestore/. Use @firestore instead.',
           },
         ],
+        // ENFORCEMENT: Block direct useMutation imports to enforce optimistic updates
+        paths: [
+          {
+            name: '@tanstack/react-query',
+            importNames: ['useMutation'],
+            message: 'Direct useMutation is blocked. Use createOptimisticMutation from @data/mutations to ensure optimistic updates are always implemented.',
+          },
+        ],
       }],
     },
   },
 
   // ============================================================================
-  // LAYER 1: firestore/ folder can import from Firebase and use @firestore aliases
-  // Note: This must come LAST so it overrides the data/ config
+  // MUTATION FILES: Block direct @firestore writes (must use write utilities)
+  // ============================================================================
+  {
+    files: ['src/data/mutations/**/*.{ts,tsx}'],
+    ignores: [
+      // Infrastructure folder has full access
+      'src/data/mutations/infrastructure/**/*.{ts,tsx}',
+      // Domain-specific write utilities
+      'src/data/mutations/month/useWriteMonthData.ts',
+      'src/data/mutations/month/createMonth.ts',
+      'src/data/mutations/budget/writeBudgetData.ts',
+      'src/data/mutations/user/writeUserData.ts',
+      'src/data/mutations/user/useAcceptInvite.ts',
+      'src/data/mutations/user/useCreateBudget.ts',
+      'src/data/mutations/user/useCheckInvite.ts',
+      'src/data/mutations/payees/savePayeeIfNew.ts',
+      'src/data/mutations/feedback/writeFeedbackData.ts',
+      // Index files just re-export
+      'src/data/mutations/**/index.ts',
+    ],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['firebase/*', 'firebase/firestore', 'firebase/app', 'firebase/auth'],
+            message: 'Direct Firebase imports only allowed in src/data/firestore/. Use @firestore instead.',
+          },
+          {
+            // Block direct @firestore write imports in mutation files
+            group: ['@firestore'],
+            importNames: ['writeDocByPath', 'updateDocByPath', 'deleteDocByPath', 'batchWriteDocs', 'batchDeleteDocs'],
+            message: 'Direct Firestore writes are blocked in mutations. Use domain write utilities (writeMonthData, writeBudgetData, etc.) to ensure proper cache updates.',
+          },
+        ],
+        paths: [
+          {
+            name: '@tanstack/react-query',
+            importNames: ['useMutation'],
+            message: 'Direct useMutation is blocked. Use createOptimisticMutation from @data/mutations/infrastructure to ensure optimistic updates are always implemented.',
+          },
+        ],
+      }],
+    },
+  },
+
+  // ============================================================================
+  // MUTATION INFRASTRUCTURE: Full access for write utilities and factory
+  // ============================================================================
+  {
+    files: [
+      'src/data/mutations/infrastructure/**/*.{ts,tsx}',
+      'src/data/mutations/month/useWriteMonthData.ts',
+      'src/data/mutations/month/createMonth.ts',
+      'src/data/mutations/budget/writeBudgetData.ts',
+      'src/data/mutations/user/writeUserData.ts',
+      'src/data/mutations/user/useAcceptInvite.ts',
+      'src/data/mutations/user/useCreateBudget.ts',
+      'src/data/mutations/user/useCheckInvite.ts',
+      'src/data/mutations/payees/savePayeeIfNew.ts',
+      'src/data/mutations/feedback/writeFeedbackData.ts',
+    ],
+    rules: {
+      // These files ARE the write infrastructure - allow full access
+      'no-restricted-imports': ['error', {
+        patterns: [
+          {
+            group: ['firebase/*', 'firebase/firestore', 'firebase/app', 'firebase/auth'],
+            message: 'Direct Firebase imports only allowed in src/data/firestore/. Use @firestore instead.',
+          },
+        ],
+        // No paths restrictions - allow useMutation for infrastructure
+      }],
+    },
+  },
+
+  // ============================================================================
+  // LAYER 1: firestore/ folder can import from Firebase
   // ============================================================================
   {
     files: ['src/data/firestore/**/*.{ts,tsx}'],

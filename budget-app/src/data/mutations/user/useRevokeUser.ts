@@ -2,77 +2,92 @@
  * Revoke User Mutation
  *
  * Revokes a user's access to a budget by removing them from user_ids and accepted_user_ids.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import { readDocByPath, writeDocByPath } from '@firestore'
-import type { FirestoreData } from '@types'
+import { writeBudgetData, readBudgetForEdit } from '../budget/writeBudgetData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface RevokeUserParams {
   budgetId: string
   userId: string
 }
 
-export function useRevokeUser() {
-  const queryClient = useQueryClient()
+interface RevokeUserResult {
+  budgetId: string
+}
 
-  const revokeUser = useMutation({
-    mutationFn: async ({ budgetId, userId }: RevokeUserParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useRevokeUserInternal = createOptimisticMutation<
+  RevokeUserParams,
+  RevokeUserResult,
+  BudgetData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, userId } = params
 
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          user_ids: (data.user_ids || []).filter((id: string) => id !== userId),
-          accepted_user_ids: (data.accepted_user_ids || []).filter((id: string) => id !== userId),
-        },
-        'removing user from budget\'s access lists'
-      )
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as BudgetData
+        }
 
-      return { budgetId }
-    },
-    onMutate: async ({ budgetId, userId }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
+        return {
+          ...cachedData,
           budget: {
-            ...previousData.budget,
-            user_ids: previousData.budget.user_ids.filter(id => id !== userId),
-            accepted_user_ids: previousData.budget.accepted_user_ids.filter(id => id !== userId),
+            ...cachedData.budget,
+            user_ids: cachedData.budget.user_ids.filter(id => id !== userId),
+            accepted_user_ids: cachedData.budget.accepted_user_ids.filter(id => id !== userId),
           },
-        })
-      }
+        }
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onSuccess: (_, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), currentData)
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+  mutationFn: async (params) => {
+    const { budgetId, userId } = params
+
+    const freshData = await readBudgetForEdit(budgetId, 'revoke user')
+
+    await writeBudgetData({
+      budgetId,
+      updates: {
+        user_ids: (freshData.user_ids || []).filter((id: string) => id !== userId),
+        accepted_user_ids: (freshData.accepted_user_ids || []).filter((id: string) => id !== userId),
+      },
+      description: "removing user from budget's access lists",
+    })
+
+    return { budgetId }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useRevokeUser() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useRevokeUserInternal()
+
+  const revokeUser = {
+    mutate: (params: RevokeUserParams) => mutate(params),
+    mutateAsync: (params: RevokeUserParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { revokeUser }
 }
-

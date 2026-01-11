@@ -6,5 +6,4 @@
 
 export { useUpdateCategories } from './useUpdateCategories'
 export { useUpdateCategoryGroups } from './useUpdateCategoryGroups'
-export { updateBudgetCategoryBalances } from './updateBudgetCategoryBalance'
 

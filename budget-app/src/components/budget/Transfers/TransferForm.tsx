@@ -99,20 +99,45 @@ export function TransferForm({
   const [toCategoryId, setToCategoryId] = useState(initialData?.to_category_id || NO_CATEGORY_ID)
   const [description, setDescription] = useState(initialData?.description || '')
   const [cleared, setCleared] = useState(initialData?.cleared || false)
-  const [showValidationWarning, setShowValidationWarning] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
-  // Check if transfer is valid - must transfer between real categories OR real accounts
+  // Check transfer validity
   const isFromCategoryNo = fromCategoryId === NO_CATEGORY_ID
   const isToCategoryNo = toCategoryId === NO_CATEGORY_ID
   const isFromAccountNo = fromAccountId === NO_ACCOUNT_ID
   const isToAccountNo = toAccountId === NO_ACCOUNT_ID
-  const bothCategoriesNo = isFromCategoryNo && isToCategoryNo
-  const bothAccountsNo = isFromAccountNo && isToAccountNo
-  const isInvalidTransfer = bothCategoriesNo && bothAccountsNo
 
-  // Clear warning when user fixes the issue (derived from state changes)
-  if (!isInvalidTransfer && showValidationWarning) {
-    setShowValidationWarning(false)
+  // Validation rules:
+  // 1. If one account is "No Account", the other must also be "No Account" (can't transfer from real account to nothing)
+  // 2. Same for categories
+  // 3. All 4 cannot be "No" picks - something must actually move
+  function getValidationError(): string | null {
+    const bothCategoriesNo = isFromCategoryNo && isToCategoryNo
+    const bothAccountsNo = isFromAccountNo && isToAccountNo
+
+    // Rule 3: All 4 cannot be "No"
+    if (bothCategoriesNo && bothAccountsNo) {
+      return 'A transfer must move between real categories or real accounts — not all "No" options.'
+    }
+
+    // Rule 1: Accounts must match (both real or both "No")
+    if (isFromAccountNo !== isToAccountNo) {
+      return 'Both accounts must be real accounts, or both must be "No Account". Cannot transfer from a real account to nothing.'
+    }
+
+    // Rule 2: Categories must match (both real or both "No")
+    if (isFromCategoryNo !== isToCategoryNo) {
+      return 'Both categories must be real categories, or both must be "No Category". Cannot transfer from a real category to nothing.'
+    }
+
+    return null
+  }
+
+  const currentValidationError = getValidationError()
+
+  // Clear warning when user fixes the issue
+  if (currentValidationError === null && validationError !== null) {
+    setValidationError(null)
   }
 
   function handleSubmit(e: FormEvent) {
@@ -121,13 +146,14 @@ export function TransferForm({
     if (isNaN(parsedAmount) || parsedAmount <= 0) return
     if (!fromAccountId || !toAccountId || !fromCategoryId || !toCategoryId || !date) return
 
-    // Validation: Must transfer between real categories OR real accounts
-    if (isInvalidTransfer) {
-      setShowValidationWarning(true)
+    // Validation check
+    const error = getValidationError()
+    if (error) {
+      setValidationError(error)
       return
     }
 
-    setShowValidationWarning(false)
+    setValidationError(null)
     onSubmit(
       parsedAmount,
       fromAccountId,
@@ -140,7 +166,7 @@ export function TransferForm({
     )
   }
 
-  const validationWarning = showValidationWarning ? (
+  const validationWarning = validationError ? (
     <div style={{
       background: `color-mix(in srgb, ${colors.error} 15%, transparent)`,
       border: `1px solid ${colors.errorBorder}`,
@@ -150,7 +176,7 @@ export function TransferForm({
       color: colors.error,
       marginTop: '0.5rem',
     }}>
-      A transfer must move between real categories or real accounts — not all "No" options.
+      {validationError}
     </div>
   ) : null
 

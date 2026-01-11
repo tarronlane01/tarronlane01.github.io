@@ -78,21 +78,22 @@ export function MonthIncome() {
   const totalMonthlyIncome = currentMonth?.income.reduce((sum, inc) => sum + inc.amount, 0) || 0
 
   // Handle income operations
+  // Note: Mutations handle optimistic cache updates internally
   function handleAddIncome(amount: number, accountId: string, date: string, payee?: string, description?: string) {
     setError(null)
-    setShowAddIncome(false)
+    setShowAddIncome(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this income belongs to
     const [incomeYear, incomeMonth] = date.split('-').map(Number)
 
+    // Navigate to target month if different
+    if (incomeYear !== currentYear || incomeMonth !== currentMonthNumber) {
+      setCurrentYear(incomeYear)
+      setCurrentMonthNumber(incomeMonth)
+    }
+
+    // Mutation handles optimistic update and Firestore write
     addIncome(amount, accountId, date, payee, description)
-      .then(() => {
-        // Navigate to the target month if different from current view
-        if (incomeYear !== currentYear || incomeMonth !== currentMonthNumber) {
-          setCurrentYear(incomeYear)
-          setCurrentMonthNumber(incomeMonth)
-        }
-      })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add income')
       })
@@ -100,15 +101,20 @@ export function MonthIncome() {
 
   function handleUpdateIncome(incomeId: string, amount: number, accountId: string, date: string, payee?: string, description?: string) {
     setError(null)
-    setEditingIncomeId(null)
-    updateIncome(incomeId, amount, accountId, date, payee, description).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to update income')
-    })
+    setEditingIncomeId(null) // Close form immediately - mutation handles optimistic update
+
+    // Mutation handles optimistic update and Firestore write
+    updateIncome(incomeId, amount, accountId, date, payee, description)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to update income')
+      })
   }
 
   function handleDeleteIncome(incomeId: string) {
     if (!confirm('Are you sure you want to delete this income entry?')) return
     setError(null)
+
+    // Mutation handles optimistic update and Firestore delete
     deleteIncome(incomeId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete income')
     })

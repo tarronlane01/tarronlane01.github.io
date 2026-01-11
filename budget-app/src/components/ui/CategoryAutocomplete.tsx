@@ -81,17 +81,21 @@ export function CategoryAutocomplete({
   useEffect(() => {
     if (value === NO_CATEGORY_ID) {
       setInputValue('')
-    } else {
-      const selectedCat = value ? categories[value] : null
+    } else if (value) {
+      // Only sync for valid selections, not empty string (user is actively typing)
+      const selectedCat = categories[value]
       setInputValue(selectedCat?.name || '')
     }
+    // When value is '', don't sync - user is actively typing/searching
   }, [value, categories])
 
   // Get filtered and sorted suggestions using shared helper
+  // Only search by item name - group names caused false positives with fuzzy matching
+  // (e.g., "Ren" would match all items in "Monthly Recurring" group)
   const suggestions: CategoryItem[] = filterAndSortItems(
     categoryItems,
     inputValue,
-    (item) => [item.name, item.groupName || ''].filter(Boolean)
+    (item) => [item.name]
   )
 
   // Group suggestions for display using shared helper
@@ -141,9 +145,20 @@ export function CategoryAutocomplete({
         setInputValue(selectedCat?.name || '')
       }
     } else if (e.key === 'Tab') {
-      if (showSuggestions && suggestions.length > 0) {
-        const indexToSelect = highlightedIndex >= 0 ? highlightedIndex : 0
-        selectCategory(suggestions[indexToSelect])
+      // Only select on Tab if user explicitly navigated with arrow keys
+      // Otherwise just close dropdown and keep current value
+      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        selectCategory(suggestions[highlightedIndex])
+      } else {
+        // Close dropdown and restore input to current selection
+        setShowSuggestions(false)
+        setHighlightedIndex(-1)
+        if (value === NO_CATEGORY_ID) {
+          setInputValue('')
+        } else {
+          const selectedCat = value ? categories[value] : null
+          setInputValue(selectedCat?.name || '')
+        }
       }
     }
   }
@@ -153,7 +168,7 @@ export function CategoryAutocomplete({
     setInputValue(cat.id === NO_CATEGORY_ID ? '' : cat.name)
     setShowSuggestions(false)
     setHighlightedIndex(-1)
-    inputRef.current?.focus()
+    // Don't refocus - it would trigger handleFocus and reopen the dropdown
   }
 
   function selectNoCategory() {
@@ -167,15 +182,26 @@ export function CategoryAutocomplete({
     const newValue = e.target.value
     setInputValue(newValue)
     setShowSuggestions(true)
-    setHighlightedIndex(-1)
+    // Smart highlight: empty input → No Category (-1), text entered → first matching suggestion (0)
+    setHighlightedIndex(newValue.trim() ? 0 : -1)
     if (newValue !== displayValue) {
-      onChange('')
+      // When showNoCategoryOption is enabled AND input is empty, fall back to NO_CATEGORY_ID
+      // If input has text but no selection made, keep empty to require user to complete selection
+      if (showNoCategoryOption && newValue.trim() === '') {
+        onChange(NO_CATEGORY_ID)
+      } else {
+        onChange('')
+      }
     }
   }
 
   function handleFocus() {
     setShowSuggestions(true)
-    if (suggestions.length > 0) {
+    // When No Category is selected OR input is empty (showing placeholder), highlight No Category option (-1)
+    // Otherwise highlight first suggestion
+    if (showNoCategoryOption && (value === NO_CATEGORY_ID || inputValue.trim() === '')) {
+      setHighlightedIndex(-1)
+    } else if (suggestions.length > 0) {
       setHighlightedIndex(0)
     }
   }
@@ -196,7 +222,10 @@ export function CategoryAutocomplete({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        required={required}
+        // Don't use HTML5 required when No Category option is enabled - the form's validation
+        // handles this properly. HTML5 required can't work with this autocomplete pattern
+        // because inputValue (display text) differs from value (selected ID).
+        required={required && !showNoCategoryOption}
         style={{
           ...inputStyle,
           borderColor: required && !value ? colors.error : undefined,

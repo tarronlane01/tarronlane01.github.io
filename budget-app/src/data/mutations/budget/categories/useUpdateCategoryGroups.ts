@@ -2,75 +2,84 @@
  * Update Category Groups Mutation
  *
  * Updates category groups in the budget document.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import type { CategoryGroup, FirestoreData } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import type { CategoryGroup } from '@types'
+import { writeBudgetData } from '../writeBudgetData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface UpdateCategoryGroupsParams {
   budgetId: string
   categoryGroups: CategoryGroup[]
 }
 
-export function useUpdateCategoryGroups() {
-  const queryClient = useQueryClient()
+interface UpdateCategoryGroupsResult {
+  categoryGroups: CategoryGroup[]
+}
 
-  const updateCategoryGroups = useMutation({
-    mutationFn: async ({ budgetId, categoryGroups }: UpdateCategoryGroupsParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useUpdateCategoryGroupsInternal = createOptimisticMutation<
+  UpdateCategoryGroupsParams,
+  UpdateCategoryGroupsResult,
+  BudgetData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, categoryGroups } = params
 
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          category_groups: categoryGroups,
-        },
-        'saving updated category groups (user edited group settings)'
-      )
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as BudgetData
+        }
 
-      return categoryGroups
-    },
-    onMutate: async ({ budgetId, categoryGroups }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
+        return {
+          ...cachedData,
           categoryGroups,
-        })
-      }
+        }
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onSuccess: (data, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...currentData,
-          categoryGroups: data,
-        })
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+  mutationFn: async (params) => {
+    const { budgetId, categoryGroups } = params
+
+    await writeBudgetData({
+      budgetId,
+      updates: { category_groups: categoryGroups },
+      description: 'saving updated category groups (user edited group settings)',
+    })
+
+    return { categoryGroups }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useUpdateCategoryGroups() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateCategoryGroupsInternal()
+
+  const updateCategoryGroups = {
+    mutate: (params: UpdateCategoryGroupsParams) => mutate(params),
+    mutateAsync: (params: UpdateCategoryGroupsParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { updateCategoryGroups }
 }
-

@@ -2,13 +2,19 @@
  * Update Account Groups Mutation
  *
  * Updates account groups in the budget document.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createOptimisticMutation } from '../../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { AccountGroupsMap, FirestoreData } from '@types'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { writeBudgetData } from '../writeBudgetData'
+
+// ============================================================================
+// HELPERS
+// ============================================================================
 
 /**
  * Clean account groups for Firestore
@@ -27,69 +33,75 @@ function cleanAccountGroupsForFirestore(groups: AccountGroupsMap): FirestoreData
   return cleaned
 }
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
 interface UpdateAccountGroupsParams {
   budgetId: string
   accountGroups: AccountGroupsMap
 }
 
-export function useUpdateAccountGroups() {
-  const queryClient = useQueryClient()
+interface UpdateAccountGroupsResult {
+  accountGroups: AccountGroupsMap
+}
 
-  const updateAccountGroups = useMutation({
-    mutationFn: async ({ budgetId, accountGroups }: UpdateAccountGroupsParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'budgets',
-        budgetId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Budget not found')
-      }
+const useUpdateAccountGroupsInternal = createOptimisticMutation<
+  UpdateAccountGroupsParams,
+  UpdateAccountGroupsResult,
+  BudgetData
+>({
+  optimisticUpdate: (params) => {
+    const { budgetId, accountGroups } = params
 
-      const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
+    return {
+      cacheKey: queryKeys.budget(budgetId),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as BudgetData
+        }
 
-      await writeDocByPath(
-        'budgets',
-        budgetId,
-        {
-          ...data,
-          account_groups: cleanedGroups,
-        },
-        'saving updated account groups (user edited group settings)'
-      )
-
-      return accountGroups
-    },
-    onMutate: async ({ budgetId, accountGroups }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.budget(budgetId) })
-      const previousData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-
-      if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...previousData,
+        return {
+          ...cachedData,
           accountGroups,
-        })
-      }
+        }
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onSuccess: (data, { budgetId }) => {
-      const currentData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-      if (currentData) {
-        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-          ...currentData,
-          accountGroups: data,
-        })
-      }
-    },
-    onError: (_err, { budgetId }, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.budget(budgetId), context.previousData)
-      }
-    },
-  })
+  mutationFn: async (params) => {
+    const { budgetId, accountGroups } = params
+    const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
+
+    await writeBudgetData({
+      budgetId,
+      updates: { account_groups: cleanedGroups },
+      description: 'saving updated account groups (user edited group settings)',
+    })
+
+    return { accountGroups }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useUpdateAccountGroups() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateAccountGroupsInternal()
+
+  const updateAccountGroups = {
+    mutate: (params: UpdateAccountGroupsParams) => mutate(params),
+    mutateAsync: (params: UpdateAccountGroupsParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { updateAccountGroups }
 }
-

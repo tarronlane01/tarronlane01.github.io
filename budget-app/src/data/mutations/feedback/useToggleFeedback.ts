@@ -2,101 +2,116 @@
  * Toggle Feedback Mutation
  *
  * Toggles the completion status of a feedback item.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { FlattenedFeedbackItem, FeedbackItem, FeedbackData } from '@data/queries/feedback'
-import type { FirestoreData } from '@types'
+import { readFeedbackForEdit, writeFeedbackData } from './writeFeedbackData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface ToggleFeedbackParams {
   item: FlattenedFeedbackItem
 }
 
-export function useToggleFeedback() {
-  const queryClient = useQueryClient()
+interface ToggleFeedbackResult {
+  itemId: string
+  isDone: boolean
+  completedAt: string | null
+}
 
-  const toggleFeedback = useMutation({
-    mutationFn: async ({ item }: ToggleFeedbackParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'feedback',
-        item.doc_id,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error(`Feedback document not found: ${item.doc_id}`)
-      }
+const useToggleFeedbackInternal = createOptimisticMutation<
+  ToggleFeedbackParams,
+  ToggleFeedbackResult,
+  FeedbackData
+>({
+  optimisticUpdate: (params) => {
+    const { item } = params
+    const newIsDone = !item.is_done
+    const completedAt = newIsDone ? new Date().toISOString() : null
 
-      const newIsDone = !item.is_done
-      const completedAt = newIsDone ? new Date().toISOString() : null
-
-      const items = data.items || []
-
-      // Track if we found and updated the item
-      let itemFound = false
-      const updatedItems = items.map((i: FeedbackItem) => {
-        if (i.id === item.id) {
-          itemFound = true
-          return {
-            ...i,
-            is_done: newIsDone,
-            completed_at: completedAt,
-          }
+    return {
+      cacheKey: queryKeys.feedback(),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as FeedbackData
         }
-        return i
-      })
 
-      if (!itemFound) {
-        console.error('[toggleFeedback] Item not found in document', {
-          searchingFor: item.id,
-          inDocument: item.doc_id,
-          availableIds: items.map((i: FeedbackItem) => i.id),
-        })
-        throw new Error(`Feedback item not found in document. Item ID: ${item.id}, Doc ID: ${item.doc_id}`)
-      }
-
-      await writeDocByPath(
-        'feedback',
-        item.doc_id,
-        {
-          ...data,
-          items: updatedItems,
-          updated_at: new Date().toISOString(),
-        },
-        `marking feedback item as ${newIsDone ? 'done' : 'not done'}`
-      )
-
-      return { itemId: item.id, isDone: newIsDone, completedAt }
-    },
-    onMutate: async ({ item }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
-      const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
-
-      const newIsDone = !item.is_done
-      const completedAt = newIsDone ? new Date().toISOString() : null
-
-      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
-        if (!oldData) return oldData
         return {
-          items: oldData.items.map((i) =>
+          items: cachedData.items.map((i) =>
             i.id === item.id
               ? { ...i, is_done: newIsDone, completed_at: completedAt }
               : i
           ),
         }
-      })
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
+  mutationFn: async (params) => {
+    const { item } = params
+    const newIsDone = !item.is_done
+    const completedAt = newIsDone ? new Date().toISOString() : null
+
+    const freshData = await readFeedbackForEdit(item.doc_id, 'toggle feedback')
+
+    // Track if we found and updated the item
+    let itemFound = false
+    const updatedItems = freshData.items.map((i: FeedbackItem) => {
+      if (i.id === item.id) {
+        itemFound = true
+        return {
+          ...i,
+          is_done: newIsDone,
+          completed_at: completedAt,
+        }
       }
-    },
-  })
+      return i
+    })
+
+    if (!itemFound) {
+      console.error('[toggleFeedback] Item not found in document', {
+        searchingFor: item.id,
+        inDocument: item.doc_id,
+        availableIds: freshData.items.map((i: FeedbackItem) => i.id),
+      })
+      throw new Error(`Feedback item not found in document. Item ID: ${item.id}, Doc ID: ${item.doc_id}`)
+    }
+
+    await writeFeedbackData({
+      docId: item.doc_id,
+      items: updatedItems,
+      description: `marking feedback item as ${newIsDone ? 'done' : 'not done'}`,
+    })
+
+    return { itemId: item.id, isDone: newIsDone, completedAt }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useToggleFeedback() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useToggleFeedbackInternal()
+
+  const toggleFeedback = {
+    mutate: (params: ToggleFeedbackParams) => mutate(params),
+    mutateAsync: (params: ToggleFeedbackParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { toggleFeedback }
 }
-

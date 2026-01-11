@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useBudgetMonth } from '@hooks'
 import { useIsMobile } from '@hooks'
+import { usePayeesQuery } from '@data'
 import type { FinancialAccount } from '@types'
 import { Button } from '../../ui'
 import { colors } from '@styles/shared'
@@ -39,8 +40,11 @@ export function MonthAdjustments() {
   const [editingAdjustmentId, setEditingAdjustmentId] = useState<string | null>(null)
 
   // Note: Recalculation is NOT triggered on this tab since it only shows raw transactions.
-  // Edits here will mark months for recalculation (via writeMonthData), and recalc
-  // will happen when the user navigates to Categories or Accounts tabs.
+
+  // Only fetch payees when a form is open (lazy loading)
+  const isFormOpen = showAddAdjustment || editingAdjustmentId !== null
+  const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen })
+  const payees = payeesQuery.data || []
 
   // Helper to get effective is_active value considering group overrides
   function getEffectiveActive(account: FinancialAccount): boolean {
@@ -65,37 +69,43 @@ export function MonthAdjustments() {
   ) as AccountEntry[]
 
   // Handle adjustment operations
-  function handleAddAdjustment(amount: number, accountId: string, categoryId: string, date: string, description?: string, cleared?: boolean) {
+  // Note: Mutations handle optimistic cache updates internally
+  function handleAddAdjustment(amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
-    setShowAddAdjustment(false)
+    setShowAddAdjustment(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this adjustment belongs to
     const [adjustmentYear, adjustmentMonth] = date.split('-').map(Number)
 
-    addAdjustment(amount, accountId, categoryId, date, description, cleared)
-      .then(() => {
-        // Navigate to the target month if different from current view
-        if (adjustmentYear !== currentYear || adjustmentMonth !== currentMonthNumber) {
-          setCurrentYear(adjustmentYear)
-          setCurrentMonthNumber(adjustmentMonth)
-        }
-      })
+    // Navigate to target month if different
+    if (adjustmentYear !== currentYear || adjustmentMonth !== currentMonthNumber) {
+      setCurrentYear(adjustmentYear)
+      setCurrentMonthNumber(adjustmentMonth)
+    }
+
+    // Mutation handles optimistic update and Firestore write
+    addAdjustment(amount, accountId, categoryId, date, payee, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add adjustment')
       })
   }
 
-  function handleUpdateAdjustment(adjustmentId: string, amount: number, accountId: string, categoryId: string, date: string, description?: string, cleared?: boolean) {
+  function handleUpdateAdjustment(adjustmentId: string, amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
-    setEditingAdjustmentId(null)
-    updateAdjustment(adjustmentId, amount, accountId, categoryId, date, description, cleared).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to update adjustment')
-    })
+    setEditingAdjustmentId(null) // Close form immediately - mutation handles optimistic update
+
+    // Mutation handles optimistic update and Firestore write
+    updateAdjustment(adjustmentId, amount, accountId, categoryId, date, payee, description, cleared)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to update adjustment')
+      })
   }
 
   function handleDeleteAdjustment(adjustmentId: string) {
     if (!confirm('Are you sure you want to delete this adjustment?')) return
     setError(null)
+
+    // Mutation handles optimistic update and Firestore delete
     deleteAdjustment(adjustmentId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete adjustment')
     })
@@ -199,6 +209,7 @@ export function MonthAdjustments() {
               accountGroups={accountGroups}
               categories={categories}
               categoryGroups={categoryGroups}
+              payees={payees}
               defaultDate={`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`}
               onSubmit={handleAddAdjustment}
               onCancel={() => setShowAddAdjustment(false)}
@@ -219,9 +230,10 @@ export function MonthAdjustments() {
                   accountGroups={accountGroups}
                   categories={categories}
                   categoryGroups={categoryGroups}
+                  payees={payees}
                   initialData={adjustment}
-                  onSubmit={(amount, accountId, categoryId, date, description, cleared) =>
-                    handleUpdateAdjustment(adjustment.id, amount, accountId, categoryId, date, description, cleared)
+                  onSubmit={(amount, accountId, categoryId, date, payee, description, cleared) =>
+                    handleUpdateAdjustment(adjustment.id, amount, accountId, categoryId, date, payee, description, cleared)
                   }
                   onCancel={() => setEditingAdjustmentId(null)}
                   onDelete={() => handleDeleteAdjustment(adjustment.id)}

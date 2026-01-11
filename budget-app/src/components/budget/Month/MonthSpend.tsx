@@ -78,21 +78,22 @@ export function MonthSpend() {
   const totalMonthlyExpenses = currentMonth?.expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0
 
   // Handle expense operations
+  // Note: Mutations handle optimistic cache updates internally
   function handleAddExpense(amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
-    setShowAddExpense(false)
+    setShowAddExpense(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this expense belongs to
     const [expenseYear, expenseMonth] = date.split('-').map(Number)
 
+    // Navigate to target month if different
+    if (expenseYear !== currentYear || expenseMonth !== currentMonthNumber) {
+      setCurrentYear(expenseYear)
+      setCurrentMonthNumber(expenseMonth)
+    }
+
+    // Mutation handles optimistic update and Firestore write
     addExpense(amount, categoryId, accountId, date, payee, description, cleared)
-      .then(() => {
-        // Navigate to the target month if different from current view
-        if (expenseYear !== currentYear || expenseMonth !== currentMonthNumber) {
-          setCurrentYear(expenseYear)
-          setCurrentMonthNumber(expenseMonth)
-        }
-      })
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add expense')
       })
@@ -100,15 +101,20 @@ export function MonthSpend() {
 
   function handleUpdateExpense(expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
     setError(null)
-    setEditingExpenseId(null)
-    updateExpense(expenseId, amount, categoryId, accountId, date, payee, description, cleared).catch(err => {
-      setError(err instanceof Error ? err.message : 'Failed to update expense')
-    })
+    setEditingExpenseId(null) // Close form immediately - mutation handles optimistic update
+
+    // Mutation handles optimistic update and Firestore write
+    updateExpense(expenseId, amount, categoryId, accountId, date, payee, description, cleared)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to update expense')
+      })
   }
 
   function handleDeleteExpense(expenseId: string) {
     if (!confirm('Are you sure you want to delete this expense?')) return
     setError(null)
+
+    // Mutation handles optimistic update and Firestore delete
     deleteExpense(expenseId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete expense')
     })

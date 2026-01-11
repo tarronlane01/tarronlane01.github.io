@@ -2,81 +2,95 @@
  * Update Sort Order Mutation
  *
  * Updates the sort order of feedback items in a document.
+ *
+ * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { readDocByPath, writeDocByPath } from '@firestore'
+import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { FeedbackItem, FeedbackData } from '@data/queries/feedback'
-import type { FirestoreData } from '@types'
+import { writeFeedbackData } from './writeFeedbackData'
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface UpdateSortOrderParams {
   docId: string
   items: FeedbackItem[]
 }
 
-export function useUpdateSortOrder() {
-  const queryClient = useQueryClient()
+interface UpdateSortOrderResult {
+  docId: string
+  items: FeedbackItem[]
+}
 
-  const updateSortOrder = useMutation({
-    mutationFn: async ({ docId, items }: UpdateSortOrderParams) => {
-      const { exists, data } = await readDocByPath<FirestoreData>(
-        'feedback',
-        docId,
-        'PRE-EDIT-READ'
-      )
+// ============================================================================
+// INTERNAL HOOK
+// ============================================================================
 
-      if (!exists || !data) {
-        throw new Error('Feedback document not found')
-      }
+const useUpdateSortOrderInternal = createOptimisticMutation<
+  UpdateSortOrderParams,
+  UpdateSortOrderResult,
+  FeedbackData
+>({
+  optimisticUpdate: (params) => {
+    const { docId, items } = params
 
-      await writeDocByPath(
-        'feedback',
-        docId,
-        {
-          ...data,
-          items,
-          updated_at: new Date().toISOString(),
-        },
-        'saving reordered feedback items'
-      )
+    // Build a map of new sort orders from the items array
+    const sortOrderMap = new Map<string, number>()
+    items.forEach((item) => {
+      sortOrderMap.set(item.id, item.sort_order)
+    })
 
-      return { docId, items }
-    },
-    onMutate: async ({ docId, items }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.feedback() })
-      const previousData = queryClient.getQueryData<FeedbackData>(queryKeys.feedback())
-
-      // Optimistically update the sort order in cache
-      queryClient.setQueryData<FeedbackData>(queryKeys.feedback(), (oldData) => {
-        if (!oldData) return oldData
-
-        // Build a map of new sort orders from the items array
-        const sortOrderMap = new Map<string, number>()
-        items.forEach((item) => {
-          sortOrderMap.set(item.id, item.sort_order)
-        })
+    return {
+      cacheKey: queryKeys.feedback(),
+      transform: (cachedData) => {
+        if (!cachedData) {
+          return cachedData as unknown as FeedbackData
+        }
 
         // Update sort orders for items in this document
         return {
-          items: oldData.items.map((item) => {
+          items: cachedData.items.map((item) => {
             if (item.doc_id === docId && sortOrderMap.has(item.id)) {
               return { ...item, sort_order: sortOrderMap.get(item.id)! }
             }
             return item
           }),
         }
-      })
+      },
+    }
+  },
 
-      return { previousData }
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
-      }
-    },
-  })
+  mutationFn: async (params) => {
+    const { docId, items } = params
+
+    await writeFeedbackData({
+      docId,
+      items,
+      description: 'saving reordered feedback items',
+    })
+
+    return { docId, items }
+  },
+})
+
+// ============================================================================
+// PUBLIC HOOK
+// ============================================================================
+
+export function useUpdateSortOrder() {
+  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateSortOrderInternal()
+
+  const updateSortOrder = {
+    mutate: (params: UpdateSortOrderParams) => mutate(params),
+    mutateAsync: (params: UpdateSortOrderParams) => mutateAsync(params),
+    isPending,
+    isError,
+    error,
+    reset,
+  }
 
   return { updateSortOrder }
 }
-

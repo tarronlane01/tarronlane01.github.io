@@ -77,17 +77,21 @@ export function AccountAutocomplete({
   useEffect(() => {
     if (value === NO_ACCOUNT_ID) {
       setInputValue('')
-    } else {
+    } else if (value) {
+      // Only sync for valid selections, not empty string (user is actively typing)
       const selectedAcc = accounts.find(([accId]) => accId === value)?.[1]
       setInputValue(selectedAcc?.nickname || '')
     }
+    // When value is '', don't sync - user is actively typing/searching
   }, [value, accounts])
 
   // Get filtered and sorted suggestions using shared helper
+  // Only search by item name - group names caused false positives with fuzzy matching
+  // (e.g., "Che" would match all items in "Checking" group)
   const suggestions: AccountItem[] = filterAndSortItems(
     accountItems,
     inputValue,
-    (item) => [item.name, item.groupName || ''].filter(Boolean)
+    (item) => [item.name]
   )
 
   // Group suggestions for display using shared helper
@@ -137,9 +141,20 @@ export function AccountAutocomplete({
         setInputValue(selectedAcc?.nickname || '')
       }
     } else if (e.key === 'Tab') {
-      if (showSuggestions && suggestions.length > 0) {
-        const indexToSelect = highlightedIndex >= 0 ? highlightedIndex : 0
-        selectAccount(suggestions[indexToSelect])
+      // Only select on Tab if user explicitly navigated with arrow keys
+      // Otherwise just close dropdown and keep current value
+      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+        selectAccount(suggestions[highlightedIndex])
+      } else {
+        // Close dropdown and restore input to current selection
+        setShowSuggestions(false)
+        setHighlightedIndex(-1)
+        if (value === NO_ACCOUNT_ID) {
+          setInputValue('')
+        } else {
+          const selectedAcc = accounts.find(([accId]) => accId === value)?.[1]
+          setInputValue(selectedAcc?.nickname || '')
+        }
       }
     }
   }
@@ -149,7 +164,7 @@ export function AccountAutocomplete({
     setInputValue(acc.id === NO_ACCOUNT_ID ? '' : acc.name)
     setShowSuggestions(false)
     setHighlightedIndex(-1)
-    inputRef.current?.focus()
+    // Don't refocus - it would trigger handleFocus and reopen the dropdown
   }
 
   function selectNoAccount() {
@@ -163,15 +178,26 @@ export function AccountAutocomplete({
     const newValue = e.target.value
     setInputValue(newValue)
     setShowSuggestions(true)
-    setHighlightedIndex(-1)
+    // Smart highlight: empty input → No Account (-1), text entered → first matching suggestion (0)
+    setHighlightedIndex(newValue.trim() ? 0 : -1)
     if (newValue !== displayValue) {
-      onChange('')
+      // When showNoAccountOption is enabled AND input is empty, fall back to NO_ACCOUNT_ID
+      // If input has text but no selection made, keep empty to require user to complete selection
+      if (showNoAccountOption && newValue.trim() === '') {
+        onChange(NO_ACCOUNT_ID)
+      } else {
+        onChange('')
+      }
     }
   }
 
   function handleFocus() {
     setShowSuggestions(true)
-    if (suggestions.length > 0) {
+    // When No Account is selected OR input is empty (showing placeholder), highlight No Account option (-1)
+    // Otherwise highlight first suggestion
+    if (showNoAccountOption && (value === NO_ACCOUNT_ID || inputValue.trim() === '')) {
+      setHighlightedIndex(-1)
+    } else if (suggestions.length > 0) {
       setHighlightedIndex(0)
     }
   }
@@ -192,7 +218,10 @@ export function AccountAutocomplete({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        required={required}
+        // Don't use HTML5 required when No Account option is enabled - the form's validation
+        // handles this properly. HTML5 required can't work with this autocomplete pattern
+        // because inputValue (display text) differs from value (selected ID).
+        required={required && !showNoAccountOption}
         style={{
           ...inputStyle,
           borderColor: required && !value ? colors.error : undefined,

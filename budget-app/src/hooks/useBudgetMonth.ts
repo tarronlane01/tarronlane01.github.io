@@ -56,8 +56,8 @@ interface UseBudgetMonthReturn {
   addTransfer: (amount: number, fromAccountId: string, toAccountId: string, fromCategoryId: string, toCategoryId: string, date: string, description?: string, cleared?: boolean) => Promise<void>
   updateTransfer: (transferId: string, amount: number, fromAccountId: string, toAccountId: string, fromCategoryId: string, toCategoryId: string, date: string, description?: string, cleared?: boolean) => Promise<void>
   deleteTransfer: (transferId: string) => Promise<void>
-  addAdjustment: (amount: number, accountId: string, categoryId: string, date: string, description?: string, cleared?: boolean) => Promise<void>
-  updateAdjustment: (adjustmentId: string, amount: number, accountId: string, categoryId: string, date: string, description?: string, cleared?: boolean) => Promise<void>
+  addAdjustment: (amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
+  updateAdjustment: (adjustmentId: string, amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) => Promise<void>
   deleteAdjustment: (adjustmentId: string) => Promise<void>
   refreshMonth: () => Promise<void>
 }
@@ -307,6 +307,7 @@ export function useBudgetMonth(
     accountId: string,
     categoryId: string,
     date: string,
+    payee?: string,
     description?: string,
     cleared?: boolean
   ) => {
@@ -322,6 +323,7 @@ export function useBudgetMonth(
       accountId,
       categoryId,
       date,
+      payee,
       description,
       cleared
     )
@@ -333,6 +335,7 @@ export function useBudgetMonth(
     accountId: string,
     categoryId: string,
     date: string,
+    payee?: string,
     description?: string,
     cleared?: boolean
   ) => {
@@ -347,6 +350,7 @@ export function useBudgetMonth(
       accountId,
       categoryId,
       date,
+      payee,
       description,
       cleared
     )
