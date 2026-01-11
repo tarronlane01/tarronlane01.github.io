@@ -7,18 +7,23 @@
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
  * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
  * 2. Updates cache instantly (form can close immediately)
- * 3. In background: reads fresh data from Firestore, merges, writes
+ * 3. In background: uses cache if fresh, fetches if stale, then writes
  * 4. On error: automatic rollback to previous cache state
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: writes optimistic data directly (0 reads)
+ * - If cache is stale: fetches fresh, applies change, writes (1 read)
  */
 
 import { createOptimisticMutation } from '../../infrastructure'
-import { readMonthForEdit, writeMonthData } from '@data'
+import { writeMonthData } from '@data'
 import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, TransferTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 // ============================================================================
 // TYPES
@@ -36,8 +41,9 @@ interface AddTransferParams {
   date: string
   description?: string
   cleared?: boolean
-  // Internal: used to share transfer ID between optimistic update and mutation
+  // Internal: shared between optimistic update and mutation
   _transferId?: string
+  _cacheWasFresh?: boolean
 }
 
 interface AddTransferResult {
@@ -80,6 +86,9 @@ const useAddTransferInternal = createOptimisticMutation<
   optimisticUpdate: (params) => {
     const { budgetId, year, month } = params
 
+    // Check cache freshness BEFORE transforming (for mutationFn to use)
+    params._cacheWasFresh = isMonthCacheFresh(budgetId, year, month)
+
     // Generate transfer ID upfront so optimistic and actual use same ID
     const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     params._transferId = transferId
@@ -105,20 +114,26 @@ const useAddTransferInternal = createOptimisticMutation<
   },
 
   mutationFn: async (params) => {
-    const { budgetId, year, month, fromAccountId, toAccountId, amount, _transferId } = params
+    const { budgetId, year, month, fromAccountId, toAccountId, amount, _transferId, _cacheWasFresh } = params
 
     const transferId = _transferId!
     const newTransfer = createTransferObject(params, transferId)
 
-    // Read fresh data from Firestore, merge, write
-    const freshMonthData = await readMonthForEdit(budgetId, year, month, 'add transfer')
+    let updatedMonth: MonthDocument
 
-    const updatedTransfers = [...(freshMonthData.transfers || []), newTransfer]
-    const updatedMonth: MonthDocument = retotalMonth({
-      ...freshMonthData,
-      transfers: updatedTransfers,
-      updated_at: new Date().toISOString(),
-    })
+    if (_cacheWasFresh) {
+      // Cache was fresh - optimistic data is accurate, just get it and write
+      const cachedMonth = await getMonthForMutation(budgetId, year, month, true)
+      updatedMonth = cachedMonth // Already has the transfer from optimistic update
+    } else {
+      // Cache was stale - fetch fresh, add transfer, compute totals
+      const freshMonth = await getMonthForMutation(budgetId, year, month, false)
+      updatedMonth = retotalMonth({
+        ...freshMonth,
+        transfers: [...(freshMonth.transfers || []), newTransfer],
+        updated_at: new Date().toISOString(),
+      })
+    }
 
     // Write to Firestore
     await writeMonthData({ budgetId, month: updatedMonth, description: 'add transfer' })

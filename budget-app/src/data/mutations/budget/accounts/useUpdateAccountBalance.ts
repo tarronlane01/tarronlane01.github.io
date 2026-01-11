@@ -5,6 +5,12 @@
  * Used after income/expense changes to adjust account balances.
  *
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ *
+ * NOTE: This operation requires a read because we need the current balance
+ * to compute the new value (current + delta). The entire accounts map is
+ * written to preserve the nested structure.
+ *
+ * TODO: Consider using FieldValue.increment() for atomic increments.
  */
 
 import { createOptimisticMutation } from '../../infrastructure'
@@ -65,8 +71,9 @@ const useUpdateAccountBalanceInternal = createOptimisticMutation<
   mutationFn: async (params) => {
     const { budgetId, accountId, delta } = params
 
-    // Read fresh data
-    const freshData = await readBudgetForEdit(budgetId, 'update account balance')
+    // Read required: need current balance to compute new value (balance + delta)
+    // TODO: Could use FieldValue.increment() for atomic increment
+    const freshData = await readBudgetForEdit(budgetId, 'update account balance (delta)')
     const accounts = freshData.accounts || {}
 
     if (!accounts[accountId]) {

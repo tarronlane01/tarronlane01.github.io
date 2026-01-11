@@ -2,12 +2,14 @@
  * Create Budget Mutation
  *
  * Creates a new budget and adds it to the user's budget list.
+ *
+ * PATTERN: Uses merge writes with arrayUnion for array operations.
+ * No pre-read needed for user document.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
-import { readDocByPath, writeDocByPath } from '@firestore'
-import type { UserDocument } from '@types'
+import { writeDocByPath, arrayUnion } from '@firestore'
 
 interface CreateBudgetParams {
   name: string
@@ -23,7 +25,7 @@ export function useCreateBudget() {
       const budgetId = `budget_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const now = new Date().toISOString()
 
-      // Create budget document
+      // Create budget document (new doc, no merge needed)
       const newBudget = {
         name: name.trim() || 'My Budget',
         user_ids: [userId],
@@ -48,39 +50,20 @@ export function useCreateBudget() {
         'creating new budget document'
       )
 
-      // Update user document
-      const { exists: userExists, data: userData } = await readDocByPath<UserDocument>(
+      // Update user document using merge + arrayUnion (no pre-read needed)
+      // This handles both existing users and creates new user docs
+      await writeDocByPath(
         'users',
         userId,
-        'reading user document to add new budget to their list'
+        {
+          uid: userId,
+          email: userEmail,
+          budget_ids: arrayUnion(budgetId),
+          updated_at: now,
+        },
+        'adding new budget to user\'s budget list',
+        { merge: true }
       )
-
-      if (userExists && userData) {
-        await writeDocByPath(
-          'users',
-          userId,
-          {
-            ...userData,
-            budget_ids: [budgetId, ...userData.budget_ids],
-            updated_at: now,
-          },
-          'adding new budget to user\'s budget list'
-        )
-      } else {
-        // Create new user document
-        await writeDocByPath(
-          'users',
-          userId,
-          {
-            uid: userId,
-            email: userEmail,
-            budget_ids: [budgetId],
-            created_at: now,
-            updated_at: now,
-          },
-          'creating new user document with first budget'
-        )
-      }
 
       return { budgetId, budget: { id: budgetId, ...newBudget } }
     },

@@ -2,12 +2,15 @@
  * Accept Invite Mutation
  *
  * Accepts a budget invitation for the current user.
+ *
+ * PATTERN: Uses merge writes with arrayUnion for array operations.
+ * Only the validation read is performed; writes use merge strategy.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
-import { readDocByPath, writeDocByPath } from '@firestore'
-import type { UserDocument, FirestoreData } from '@types'
+import { readDocByPath, writeDocByPath, arrayUnion } from '@firestore'
+import type { FirestoreData } from '@types'
 
 interface AcceptInviteParams {
   budgetId: string
@@ -21,11 +24,11 @@ export function useAcceptInvite() {
     mutationFn: async ({ budgetId, userId }: AcceptInviteParams) => {
       const now = new Date().toISOString()
 
-      // Verify invitation exists
+      // Validation read: Verify invitation exists (required for security)
       const { exists: budgetExists, data: budgetData } = await readDocByPath<FirestoreData>(
         'budgets',
         budgetId,
-        'verifying user was invited to this budget'
+        'validating user was invited to this budget'
       )
 
       if (!budgetExists || !budgetData) {
@@ -36,37 +39,33 @@ export function useAcceptInvite() {
         throw new Error('You have not been invited to this budget')
       }
 
-      // Update user document
-      const { data: userData } = await readDocByPath<UserDocument>(
-        'users',
-        userId,
-        'PRE-EDIT-READ'
-      )
-
-      if (userData?.budget_ids?.includes(budgetId)) {
+      if (budgetData.accepted_user_ids?.includes(userId)) {
         throw new Error('You have already accepted this invite')
       }
 
+      // Update user document using merge + arrayUnion (no pre-read needed)
       await writeDocByPath(
         'users',
         userId,
         {
-          ...(userData || { uid: userId, email: null }),
-          budget_ids: [budgetId, ...(userData?.budget_ids || [])],
+          uid: userId, // Ensures doc exists if first budget
+          budget_ids: arrayUnion(budgetId),
           updated_at: now,
         },
-        'adding accepted budget to user\'s budget list'
+        'adding accepted budget to user\'s budget list',
+        { merge: true }
       )
 
-      // Update budget's accepted_user_ids
+      // Update budget's accepted_user_ids using merge + arrayUnion (no pre-read needed)
       await writeDocByPath(
         'budgets',
         budgetId,
         {
-          ...budgetData,
-          accepted_user_ids: [...(budgetData.accepted_user_ids || []), userId],
+          accepted_user_ids: arrayUnion(userId),
+          updated_at: now,
         },
-        'marking user as accepted in budget\'s accepted_user_ids'
+        'marking user as accepted in budget\'s accepted_user_ids',
+        { merge: true }
       )
 
       return { budgetId }

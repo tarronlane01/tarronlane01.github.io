@@ -3,14 +3,18 @@
  *
  * Deletes a transfer transaction from the month.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: uses cached data (0 reads)
+ * - If cache is stale: fetches fresh data (1 read)
  */
 
-import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export function useDeleteTransfer() {
   const { writeData } = useWriteMonthData()
@@ -21,7 +25,9 @@ export function useDeleteTransfer() {
     month: number,
     transferId: string
   ) => {
-    const monthData = await readMonthForEdit(budgetId, year, month, 'delete transfer')
+    // Use cache if fresh, fetch if stale
+    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
+    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
 
     // Find transfer being deleted to get amount and accounts
     const deletedTransfer = (monthData.transfers || []).find(t => t.id === transferId)

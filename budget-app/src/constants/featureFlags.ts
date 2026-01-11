@@ -17,7 +17,7 @@ export const featureFlags = {
    * When false, only shows operation and path for cleaner output.
    * When true, shows why the operation is happening.
    */
-  logFirebaseSource: false,
+  logFirebaseSource: true,
 
   /**
    * Include full document path in Firebase operation logs.

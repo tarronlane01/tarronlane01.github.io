@@ -6,12 +6,16 @@
  *
  * Uses writeMonthData which handles optimistic updates.
  * Draft allocations skip cascade recalculation since they don't affect balances.
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: uses cached data (0 reads)
+ * - If cache is stale: fetches fresh data (1 read)
  */
 
-import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
 import type { AllocationData } from '.'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export function useSaveDraftAllocations() {
   const { writeData } = useWriteMonthData()
@@ -22,7 +26,9 @@ export function useSaveDraftAllocations() {
     month: number,
     allocations: AllocationData
   ) => {
-    const monthData = await readMonthForEdit(budgetId, year, month, 'save draft allocations')
+    // Use cache if fresh, fetch if stale
+    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
+    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
 
     // Update category_balances with draft allocations
     // Note: allocated amounts are stored but end_balance doesn't change until finalized

@@ -4,12 +4,14 @@
  * Revokes a user's access to a budget by removing them from user_ids and accepted_user_ids.
  *
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ * PATTERN: Uses arrayRemove for atomic array removal (no read-then-write).
  */
 
 import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import { writeBudgetData, readBudgetForEdit } from '../budget/writeBudgetData'
+import { arrayRemove } from '@firestore'
+import { writeBudgetData } from '../budget/writeBudgetData'
 
 // ============================================================================
 // TYPES
@@ -58,13 +60,12 @@ const useRevokeUserInternal = createOptimisticMutation<
   mutationFn: async (params) => {
     const { budgetId, userId } = params
 
-    const freshData = await readBudgetForEdit(budgetId, 'revoke user')
-
+    // Use arrayRemove for atomic removal (no need to read current arrays)
     await writeBudgetData({
       budgetId,
       updates: {
-        user_ids: (freshData.user_ids || []).filter((id: string) => id !== userId),
-        accepted_user_ids: (freshData.accepted_user_ids || []).filter((id: string) => id !== userId),
+        user_ids: arrayRemove(userId),
+        accepted_user_ids: arrayRemove(userId),
       },
       description: "removing user from budget's access lists",
     })

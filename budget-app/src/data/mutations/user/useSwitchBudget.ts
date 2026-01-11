@@ -4,6 +4,9 @@
  * Switches the active budget by moving it to the front of the user's budget_ids list.
  *
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ *
+ * NOTE: This operation requires a read because we need to reorder the array
+ * (move selected budget to front). This cannot be done with arrayUnion/arrayRemove.
  */
 
 import { createOptimisticMutation } from '../infrastructure'
@@ -54,8 +57,9 @@ const useSwitchBudgetInternal = createOptimisticMutation<
   mutationFn: async (params) => {
     const { budgetId, userId } = params
 
-    // Read fresh data to get current budget_ids
-    const userData = await readUserForEdit(userId, 'switch budget')
+    // Read required: need current array to reorder (move to front)
+    // Cannot use arrayUnion/arrayRemove for reordering
+    const userData = await readUserForEdit(userId, 'switch budget (reorder)')
 
     const updatedBudgetIds = [budgetId, ...userData.budget_ids.filter(id => id !== budgetId)]
 

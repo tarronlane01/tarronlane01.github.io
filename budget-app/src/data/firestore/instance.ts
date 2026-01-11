@@ -4,7 +4,7 @@
  * Core database instance and document reference helpers.
  */
 
-import { getFirestore, doc, arrayUnion, type Firestore, type DocumentReference } from 'firebase/firestore'
+import { getFirestore, doc, arrayUnion, arrayRemove, type Firestore, type DocumentReference } from 'firebase/firestore'
 import app from '@firestore/app'
 
 /**
@@ -23,6 +23,6 @@ export function getDocRef(collectionPath: string, docId: string): DocumentRefere
   return doc(getDb(), collectionPath, docId)
 }
 
-// Re-export arrayUnion for files that need it
-export { arrayUnion }
+// Re-export array helpers for merge-based writes
+export { arrayUnion, arrayRemove }
 

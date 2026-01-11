@@ -4,14 +4,18 @@
  * Updates an existing transfer transaction.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
  * Includes no-op detection to avoid unnecessary Firestore writes.
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: uses cached data (0 reads)
+ * - If cache is stale: fetches fresh data (1 read)
  */
 
-import { readMonthForEdit } from '@data'
 import type { MonthDocument, TransferTransaction } from '@types'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 /**
  * Check if transfer values have actually changed (no-op detection)
@@ -61,7 +65,9 @@ export function useUpdateTransfer() {
     description?: string,
     cleared?: boolean
   ) => {
-    const monthData = await readMonthForEdit(budgetId, year, month, 'update transfer')
+    // Use cache if fresh, fetch if stale
+    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
+    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
 
     // Find old transfer to calculate delta and check for changes
     const oldTransfer = (monthData.transfers || []).find(t => t.id === transferId)

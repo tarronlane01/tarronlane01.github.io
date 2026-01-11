@@ -28,11 +28,14 @@ interface FeedbackDocData {
 }
 
 // ============================================================================
-// READ UTILITY
+// READ UTILITY (USE SPARINGLY)
 // ============================================================================
 
 /**
- * Read feedback document for editing.
+ * Read feedback document for cases that REQUIRE current state.
+ *
+ * ⚠️ Use only when you need to modify items within the array.
+ * For adding new items, use addFeedbackItem with arrayUnion instead.
  */
 export async function readFeedbackForEdit(
   docId: string,
@@ -41,7 +44,7 @@ export async function readFeedbackForEdit(
   const { exists, data } = await readDocByPath<FirestoreData>(
     'feedback',
     docId,
-    `PRE-EDIT-READ: ${description}`
+    `VALIDATION-READ: ${description}`
   )
 
   if (!exists || !data) {
@@ -57,29 +60,29 @@ export async function readFeedbackForEdit(
 }
 
 // ============================================================================
-// WRITE UTILITIES
+// WRITE UTILITIES (MERGE STRATEGY)
 // ============================================================================
 
 /**
- * Write feedback data to Firestore.
- * Note: Does NOT update cache - caller should handle cache updates
+ * Write feedback data to Firestore using merge strategy.
+ *
+ * IMPORTANT: Only writes the `items` array and `updated_at`.
+ * Does NOT update cache - caller should handle cache updates
  * since feedback cache structure is different (flattened items).
  */
 export async function writeFeedbackData(params: WriteFeedbackParams): Promise<void> {
   const { docId, items, description } = params
 
-  // Read fresh data first
-  const freshData = await readFeedbackForEdit(docId, description)
-
+  // Use merge to only update items field (no read needed)
   await writeDocByPath(
     'feedback',
     docId,
     {
-      ...freshData,
       items,
       updated_at: new Date().toISOString(),
     },
-    description
+    description,
+    { merge: true }
   )
 }
 

@@ -26,6 +26,13 @@ export { useWriteMonthData, type WriteMonthParams } from './useWriteMonthData'
 // Month creation (called when viewing a month for the first time)
 export { createMonth, type CreateMonthOptions } from './createMonth'
 
+// Cache-aware month reading for mutations (use this instead of readMonthForEdit)
+export {
+  isMonthCacheFresh,
+  getMonthForMutation,
+  type CacheAwareMutationParams,
+} from './cacheAwareMonthRead'
+
 // ============================================================================
 // FEATURE MUTATIONS
 // ============================================================================

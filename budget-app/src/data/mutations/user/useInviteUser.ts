@@ -4,12 +4,15 @@
  * Invites a user to a budget by adding them to the user_ids list.
  *
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ * PATTERN: Uses arrayUnion for atomic array addition (no read-then-write).
  */
 
 import { createOptimisticMutation } from '../infrastructure'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import { writeBudgetData, readBudgetForEdit } from '../budget/writeBudgetData'
+import { arrayUnion, readDocByPath } from '@firestore'
+import type { FirestoreData } from '@types'
+import { writeBudgetData } from '../budget/writeBudgetData'
 
 // ============================================================================
 // TYPES
@@ -57,15 +60,25 @@ const useInviteUserInternal = createOptimisticMutation<
   mutationFn: async (params) => {
     const { budgetId, userId } = params
 
-    const freshData = await readBudgetForEdit(budgetId, 'invite user')
+    // Validation read: check if user is already invited
+    const { exists, data } = await readDocByPath<FirestoreData>(
+      'budgets',
+      budgetId,
+      'validating user is not already invited'
+    )
 
-    if (freshData.user_ids?.includes(userId)) {
+    if (!exists || !data) {
+      throw new Error('Budget not found')
+    }
+
+    if (data.user_ids?.includes(userId)) {
       throw new Error('User is already invited')
     }
 
+    // Use arrayUnion for atomic addition (no need to read current array)
     await writeBudgetData({
       budgetId,
-      updates: { user_ids: [...(freshData.user_ids || []), userId] },
+      updates: { user_ids: arrayUnion(userId) },
       description: "adding user to budget's invited users list",
     })
 

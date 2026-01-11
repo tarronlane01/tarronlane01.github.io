@@ -114,22 +114,25 @@ export default defineConfig([
 
   // ============================================================================
   // MUTATION FILES: Block direct @firestore writes (must use write utilities)
+  // Also blocks direct readMonthForEdit to enforce cache-aware pattern
   // ============================================================================
   {
     files: ['src/data/mutations/**/*.{ts,tsx}'],
     ignores: [
       // Infrastructure folder has full access
       'src/data/mutations/infrastructure/**/*.{ts,tsx}',
-      // Domain-specific write utilities
+      // Domain-specific WRITE utilities (files that perform @firestore writes)
       'src/data/mutations/month/useWriteMonthData.ts',
       'src/data/mutations/month/createMonth.ts',
       'src/data/mutations/budget/writeBudgetData.ts',
       'src/data/mutations/user/writeUserData.ts',
-      'src/data/mutations/user/useAcceptInvite.ts',
-      'src/data/mutations/user/useCreateBudget.ts',
-      'src/data/mutations/user/useCheckInvite.ts',
       'src/data/mutations/payees/savePayeeIfNew.ts',
       'src/data/mutations/feedback/writeFeedbackData.ts',
+      // Cache-aware month read helper (the approved way to read month data in mutations)
+      'src/data/mutations/month/cacheAwareMonthRead.ts',
+      // Legacy: These use direct @firestore writes (should migrate to use write utilities)
+      'src/data/mutations/user/useAcceptInvite.ts',
+      'src/data/mutations/user/useCreateBudget.ts',
       // Index files just re-export
       'src/data/mutations/**/index.ts',
     ],
@@ -153,29 +156,47 @@ export default defineConfig([
             importNames: ['useMutation'],
             message: 'Direct useMutation is blocked. Use createOptimisticMutation from @data/mutations/infrastructure to ensure optimistic updates are always implemented.',
           },
+          {
+            // Block direct readMonthForEdit in mutations - must use cache-aware helper
+            name: '@data/queries/month',
+            importNames: ['readMonthForEdit'],
+            message: 'Direct readMonthForEdit is blocked in mutations. Use isMonthCacheFresh + getMonthForMutation from cacheAwareMonthRead.ts to avoid unnecessary Firestore reads when cache is fresh.',
+          },
+          {
+            // Also block if imported via @data
+            name: '@data',
+            importNames: ['readMonthForEdit'],
+            message: 'Direct readMonthForEdit is blocked in mutations. Use isMonthCacheFresh + getMonthForMutation from cacheAwareMonthRead.ts to avoid unnecessary Firestore reads when cache is fresh.',
+          },
         ],
       }],
     },
   },
 
   // ============================================================================
-  // MUTATION INFRASTRUCTURE: Full access for write utilities and factory
+  // MUTATION INFRASTRUCTURE: Full access for write utilities and special cases
+  // Files here can use useMutation directly (bypasses createOptimisticMutation requirement)
   // ============================================================================
   {
     files: [
+      // Core infrastructure
       'src/data/mutations/infrastructure/**/*.{ts,tsx}',
+      // Write utilities (provide writeXxxData functions)
       'src/data/mutations/month/useWriteMonthData.ts',
       'src/data/mutations/month/createMonth.ts',
       'src/data/mutations/budget/writeBudgetData.ts',
       'src/data/mutations/user/writeUserData.ts',
-      'src/data/mutations/user/useAcceptInvite.ts',
-      'src/data/mutations/user/useCreateBudget.ts',
-      'src/data/mutations/user/useCheckInvite.ts',
       'src/data/mutations/payees/savePayeeIfNew.ts',
       'src/data/mutations/feedback/writeFeedbackData.ts',
+      // Special cases: These use useMutation for non-optimistic patterns
+      // useCheckInvite: Query-as-mutation pattern (read-only, no cache update needed)
+      'src/data/mutations/user/useCheckInvite.ts',
+      // useAcceptInvite/useCreateBudget: Cross-document writes that use invalidation
+      'src/data/mutations/user/useAcceptInvite.ts',
+      'src/data/mutations/user/useCreateBudget.ts',
     ],
     rules: {
-      // These files ARE the write infrastructure - allow full access
+      // These files ARE the infrastructure - allow useMutation, block only raw Firebase
       'no-restricted-imports': ['error', {
         patterns: [
           {

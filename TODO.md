@@ -1,8 +1,8 @@
-# Off-budget transfers.
+# Bug - Transfers and alloations on budget/account tab
 
-Allow transfers to off-budget accounts, and update in the notes on that page and on the spend page to indicate where the correctd place is to put money going to off-budget accounts. Flag those accounts with maybe a differnet pill color so we can see them in the list more easily (as well as in the dropdown, maybe make their text a slighly different color that mirrors the differnece in the pill color as well).
+- Need to be factored in, perhaps with own column? Right now it just shows up when you go to the next month as the previous month balance
 
-make sure that those transfers will accurately impact the on-budget available (for example it should reduce that if we transfer fro man on-budget account to an off-budget account)
+# Background timer for recalculating months, that get's reset if we make an update (like adding an ew income line) to support adding lots of lines in short succession
 
 # Easier schema evolution
 

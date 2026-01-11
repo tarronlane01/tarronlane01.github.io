@@ -3,13 +3,17 @@
  *
  * Deletes an income transaction from the month.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: uses cached data (0 reads)
+ * - If cache is stale: fetches fresh data (1 read)
  */
 
-import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export function useDeleteIncome() {
   const { writeData } = useWriteMonthData()
@@ -20,7 +24,9 @@ export function useDeleteIncome() {
     month: number,
     incomeId: string
   ) => {
-    const monthData = await readMonthForEdit(budgetId, year, month, 'delete income')
+    // Use cache if fresh, fetch if stale
+    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
+    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
 
     // Find income being deleted to get amount and account
     const deletedIncome = (monthData.income || []).find(inc => inc.id === incomeId)

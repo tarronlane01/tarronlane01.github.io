@@ -6,18 +6,23 @@
  * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
  * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
  * 2. Updates cache instantly (form can close immediately)
- * 3. In background: reads fresh data from Firestore, merges, writes
+ * 3. In background: uses cache if fresh, fetches if stale, then writes
  * 4. On error: automatic rollback to previous cache state
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: writes optimistic data directly (0 reads)
+ * - If cache is stale: fetches fresh, applies change, writes (1 read)
  */
 
 import { createOptimisticMutation } from '../../infrastructure'
-import { readMonthForEdit, writeMonthData } from '@data'
+import { writeMonthData } from '@data'
 import { queryKeys, queryClient } from '@data/queryClient'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { savePayeeIfNew } from '../../payees'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 // ============================================================================
 // TYPES
@@ -32,8 +37,9 @@ interface AddIncomeParams {
   date: string
   payee?: string
   description?: string
-  // Internal: used to share income ID between optimistic update and mutation
+  // Internal: shared between optimistic update and mutation
   _incomeId?: string
+  _cacheWasFresh?: boolean
 }
 
 interface AddIncomeResult {
@@ -73,6 +79,9 @@ const useAddIncomeInternal = createOptimisticMutation<
   optimisticUpdate: (params) => {
     const { budgetId, year, month } = params
 
+    // Check cache freshness BEFORE transforming (for mutationFn to use)
+    params._cacheWasFresh = isMonthCacheFresh(budgetId, year, month)
+
     // Generate income ID upfront so optimistic and actual use same ID
     const incomeId = `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     params._incomeId = incomeId
@@ -98,20 +107,26 @@ const useAddIncomeInternal = createOptimisticMutation<
   },
 
   mutationFn: async (params) => {
-    const { budgetId, year, month, accountId, payee, amount, _incomeId } = params
+    const { budgetId, year, month, accountId, payee, amount, _incomeId, _cacheWasFresh } = params
 
     const incomeId = _incomeId!
     const newIncome = createIncomeObject(params, incomeId)
 
-    // Read fresh data from Firestore, merge, write
-    const freshMonthData = await readMonthForEdit(budgetId, year, month, 'add income')
+    let updatedMonth: MonthDocument
 
-    const updatedIncome = [...(freshMonthData.income || []), newIncome]
-    const updatedMonth: MonthDocument = retotalMonth({
-      ...freshMonthData,
-      income: updatedIncome,
-      updated_at: new Date().toISOString(),
-    })
+    if (_cacheWasFresh) {
+      // Cache was fresh - optimistic data is accurate, just get it and write
+      const cachedMonth = await getMonthForMutation(budgetId, year, month, true)
+      updatedMonth = cachedMonth // Already has the income from optimistic update
+    } else {
+      // Cache was stale - fetch fresh, add income, compute totals
+      const freshMonth = await getMonthForMutation(budgetId, year, month, false)
+      updatedMonth = retotalMonth({
+        ...freshMonth,
+        income: [...(freshMonth.income || []), newIncome],
+        updated_at: new Date().toISOString(),
+      })
+    }
 
     // Write to Firestore
     await writeMonthData({ budgetId, month: updatedMonth, description: 'add income' })

@@ -21,7 +21,7 @@
 export { default as app } from '@firestore/app'
 
 // Instance & references
-export { getDb, getDocRef, arrayUnion } from '@firestore/instance'
+export { getDb, getDocRef, arrayUnion, arrayRemove } from '@firestore/instance'
 
 // Types
 export type {

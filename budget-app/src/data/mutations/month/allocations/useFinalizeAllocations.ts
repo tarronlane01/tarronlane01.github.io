@@ -8,14 +8,18 @@
  * This ensures all balances (account, category, available now) are updated immediately.
  *
  * Progress callback allows the UI to show detailed status during the operation.
+ *
+ * CACHE-AWARE PATTERN:
+ * - If cache is fresh: uses cached data (0 reads)
+ * - If cache is stale: fetches fresh data (1 read)
  */
 
-import { readMonthForEdit } from '@data'
 import type { MonthDocument } from '@types'
 import { useWriteMonthData } from '..'
 import { calculateCategoryBalancesForMonth, type AllocationData } from '.'
 import { triggerRecalculation, type RecalculationProgress } from '../../../recalculation'
 import { queryClient, queryKeys } from '../../../queryClient'
+import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export interface FinalizeAllocationsParams {
   budgetId: string
@@ -46,7 +50,9 @@ export function useFinalizeAllocations() {
     // Phase 1: Saving allocations
     onProgress?.({ phase: 'saving', message: 'Saving allocations...' })
 
-    const monthData = await readMonthForEdit(budgetId, year, month, 'finalize allocations')
+    // Use cache if fresh, fetch if stale
+    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
+    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
 
     // Get category IDs from existing balances or allocations
     // Use allocation keys when month has no category_balances (fresh month after reset)

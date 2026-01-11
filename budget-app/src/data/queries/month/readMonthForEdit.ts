@@ -4,6 +4,12 @@
  * Pre-edit read function for mutation operations.
  * Always reads from Firestore (not cache) to ensure fresh data before editing.
  *
+ * WHY THIS READ IS NEEDED:
+ * Month documents contain multiple arrays (income, expenses, transfers, etc.)
+ * and mutations need to add/modify items within these arrays. Unlike simple
+ * field updates that can use merge strategy, array item modifications require
+ * reading the current array first.
+ *
  * IMPORTANT: This function parses the raw Firestore data to ensure all fields
  * have proper defaults. This prevents mutations from accidentally dropping fields
  * that don't exist in older documents (e.g., transfers, adjustments).
