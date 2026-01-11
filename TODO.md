@@ -1,7 +1,5 @@
 # Can't create transfer (no category/account not counting as valid)
 
-- deafult the date in the calendar to today's date, if we're looking at the current calendar month. Otherwise d efault to the first day of the month
-
 - Payee form needs to showing dropwdown. Not showing in the adjustments
 - We should use a common component for payee dropoowns so they all behave the same (such as income and spend forms, that also have that field)
 - Let's create a user story for that element as well

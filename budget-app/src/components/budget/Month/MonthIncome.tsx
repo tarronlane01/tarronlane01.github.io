@@ -9,7 +9,7 @@ import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors } from '@styles/shared'
 import { IncomeForm } from '../Income'
 import { IncomeGridRow } from './IncomeGridRow'
-import { logUserAction } from '@utils'
+import { logUserAction, getDefaultFormDate } from '@utils'
 import { isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -230,7 +230,7 @@ export function MonthIncome() {
               accountGroups={accountGroups}
               payees={payees}
               defaultAccountId={defaultIncomeAccountId}
-              defaultDate={`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`}
+              defaultDate={getDefaultFormDate(currentYear, currentMonthNumber)}
               onSubmit={handleAddIncome}
               onCancel={() => setShowAddIncome(false)}
               submitLabel="Add Income"

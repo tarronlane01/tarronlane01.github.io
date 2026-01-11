@@ -8,7 +8,7 @@ import { Button } from '../../ui'
 import { colors } from '@styles/shared'
 import { TransferForm } from '../Transfers'
 import { TransferGridRow } from './TransferGridRow'
-import { logUserAction } from '@utils'
+import { logUserAction, getDefaultFormDate } from '@utils'
 import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -229,7 +229,7 @@ export function MonthTransfers() {
               accountGroups={accountGroups}
               categories={categories}
               categoryGroups={categoryGroups}
-              defaultDate={`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`}
+              defaultDate={getDefaultFormDate(currentYear, currentMonthNumber)}
               onSubmit={handleAddTransfer}
               onCancel={() => setShowAddTransfer(false)}
               submitLabel="Add Transfer"

@@ -54,3 +54,25 @@ export function formatDate(isoString: string) {
   })
 }
 
+/**
+ * Get the default date for a form based on the month being viewed.
+ * If viewing the current calendar month, returns today's date.
+ * Otherwise, returns the first day of the month.
+ * @param year - Year being viewed
+ * @param month - Month being viewed (1-12)
+ * @returns Date string in YYYY-MM-DD format
+ */
+export function getDefaultFormDate(year: number, month: number): string {
+  const today = new Date()
+  const todayYear = today.getFullYear()
+  const todayMonth = today.getMonth() + 1 // getMonth() is 0-indexed
+
+  if (year === todayYear && month === todayMonth) {
+    // Current month: use today's date (local timezone)
+    const todayDay = today.getDate()
+    return `${todayYear}-${String(todayMonth).padStart(2, '0')}-${String(todayDay).padStart(2, '0')}`
+  }
+  // Different month: use first of month
+  return `${year}-${String(month).padStart(2, '0')}-01`
+}
+

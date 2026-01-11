@@ -9,7 +9,7 @@ import { Button, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '@styles/shared'
 import { ExpenseForm } from '../Spend'
 import { ExpenseGridRow } from './ExpenseGridRow'
-import { logUserAction } from '@utils'
+import { logUserAction, getDefaultFormDate } from '@utils'
 import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -239,7 +239,7 @@ export function MonthSpend() {
               categoryGroups={categoryGroups}
               payees={payees}
               defaultAccountId={defaultOutgoAccountId}
-              defaultDate={`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`}
+              defaultDate={getDefaultFormDate(currentYear, currentMonthNumber)}
               onSubmit={handleAddExpense}
               onCancel={() => setShowAddExpense(false)}
               submitLabel="Add Expense"
