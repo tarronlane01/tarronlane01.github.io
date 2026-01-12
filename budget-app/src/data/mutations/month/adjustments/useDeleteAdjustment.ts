@@ -3,18 +3,14 @@
  *
  * Deletes an adjustment transaction from the month.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
- *
- * CACHE-AWARE PATTERN:
- * - If cache is fresh: uses cached data (0 reads)
- * - If cache is stale: fetches fresh data (1 read)
  */
 
 import type { MonthDocument } from '@types'
+import { readMonth } from '@data/queries/month'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
-import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export function useDeleteAdjustment() {
   const { writeData } = useWriteMonthData()
@@ -25,9 +21,9 @@ export function useDeleteAdjustment() {
     month: number,
     adjustmentId: string
   ) => {
-    // Use cache if fresh, fetch if stale
-    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
-    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
+    // Read month data (uses cache if fresh, fetches if stale via React Query's fetchQuery)
+    const monthData = await readMonth(budgetId, year, month)
+    if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Find adjustment being deleted to get amount and account
     const deletedAdjustment = (monthData.adjustments || []).find(a => a.id === adjustmentId)
@@ -60,6 +56,3 @@ export function useDeleteAdjustment() {
     error: writeData.error,
   }
 }
-
-
-

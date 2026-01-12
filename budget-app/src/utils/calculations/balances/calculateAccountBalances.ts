@@ -3,7 +3,7 @@ import type { AccountMonthBalance, MonthDocument } from '@types'
 
 /**
  * Calculates account balances for a given month
- * Computes income, expenses, and net change for each account
+ * Computes income, expenses, transfers, adjustments, and net change for each account
  */
 export function calculateAccountBalances(
   currentMonth: MonthDocument | null | undefined,
@@ -40,14 +40,39 @@ export function calculateAccountBalances(
         .reduce((sum, e) => sum + e.amount, 0)
     }
 
-    // Net change = income + expenses (expenses is negative for money out)
-    const netChange = income + expenses
+    // Calculate transfers for this account
+    // Transfers TO this account add money (positive), transfers FROM subtract (negative)
+    let transfers = 0
+    if (currentMonth?.transfers) {
+      currentMonth.transfers.forEach(t => {
+        if (t.to_account_id === accountId) {
+          transfers += t.amount // Money coming in
+        }
+        if (t.from_account_id === accountId) {
+          transfers -= t.amount // Money going out
+        }
+      })
+    }
+
+    // Calculate adjustments for this account
+    // Adjustment amount is applied directly (positive = add, negative = subtract)
+    let adjustments = 0
+    if (currentMonth?.adjustments) {
+      adjustments = currentMonth.adjustments
+        .filter(a => a.account_id === accountId)
+        .reduce((sum, a) => sum + a.amount, 0)
+    }
+
+    // Net change = income + expenses + transfers + adjustments
+    const netChange = income + expenses + transfers + adjustments
 
     balances[accountId] = {
       account_id: accountId,
       start_balance: startBalance,
       income,
       expenses,
+      transfers,
+      adjustments,
       net_change: netChange,
       end_balance: startBalance + netChange,
     }

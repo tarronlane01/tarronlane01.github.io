@@ -5,18 +5,14 @@
  * Now triggers immediate recalculation instead of just marking months as needing recalc.
  *
  * Progress callback allows the UI to show detailed status during the operation.
- *
- * CACHE-AWARE PATTERN:
- * - If cache is fresh: uses cached data (0 reads)
- * - If cache is stale: fetches fresh data (1 read)
  */
 
 import type { MonthDocument } from '@types'
+import { readMonth } from '@data/queries/month'
 import { useWriteMonthData } from '..'
 import { triggerRecalculation } from '../../../recalculation'
 import { queryClient, queryKeys } from '../../../queryClient'
 import type { AllocationProgress } from './useFinalizeAllocations'
-import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 export interface DeleteAllocationsParams {
   budgetId: string
@@ -35,9 +31,9 @@ export function useDeleteAllocations() {
     // Phase 1: Deleting allocations
     onProgress?.({ phase: 'saving', message: 'Deleting allocations...' })
 
-    // Use cache if fresh, fetch if stale
-    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
-    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
+    // Read month data (uses cache if fresh, fetches if stale via React Query's fetchQuery)
+    const monthData = await readMonth(budgetId, year, month)
+    if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Clear allocations from category_balances
     const clearedCategoryBalances = monthData.category_balances.map(cb => ({

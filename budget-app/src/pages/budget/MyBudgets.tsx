@@ -2,6 +2,9 @@ import { useState, useEffect, useLayoutEffect, useRef, type FormEvent } from 're
 import { useSearchParams } from 'react-router-dom'
 import { useApp, useBudget } from '@contexts'
 import { useBudgetData } from '@hooks'
+import { useRenameBudget } from '@data/mutations/budget'
+import { useAcceptInvite, useCreateBudget } from '@data/mutations/user'
+import useFirebaseAuth from '@hooks/useFirebaseAuth'
 import { BudgetCard } from '../../components/budget/Admin'
 import { logUserAction } from '@utils'
 import { ErrorAlertBox, SuccessAlertBox } from './MyBudgetsAlerts'
@@ -11,6 +14,7 @@ import { colors } from '@styles/shared'
 function MyBudgets() {
   const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentUserId, accessibleBudgets, loadAccessibleBudgets, switchToBudget, checkBudgetInvite, isInitialized, setPageTitle, needsFirstBudget } = useBudget()
+  const { requireUserEmail } = useFirebaseAuth()
 
   // Track if we've already loaded budgets this mount (avoid duplicate loads)
   const hasLoadedRef = useRef(false)
@@ -43,7 +47,12 @@ function MyBudgets() {
     }
   }, [isInitialized, loadAccessibleBudgets])
 
-  const { budget: currentBudget, renameBudget, acceptInvite, createBudget, isLoading: loading } = useBudgetData()
+  const { budget: currentBudget, isLoading: loading } = useBudgetData()
+
+  // Mutations - imported directly
+  const { renameBudget } = useRenameBudget()
+  const { acceptInvite } = useAcceptInvite()
+  const { createBudget } = useCreateBudget()
 
   const [isSwitching, setIsSwitching] = useState<string | null>(null)
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
@@ -78,12 +87,13 @@ function MyBudgets() {
   }
 
   async function handleAcceptInvite(budgetId: string) {
+    if (!currentUserId) return
     logUserAction('CLICK', 'Accept Budget Invite', { details: budgetId })
     setIsAccepting(budgetId)
     setError(null)
     setSuccess(null)
     try {
-      await acceptInvite(budgetId)
+      await acceptInvite.mutateAsync({ budgetId, userId: currentUserId })
       setSuccess('Invitation accepted! You now have access to this budget.')
       await loadAccessibleBudgets({ force: true })
     } catch (err) {
@@ -115,12 +125,12 @@ function MyBudgets() {
   }
 
   async function handleAcceptManualInvite() {
-    if (!manualInvite) return
+    if (!manualInvite || !currentUserId) return
     logUserAction('CLICK', 'Accept Manual Invite', { details: manualInvite.budgetName })
     setIsAccepting(manualInvite.budgetId)
     setError(null)
     try {
-      await acceptInvite(manualInvite.budgetId)
+      await acceptInvite.mutateAsync({ budgetId: manualInvite.budgetId, userId: currentUserId })
       setSuccess(`Successfully joined "${manualInvite.budgetName}"!`)
       setManualInvite(null)
       setBudgetIdInput('')
@@ -140,13 +150,13 @@ function MyBudgets() {
 
   async function handleRename(e: FormEvent) {
     e.preventDefault()
-    if (!editName.trim() || !editingBudgetId) return
+    if (!editName.trim() || !editingBudgetId || !selectedBudgetId) return
     logUserAction('SUBMIT', 'Rename Budget', { value: editName.trim() })
     setIsRenaming(true)
     setError(null)
     setSuccess(null)
     try {
-      await renameBudget(editName.trim())
+      await renameBudget.mutateAsync({ budgetId: selectedBudgetId, newName: editName.trim() })
       setSuccess('Budget renamed successfully!')
       setEditingBudgetId(null)
       await loadAccessibleBudgets({ force: true })
@@ -159,12 +169,13 @@ function MyBudgets() {
 
   async function handleCreateBudget(e: FormEvent) {
     e.preventDefault()
+    if (!currentUserId) return
     logUserAction('SUBMIT', 'Create Budget', { value: newBudgetName.trim() || 'My Budget' })
     setIsCreating(true)
     setError(null)
     setSuccess(null)
     try {
-      const result = await createBudget(newBudgetName.trim() || 'My Budget')
+      const result = await createBudget.mutateAsync({ name: newBudgetName.trim() || 'My Budget', userId: currentUserId, userEmail: requireUserEmail() })
       // Switch to the newly created budget
       await switchToBudget(result.budgetId)
       setSuccess('Budget created successfully!')

@@ -3,13 +3,19 @@
  */
 
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
-import { tentativeValue } from '@styles/shared'
+import { colors, tentativeValue } from '@styles/shared'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
+
+// Helper color function for transfers/adjustments - positive=green, negative=red, zero=grey
+function getTransferColor(value: number): string {
+  if (value === 0) return colors.zero
+  return value > 0 ? colors.success : colors.error
+}
 
 interface GrandTotalsRowProps {
   isDraftMode: boolean
   allocationsFinalized: boolean
-  balanceTotals: { start: number; allocated: number; spent: number; end: number }
+  balanceTotals: { start: number; allocated: number; spent: number; transfers: number; adjustments: number; end: number }
   grandAllTime: number
   onSave: () => void
   onApply: () => void
@@ -41,8 +47,8 @@ export function GrandTotalsRow({
     alignItems: 'center',
     fontSize: '0.9rem',
   }
-  // Net change = allocated + spent (spent is negative for money out)
-  const netChange = balanceTotals.allocated + balanceTotals.spent
+  // Net change = allocated + spent + transfers + adjustments (spent is negative for money out)
+  const netChange = balanceTotals.allocated + balanceTotals.spent + balanceTotals.transfers + balanceTotals.adjustments
 
   return (
     <>
@@ -71,6 +77,12 @@ export function GrandTotalsRow({
       <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getSpendColor(balanceTotals.spent) }}>
         {formatSignedCurrency(balanceTotals.spent)}
       </div>
+      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getTransferColor(balanceTotals.transfers) }}>
+        {formatSignedCurrencyAlways(balanceTotals.transfers)}
+      </div>
+      <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getTransferColor(balanceTotals.adjustments) }}>
+        {formatSignedCurrencyAlways(balanceTotals.adjustments)}
+      </div>
       <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(netChange), ...(isDraftMode ? tentativeValue : {}) }}>
         {formatSignedCurrencyAlways(netChange)}
       </div>
@@ -95,7 +107,7 @@ interface MobileGrandTotalsProps {
   allocationsFinalized: boolean
   availableNow: number
   currentMonthIncome: number
-  balanceTotals: { start: number; allocated: number; spent: number; end: number }
+  balanceTotals: { start: number; allocated: number; spent: number; transfers: number; adjustments: number; end: number }
   draftChangeAmount: number
   availableAfterApply: number
   currentDraftTotal: number

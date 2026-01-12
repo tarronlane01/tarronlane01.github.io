@@ -76,3 +76,13 @@ export function getDefaultFormDate(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}-01`
 }
 
+/**
+ * Parse a date string (YYYY-MM-DD) into year and month numbers.
+ * Used when determining which month a transaction belongs to.
+ * @param date - Date string in YYYY-MM-DD format
+ * @returns Object with year and month numbers
+ */
+export function parseDateToYearMonth(date: string): { year: number; month: number } {
+  const [year, month] = date.split('-').map(Number)
+  return { year, month }
+}

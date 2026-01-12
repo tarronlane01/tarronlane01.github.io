@@ -4,18 +4,14 @@
  * Updates an existing adjustment transaction.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
  * Includes no-op detection to avoid unnecessary Firestore writes.
- *
- * CACHE-AWARE PATTERN:
- * - If cache is fresh: uses cached data (0 reads)
- * - If cache is stale: fetches fresh data (1 read)
  */
 
 import type { MonthDocument, AdjustmentTransaction } from '@types'
+import { readMonth } from '@data/queries/month'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
 import { isNoAccount } from '../../../constants'
-import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 /**
  * Check if adjustment values have actually changed (no-op detection)
@@ -64,9 +60,9 @@ export function useUpdateAdjustment() {
     description?: string,
     cleared?: boolean
   ) => {
-    // Use cache if fresh, fetch if stale
-    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
-    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
+    // Read month data (uses cache if fresh, fetches if stale via React Query's fetchQuery)
+    const monthData = await readMonth(budgetId, year, month)
+    if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Find old adjustment to calculate delta and check for changes
     const oldAdjustment = (monthData.adjustments || []).find(a => a.id === adjustmentId)
@@ -131,5 +127,3 @@ export function useUpdateAdjustment() {
     error: writeData.error,
   }
 }
-
-

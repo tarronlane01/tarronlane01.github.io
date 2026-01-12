@@ -1,14 +1,15 @@
 /**
  * useBudgetData Hook
  *
- * Provides budget-level data and mutations.
+ * Provides budget-level data (read-only).
  * Gets selectedBudgetId and currentUserId from BudgetContext internally.
  *
+ * For mutations, import mutation hooks directly:
+ *   import { useUpdateAccounts, useUpdateCategories } from '@data/mutations/budget'
+ *   import { useCreateBudget, useInviteUser } from '@data/mutations/user'
+ *
  * Usage:
- *   const {
- *     budget, accounts, categories, isLoading,
- *     saveAccounts, saveCategories, createBudget, ...
- *   } = useBudgetData()
+ *   const { budget, accounts, categories, isLoading } = useBudgetData()
  */
 
 import { useCallback, useMemo } from 'react'
@@ -19,20 +20,6 @@ import {
   type BudgetData,
 } from '@data'
 import { useBudget } from '@contexts'
-import useFirebaseAuth from './useFirebaseAuth'
-import {
-  useUpdateAccounts,
-  useUpdateAccountGroups,
-  useUpdateCategories,
-  useUpdateCategoryGroups,
-  useRenameBudget,
-} from '../data/mutations/budget'
-import {
-  useCreateBudget,
-  useAcceptInvite,
-  useInviteUser,
-  useRevokeUser,
-} from '../data/mutations/user'
 import type {
   AccountsMap,
   AccountGroupsMap,
@@ -72,22 +59,7 @@ interface UseBudgetDataReturn {
    */
   monthMap: MonthMap
 
-  // Budget mutations
-  saveAccounts: (accounts: AccountsMap) => Promise<void>
-  saveAccountGroups: (groups: AccountGroupsMap) => Promise<void>
-  saveCategories: (categories: CategoriesMap) => Promise<void>
-  saveCategoryGroups: (groups: CategoryGroup[]) => Promise<void>
-  saveAccountsAndGroups: (accounts: AccountsMap, groups: AccountGroupsMap) => Promise<void>
-  saveCategoriesAndGroups: (categories: CategoriesMap, groups: CategoryGroup[]) => Promise<void>
-  renameBudget: (newName: string) => Promise<void>
-
-  // User/invite mutations
-  createBudget: (name: string) => Promise<{ budgetId: string }>
-  inviteUser: (userId: string) => Promise<void>
-  revokeUser: (userId: string) => Promise<void>
-  acceptInvite: (budgetId: string) => Promise<void>
-
-  // Cache utilities
+  // Cache utilities (for optimistic updates in page hooks)
   setAccountsOptimistic: (accounts: AccountsMap) => void
   setAccountGroupsOptimistic: (groups: AccountGroupsMap) => void
   setCategoriesOptimistic: (categories: CategoriesMap) => void
@@ -102,24 +74,8 @@ export function useBudgetData(): UseBudgetDataReturn {
   // Get IDs from context
   const { selectedBudgetId: budgetId, currentUserId } = useBudget()
 
-  // Auth (for requireUserEmail)
-  const { requireUserEmail } = useFirebaseAuth()
-
   // Query
   const budgetQuery = useBudgetQuery(budgetId)
-
-  // Budget mutations
-  const { updateAccounts } = useUpdateAccounts()
-  const { updateAccountGroups } = useUpdateAccountGroups()
-  const { updateCategories } = useUpdateCategories()
-  const { updateCategoryGroups } = useUpdateCategoryGroups()
-  const { renameBudget: renameBudgetOp } = useRenameBudget()
-
-  // User mutations
-  const { createBudget: createBudgetOp } = useCreateBudget()
-  const { acceptInvite: acceptInviteOp } = useAcceptInvite()
-  const { inviteUser: inviteUserOp } = useInviteUser()
-  const { revokeUser: revokeUserOp } = useRevokeUser()
 
   // Extract data from query with stable references
   const budgetData = budgetQuery.data
@@ -137,96 +93,7 @@ export function useBudgetData(): UseBudgetDataReturn {
   const monthMap = useMemo(() => budgetData?.monthMap || {}, [budgetData?.monthMap])
 
   // ==========================================================================
-  // BUDGET MUTATIONS
-  // ==========================================================================
-
-  const saveAccounts = useCallback(async (newAccounts: AccountsMap) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await updateAccounts.mutateAsync({
-      budgetId,
-      accounts: newAccounts,
-    })
-  }, [budgetId, updateAccounts])
-
-  const saveAccountGroups = useCallback(async (newGroups: AccountGroupsMap) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await updateAccountGroups.mutateAsync({
-      budgetId,
-      accountGroups: newGroups,
-    })
-  }, [budgetId, updateAccountGroups])
-
-  const saveCategories = useCallback(async (newCategories: CategoriesMap) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await updateCategories.mutateAsync({
-      budgetId,
-      categories: newCategories,
-    })
-  }, [budgetId, updateCategories])
-
-  const saveCategoryGroups = useCallback(async (newGroups: CategoryGroup[]) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await updateCategoryGroups.mutateAsync({
-      budgetId,
-      categoryGroups: newGroups,
-    })
-  }, [budgetId, updateCategoryGroups])
-
-  const saveAccountsAndGroups = useCallback(async (newAccounts: AccountsMap, newGroups: AccountGroupsMap) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await Promise.all([
-      updateAccounts.mutateAsync({ budgetId, accounts: newAccounts }),
-      updateAccountGroups.mutateAsync({ budgetId, accountGroups: newGroups }),
-    ])
-  }, [budgetId, updateAccounts, updateAccountGroups])
-
-  const saveCategoriesAndGroups = useCallback(async (newCategories: CategoriesMap, newGroups: CategoryGroup[]) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await Promise.all([
-      updateCategories.mutateAsync({ budgetId, categories: newCategories }),
-      updateCategoryGroups.mutateAsync({ budgetId, categoryGroups: newGroups }),
-    ])
-  }, [budgetId, updateCategories, updateCategoryGroups])
-
-  const renameBudget = useCallback(async (newName: string) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await renameBudgetOp.mutateAsync({ budgetId, newName })
-  }, [budgetId, renameBudgetOp])
-
-  // ==========================================================================
-  // USER/INVITE MUTATIONS
-  // ==========================================================================
-
-  const createBudget = useCallback(async (name: string) => {
-    if (!currentUserId) throw new Error('Not authenticated')
-    const result = await createBudgetOp.mutateAsync({
-      name: name.trim() || 'My Budget',
-      userId: currentUserId,
-      userEmail: requireUserEmail(),
-    })
-    return result
-  }, [currentUserId, requireUserEmail, createBudgetOp])
-
-  const inviteUser = useCallback(async (userId: string) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await inviteUserOp.mutateAsync({ budgetId, userId })
-  }, [budgetId, inviteUserOp])
-
-  const revokeUser = useCallback(async (userId: string) => {
-    if (!budgetId) throw new Error('No budget selected')
-    await revokeUserOp.mutateAsync({ budgetId, userId })
-  }, [budgetId, revokeUserOp])
-
-  const acceptInvite = useCallback(async (targetBudgetId: string) => {
-    if (!currentUserId) throw new Error('Not authenticated')
-    await acceptInviteOp.mutateAsync({
-      budgetId: targetBudgetId,
-      userId: currentUserId,
-    })
-  }, [currentUserId, acceptInviteOp])
-
-  // ==========================================================================
-  // CACHE UTILITIES (for optimistic updates)
+  // CACHE UTILITIES (for optimistic updates in page hooks)
   // ==========================================================================
 
   const setAccountsOptimistic = useCallback((newAccounts: AccountsMap) => {
@@ -312,19 +179,6 @@ export function useBudgetData(): UseBudgetDataReturn {
     acceptedUserIds,
     totalAvailable,
     monthMap,
-
-    // Mutations
-    saveAccounts,
-    saveAccountGroups,
-    saveCategories,
-    saveCategoryGroups,
-    saveAccountsAndGroups,
-    saveCategoriesAndGroups,
-    renameBudget,
-    createBudget,
-    inviteUser,
-    revokeUser,
-    acceptInvite,
 
     // Cache utilities
     setAccountsOptimistic,

@@ -1,6 +1,15 @@
-# Bug - Transfers and alloations on budget/account tab
 
-- Need to be factored in, perhaps with own column? Right now it just shows up when you go to the next month as the previous month balance
+Noticed QOL
+- add a download month doc on the month dropdown (for admins). Have it download separate files for all the transaction types, to make it easier to parse the long json lists
+
+- Add pluses and equals in the month grid to help it easier to identify what values I'm looking at. For example (parenthesis around the components of the net change)
+
+- can we make sure all utils are in the utils folder (these are things that are independent functions that can bo isolated to take logic out of other places and avoid needing to repeat it)
+
+- separate mobile and desktkop vies into two files in the same folder, have the other logic in an other file (or set of files) so that both desktop and mobile can share the functionality. So I can open the file and see all the parts of the page in nice separate files to easily find the part I want to tweak.
+
+
+
 
 # Background timer for recalculating months, that get's reset if we make an update (like adding an ew income line) to support adding lots of lines in short succession
 

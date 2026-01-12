@@ -77,14 +77,19 @@ export function recalculateMonth(
   month: MonthDocument,
   prevSnapshot: PreviousMonthSnapshot
 ): MonthDocument {
-  // Calculate category adjustments from transfers and adjustments
+  // Calculate category adjustments from transfers and adjustments (combined, for legacy compatibility)
   const categoryAdjustments = calculateCategoryAdjustments(month)
+
+  // Calculate separate transfers and adjustments per category
+  const { transfersMap, adjustmentsMap } = calculateCategoryTransfersAndAdjustments(month)
 
   // Recalculate category balances (including transfers and adjustments)
   const categoryBalances = recalculateCategoryBalances(
     month.category_balances,
     prevSnapshot.categoryEndBalances,
-    categoryAdjustments
+    categoryAdjustments,
+    transfersMap,
+    adjustmentsMap
   )
 
   // Recalculate account balances from all transaction types
@@ -143,6 +148,47 @@ function calculateCategoryAdjustments(month: MonthDocument): Record<string, numb
 }
 
 /**
+ * Calculate separate transfers and adjustments per category.
+ * Returns maps of category_id -> transfer amount and category_id -> adjustment amount.
+ */
+function calculateCategoryTransfersAndAdjustments(month: MonthDocument): {
+  transfersMap: Record<string, number>
+  adjustmentsMap: Record<string, number>
+} {
+  const transfersMap: Record<string, number> = {}
+  const adjustmentsMap: Record<string, number> = {}
+
+  // Process transfers
+  for (const transfer of month.transfers || []) {
+    // Subtract from source category (if real category)
+    if (!isNoCategory(transfer.from_category_id)) {
+      transfersMap[transfer.from_category_id] = (transfersMap[transfer.from_category_id] || 0) - transfer.amount
+    }
+    // Add to destination category (if real category)
+    if (!isNoCategory(transfer.to_category_id)) {
+      transfersMap[transfer.to_category_id] = (transfersMap[transfer.to_category_id] || 0) + transfer.amount
+    }
+  }
+
+  // Process adjustments
+  for (const adjustment of month.adjustments || []) {
+    if (!isNoCategory(adjustment.category_id)) {
+      adjustmentsMap[adjustment.category_id] = (adjustmentsMap[adjustment.category_id] || 0) + adjustment.amount
+    }
+  }
+
+  // Round all values
+  for (const catId of Object.keys(transfersMap)) {
+    transfersMap[catId] = roundCurrency(transfersMap[catId])
+  }
+  for (const catId of Object.keys(adjustmentsMap)) {
+    adjustmentsMap[catId] = roundCurrency(adjustmentsMap[catId])
+  }
+
+  return { transfersMap, adjustmentsMap }
+}
+
+/**
  * Recalculate category balances with correct start balances from previous month.
  * Includes adjustments from transfers and adjustment transactions.
  * Note: The special "No Category" is excluded as it doesn't track balances.
@@ -150,7 +196,9 @@ function calculateCategoryAdjustments(month: MonthDocument): Record<string, numb
 function recalculateCategoryBalances(
   currentBalances: CategoryMonthBalance[],
   prevCategoryEndBalances: Record<string, number>,
-  categoryAdjustments: Record<string, number>
+  categoryAdjustments: Record<string, number>,
+  transfersMap: Record<string, number>,
+  adjustmentsMap: Record<string, number>
 ): CategoryMonthBalance[] {
   // Build map of existing balances (excluding "No Category")
   const balanceMap = new Map<string, CategoryMonthBalance>()
@@ -181,15 +229,18 @@ function recalculateCategoryBalances(
     const startBalance = roundCurrency(prevCategoryEndBalances[catId] ?? 0)
     const allocated = roundCurrency(existing?.allocated ?? 0)
     const spent = roundCurrency(existing?.spent ?? 0)
-    const adjustment = roundCurrency(categoryAdjustments[catId] ?? 0)
+    const transfers = roundCurrency(transfersMap[catId] ?? 0)
+    const adjustments = roundCurrency(adjustmentsMap[catId] ?? 0)
 
     updated.push({
       category_id: catId,
       start_balance: startBalance,
       allocated,
       spent,
-      // end_balance = start + allocated + spent + adjustments (from transfers/adjustments)
-      end_balance: roundCurrency(startBalance + allocated + spent + adjustment),
+      transfers,
+      adjustments,
+      // end_balance = start + allocated + spent + transfers + adjustments
+      end_balance: roundCurrency(startBalance + allocated + spent + transfers + adjustments),
     })
   }
 
@@ -260,19 +311,24 @@ function recalculateAccountBalances(
       .filter(t => t.to_account_id === accountId)
       .reduce((sum, t) => sum + t.amount, 0))
 
+    // Net transfers = transfers in + transfers out (transfersOut is negative)
+    const transfersTotal = roundCurrency(transfersIn + transfersOut)
+
     // Calculate adjustment effects for this account
     const adjustmentTotal = roundCurrency((month.adjustments || [])
       .filter(a => a.account_id === accountId)
       .reduce((sum, a) => sum + a.amount, 0))
 
     // Net change includes all transaction types
-    const netChange = roundCurrency(incomeTotal + expensesTotal + transfersOut + transfersIn + adjustmentTotal)
+    const netChange = roundCurrency(incomeTotal + expensesTotal + transfersTotal + adjustmentTotal)
 
     balances.push({
       account_id: accountId,
       start_balance: startBalance,
       income: incomeTotal,
       expenses: expensesTotal,
+      transfers: transfersTotal,
+      adjustments: adjustmentTotal,
       net_change: netChange,
       end_balance: roundCurrency(startBalance + netChange),
     })

@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
+import { useAddAdjustment, useUpdateAdjustment, useDeleteAdjustment } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
 import { Button } from '../../ui'
 import { colors } from '@styles/shared'
 import { AdjustmentForm } from '../Adjustments'
 import { AdjustmentGridRow } from './AdjustmentGridRow'
-import { logUserAction, getDefaultFormDate } from '@utils'
+import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
 import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -26,13 +27,12 @@ const columnHeaderStyle: React.CSSProperties = {
 export function MonthAdjustments() {
   const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups, categories, categoryGroups } = useBudgetData()
-  const {
-    month: currentMonth,
-    isLoading: monthLoading,
-    addAdjustment,
-    updateAdjustment,
-    deleteAdjustment,
-  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth, isLoading: monthLoading } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Adjustment mutations - imported directly
+  const { addAdjustment } = useAddAdjustment()
+  const { updateAdjustment } = useUpdateAdjustment()
+  const { deleteAdjustment } = useDeleteAdjustment()
 
   const isMobile = useIsMobile()
   const [error, setError] = useState<string | null>(null)
@@ -71,11 +71,12 @@ export function MonthAdjustments() {
   // Handle adjustment operations
   // Note: Mutations handle optimistic cache updates internally
   function handleAddAdjustment(amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
+    if (!selectedBudgetId) return
     setError(null)
     setShowAddAdjustment(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this adjustment belongs to
-    const [adjustmentYear, adjustmentMonth] = date.split('-').map(Number)
+    const { year: adjustmentYear, month: adjustmentMonth } = parseDateToYearMonth(date)
 
     // Navigate to target month if different
     if (adjustmentYear !== currentYear || adjustmentMonth !== currentMonthNumber) {
@@ -83,30 +84,32 @@ export function MonthAdjustments() {
       setCurrentMonthNumber(adjustmentMonth)
     }
 
-    // Mutation handles optimistic update and Firestore write
-    addAdjustment(amount, accountId, categoryId, date, payee, description, cleared)
+    // Call mutation directly with explicit params
+    addAdjustment(selectedBudgetId, adjustmentYear, adjustmentMonth, amount, accountId, categoryId, date, payee, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add adjustment')
       })
   }
 
   function handleUpdateAdjustment(adjustmentId: string, amount: number, accountId: string, categoryId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
+    if (!selectedBudgetId) return
     setError(null)
     setEditingAdjustmentId(null) // Close form immediately - mutation handles optimistic update
 
-    // Mutation handles optimistic update and Firestore write
-    updateAdjustment(adjustmentId, amount, accountId, categoryId, date, payee, description, cleared)
+    // Call mutation directly with explicit params
+    updateAdjustment(selectedBudgetId, currentYear, currentMonthNumber, adjustmentId, amount, accountId, categoryId, date, payee, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to update adjustment')
       })
   }
 
   function handleDeleteAdjustment(adjustmentId: string) {
+    if (!selectedBudgetId) return
     if (!confirm('Are you sure you want to delete this adjustment?')) return
     setError(null)
 
-    // Mutation handles optimistic update and Firestore delete
-    deleteAdjustment(adjustmentId).catch(err => {
+    // Call mutation directly with explicit params
+    deleteAdjustment(selectedBudgetId, currentYear, currentMonthNumber, adjustmentId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete adjustment')
     })
   }
@@ -277,4 +280,3 @@ export function MonthAdjustments() {
     </div>
   )
 }
-

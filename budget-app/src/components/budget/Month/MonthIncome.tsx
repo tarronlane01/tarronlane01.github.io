@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
+import { useAddIncome, useUpdateIncome, useDeleteIncome } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
 import { Button, formatCurrency, getBalanceColor } from '../../ui'
 import { colors } from '@styles/shared'
 import { IncomeForm } from '../Income'
 import { IncomeGridRow } from './IncomeGridRow'
-import { logUserAction, getDefaultFormDate } from '@utils'
+import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
 import { isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -26,13 +27,12 @@ const columnHeaderStyle: React.CSSProperties = {
 export function MonthIncome() {
   const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups } = useBudgetData()
-  const {
-    month: currentMonth,
-    isLoading: monthLoading,
-    addIncome,
-    updateIncome,
-    deleteIncome,
-  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth, isLoading: monthLoading } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Income mutations - imported directly
+  const { addIncome } = useAddIncome()
+  const { updateIncome } = useUpdateIncome()
+  const { deleteIncome } = useDeleteIncome()
 
   const isMobile = useIsMobile()
   const [error, setError] = useState<string | null>(null)
@@ -80,11 +80,12 @@ export function MonthIncome() {
   // Handle income operations
   // Note: Mutations handle optimistic cache updates internally
   function handleAddIncome(amount: number, accountId: string, date: string, payee?: string, description?: string) {
+    if (!selectedBudgetId) return
     setError(null)
     setShowAddIncome(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this income belongs to
-    const [incomeYear, incomeMonth] = date.split('-').map(Number)
+    const { year: incomeYear, month: incomeMonth } = parseDateToYearMonth(date)
 
     // Navigate to target month if different
     if (incomeYear !== currentYear || incomeMonth !== currentMonthNumber) {
@@ -92,30 +93,32 @@ export function MonthIncome() {
       setCurrentMonthNumber(incomeMonth)
     }
 
-    // Mutation handles optimistic update and Firestore write
-    addIncome(amount, accountId, date, payee, description)
+    // Call mutation directly with explicit params
+    addIncome(selectedBudgetId, incomeYear, incomeMonth, amount, accountId, date, payee, description)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add income')
       })
   }
 
   function handleUpdateIncome(incomeId: string, amount: number, accountId: string, date: string, payee?: string, description?: string) {
+    if (!selectedBudgetId) return
     setError(null)
     setEditingIncomeId(null) // Close form immediately - mutation handles optimistic update
 
-    // Mutation handles optimistic update and Firestore write
-    updateIncome(incomeId, amount, accountId, date, payee, description)
+    // Call mutation directly with explicit params
+    updateIncome(selectedBudgetId, currentYear, currentMonthNumber, incomeId, amount, accountId, date, payee, description)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to update income')
       })
   }
 
   function handleDeleteIncome(incomeId: string) {
+    if (!selectedBudgetId) return
     if (!confirm('Are you sure you want to delete this income entry?')) return
     setError(null)
 
-    // Mutation handles optimistic update and Firestore delete
-    deleteIncome(incomeId).catch(err => {
+    // Call mutation directly with explicit params
+    deleteIncome(selectedBudgetId, currentYear, currentMonthNumber, incomeId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete income')
     })
   }

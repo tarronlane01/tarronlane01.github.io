@@ -160,6 +160,8 @@ export async function createMonth(
       start_balance: startBalance,
       allocated: 0,
       spent: 0,
+      transfers: 0,
+      adjustments: 0,
       end_balance: startBalance,
     })
   )
@@ -171,6 +173,8 @@ export async function createMonth(
       start_balance: startBalance,
       income: 0,
       expenses: 0,
+      transfers: 0,
+      adjustments: 0,
       net_change: 0,
       end_balance: startBalance,
     })

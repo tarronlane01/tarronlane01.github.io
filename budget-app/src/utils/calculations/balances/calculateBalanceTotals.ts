@@ -4,6 +4,8 @@ export interface CategoryBalanceTotals {
   start: number
   allocated: number
   spent: number
+  transfers: number
+  adjustments: number
   end: number
 }
 
@@ -17,7 +19,9 @@ export function calculateBalanceTotals(
     start: acc.start + bal.start_balance,
     allocated: acc.allocated + bal.allocated,
     spent: acc.spent + bal.spent,
+    transfers: acc.transfers + bal.transfers,
+    adjustments: acc.adjustments + bal.adjustments,
     end: acc.end + bal.end_balance,
-  }), { start: 0, allocated: 0, spent: 0, end: 0 })
+  }), { start: 0, allocated: 0, spent: 0, transfers: 0, adjustments: 0, end: 0 })
 }
 

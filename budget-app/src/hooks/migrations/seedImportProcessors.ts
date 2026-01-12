@@ -275,6 +275,8 @@ export function processAllocationRows(
         start_balance: 0,
         allocated: amount,
         spent: 0,
+        transfers: 0,
+        adjustments: 0,
         end_balance: amount,
       })
     }

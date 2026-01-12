@@ -3,10 +3,10 @@
  *
  * Updates all categories in the budget document.
  *
- * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ * Uses React Query's native optimistic update pattern.
  */
 
-import { createOptimisticMutation } from '../../infrastructure'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { CategoriesMap, FirestoreData } from '@types'
@@ -49,61 +49,64 @@ interface UpdateCategoriesResult {
   categories: CategoriesMap
 }
 
-// ============================================================================
-// INTERNAL HOOK
-// ============================================================================
-
-const useUpdateCategoriesInternal = createOptimisticMutation<
-  UpdateCategoriesParams,
-  UpdateCategoriesResult,
-  BudgetData
->({
-  optimisticUpdate: (params) => {
-    const { budgetId, categories } = params
-
-    return {
-      cacheKey: queryKeys.budget(budgetId),
-      transform: (cachedData) => {
-        if (!cachedData) {
-          return cachedData as unknown as BudgetData
-        }
-
-        return {
-          ...cachedData,
-          categories,
-        }
-      },
-    }
-  },
-
-  mutationFn: async (params) => {
-    const { budgetId, categories } = params
-    const cleanedCategories = cleanCategoriesForFirestore(categories)
-
-    await writeBudgetData({
-      budgetId,
-      updates: { categories: cleanedCategories },
-      description: 'saving updated categories (user edited category settings)',
-    })
-
-    return { categories }
-  },
-})
+interface MutationContext {
+  previousData: BudgetData | undefined
+}
 
 // ============================================================================
-// PUBLIC HOOK
+// HOOK
 // ============================================================================
 
 export function useUpdateCategories() {
-  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateCategoriesInternal()
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation<UpdateCategoriesResult, Error, UpdateCategoriesParams, MutationContext>({
+    onMutate: async (params) => {
+      const { budgetId, categories } = params
+      const queryKey = queryKeys.budget(budgetId)
+
+      await queryClient.cancelQueries({ queryKey })
+
+      const previousData = queryClient.getQueryData<BudgetData>(queryKey)
+
+      // Optimistically update the cache
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKey, {
+          ...previousData,
+          categories,
+        })
+      }
+
+      return { previousData }
+    },
+
+    mutationFn: async (params) => {
+      const { budgetId, categories } = params
+      const cleanedCategories = cleanCategoriesForFirestore(categories)
+
+      await writeBudgetData({
+        budgetId,
+        updates: { categories: cleanedCategories },
+        description: 'saving updated categories (user edited category settings)',
+      })
+
+      return { categories }
+    },
+
+    onError: (_error, params, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(params.budgetId), context.previousData)
+      }
+    },
+  })
 
   const updateCategories = {
-    mutate: (params: UpdateCategoriesParams) => mutate(params),
-    mutateAsync: (params: UpdateCategoriesParams) => mutateAsync(params),
-    isPending,
-    isError,
-    error,
-    reset,
+    mutate: (params: UpdateCategoriesParams) => mutation.mutate(params),
+    mutateAsync: (params: UpdateCategoriesParams) => mutation.mutateAsync(params),
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
   }
 
   return { updateCategories }

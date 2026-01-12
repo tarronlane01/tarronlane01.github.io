@@ -35,13 +35,38 @@ export function calculateLiveCategoryBalances(
       allocated = existing.allocated
     }
 
-    // end_balance = start + allocated + spent (spent is negative for money out)
+    // Calculate transfers for this category
+    // Transfers TO this category add money (positive), transfers FROM subtract (negative)
+    let transfers = 0
+    if (currentMonth?.transfers) {
+      currentMonth.transfers.forEach(t => {
+        if (t.to_category_id === catId) {
+          transfers += t.amount // Money coming in
+        }
+        if (t.from_category_id === catId) {
+          transfers -= t.amount // Money going out
+        }
+      })
+    }
+
+    // Calculate adjustments for this category
+    // Adjustment amount is applied directly (positive = add, negative = subtract)
+    let adjustments = 0
+    if (currentMonth?.adjustments) {
+      adjustments = currentMonth.adjustments
+        .filter(a => a.category_id === catId)
+        .reduce((sum, a) => sum + a.amount, 0)
+    }
+
+    // end_balance = start + allocated + spent + transfers + adjustments
     balances[catId] = {
       category_id: catId,
       start_balance: startBalance,
       allocated,
       spent,
-      end_balance: startBalance + allocated + spent,
+      transfers,
+      adjustments,
+      end_balance: startBalance + allocated + spent + transfers + adjustments,
     }
   })
 

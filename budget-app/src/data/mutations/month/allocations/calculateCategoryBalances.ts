@@ -7,6 +7,7 @@
 
 import type { MonthDocument, CategoryMonthBalance } from '@types'
 import { roundCurrency } from '@utils'
+import { isNoCategory } from '../../../constants'
 
 /**
  * Calculate category balances for a month.
@@ -36,6 +37,25 @@ export function calculateCategoryBalancesForMonth(
 
   const expenses = monthData.expenses ?? []
 
+  // Calculate transfers per category
+  const transfersMap: Record<string, number> = {}
+  for (const transfer of monthData.transfers || []) {
+    if (!isNoCategory(transfer.from_category_id)) {
+      transfersMap[transfer.from_category_id] = (transfersMap[transfer.from_category_id] || 0) - transfer.amount
+    }
+    if (!isNoCategory(transfer.to_category_id)) {
+      transfersMap[transfer.to_category_id] = (transfersMap[transfer.to_category_id] || 0) + transfer.amount
+    }
+  }
+
+  // Calculate adjustments per category
+  const adjustmentsMap: Record<string, number> = {}
+  for (const adjustment of monthData.adjustments || []) {
+    if (!isNoCategory(adjustment.category_id)) {
+      adjustmentsMap[adjustment.category_id] = (adjustmentsMap[adjustment.category_id] || 0) + adjustment.amount
+    }
+  }
+
   return categoryIds.map(catId => {
     // Start balance comes from existing category balance (preserves previous month's end)
     const existingBal = existingBalances[catId]
@@ -50,13 +70,19 @@ export function calculateCategoryBalancesForMonth(
       .filter(e => e.category_id === catId)
       .reduce((sum, e) => sum + e.amount, 0))
 
-    // end_balance = start + allocated + spent (spent is negative for money out)
+    // Get transfers and adjustments for this category
+    const transfers = roundCurrency(transfersMap[catId] ?? 0)
+    const adjustments = roundCurrency(adjustmentsMap[catId] ?? 0)
+
+    // end_balance = start + allocated + spent + transfers + adjustments
     return {
       category_id: catId,
       start_balance: startBalance,
       allocated,
       spent,
-      end_balance: roundCurrency(startBalance + allocated + spent),
+      transfers,
+      adjustments,
+      end_balance: roundCurrency(startBalance + allocated + spent + transfers + adjustments),
     }
   })
 }

@@ -3,10 +3,10 @@
  *
  * Updates account groups in the budget document.
  *
- * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ * Uses React Query's native optimistic update pattern.
  */
 
-import { createOptimisticMutation } from '../../infrastructure'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { AccountGroupsMap, FirestoreData } from '@types'
@@ -46,61 +46,64 @@ interface UpdateAccountGroupsResult {
   accountGroups: AccountGroupsMap
 }
 
-// ============================================================================
-// INTERNAL HOOK
-// ============================================================================
-
-const useUpdateAccountGroupsInternal = createOptimisticMutation<
-  UpdateAccountGroupsParams,
-  UpdateAccountGroupsResult,
-  BudgetData
->({
-  optimisticUpdate: (params) => {
-    const { budgetId, accountGroups } = params
-
-    return {
-      cacheKey: queryKeys.budget(budgetId),
-      transform: (cachedData) => {
-        if (!cachedData) {
-          return cachedData as unknown as BudgetData
-        }
-
-        return {
-          ...cachedData,
-          accountGroups,
-        }
-      },
-    }
-  },
-
-  mutationFn: async (params) => {
-    const { budgetId, accountGroups } = params
-    const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
-
-    await writeBudgetData({
-      budgetId,
-      updates: { account_groups: cleanedGroups },
-      description: 'saving updated account groups (user edited group settings)',
-    })
-
-    return { accountGroups }
-  },
-})
+interface MutationContext {
+  previousData: BudgetData | undefined
+}
 
 // ============================================================================
-// PUBLIC HOOK
+// HOOK
 // ============================================================================
 
 export function useUpdateAccountGroups() {
-  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateAccountGroupsInternal()
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation<UpdateAccountGroupsResult, Error, UpdateAccountGroupsParams, MutationContext>({
+    onMutate: async (params) => {
+      const { budgetId, accountGroups } = params
+      const queryKey = queryKeys.budget(budgetId)
+
+      await queryClient.cancelQueries({ queryKey })
+
+      const previousData = queryClient.getQueryData<BudgetData>(queryKey)
+
+      // Optimistically update the cache
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKey, {
+          ...previousData,
+          accountGroups,
+        })
+      }
+
+      return { previousData }
+    },
+
+    mutationFn: async (params) => {
+      const { budgetId, accountGroups } = params
+      const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
+
+      await writeBudgetData({
+        budgetId,
+        updates: { account_groups: cleanedGroups },
+        description: 'saving updated account groups (user edited group settings)',
+      })
+
+      return { accountGroups }
+    },
+
+    onError: (_error, params, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(params.budgetId), context.previousData)
+      }
+    },
+  })
 
   const updateAccountGroups = {
-    mutate: (params: UpdateAccountGroupsParams) => mutate(params),
-    mutateAsync: (params: UpdateAccountGroupsParams) => mutateAsync(params),
-    isPending,
-    isError,
-    error,
-    reset,
+    mutate: (params: UpdateAccountGroupsParams) => mutation.mutate(params),
+    mutateAsync: (params: UpdateAccountGroupsParams) => mutation.mutateAsync(params),
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
   }
 
   return { updateAccountGroups }

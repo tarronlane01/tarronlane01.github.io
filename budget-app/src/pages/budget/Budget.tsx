@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -126,7 +126,7 @@ function Budget() {
     month: currentMonth,
     error: monthError,
     isLoading: isMonthLoading,
-  } = useBudgetMonth(
+  } = useMonthData(
     isBudgetDataLoaded ? selectedBudgetId : null,
     currentYear,
     currentMonthNumber

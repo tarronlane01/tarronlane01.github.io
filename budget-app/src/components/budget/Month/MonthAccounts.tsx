@@ -8,7 +8,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { FinancialAccount } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
@@ -56,7 +56,7 @@ function getNetChangeColor(value: number): string {
 export function MonthAccounts() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
   const { accounts, accountGroups, monthMap } = useBudgetData()
-  const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
   // Check if current month needs recalculation from budget's month_map
@@ -198,8 +198,8 @@ export function MonthAccounts() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Start, Income, Expenses, Net Change, End
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr',
+        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
       }}>
         {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
@@ -218,6 +218,8 @@ export function MonthAccounts() {
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Start</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Income</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Expenses</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Transfers</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Adjust</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>End</div>
             </>
@@ -237,6 +239,12 @@ export function MonthAccounts() {
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getExpenseColor(accountBalanceTotals.expenses) }}>
                 {formatSignedCurrency(accountBalanceTotals.expenses)}
+              </div>
+              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(accountBalanceTotals.transfers) }}>
+                {formatSignedCurrencyAlways(accountBalanceTotals.transfers)}
+              </div>
+              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(accountBalanceTotals.adjustments) }}>
+                {formatSignedCurrencyAlways(accountBalanceTotals.adjustments)}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(netChangeTotal) }}>
                 {formatSignedCurrencyAlways(netChangeTotal)}
@@ -286,10 +294,12 @@ export function MonthAccounts() {
               start: acc.start + bal.start_balance,
               income: acc.income + bal.income,
               expenses: acc.expenses + bal.expenses,
+              transfers: acc.transfers + bal.transfers,
+              adjustments: acc.adjustments + bal.adjustments,
               netChange: acc.netChange + bal.net_change,
               end: acc.end + bal.end_balance,
             }
-          }, { start: 0, income: 0, expenses: 0, netChange: 0, end: 0 })
+          }, { start: 0, income: 0, expenses: 0, transfers: 0, adjustments: 0, netChange: 0, end: 0 })
 
           return (
             <AccountGroupRows
@@ -313,10 +323,12 @@ export function MonthAccounts() {
               start: acc.start + bal.start_balance,
               income: acc.income + bal.income,
               expenses: acc.expenses + bal.expenses,
+              transfers: acc.transfers + bal.transfers,
+              adjustments: acc.adjustments + bal.adjustments,
               netChange: acc.netChange + bal.net_change,
               end: acc.end + bal.end_balance,
             }
-          }, { start: 0, income: 0, expenses: 0, netChange: 0, end: 0 })
+          }, { start: 0, income: 0, expenses: 0, transfers: 0, adjustments: 0, netChange: 0, end: 0 })
 
           return (
             <AccountGroupRows

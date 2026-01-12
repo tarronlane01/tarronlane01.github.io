@@ -8,6 +8,12 @@ import type { Category, CategoryMonthBalance } from '@types'
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getCategoryBalanceColor, getAllocatedColor, getSpendColor } from '../../ui'
 import { colors, tentativeValue } from '@styles/shared'
 
+// Helper color function for transfers/adjustments - positive=green, negative=red, zero=grey
+function getTransferColor(value: number): string {
+  if (value === 0) return colors.zero
+  return value > 0 ? colors.success : colors.error
+}
+
 // Shared styles for full-height field containers with centered content
 const fieldContainer = {
   alignSelf: 'stretch' as const,
@@ -140,6 +146,31 @@ export function MobileBalanceRow({ category, balance, localAllocation, previousM
           </span>
         </div>
       </div>
+
+      {/* Show transfers and adjustments if non-zero */}
+      {(balance.transfers !== 0 || balance.adjustments !== 0) && (
+        <div style={{
+          marginTop: '0.5rem',
+          paddingTop: '0.5rem',
+          borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.5rem 1rem',
+          fontSize: '0.7rem',
+          opacity: 0.7,
+        }}>
+          {balance.transfers !== 0 && (
+            <span style={{ color: getTransferColor(balance.transfers) }}>
+              {formatSignedCurrencyAlways(balance.transfers)} transfers
+            </span>
+          )}
+          {balance.adjustments !== 0 && (
+            <span style={{ color: getTransferColor(balance.adjustments) }}>
+              {formatSignedCurrencyAlways(balance.adjustments)} adjust
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Percentage equation - only in draft mode for percentage-based categories */}
       {isDraftMode && isPercentageBased && (

@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useBudget } from '@contexts'
+import { useUpdateAccounts, useUpdateAccountGroups } from '@data/mutations/budget'
 import { useBudgetData } from './useBudgetData'
 import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '@types'
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'
@@ -13,18 +15,40 @@ export interface AccountWithId extends FinancialAccount {
 }
 
 export function useAccountsPage() {
+  const { selectedBudgetId } = useBudget()
+
   const {
     budget: currentBudget,
     accounts,
     accountGroups,
-    saveAccounts,
-    saveAccountGroups,
-    saveAccountsAndGroups,
     setAccountsOptimistic,
     setAccountGroupsOptimistic,
   } = useBudgetData()
 
+  // Mutations - imported directly
+  const { updateAccounts } = useUpdateAccounts()
+  const { updateAccountGroups } = useUpdateAccountGroups()
+
   const [error, setError] = useState<string | null>(null)
+
+  // Helper functions to wrap mutations with budgetId check
+  const saveAccounts = useCallback(async (newAccounts: AccountsMap) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await updateAccounts.mutateAsync({ budgetId: selectedBudgetId, accounts: newAccounts })
+  }, [selectedBudgetId, updateAccounts])
+
+  const saveAccountGroups = useCallback(async (newGroups: AccountGroupsMap) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await updateAccountGroups.mutateAsync({ budgetId: selectedBudgetId, accountGroups: newGroups })
+  }, [selectedBudgetId, updateAccountGroups])
+
+  const saveAccountsAndGroups = useCallback(async (newAccounts: AccountsMap, newGroups: AccountGroupsMap) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await Promise.all([
+      updateAccounts.mutateAsync({ budgetId: selectedBudgetId, accounts: newAccounts }),
+      updateAccountGroups.mutateAsync({ budgetId: selectedBudgetId, accountGroups: newGroups }),
+    ])
+  }, [selectedBudgetId, updateAccounts, updateAccountGroups])
 
   // Organize accounts by group (excluding hidden)
   const accountsByGroup = useMemo(() => {

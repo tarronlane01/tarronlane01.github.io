@@ -11,8 +11,9 @@
  * - useCategoryDragDrop: Drag and drop state and handlers
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useBudget } from '@contexts'
+import { useUpdateCategories, useUpdateCategoryGroups } from '@data/mutations/budget'
 import type { Category, CategoriesMap, CategoryGroup } from '@types'
 import { useBudgetData } from './useBudgetData'
 import { useCategoryBalances } from './useCategoryBalances'
@@ -33,21 +34,41 @@ export function useCategoriesPage() {
   // Context: identifiers and current month
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
 
-  // Hook: budget data and mutations
+  // Hook: budget data (read-only)
   const {
     budget: currentBudget,
     categories,
     categoryGroups,
     isLoading,
-    saveCategories,
-    saveCategoryGroups,
-    saveCategoriesAndGroups,
     setCategoriesOptimistic,
     setCategoryGroupsOptimistic,
     getOnBudgetTotal,
   } = useBudgetData()
 
+  // Mutations - imported directly
+  const { updateCategories } = useUpdateCategories()
+  const { updateCategoryGroups } = useUpdateCategoryGroups()
+
   const [error, setError] = useState<string | null>(null)
+
+  // Helper functions to wrap mutations with budgetId check
+  const saveCategories = useCallback(async (newCategories: CategoriesMap) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await updateCategories.mutateAsync({ budgetId: selectedBudgetId, categories: newCategories })
+  }, [selectedBudgetId, updateCategories])
+
+  const saveCategoryGroups = useCallback(async (newGroups: CategoryGroup[]) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await updateCategoryGroups.mutateAsync({ budgetId: selectedBudgetId, categoryGroups: newGroups })
+  }, [selectedBudgetId, updateCategoryGroups])
+
+  const saveCategoriesAndGroups = useCallback(async (newCategories: CategoriesMap, newGroups: CategoryGroup[]) => {
+    if (!selectedBudgetId) throw new Error('No budget selected')
+    await Promise.all([
+      updateCategories.mutateAsync({ budgetId: selectedBudgetId, categories: newCategories }),
+      updateCategoryGroups.mutateAsync({ budgetId: selectedBudgetId, categoryGroups: newGroups }),
+    ])
+  }, [selectedBudgetId, updateCategories, updateCategoryGroups])
 
   // Hook: category balances (loading, caching, reconciliation)
   const {

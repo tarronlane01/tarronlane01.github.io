@@ -3,26 +3,21 @@
  *
  * Adds a new income transaction to the month.
  *
- * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
- * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
- * 2. Updates cache instantly (form can close immediately)
- * 3. In background: uses cache if fresh, fetches if stale, then writes
- * 4. On error: automatic rollback to previous cache state
- *
- * CACHE-AWARE PATTERN:
- * - If cache is fresh: writes optimistic data directly (0 reads)
- * - If cache is stale: fetches fresh, applies change, writes (1 read)
+ * Uses React Query's native optimistic update pattern:
+ * 1. onMutate: Cancel queries, save previous state, apply optimistic update
+ * 2. mutationFn: Write to Firestore using the optimistic data
+ * 3. onError: Rollback to previous state
+ * 4. onSuccess: Cache is already correct from optimistic update
  */
 
-import { createOptimisticMutation } from '../../infrastructure'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { writeMonthData } from '@data'
-import { queryKeys, queryClient } from '@data/queryClient'
+import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { savePayeeIfNew } from '../../payees'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 // ============================================================================
 // TYPES
@@ -37,13 +32,16 @@ interface AddIncomeParams {
   date: string
   payee?: string
   description?: string
-  // Internal: shared between optimistic update and mutation
-  _incomeId?: string
-  _cacheWasFresh?: boolean
 }
 
 interface AddIncomeResult {
   updatedMonth: MonthDocument
+  newIncome: IncomeTransaction
+}
+
+interface MutationContext {
+  previousData: MonthQueryData | undefined
+  incomeId: string
   newIncome: IncomeTransaction
 }
 
@@ -68,91 +66,87 @@ function createIncomeObject(
 }
 
 // ============================================================================
-// INTERNAL HOOK
-// ============================================================================
-
-const useAddIncomeInternal = createOptimisticMutation<
-  AddIncomeParams,
-  AddIncomeResult,
-  MonthQueryData
->({
-  optimisticUpdate: (params) => {
-    const { budgetId, year, month } = params
-
-    // Check cache freshness BEFORE transforming (for mutationFn to use)
-    params._cacheWasFresh = isMonthCacheFresh(budgetId, year, month)
-
-    // Generate income ID upfront so optimistic and actual use same ID
-    const incomeId = `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    params._incomeId = incomeId
-
-    const newIncome = createIncomeObject(params, incomeId)
-
-    return {
-      cacheKey: queryKeys.month(budgetId, year, month),
-      transform: (cachedData) => {
-        if (!cachedData?.month) {
-          return cachedData as MonthQueryData
-        }
-
-        const optimisticMonth: MonthDocument = retotalMonth({
-          ...cachedData.month,
-          income: [...(cachedData.month.income || []), newIncome],
-          updated_at: new Date().toISOString(),
-        })
-
-        return { month: optimisticMonth }
-      },
-    }
-  },
-
-  mutationFn: async (params) => {
-    const { budgetId, year, month, accountId, payee, amount, _incomeId, _cacheWasFresh } = params
-
-    const incomeId = _incomeId!
-    const newIncome = createIncomeObject(params, incomeId)
-
-    let updatedMonth: MonthDocument
-
-    if (_cacheWasFresh) {
-      // Cache was fresh - optimistic data is accurate, just get it and write
-      const cachedMonth = await getMonthForMutation(budgetId, year, month, true)
-      updatedMonth = cachedMonth // Already has the income from optimistic update
-    } else {
-      // Cache was stale - fetch fresh, add income, compute totals
-      const freshMonth = await getMonthForMutation(budgetId, year, month, false)
-      updatedMonth = retotalMonth({
-        ...freshMonth,
-        income: [...(freshMonth.income || []), newIncome],
-        updated_at: new Date().toISOString(),
-      })
-    }
-
-    // Write to Firestore
-    await writeMonthData({ budgetId, month: updatedMonth, description: 'add income' })
-
-    // Update budget's account balance (income increases balance)
-    await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
-
-    // Save payee if new
-    if (payee?.trim()) {
-      const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
-      const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
-      if (updatedPayees) {
-        queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
-      }
-    }
-
-    return { updatedMonth, newIncome }
-  },
-})
-
-// ============================================================================
-// PUBLIC HOOK
+// HOOK
 // ============================================================================
 
 export function useAddIncome() {
-  const { mutateAsync, isPending, isError, error } = useAddIncomeInternal()
+  const queryClient = useQueryClient()
+
+  const mutation = useMutation<AddIncomeResult, Error, AddIncomeParams, MutationContext>({
+    // onMutate runs BEFORE mutationFn - this is where we do optimistic updates
+    onMutate: async (params) => {
+      const { budgetId, year, month } = params
+      const queryKey = queryKeys.month(budgetId, year, month)
+
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey })
+
+      // Snapshot the previous value for rollback
+      const previousData = queryClient.getQueryData<MonthQueryData>(queryKey)
+
+      // Generate income ID upfront so optimistic and actual use same ID
+      const incomeId = `income_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const newIncome = createIncomeObject(params, incomeId)
+
+      // Optimistically update the cache
+      if (previousData?.month) {
+        const optimisticMonth: MonthDocument = retotalMonth({
+          ...previousData.month,
+          income: [...(previousData.month.income || []), newIncome],
+          updated_at: new Date().toISOString(),
+        })
+        queryClient.setQueryData<MonthQueryData>(queryKey, { month: optimisticMonth })
+      }
+
+      // Return context for rollback and for mutationFn to use
+      return { previousData, incomeId, newIncome }
+    },
+
+    // mutationFn does the actual Firestore write
+    mutationFn: async (params) => {
+      const { budgetId, year, month, accountId, payee, amount } = params
+      const queryKey = queryKeys.month(budgetId, year, month)
+
+      // Get the optimistic data we just set (includes the new income)
+      const cachedData = queryClient.getQueryData<MonthQueryData>(queryKey)
+      if (!cachedData?.month) {
+        throw new Error('No month data in cache after optimistic update')
+      }
+
+      const updatedMonth = cachedData.month
+
+      // Write to Firestore
+      await writeMonthData({ budgetId, month: updatedMonth, description: 'add income' })
+
+      // Update budget's account balance (income increases balance)
+      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
+
+      // Save payee if new
+      if (payee?.trim()) {
+        const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+        const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
+        if (updatedPayees) {
+          queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
+        }
+      }
+
+      // Find the income we added (last one in the array)
+      const newIncome = updatedMonth.income?.[updatedMonth.income.length - 1]
+      if (!newIncome) {
+        throw new Error('Could not find new income in updated month')
+      }
+
+      return { updatedMonth, newIncome }
+    },
+
+    // onError rolls back the optimistic update
+    onError: (_error, params, context) => {
+      if (context?.previousData) {
+        const { budgetId, year, month } = params
+        queryClient.setQueryData(queryKeys.month(budgetId, year, month), context.previousData)
+      }
+    },
+  })
 
   const addIncome = async (
     budgetId: string,
@@ -164,7 +158,7 @@ export function useAddIncome() {
     payee?: string,
     description?: string
   ) => {
-    return mutateAsync({
+    return mutation.mutateAsync({
       budgetId,
       year,
       month,
@@ -178,8 +172,8 @@ export function useAddIncome() {
 
   return {
     addIncome,
-    isPending,
-    isError,
-    error,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
   }
 }

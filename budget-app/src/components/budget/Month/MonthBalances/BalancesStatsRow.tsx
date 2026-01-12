@@ -10,6 +10,8 @@ interface CategoryBalanceTotals {
   start: number
   allocated: number
   spent: number
+  transfers: number
+  adjustments: number
   end: number
 }
 
@@ -17,6 +19,8 @@ interface AccountBalanceTotals {
   start: number
   income: number
   expenses: number
+  transfers: number
+  adjustments: number
   netChange: number
   end: number
 }

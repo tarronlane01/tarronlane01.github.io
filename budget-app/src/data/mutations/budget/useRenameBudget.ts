@@ -3,14 +3,13 @@
  *
  * Provides mutation function to rename a budget.
  *
- * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation:
- * 1. Factory REQUIRES optimisticUpdate function - won't compile without it
- * 2. Updates cache instantly (UI reflects change immediately)
- * 3. In background: reads fresh data from Firestore, merges, writes
- * 4. On error: automatic rollback to previous cache state
+ * Uses React Query's native optimistic update pattern:
+ * 1. onMutate: Cancel queries, save previous state, apply optimistic update
+ * 2. mutationFn: Write to Firestore
+ * 3. onError: Rollback to previous state
  */
 
-import { createOptimisticMutation } from '../infrastructure'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import { writeBudgetData } from './writeBudgetData'
@@ -28,81 +27,68 @@ interface RenameBudgetResult {
   newName: string
 }
 
+interface MutationContext {
+  previousData: BudgetData | undefined
+}
+
 // ============================================================================
-// INTERNAL HOOK - Created via factory with REQUIRED optimistic update
+// HOOK
 // ============================================================================
 
-const useRenameBudgetInternal = createOptimisticMutation<
-  RenameBudgetParams,
-  RenameBudgetResult,
-  BudgetData
->({
-  // =========================================================================
-  // REQUIRED: Optimistic update function
-  // This is the enforcement mechanism - factory won't work without it
-  // =========================================================================
-  optimisticUpdate: (params) => {
-    const { budgetId, newName } = params
+export function useRenameBudget() {
+  const queryClient = useQueryClient()
 
-    return {
-      cacheKey: queryKeys.budget(budgetId),
-      transform: (cachedData) => {
-        if (!cachedData) {
-          return cachedData as unknown as BudgetData
-        }
+  const mutation = useMutation<RenameBudgetResult, Error, RenameBudgetParams, MutationContext>({
+    onMutate: async (params) => {
+      const { budgetId, newName } = params
+      const queryKey = queryKeys.budget(budgetId)
 
-        return {
-          ...cachedData,
+      await queryClient.cancelQueries({ queryKey })
+
+      const previousData = queryClient.getQueryData<BudgetData>(queryKey)
+
+      // Optimistically update the cache
+      if (previousData) {
+        queryClient.setQueryData<BudgetData>(queryKey, {
+          ...previousData,
           budget: {
-            ...cachedData.budget,
+            ...previousData.budget,
             name: newName.trim(),
           },
-        }
-      },
-    }
-  },
+        })
+      }
 
-  // =========================================================================
-  // REQUIRED: Actual mutation function
-  // =========================================================================
-  mutationFn: async (params) => {
-    const { budgetId, newName } = params
-    const trimmedName = newName.trim()
+      return { previousData }
+    },
 
-    await writeBudgetData({
-      budgetId,
-      updates: { name: trimmedName },
-      description: `renaming budget to "${trimmedName}"`,
-    })
+    mutationFn: async (params) => {
+      const { budgetId, newName } = params
+      const trimmedName = newName.trim()
 
-    return { newName: trimmedName }
-  },
-})
+      await writeBudgetData({
+        budgetId,
+        updates: { name: trimmedName },
+        description: `renaming budget to "${trimmedName}"`,
+      })
 
-// ============================================================================
-// PUBLIC HOOK - Maintains backwards-compatible API
-// ============================================================================
+      return { newName: trimmedName }
+    },
 
-/**
- * Hook providing mutation function to rename a budget.
- *
- * Returns an object with renameBudget mutation that can be called with
- * mutate() or mutateAsync().
- */
-export function useRenameBudget() {
-  const { mutate, mutateAsync, isPending, isError, error, reset } = useRenameBudgetInternal()
+    onError: (_error, params, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.budget(params.budgetId), context.previousData)
+      }
+    },
+  })
 
-  // Wrap in an object to maintain the same API as before
   const renameBudget = {
-    mutate: (params: RenameBudgetParams) => mutate(params),
-    mutateAsync: (params: RenameBudgetParams) => mutateAsync(params),
-    isPending,
-    isError,
-    error,
-    reset,
+    mutate: (params: RenameBudgetParams) => mutation.mutate(params),
+    mutateAsync: (params: RenameBudgetParams) => mutation.mutateAsync(params),
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
   }
 
-  return {
-    renameBudget,
-  }
+  return { renameBudget }
 }

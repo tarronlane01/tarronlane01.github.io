@@ -124,9 +124,34 @@ export async function processMonth(
     // Get adjustment for this category (from transfers and adjustments)
     const adjustment = categoryAdjustments[catId] ?? 0
 
+    // Calculate transfers and adjustments separately for this category
+    const categoryTransfers = roundCurrency(
+      transfers
+        .filter(t => t.from_category_id === catId || t.to_category_id === catId)
+        .reduce((sum, t) => {
+          if (t.from_category_id === catId) return sum - t.amount
+          if (t.to_category_id === catId) return sum + t.amount
+          return sum
+        }, 0)
+    )
+
+    const categoryAdjustmentsTotal = roundCurrency(
+      adjustments
+        .filter(a => a.category_id === catId)
+        .reduce((sum, a) => sum + a.amount, 0)
+    )
+
     // end_balance = start + allocated + spent + adjustments (from transfers/adjustments)
     const endBalance = roundCurrency(startBalance + allocated + spent + adjustment)
-    return { category_id: catId, start_balance: startBalance, allocated, spent, end_balance: endBalance }
+    return {
+      category_id: catId,
+      start_balance: startBalance,
+      allocated,
+      spent,
+      transfers: categoryTransfers,
+      adjustments: categoryAdjustmentsTotal,
+      end_balance: endBalance,
+    }
   })
 
   // Update running balances for next month
@@ -171,11 +196,16 @@ export async function processMonth(
     // Use running balance for start (from previous month's end balance)
     const startBalance = roundCurrency(runningAccountBalances[accountId] ?? 0)
 
+    // Store transfers and adjustments separately
+    const accountTransfers = roundCurrency(transfersOut + transfersIn)
+
     return {
       account_id: accountId,
       start_balance: startBalance,
       income: accountIncome,
       expenses: accountExpenses,
+      transfers: accountTransfers,
+      adjustments: adjustmentTotal,
       net_change: netChange,
       end_balance: roundCurrency(startBalance + netChange),
     }

@@ -3,10 +3,10 @@
  *
  * Updates the sort order of feedback items in a document.
  *
- * USES ENFORCED OPTIMISTIC UPDATES via createOptimisticMutation.
+ * Uses React Query's native optimistic update pattern.
  */
 
-import { createOptimisticMutation } from '../infrastructure'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { FeedbackItem, FeedbackData } from '@data/queries/feedback'
 import { writeFeedbackData } from './writeFeedbackData'
@@ -25,71 +25,73 @@ interface UpdateSortOrderResult {
   items: FeedbackItem[]
 }
 
+interface MutationContext {
+  previousData: FeedbackData | undefined
+}
+
 // ============================================================================
-// INTERNAL HOOK
+// HOOK
 // ============================================================================
 
-const useUpdateSortOrderInternal = createOptimisticMutation<
-  UpdateSortOrderParams,
-  UpdateSortOrderResult,
-  FeedbackData
->({
-  optimisticUpdate: (params) => {
-    const { docId, items } = params
+export function useUpdateSortOrder() {
+  const queryClient = useQueryClient()
 
-    // Build a map of new sort orders from the items array
-    const sortOrderMap = new Map<string, number>()
-    items.forEach((item) => {
-      sortOrderMap.set(item.id, item.sort_order)
-    })
+  const mutation = useMutation<UpdateSortOrderResult, Error, UpdateSortOrderParams, MutationContext>({
+    onMutate: async (params) => {
+      const { docId, items } = params
+      const queryKey = queryKeys.feedback()
 
-    return {
-      cacheKey: queryKeys.feedback(),
-      transform: (cachedData) => {
-        if (!cachedData) {
-          return cachedData as unknown as FeedbackData
-        }
+      await queryClient.cancelQueries({ queryKey })
 
-        // Update sort orders for items in this document
-        return {
-          items: cachedData.items.map((item) => {
+      const previousData = queryClient.getQueryData<FeedbackData>(queryKey)
+
+      // Build a map of new sort orders from the items array
+      const sortOrderMap = new Map<string, number>()
+      items.forEach((item) => {
+        sortOrderMap.set(item.id, item.sort_order)
+      })
+
+      // Optimistically update the cache
+      if (previousData) {
+        queryClient.setQueryData<FeedbackData>(queryKey, {
+          items: previousData.items.map((item) => {
             if (item.doc_id === docId && sortOrderMap.has(item.id)) {
               return { ...item, sort_order: sortOrderMap.get(item.id)! }
             }
             return item
           }),
-        }
-      },
-    }
-  },
+        })
+      }
 
-  mutationFn: async (params) => {
-    const { docId, items } = params
+      return { previousData }
+    },
 
-    await writeFeedbackData({
-      docId,
-      items,
-      description: 'saving reordered feedback items',
-    })
+    mutationFn: async (params) => {
+      const { docId, items } = params
 
-    return { docId, items }
-  },
-})
+      await writeFeedbackData({
+        docId,
+        items,
+        description: 'saving reordered feedback items',
+      })
 
-// ============================================================================
-// PUBLIC HOOK
-// ============================================================================
+      return { docId, items }
+    },
 
-export function useUpdateSortOrder() {
-  const { mutate, mutateAsync, isPending, isError, error, reset } = useUpdateSortOrderInternal()
+    onError: (_error, _params, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKeys.feedback(), context.previousData)
+      }
+    },
+  })
 
   const updateSortOrder = {
-    mutate: (params: UpdateSortOrderParams) => mutate(params),
-    mutateAsync: (params: UpdateSortOrderParams) => mutateAsync(params),
-    isPending,
-    isError,
-    error,
-    reset,
+    mutate: (params: UpdateSortOrderParams) => mutation.mutate(params),
+    mutateAsync: (params: UpdateSortOrderParams) => mutation.mutateAsync(params),
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error,
+    reset: mutation.reset,
   }
 
   return { updateSortOrder }

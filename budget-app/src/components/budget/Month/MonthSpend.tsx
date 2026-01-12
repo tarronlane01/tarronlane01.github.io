@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
+import { useAddExpense, useUpdateExpense, useDeleteExpense } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
 import { Button, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '@styles/shared'
 import { ExpenseForm } from '../Spend'
 import { ExpenseGridRow } from './ExpenseGridRow'
-import { logUserAction, getDefaultFormDate } from '@utils'
+import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
 import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -26,13 +27,12 @@ const columnHeaderStyle: React.CSSProperties = {
 export function MonthSpend() {
   const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups, categories, categoryGroups } = useBudgetData()
-  const {
-    month: currentMonth,
-    isLoading: monthLoading,
-    addExpense,
-    updateExpense,
-    deleteExpense,
-  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth, isLoading: monthLoading } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Expense mutations - imported directly
+  const { addExpense } = useAddExpense()
+  const { updateExpense } = useUpdateExpense()
+  const { deleteExpense } = useDeleteExpense()
 
   const isMobile = useIsMobile()
   const [error, setError] = useState<string | null>(null)
@@ -80,11 +80,12 @@ export function MonthSpend() {
   // Handle expense operations
   // Note: Mutations handle optimistic cache updates internally
   function handleAddExpense(amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
+    if (!selectedBudgetId) return
     setError(null)
     setShowAddExpense(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this expense belongs to
-    const [expenseYear, expenseMonth] = date.split('-').map(Number)
+    const { year: expenseYear, month: expenseMonth } = parseDateToYearMonth(date)
 
     // Navigate to target month if different
     if (expenseYear !== currentYear || expenseMonth !== currentMonthNumber) {
@@ -92,30 +93,32 @@ export function MonthSpend() {
       setCurrentMonthNumber(expenseMonth)
     }
 
-    // Mutation handles optimistic update and Firestore write
-    addExpense(amount, categoryId, accountId, date, payee, description, cleared)
+    // Call mutation directly with explicit params
+    addExpense(selectedBudgetId, expenseYear, expenseMonth, amount, categoryId, accountId, date, payee, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add expense')
       })
   }
 
   function handleUpdateExpense(expenseId: string, amount: number, categoryId: string, accountId: string, date: string, payee?: string, description?: string, cleared?: boolean) {
+    if (!selectedBudgetId) return
     setError(null)
     setEditingExpenseId(null) // Close form immediately - mutation handles optimistic update
 
-    // Mutation handles optimistic update and Firestore write
-    updateExpense(expenseId, amount, categoryId, accountId, date, payee, description, cleared)
+    // Call mutation directly with explicit params
+    updateExpense(selectedBudgetId, currentYear, currentMonthNumber, expenseId, amount, categoryId, accountId, date, payee, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to update expense')
       })
   }
 
   function handleDeleteExpense(expenseId: string) {
+    if (!selectedBudgetId) return
     if (!confirm('Are you sure you want to delete this expense?')) return
     setError(null)
 
-    // Mutation handles optimistic update and Firestore delete
-    deleteExpense(expenseId).catch(err => {
+    // Call mutation directly with explicit params
+    deleteExpense(selectedBudgetId, currentYear, currentMonthNumber, expenseId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete expense')
     })
   }

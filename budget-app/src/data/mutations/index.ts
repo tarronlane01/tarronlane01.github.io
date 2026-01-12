@@ -2,24 +2,19 @@
  * Mutation Hooks Exports
  *
  * Mutations are organized by domain:
- * - infrastructure/ - Core optimistic mutation factory and utilities
+ * - infrastructure/ - Core mutation utilities (legacy factory kept for reference)
  * - budget/ - Budget document mutations (accounts, categories, rename)
  * - month/ - Month document mutations (income, expenses, allocations)
  * - user/ - User-related mutations (budget creation, invites)
  * - feedback/ - Feedback mutations
  * - payees/ - Payee mutations
  *
- * ARCHITECTURE: All mutations should use createOptimisticMutation factory
- * to enforce optimistic updates. Direct useMutation imports are blocked by ESLint.
+ * ARCHITECTURE: All mutations use React Query's native useMutation with optimistic updates.
+ * The pattern is:
+ * 1. onMutate: Cancel queries, save previous state, apply optimistic update
+ * 2. mutationFn: Write to Firestore
+ * 3. onError: Rollback to previous state
  */
-
-// Optimistic mutation factory - use this for all new mutations
-export {
-  createOptimisticMutation,
-  type OptimisticMutationConfig,
-  type OptimisticUpdateConfig,
-  type OptimisticMutationResult,
-} from './infrastructure'
 
 // Month write operations
 export {

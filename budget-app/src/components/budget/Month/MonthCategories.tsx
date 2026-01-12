@@ -8,7 +8,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useAllocationsPage, useBudgetMonth } from '@hooks'
+import { useBudgetData, useAllocationsPage, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
 import { ErrorAlert } from '../../ui'
@@ -26,7 +26,7 @@ import { columnHeaderStyle, getRecalcPhaseLabel } from './MonthCategoriesStyles'
 export function MonthCategories() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
   const { categories, categoryGroups, monthMap } = useBudgetData()
-  const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
   // Check if current month needs recalculation from budget's month_map
@@ -144,7 +144,8 @@ export function MonthCategories() {
       {/* CSS Grid container */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : isDraftMode ? '2fr 1fr 200px 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 1fr 1fr 120px',
+        // Category, Start, Allocated, Spent, Transfers, Adjustments, Net Change, End, All-Time
+        gridTemplateColumns: isMobile ? '1fr' : isDraftMode ? '2fr 1fr 200px 1fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 120px',
       }}>
         {/* Sticky wrapper using subgrid */}
         <div style={{ gridColumn: '1 / -1', position: 'sticky', top: 0, zIndex: 49, backgroundColor: '#242424', display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : 'subgrid' }}>
@@ -180,6 +181,8 @@ export function MonthCategories() {
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Start</div>
               <div style={{ ...columnHeaderStyle, textAlign: isDraftMode ? 'center' : 'right' }}>Allocated</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Spent</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Transfers</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Adjust</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>End</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>All-Time</div>
@@ -214,8 +217,8 @@ export function MonthCategories() {
           const groupTotals = groupCats.reduce((acc, [catId]) => {
             const bal = getCategoryBalance(catId)
             if (!bal) return acc
-            return { start: acc.start + bal.start_balance, allocated: acc.allocated + bal.allocated, spent: acc.spent + bal.spent, end: acc.end + bal.end_balance }
-          }, { start: 0, allocated: 0, spent: 0, end: 0 })
+            return { start: acc.start + bal.start_balance, allocated: acc.allocated + bal.allocated, spent: acc.spent + bal.spent, transfers: acc.transfers + bal.transfers, adjustments: acc.adjustments + bal.adjustments, end: acc.end + bal.end_balance }
+          }, { start: 0, allocated: 0, spent: 0, transfers: 0, adjustments: 0, end: 0 })
 
           return (
             <CategoryGroupRows key={group.id} name={group.name} categories={groupCats} groupTotals={groupTotals}
@@ -231,8 +234,8 @@ export function MonthCategories() {
           const ungroupedTotals = ungroupedCats.reduce((acc, [catId]) => {
             const bal = getCategoryBalance(catId)
             if (!bal) return acc
-            return { start: acc.start + bal.start_balance, allocated: acc.allocated + bal.allocated, spent: acc.spent + bal.spent, end: acc.end + bal.end_balance }
-          }, { start: 0, allocated: 0, spent: 0, end: 0 })
+            return { start: acc.start + bal.start_balance, allocated: acc.allocated + bal.allocated, spent: acc.spent + bal.spent, transfers: acc.transfers + bal.transfers, adjustments: acc.adjustments + bal.adjustments, end: acc.end + bal.end_balance }
+          }, { start: 0, allocated: 0, spent: 0, transfers: 0, adjustments: 0, end: 0 })
 
           return (
             <CategoryGroupRows key="ungrouped" name="Uncategorized" categories={ungroupedCats} groupTotals={ungroupedTotals}

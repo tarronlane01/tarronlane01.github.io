@@ -20,7 +20,7 @@ import {
 /**
  * Round all numeric values in a balance object
  */
-function roundBalanceValues<T extends { start_balance?: number; end_balance?: number; allocated?: number; spent?: number; income?: number; expenses?: number; net_change?: number }>(
+function roundBalanceValues<T extends { start_balance?: number; end_balance?: number; allocated?: number; spent?: number; income?: number; expenses?: number; transfers?: number; adjustments?: number; net_change?: number }>(
   balance: T
 ): T {
   const result = { ...balance }
@@ -30,6 +30,8 @@ function roundBalanceValues<T extends { start_balance?: number; end_balance?: nu
   if (result.spent !== undefined) result.spent = roundCurrency(result.spent)
   if (result.income !== undefined) result.income = roundCurrency(result.income)
   if (result.expenses !== undefined) result.expenses = roundCurrency(result.expenses)
+  if (result.transfers !== undefined) result.transfers = roundCurrency(result.transfers)
+  if (result.adjustments !== undefined) result.adjustments = roundCurrency(result.adjustments)
   if (result.net_change !== undefined) result.net_change = roundCurrency(result.net_change)
   return result
 }
@@ -144,7 +146,9 @@ function fixMonthPrecision(
       const hasIssue = needsPrecisionFix(cb.start_balance ?? 0) ||
         needsPrecisionFix(cb.end_balance ?? 0) ||
         needsPrecisionFix(cb.allocated ?? 0) ||
-        needsPrecisionFix(cb.spent ?? 0)
+        needsPrecisionFix(cb.spent ?? 0) ||
+        needsPrecisionFix(cb.transfers ?? 0) ||
+        needsPrecisionFix(cb.adjustments ?? 0)
       if (hasIssue) {
         updatedBalances.push(roundBalanceValues(cb))
         result.categoryBalancesFixed++
@@ -164,6 +168,8 @@ function fixMonthPrecision(
         needsPrecisionFix(ab.end_balance ?? 0) ||
         needsPrecisionFix(ab.income ?? 0) ||
         needsPrecisionFix(ab.expenses ?? 0) ||
+        needsPrecisionFix(ab.transfers ?? 0) ||
+        needsPrecisionFix(ab.adjustments ?? 0) ||
         needsPrecisionFix(ab.net_change ?? 0)
       if (hasIssue) {
         updatedBalances.push(roundBalanceValues(ab))

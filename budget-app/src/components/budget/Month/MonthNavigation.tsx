@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '@contexts'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { colors } from '@styles/shared'
 import { MONTH_NAMES } from '@constants'
 import { RecalculateAllButton } from './RecalculateAllButton'
@@ -38,7 +38,7 @@ export function MonthNavigation({
     setCurrentMonthNumber,
   } = useBudget()
   const { budget: currentBudget, monthMap } = useBudgetData()
-  const { month: currentMonth } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   // Navigation bounds
   const prevMonth = getPrevMonth(currentYear, currentMonthNumber)

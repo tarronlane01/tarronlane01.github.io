@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useBudget } from '@contexts'
 import { useBudgetData } from '@hooks'
+import { useUpdateAccounts, useUpdateCategories } from '@data/mutations/budget'
 import { queryClient, queryKeys, getFutureMonths, writeMonthData } from '@data'
 // eslint-disable-next-line no-restricted-imports -- Recalculation needs direct Firestore access
 import { readDocByPath, queryCollection } from '@firestore'
@@ -23,7 +24,11 @@ interface RecalculateAllButtonProps {
 
 export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAllButtonProps) {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, accounts, saveCategories, saveAccounts } = useBudgetData()
+  const { categories, accounts } = useBudgetData()
+
+  // Mutations - imported directly
+  const { updateAccounts } = useUpdateAccounts()
+  const { updateCategories } = useUpdateCategories()
 
   const [isRecomputing, setIsRecomputing] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -140,7 +145,7 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
       Object.entries(accounts).forEach(([accId, acc]) => {
         updatedAccounts[accId] = { ...acc, balance: runningAccountBalances[accId] ?? 0 }
       })
-      await saveAccounts(updatedAccounts)
+      await updateAccounts.mutateAsync({ budgetId: selectedBudgetId, accounts: updatedAccounts })
 
       // Update budget with final category balances
       setResults({ status: 'updating_budget', monthsFound: monthsToProcess.length, monthsProcessed: monthsToProcess.length, totalIncomeRecalculated, totalExpensesRecalculated })
@@ -149,7 +154,7 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
       Object.entries(categories).forEach(([catId, cat]) => {
         updatedCategories[catId] = { ...cat, balance: runningCategoryBalances[catId] ?? 0 }
       })
-      await saveCategories(updatedCategories)
+      await updateCategories.mutateAsync({ budgetId: selectedBudgetId, categories: updatedCategories })
 
       for (const m of monthsToProcess) {
         queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, m.year, m.month) })

@@ -1,20 +1,23 @@
 import { useState, type FormEvent } from 'react'
 import { useBudget } from '@contexts'
 import { useBudgetData } from '@hooks'
+import { useInviteUser, useRevokeUser } from '@data/mutations/user'
 import { logUserAction } from '@utils/actionLogger'
 
 function Users() {
   // Context: identifiers only
-  const { currentUserId } = useBudget()
+  const { selectedBudgetId, currentUserId } = useBudget()
 
-  // Hook: budget data and mutations
+  // Hook: budget data (read-only)
   const {
     budget: currentBudget,
     budgetUserIds,
     acceptedUserIds,
-    inviteUser,
-    revokeUser,
   } = useBudgetData()
+
+  // User mutations - imported directly
+  const { inviteUser } = useInviteUser()
+  const { revokeUser } = useRevokeUser()
 
   const [newUserId, setNewUserId] = useState('')
   const [isInviting, setIsInviting] = useState(false)
@@ -27,7 +30,7 @@ function Users() {
 
   async function handleInviteUser(e: FormEvent) {
     e.preventDefault()
-    if (!newUserId.trim() || !currentBudget) return
+    if (!newUserId.trim() || !currentBudget || !selectedBudgetId) return
 
     logUserAction('SUBMIT', 'Invite User Form')
     setIsInviting(true)
@@ -35,7 +38,7 @@ function Users() {
     setSuccess(null)
 
     try {
-      await inviteUser(newUserId.trim())
+      await inviteUser.mutateAsync({ budgetId: selectedBudgetId, userId: newUserId.trim() })
       setNewUserId('')
       setSuccess('Invite sent! The user can now accept the invitation from their account.')
     } catch (err) {
@@ -46,7 +49,7 @@ function Users() {
   }
 
   async function handleRevokeUser(userIdToRevoke: string) {
-    if (!currentBudget) return
+    if (!currentBudget || !selectedBudgetId) return
 
     if (userIdToRevoke === currentBudget.owner_id) {
       setError('Cannot revoke the budget owner')
@@ -70,7 +73,7 @@ function Users() {
     setSuccess(null)
 
     try {
-      await revokeUser(userIdToRevoke)
+      await revokeUser.mutateAsync({ budgetId: selectedBudgetId, userId: userIdToRevoke })
       setSuccess(hasAccepted ? 'User access revoked.' : 'Invitation cancelled.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke user')
@@ -380,4 +383,3 @@ function Users() {
 }
 
 export default Users
-

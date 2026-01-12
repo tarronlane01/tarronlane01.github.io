@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useApp, useBudget } from '@contexts'
 import type { Category, CategoriesMap, MonthDocument } from '@types'
-import { useBudgetData, useBudgetMonth } from './index'
+import { useBudgetData, useMonthData } from './index'
 import {
   useSaveDraftAllocations,
   useFinalizeAllocations,
@@ -47,7 +47,7 @@ export function useAllocationsPage() {
     isLoading: monthLoading,
     previousMonthIncome,
     areAllocationsFinalized,
-  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   // Calculate current month's total income
   const currentMonthIncome = useMemo(() => {

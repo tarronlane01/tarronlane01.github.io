@@ -4,20 +4,16 @@
  * Updates an existing income transaction.
  * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
  * Includes no-op detection to avoid unnecessary Firestore writes.
- *
- * CACHE-AWARE PATTERN:
- * - If cache is fresh: uses cached data (0 reads)
- * - If cache is stale: fetches fresh data (1 read)
  */
 
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data'
+import { readMonth } from '@data/queries/month'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
 import { useWriteMonthData } from '..'
 import { retotalMonth } from '../retotalMonth'
 import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isMonthCacheFresh, getMonthForMutation } from '../cacheAwareMonthRead'
 
 /**
  * Check if income values have actually changed (no-op detection)
@@ -62,9 +58,9 @@ export function useUpdateIncome() {
     payee?: string,
     description?: string
   ) => {
-    // Use cache if fresh, fetch if stale
-    const cacheIsFresh = isMonthCacheFresh(budgetId, year, month)
-    const monthData = await getMonthForMutation(budgetId, year, month, cacheIsFresh)
+    // Read month data (uses cache if fresh, fetches if stale via React Query's fetchQuery)
+    const monthData = await readMonth(budgetId, year, month)
+    if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Find old income to calculate delta and check for changes
     const oldIncome = (monthData.income || []).find(i => i.id === incomeId)
@@ -129,4 +125,3 @@ export function useUpdateIncome() {
     error: writeData.error,
   }
 }
-

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useBudgetMonth } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
+import { useAddTransfer, useUpdateTransfer, useDeleteTransfer } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
 import { Button } from '../../ui'
 import { colors } from '@styles/shared'
 import { TransferForm } from '../Transfers'
 import { TransferGridRow } from './TransferGridRow'
-import { logUserAction, getDefaultFormDate } from '@utils'
+import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
 import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Column header style for the grid
@@ -25,13 +26,12 @@ const columnHeaderStyle: React.CSSProperties = {
 export function MonthTransfers() {
   const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
   const { accounts, accountGroups, categories, categoryGroups } = useBudgetData()
-  const {
-    month: currentMonth,
-    isLoading: monthLoading,
-    addTransfer,
-    updateTransfer,
-    deleteTransfer,
-  } = useBudgetMonth(selectedBudgetId, currentYear, currentMonthNumber)
+  const { month: currentMonth, isLoading: monthLoading } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Transfer mutations - imported directly
+  const { addTransfer } = useAddTransfer()
+  const { updateTransfer } = useUpdateTransfer()
+  const { deleteTransfer } = useDeleteTransfer()
 
   const isMobile = useIsMobile()
   const [error, setError] = useState<string | null>(null)
@@ -76,11 +76,12 @@ export function MonthTransfers() {
     description?: string,
     cleared?: boolean
   ) {
+    if (!selectedBudgetId) return
     setError(null)
     setShowAddTransfer(false) // Close form immediately - mutation handles optimistic update
 
     // Parse the date to determine which month this transfer belongs to
-    const [transferYear, transferMonth] = date.split('-').map(Number)
+    const { year: transferYear, month: transferMonth } = parseDateToYearMonth(date)
 
     // Navigate to target month if different
     if (transferYear !== currentYear || transferMonth !== currentMonthNumber) {
@@ -88,8 +89,8 @@ export function MonthTransfers() {
       setCurrentMonthNumber(transferMonth)
     }
 
-    // Mutation handles optimistic update and Firestore write
-    addTransfer(amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
+    // Call mutation directly with explicit params
+    addTransfer(selectedBudgetId, transferYear, transferMonth, amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to add transfer')
       })
@@ -106,22 +107,24 @@ export function MonthTransfers() {
     description?: string,
     cleared?: boolean
   ) {
+    if (!selectedBudgetId) return
     setError(null)
     setEditingTransferId(null) // Close form immediately - mutation handles optimistic update
 
-    // Mutation handles optimistic update and Firestore write
-    updateTransfer(transferId, amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
+    // Call mutation directly with explicit params
+    updateTransfer(selectedBudgetId, currentYear, currentMonthNumber, transferId, amount, fromAccountId, toAccountId, fromCategoryId, toCategoryId, date, description, cleared)
       .catch(err => {
         setError(err instanceof Error ? err.message : 'Failed to update transfer')
       })
   }
 
   function handleDeleteTransfer(transferId: string) {
+    if (!selectedBudgetId) return
     if (!confirm('Are you sure you want to delete this transfer?')) return
     setError(null)
 
-    // Mutation handles optimistic update and Firestore delete
-    deleteTransfer(transferId).catch(err => {
+    // Call mutation directly with explicit params
+    deleteTransfer(selectedBudgetId, currentYear, currentMonthNumber, transferId).catch(err => {
       setError(err instanceof Error ? err.message : 'Failed to delete transfer')
     })
   }
@@ -308,4 +311,3 @@ export function MonthTransfers() {
     </div>
   )
 }
-

@@ -5,7 +5,7 @@ export { useScreenWidth } from './useScreenWidth'
 
 // Budget data hooks - import these directly in components
 export { useBudgetData } from './useBudgetData'
-export { useBudgetMonth } from './useBudgetMonth'
+export { useMonthData } from './useMonthData'
 
 // Page/Section-specific hooks
 export { useAccountsPage, type AccountWithId } from './useAccountsPage'

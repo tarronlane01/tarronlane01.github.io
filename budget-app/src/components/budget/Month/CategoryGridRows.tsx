@@ -11,6 +11,12 @@ import { colors, tentativeValue, groupTotalText, groupTotalRowBorder } from '@st
 import { MobileBalanceRow } from './CategoryBalanceRows'
 import { featureFlags } from '@constants'
 
+// Helper color function for transfers/adjustments - positive=green, negative=red, zero=grey
+function getTransferColor(value: number): string {
+  if (value === 0) return colors.zero
+  return value > 0 ? colors.success : colors.error
+}
+
 // =============================================================================
 // CATEGORY GROUP ROWS - renders as grid items using display: contents
 // =============================================================================
@@ -18,7 +24,7 @@ import { featureFlags } from '@constants'
 export interface CategoryGroupRowsProps {
   name: string
   categories: [string, Category][]
-  groupTotals: { start: number; allocated: number; spent: number; end: number }
+  groupTotals: { start: number; allocated: number; spent: number; transfers: number; adjustments: number; end: number }
   getCategoryBalance: (catId: string) => CategoryMonthBalance | undefined
   localAllocations: Record<string, string>
   savedAllocations: Record<string, number>
@@ -60,8 +66,8 @@ export function CategoryGroupRows({
     fontWeight: 600,
   }
 
-  // Net change = allocated + spent (spent is negative for money out)
-  const groupNetChange = groupTotals.allocated + groupTotals.spent
+  // Net change = allocated + spent + transfers + adjustments (spent is negative for money out)
+  const groupNetChange = groupTotals.allocated + groupTotals.spent + groupTotals.transfers + groupTotals.adjustments
 
   // Calculate group all-time total
   const groupAllTime = categories.reduce((sum, [catId, cat]) => {
@@ -92,6 +98,12 @@ export function CategoryGroupRows({
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getSpendColor(groupTotals.spent) }}>
             {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrency(groupTotals.spent)}</span>}
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getTransferColor(groupTotals.transfers) }}>
+            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.transfers)}</span>}
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getTransferColor(groupTotals.adjustments) }}>
+            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.adjustments)}</span>}
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupNetChange) }}>
             {featureFlags.showGroupTotals && <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatSignedCurrencyAlways(groupNetChange)}</span>}
@@ -241,8 +253,8 @@ function CategoryGridRow({
     boxSizing: 'border-box',
   }
 
-  // Net change = allocated + spent (spent is negative for money out)
-  const netChange = balance.allocated + balance.spent
+  // Net change = allocated + spent + transfers + adjustments (spent is negative for money out)
+  const netChange = balance.allocated + balance.spent + balance.transfers + balance.adjustments
 
   return (
     <div style={{ display: 'contents' }}>
@@ -342,6 +354,16 @@ function CategoryGridRow({
       {/* Spent */}
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getSpendColor(balance.spent) }}>
         {formatSignedCurrency(balance.spent)}
+      </div>
+
+      {/* Transfers */}
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getTransferColor(balance.transfers) }}>
+        {formatSignedCurrencyAlways(balance.transfers)}
+      </div>
+
+      {/* Adjustments */}
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getTransferColor(balance.adjustments) }}>
+        {formatSignedCurrencyAlways(balance.adjustments)}
       </div>
 
       {/* Net Change */}
