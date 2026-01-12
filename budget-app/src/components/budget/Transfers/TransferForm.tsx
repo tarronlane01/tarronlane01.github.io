@@ -245,10 +245,10 @@ export function TransferForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <FormField label="Date" htmlFor="transfer-date">
-              <DateInput id="transfer-date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <DateInput id="transfer-date" value={date} onChange={(e) => setDate(e.target.value)} required autoFocus />
             </FormField>
             <FormField label="Amount" htmlFor="transfer-amount">
-              <CurrencyInput id="transfer-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+              <CurrencyInput id="transfer-amount" value={amount} onChange={setAmount} placeholder="$0.00" required />
             </FormField>
           </div>
 
@@ -295,10 +295,10 @@ export function TransferForm({
         {/* Row 1: Date, Amount, From Category, From Account, Description */}
         <div style={{ display: 'grid', gridTemplateColumns: '5.5rem 5.5rem 1fr 1fr 1.5fr', gap: '0.75rem', alignItems: 'end' }}>
           <FormField label="Date" htmlFor="transfer-date">
-            <DateInput id="transfer-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
+            <DateInput id="transfer-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} autoFocus />
           </FormField>
           <FormField label="Amount" htmlFor="transfer-amount">
-            <CurrencyInput id="transfer-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+            <CurrencyInput id="transfer-amount" value={amount} onChange={setAmount} placeholder="$0.00" required />
           </FormField>
           {renderCategorySelect('from-category', fromCategoryId, setFromCategoryId, 'From Category')}
           {renderAccountSelect('from-account', fromAccountId, setFromAccountId, 'From Account')}

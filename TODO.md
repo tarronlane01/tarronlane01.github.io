@@ -1,14 +1,12 @@
+- let's make sure the multiple transactorion form components share component components so that we don't duplicate logic or have possibility for shared behavior to deviate.
 
-Noticed QOL
-- add a download month doc on the month dropdown (for admins). Have it download separate files for all the transaction types, to make it easier to parse the long json lists
+- add a download month doc on the month dropdown (for admins). Have it download separate files for all the transaction types, to make it easier to parse the long json lists. Have each file prefixed with the same thing so I can easily group them together when scanning through the downloads. include the date in the prfix. Can it also open those downloads in new tabs so I can look through the josn quickly.
 
 - Add pluses and equals in the month grid to help it easier to identify what values I'm looking at. For example (parenthesis around the components of the net change)
 
 - can we make sure all utils are in the utils folder (these are things that are independent functions that can bo isolated to take logic out of other places and avoid needing to repeat it)
 
 - separate mobile and desktkop vies into two files in the same folder, have the other logic in an other file (or set of files) so that both desktop and mobile can share the functionality. So I can open the file and see all the parts of the page in nice separate files to easily find the part I want to tweak.
-
-
 
 
 # Background timer for recalculating months, that get's reset if we make an update (like adding an ew income line) to support adding lots of lines in short succession

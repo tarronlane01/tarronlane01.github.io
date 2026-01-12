@@ -3,6 +3,7 @@
 **Manual review before deploying:**
 - Remove any dead code introduced in this session
 - Restruture any code that should conform to newly created patterns or systems
+- Make sure all changes work well on desktop and mobile
 
 **Then**
 Deploy using the publish script from the budget-app directory, ensuring commit message is 10 words or less:

@@ -250,11 +250,11 @@ export function TransactionForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <FormField label="Date" htmlFor="txn-date">
-              <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required autoFocus />
             </FormField>
             <FormField label={showSignToggle ? (isNegative ? 'Amount (Expense)' : 'Amount (Refund)') : 'Amount'} htmlFor="txn-amount">
               {showSignToggle ? (
-                <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                <div className="currency-with-sign" style={{ display: 'flex', alignItems: 'stretch' }}>
                   <button
                     type="button"
                     onClick={() => setIsNegative(!isNegative)}
@@ -270,7 +270,6 @@ export function TransactionForm({
                       onChange={setAmount}
                       placeholder="$0.00"
                       required
-                      autoFocus
                       style={{
                         borderTopLeftRadius: 0,
                         borderBottomLeftRadius: 0,
@@ -281,7 +280,7 @@ export function TransactionForm({
                   </div>
                 </div>
               ) : (
-                <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+                <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required />
               )}
             </FormField>
           </div>
@@ -323,7 +322,7 @@ export function TransactionForm({
     <FormWrapper actionName={submitLabel} onSubmit={handleSubmit}>
       <div style={{ display: 'grid', gridTemplateColumns: wideGridCols, gap: '1rem', alignItems: 'end' }}>
         <FormField label="Date" htmlFor="txn-date">
-          <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} />
+          <DateInput id="txn-date" value={date} onChange={(e) => setDate(e.target.value)} required style={inputStyle} autoFocus />
         </FormField>
         <FormField label="Payee" htmlFor="txn-payee">
           <PayeeAutocomplete id="txn-payee" value={payee} onChange={setPayee} payees={payees} placeholder={payeePlaceholder} />
@@ -332,7 +331,7 @@ export function TransactionForm({
         <FormField label={accountLabel} htmlFor="txn-account">{accountSelect}</FormField>
         <FormField label={showSignToggle ? (isNegative ? 'Amount (−)' : 'Amount (+)') : 'Amount'} htmlFor="txn-amount">
           {showSignToggle ? (
-            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            <div className="currency-with-sign" style={{ display: 'flex', alignItems: 'stretch' }}>
               <button
                 type="button"
                 onClick={() => setIsNegative(!isNegative)}
@@ -348,7 +347,6 @@ export function TransactionForm({
                   onChange={setAmount}
                   placeholder="$0.00"
                   required
-                  autoFocus
                   style={{
                     borderTopLeftRadius: 0,
                     borderBottomLeftRadius: 0,
@@ -359,7 +357,7 @@ export function TransactionForm({
               </div>
             </div>
           ) : (
-            <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required autoFocus />
+            <CurrencyInput id="txn-amount" value={amount} onChange={setAmount} placeholder="$0.00" required />
           )}
         </FormField>
         <FormField label="Description" htmlFor="txn-description">

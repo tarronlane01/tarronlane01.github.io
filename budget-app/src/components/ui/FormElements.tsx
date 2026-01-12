@@ -77,6 +77,7 @@ export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
 interface DateInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
   value?: string // YYYY-MM-DD format
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  autoFocus?: boolean
 }
 
 // Format date string (YYYY-MM-DD) to readable format (Dec 1)
@@ -91,13 +92,29 @@ function formatDateDisplay(dateString: string | undefined): string {
   }
 }
 
-export function DateInput({ value, onChange, style, ...props }: DateInputProps) {
+export function DateInput({ value, onChange, style, autoFocus, ...props }: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const displayValue = formatDateDisplay(value)
+
+  // Auto-focus the container on mount if autoFocus is true
+  useEffect(() => {
+    if (autoFocus) {
+      containerRef.current?.focus()
+    }
+  }, [autoFocus])
 
   // Open the date picker when clicking anywhere in the field
   function handleClick() {
     inputRef.current?.showPicker?.()
+  }
+
+  // Handle keyboard navigation
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      inputRef.current?.showPicker?.()
+    }
   }
 
   return (
@@ -119,9 +136,12 @@ export function DateInput({ value, onChange, style, ...props }: DateInputProps) 
         }}
         {...props}
       />
-      {/* Visible display showing formatted date */}
+      {/* Visible display showing formatted date - focusable for keyboard nav */}
       <div
+        ref={containerRef}
+        tabIndex={0}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         style={{
           ...inputStyle,
           cursor: 'pointer',

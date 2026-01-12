@@ -66,6 +66,23 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* Consistent focus styles for all form elements */
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex="0"]:focus {
+  outline: 2px solid #007AFF;
+}
+
+/* Currency input with sign toggle - outline surrounds the whole group */
+.currency-with-sign:focus-within {
+  outline: 2px solid #007AFF;
+  border-radius: 4px;
+}
+.currency-with-sign input:focus {
+  outline: none;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

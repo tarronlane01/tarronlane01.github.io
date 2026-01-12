@@ -12,9 +12,10 @@ interface PayeeAutocompleteProps {
   onChange: (value: string) => void
   payees: string[]
   placeholder?: string
+  autoFocus?: boolean
 }
 
-export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = 'Enter payee name' }: PayeeAutocompleteProps) {
+export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = 'Enter payee name', autoFocus }: PayeeAutocompleteProps) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -84,6 +85,7 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoComplete="off"
+        autoFocus={autoFocus}
         style={inputStyle}
       />
       {showSuggestions && suggestions.length > 0 && (
