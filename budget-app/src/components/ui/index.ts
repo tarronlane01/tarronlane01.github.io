@@ -33,4 +33,5 @@ export { BudgetNavBar } from './BudgetNavBar'
 export { ContentContainer } from './ContentContainer'
 export { SectionTotalHeader } from './SectionTotalHeader'
 export { DebtBorder } from './DebtBorder'
+export { PrerequisiteWarning } from './PrerequisiteWarning'
 

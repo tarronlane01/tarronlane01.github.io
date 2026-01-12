@@ -8,6 +8,15 @@
 
 - separate mobile and desktkop vies into two files in the same folder, have the other logic in an other file (or set of files) so that both desktop and mobile can share the functionality. So I can open the file and see all the parts of the page in nice separate files to easily find the part I want to tweak.
 
+- download button for feedback, so I can save the code as todo-lists, merge, etc.
+
+- Sample budget create-data and upload (replace the seed files) Have files for each doc we'd upload, in folders by doc type, and update the import function to use this structure. Months should be folders with separate docs for the lists of transaction types, to make it easier to find the data I want to edit or review.
+
+- Better not-found page when going to page with no routes matching location warning would appear in the console
+
+- When no accounts or categories, don't show the ungruoped section. Only show if we have ungrouped accounts/categories.
+
+- Add off-budget to the account totals
 
 # Background timer for recalculating months, that get's reset if we make an update (like adding an ew income line) to support adding lots of lines in short succession
 

@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
 import { useAddAdjustment, useUpdateAdjustment, useDeleteAdjustment } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
-import { Button } from '../../ui'
+import { Button, PrerequisiteWarning } from '../../ui'
 import { colors } from '@styles/shared'
 import { AdjustmentForm } from '../Adjustments'
 import { AdjustmentGridRow } from './AdjustmentGridRow'
@@ -172,6 +171,7 @@ export function MonthAdjustments() {
                   actionName="Open Add Adjustment Form"
                   onClick={() => setShowAddAdjustment(true)}
                   disabled={Object.keys(categories).length === 0 && activeOnBudgetAccounts.length === 0}
+                  disabledReason="Create an account or category first"
                   style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
                 >
                   + Add Adjustment
@@ -196,12 +196,11 @@ export function MonthAdjustments() {
 
         {/* Warning messages - span all columns */}
         {activeOnBudgetAccounts.length === 0 && Object.keys(categories).length === 0 && (
-          <p style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1rem 0' }}>
-            You need to create at least one account or category before adding adjustments.{' '}
-            <Link to="/budget/accounts" style={{ opacity: 1 }}>
-              Manage accounts →
-            </Link>
-          </p>
+          <PrerequisiteWarning
+            message="You need to create at least one account or category before adding adjustments."
+            linkText="Manage accounts"
+            linkTo="/budget/settings/accounts"
+          />
         )}
 
         {/* Add Adjustment Form - spans all columns */}

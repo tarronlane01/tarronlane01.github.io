@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
 import { useAddExpense, useUpdateExpense, useDeleteExpense } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
-import { Button, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
+import { Button, formatSignedCurrencyAlways, getBalanceColor, PrerequisiteWarning } from '../../ui'
 import { colors } from '@styles/shared'
 import { ExpenseForm } from '../Spend'
 import { ExpenseGridRow } from './ExpenseGridRow'
@@ -187,6 +186,13 @@ export function MonthSpend() {
                   actionName="Open Add Expense Form"
                   onClick={() => setShowAddExpense(true)}
                   disabled={expenseAccounts.length === 0 || Object.keys(categories).length === 0}
+                  disabledReason={
+                    expenseAccounts.length === 0 && Object.keys(categories).length === 0
+                      ? "Create accounts and categories first"
+                      : expenseAccounts.length === 0
+                        ? "Create an expense account first"
+                        : "Create a category first"
+                  }
                   style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
                 >
                   + Add Expense
@@ -212,24 +218,23 @@ export function MonthSpend() {
 
         {/* Warning messages - span all columns */}
         {expenseAccounts.length === 0 && (
-          <p style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1rem 0' }}>
-            {Object.keys(accounts).length === 0
-              ? 'You need to create at least one account before adding expenses.'
-              : 'No accounts are set up for expenses. Edit an account and enable "Show in expense list".'
-            }{' '}
-            <Link to="/budget/accounts" style={{ opacity: 1 }}>
-              Manage accounts →
-            </Link>
-          </p>
+          <PrerequisiteWarning
+            message={
+              Object.keys(accounts).length === 0
+                ? 'You need to create at least one account before adding expenses.'
+                : 'No accounts are set up for expenses. Edit an account and enable "Show in expense list".'
+            }
+            linkText="Manage accounts"
+            linkTo="/budget/settings/accounts"
+          />
         )}
 
         {Object.keys(categories).length === 0 && (
-          <p style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1rem 0' }}>
-            You need to create at least one category before adding expenses.{' '}
-            <Link to="/budget/settings/categories" style={{ opacity: 1 }}>
-              Create categories →
-            </Link>
-          </p>
+          <PrerequisiteWarning
+            message="You need to create at least one category before adding expenses."
+            linkText="Create categories"
+            linkTo="/budget/settings/categories"
+          />
         )}
 
         {/* Add Expense Form - spans all columns */}

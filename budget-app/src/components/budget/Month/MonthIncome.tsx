@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import { usePayeesQuery } from '@data'
 import { useAddIncome, useUpdateIncome, useDeleteIncome } from '@data/mutations/month'
 import type { FinancialAccount } from '@types'
-import { Button, formatCurrency, getBalanceColor } from '../../ui'
+import { Button, formatCurrency, getBalanceColor, PrerequisiteWarning } from '../../ui'
 import { colors } from '@styles/shared'
 import { IncomeForm } from '../Income'
 import { IncomeGridRow } from './IncomeGridRow'
@@ -181,7 +180,17 @@ export function MonthIncome() {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
               {!showAddIncome && (
-                <Button actionName="Open Add Income Form" onClick={() => setShowAddIncome(true)} disabled={incomeAccounts.length === 0} style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}>
+                <Button
+                  actionName="Open Add Income Form"
+                  onClick={() => setShowAddIncome(true)}
+                  disabled={incomeAccounts.length === 0}
+                  disabledReason={
+                    Object.keys(accounts).length === 0
+                      ? "Create an account first"
+                      : "Set up an income account first"
+                  }
+                  style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+                >
                   + Add Income
                 </Button>
               )}
@@ -214,15 +223,15 @@ export function MonthIncome() {
 
         {/* Warning messages - span all columns */}
         {incomeAccounts.length === 0 && (
-          <p style={{ gridColumn: '1 / -1', opacity: 0.6, fontSize: '0.9rem', padding: '1rem 0' }}>
-            {Object.keys(accounts).length === 0
-              ? 'You need to create at least one account before adding income.'
-              : 'No accounts are set up for income deposits. Edit an account and enable "Show in income deposit list".'
-            }{' '}
-            <Link to="/budget/accounts" style={{ opacity: 1 }}>
-              Manage accounts →
-            </Link>
-          </p>
+          <PrerequisiteWarning
+            message={
+              Object.keys(accounts).length === 0
+                ? 'You need to create at least one account before adding income.'
+                : 'No accounts are set up for income deposits. Edit an account and enable "Show in income deposit list".'
+            }
+            linkText="Manage accounts"
+            linkTo="/budget/settings/accounts"
+          />
         )}
 
         {/* Add Income Form - spans all columns */}
