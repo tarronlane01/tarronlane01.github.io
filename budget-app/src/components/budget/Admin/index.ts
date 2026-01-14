@@ -13,17 +13,13 @@ export {
   type MigrationStatus,
   type BudgetMigrationResult,
 } from './MigrationComponents'
-export { DatabaseCleanupCard } from './DatabaseCleanupCard'
-export { FeedbackMigrationCard } from './FeedbackMigrationCard'
-export { DeleteAllMonthsCard } from './DeleteAllMonthsCard'
-export { DeleteSampleUserBudgetCard } from './DeleteSampleUserBudgetCard'
-export { SeedImportCard } from './SeedImportCard'
-export { PrecisionCleanupCard } from './PrecisionCleanupCard'
-export { ExpenseToAdjustmentCard } from './ExpenseToAdjustmentCard'
-export { OrphanedIdCleanupCard } from './OrphanedIdCleanupCard'
-export { AdjustmentsToTransfersCard } from './AdjustmentsToTransfersCard'
-export { AccountCategoryValidationCard } from './AccountCategoryValidationCard'
-export { HiddenFieldMigrationCard } from './HiddenFieldMigrationCard'
-export { RestoreFromDiagnosticCard } from './RestoreFromDiagnosticCard'
 export { MigrationProgressModal } from './MigrationProgressModal'
 
+// Reorganized migration sections
+export * from './common'
+export * from './onetime'
+export * from './maintenance'
+export * from './utilities'
+
+// Seed Import (still used as a complex card with file upload/mapping UI)
+export { SeedImportCard } from './SeedImportCard'

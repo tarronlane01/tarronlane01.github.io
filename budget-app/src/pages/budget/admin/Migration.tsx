@@ -1,26 +1,39 @@
-import { useState } from 'react'
+/**
+ * Migration Page
+ *
+ * Reorganized into three main sections:
+ * 1. One-time Migrations - Run once to fix/update schema
+ * 2. Maintenance - Re-runnable validation and cleanup scripts
+ * 3. Utilities - Downloads, deletions, cache management
+ *
+ * Architecture:
+ * - Each section is in its own folder with a file per migration
+ * - Common components enforce consistent behavior
+ * - Backup prompts are baked into the architecture
+ */
+
 import { useFirebaseAuth } from '@hooks'
-import { useDatabaseCleanup, useFeedbackMigration, useDeleteAllMonths, useDeleteSampleUserBudget, usePrecisionCleanup, useExpenseToAdjustmentMigration, useOrphanedIdCleanup, useAdjustmentsToTransfersMigration, useAccountCategoryValidation, useHiddenFieldMigration, useDiagnosticDownload } from '@hooks'
-import { useRestoreFromDiagnostic } from '../../../hooks/migrations/useRestoreFromDiagnostic'
 import {
-  Spinner,
-  DatabaseCleanupCard,
-  FeedbackMigrationCard,
-  DeleteAllMonthsCard,
-  DeleteSampleUserBudgetCard,
-  SeedImportCard,
-  PrecisionCleanupCard,
-  ExpenseToAdjustmentCard,
-  OrphanedIdCleanupCard,
-  AdjustmentsToTransfersCard,
-  AccountCategoryValidationCard,
-  HiddenFieldMigrationCard,
-  RestoreFromDiagnosticCard,
-} from '../../../components/budget/Admin'
-import { Modal, Button } from '../../../components/ui'
+  useDatabaseCleanup,
+  useFeedbackMigration,
+  useDeleteAllMonths,
+  useDeleteSampleUserBudget,
+  usePrecisionCleanup,
+  useExpenseToAdjustmentMigration,
+  useOrphanedIdCleanup,
+  useAdjustmentsToTransfersMigration,
+  useAccountCategoryValidation,
+  useHiddenFieldMigration,
+  useDiagnosticDownload,
+} from '@hooks'
+import { useRestoreFromDiagnostic } from '../../../hooks/migrations/useRestoreFromDiagnostic'
+import { MigrationProgressModal, Spinner } from '../../../components/budget/Admin'
+import { OnetimeSection } from '../../../components/budget/Admin/onetime'
+import { MaintenanceSection } from '../../../components/budget/Admin/maintenance'
+import { UtilitySection } from '../../../components/budget/Admin/utilities'
 import { logUserAction } from '@utils/actionLogger'
 
-/** Clear ALL React Query caches and reload. Clears localStorage FIRST to avoid race condition with persister. */
+/** Clear ALL React Query caches and reload */
 function handleClearAllCachesAndReload() {
   try { localStorage.removeItem('BUDGET_APP_QUERY_CACHE') } catch { /* ignore */ }
   window.location.reload()
@@ -29,45 +42,102 @@ function handleClearAllCachesAndReload() {
 function Migration() {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
-  const [showReloadModal, setShowReloadModal] = useState(false)
 
-  // Migration hooks
+  // =========================================================================
+  // MIGRATION HOOKS
+  // =========================================================================
+
+  // One-time migrations
   const databaseCleanup = useDatabaseCleanup({ currentUser: current_user })
+  const hiddenFieldMigration = useHiddenFieldMigration({ currentUser: current_user })
   const feedbackMigration = useFeedbackMigration({ currentUser: current_user })
-  const deleteAllMonths = useDeleteAllMonths({ currentUser: current_user })
-  const deleteSampleUserBudget = useDeleteSampleUserBudget({ currentUser: current_user })
-  const precisionCleanup = usePrecisionCleanup({ currentUser: current_user })
+
+  // Maintenance migrations
+  const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
   const orphanedIdCleanup = useOrphanedIdCleanup({ currentUser: current_user })
   const expenseToAdjustment = useExpenseToAdjustmentMigration({ currentUser: current_user })
   const adjustmentsToTransfers = useAdjustmentsToTransfersMigration({ currentUser: current_user })
-  const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
-  const hiddenFieldMigration = useHiddenFieldMigration({ currentUser: current_user })
+  const precisionCleanup = usePrecisionCleanup({ currentUser: current_user })
+
+  // Utilities
   const diagnosticDownload = useDiagnosticDownload({ currentUser: current_user })
+  const deleteAllMonths = useDeleteAllMonths({ currentUser: current_user })
+  const deleteSampleUserBudget = useDeleteSampleUserBudget({ currentUser: current_user })
   const restoreFromDiagnostic = useRestoreFromDiagnostic()
 
-  // Scanning state for all
-  const isAnyScanning = databaseCleanup.isScanning || feedbackMigration.isScanning || deleteAllMonths.isScanning || deleteSampleUserBudget.isScanning || precisionCleanup.isScanning || expenseToAdjustment.isScanning || orphanedIdCleanup.isScanning || adjustmentsToTransfers.isScanning || hiddenFieldMigration.isScanning
-  const isAnyRunning = databaseCleanup.isRunning || feedbackMigration.isMigratingFeedback || deleteAllMonths.isDeleting || deleteSampleUserBudget.isDeleting || precisionCleanup.isRunning || expenseToAdjustment.isRunning || orphanedIdCleanup.isRunning || adjustmentsToTransfers.isRunning || hiddenFieldMigration.isRunning
+  // =========================================================================
+  // AGGREGATE STATE
+  // =========================================================================
 
-  // Refresh all - scans all migration statuses
+  const isAnyScanning =
+    databaseCleanup.isScanning ||
+    hiddenFieldMigration.isScanning ||
+    feedbackMigration.isScanning ||
+    accountCategoryValidation.isScanning ||
+    orphanedIdCleanup.isScanning ||
+    expenseToAdjustment.isScanning ||
+    adjustmentsToTransfers.isScanning ||
+    precisionCleanup.isScanning ||
+    deleteAllMonths.isScanning ||
+    deleteSampleUserBudget.isScanning
+
+  const isAnyRunning =
+    databaseCleanup.isRunning ||
+    hiddenFieldMigration.isRunning ||
+    feedbackMigration.isMigratingFeedback ||
+    orphanedIdCleanup.isRunning ||
+    expenseToAdjustment.isRunning ||
+    adjustmentsToTransfers.isRunning ||
+    precisionCleanup.isRunning ||
+    deleteAllMonths.isDeleting ||
+    deleteSampleUserBudget.isDeleting ||
+    diagnosticDownload.isDownloading ||
+    restoreFromDiagnostic.isRunning
+
+  // =========================================================================
+  // REFRESH ALL
+  // =========================================================================
+
   const handleRefreshAll = async () => {
     logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
+      // One-time
       databaseCleanup.scanStatus(),
+      hiddenFieldMigration.scanStatus(),
       feedbackMigration.scanStatus(),
-      deleteAllMonths.scanStatus(),
-      deleteSampleUserBudget.scanStatus(),
-      precisionCleanup.scan(),
+      // Maintenance
+      accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
       expenseToAdjustment.scanStatus(),
       adjustmentsToTransfers.scanStatus(),
-      hiddenFieldMigration.scanStatus(),
+      precisionCleanup.scan(),
+      // Utilities (that have scan)
+      deleteAllMonths.scanStatus(),
+      deleteSampleUserBudget.scanStatus(),
     ])
   }
+
+  // =========================================================================
+  // COMPUTED VALUES FOR FEEDBACK
+  // =========================================================================
+
+  const feedbackHasIssues = feedbackMigration.status && (
+    feedbackMigration.status.sanitizedDocuments.length > 0 ||
+    feedbackMigration.status.corruptedDocuments.length > 0
+  )
+  const feedbackTotalIssues = feedbackMigration.status
+    ? feedbackMigration.status.sanitizedDocuments.length + feedbackMigration.status.corruptedDocuments.length
+    : 0
+
+  // =========================================================================
+  // RENDER
+  // =========================================================================
 
   return (
     <div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h2 style={{ margin: 0 }}>Data Migrations</h2>
         <button
@@ -99,264 +169,165 @@ function Migration() {
         Run migrations to validate and fix your database. Click "Refresh All" to scan Firestore directly.
       </p>
 
-      <AccountCategoryValidationCard
-        hasData={!!accountCategoryValidation.status}
-        status={accountCategoryValidation.status}
-        report={accountCategoryValidation.report}
-        hasViolations={accountCategoryValidation.hasViolations}
-        violationCount={accountCategoryValidation.violationCount}
-        isScanning={accountCategoryValidation.isScanning}
-        onScan={accountCategoryValidation.scan}
+      {/* One-time Migrations Section */}
+      <OnetimeSection
         disabled={!current_user}
+        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
+        isDownloadingBackup={diagnosticDownload.isDownloading}
+        databaseCleanup={{
+          status: databaseCleanup.status,
+          hasData: !!databaseCleanup.status,
+          hasIssues: databaseCleanup.hasIssues,
+          totalIssues: databaseCleanup.totalIssues,
+          isScanning: databaseCleanup.isScanning,
+          isRunning: databaseCleanup.isRunning,
+          result: databaseCleanup.result,
+          scanStatus: databaseCleanup.scanStatus,
+          runCleanup: databaseCleanup.runCleanup,
+        }}
+        hiddenField={{
+          status: hiddenFieldMigration.status,
+          hasData: !!hiddenFieldMigration.status,
+          needsMigration: hiddenFieldMigration.needsMigration,
+          totalItemsToFix: hiddenFieldMigration.totalItemsToFix,
+          isScanning: hiddenFieldMigration.isScanning,
+          isRunning: hiddenFieldMigration.isRunning,
+          result: hiddenFieldMigration.result,
+          scanStatus: hiddenFieldMigration.scanStatus,
+          runMigration: hiddenFieldMigration.runMigration,
+        }}
+        feedback={{
+          status: feedbackMigration.status,
+          hasData: !!feedbackMigration.status,
+          hasIssues: !!feedbackHasIssues,
+          totalIssues: feedbackTotalIssues,
+          isScanning: feedbackMigration.isScanning,
+          isMigrating: feedbackMigration.isMigratingFeedback,
+          result: feedbackMigration.feedbackMigrationResult,
+          scanStatus: feedbackMigration.scanStatus,
+          migrateFeedbackDocuments: feedbackMigration.migrateFeedbackDocuments,
+        }}
       />
 
-      <HiddenFieldMigrationCard
-        hasData={!!hiddenFieldMigration.status}
-        status={hiddenFieldMigration.status}
-        needsMigration={hiddenFieldMigration.needsMigration}
-        totalItemsToFix={hiddenFieldMigration.totalItemsToFix}
-        isRunning={hiddenFieldMigration.isRunning}
-        result={hiddenFieldMigration.result}
-        onRunMigration={hiddenFieldMigration.runMigration}
-        onRefresh={hiddenFieldMigration.scanStatus}
-        isRefreshing={hiddenFieldMigration.isScanning}
+      {/* Maintenance Section */}
+      <MaintenanceSection
         disabled={!current_user}
+        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
+        isDownloadingBackup={diagnosticDownload.isDownloading}
+        accountCategoryValidation={{
+          status: accountCategoryValidation.status,
+          hasData: !!accountCategoryValidation.status,
+          hasViolations: accountCategoryValidation.hasViolations,
+          violationCount: accountCategoryValidation.violationCount,
+          isScanning: accountCategoryValidation.isScanning,
+          report: accountCategoryValidation.report,
+          scan: accountCategoryValidation.scan,
+        }}
+        orphanedIdCleanup={{
+          status: orphanedIdCleanup.status,
+          hasData: !!orphanedIdCleanup.status,
+          hasItemsToFix: orphanedIdCleanup.hasItemsToFix,
+          totalOrphaned: orphanedIdCleanup.status
+            ? orphanedIdCleanup.status.orphanedCategoryIds + orphanedIdCleanup.status.orphanedAccountIds
+            : 0,
+          isScanning: orphanedIdCleanup.isScanning,
+          isRunning: orphanedIdCleanup.isRunning,
+          result: orphanedIdCleanup.result,
+          scanStatus: orphanedIdCleanup.scanStatus,
+          runMigration: orphanedIdCleanup.runMigration,
+        }}
+        expenseToAdjustment={{
+          status: expenseToAdjustment.status,
+          hasData: !!expenseToAdjustment.status,
+          hasItemsToMigrate: expenseToAdjustment.hasItemsToMigrate,
+          totalToMigrate: expenseToAdjustment.status?.expensesToMigrate ?? 0,
+          isScanning: expenseToAdjustment.isScanning,
+          isRunning: expenseToAdjustment.isRunning,
+          result: expenseToAdjustment.result,
+          scanStatus: expenseToAdjustment.scanStatus,
+          runMigration: expenseToAdjustment.runMigration,
+        }}
+        adjustmentsToTransfers={{
+          status: adjustmentsToTransfers.status,
+          hasData: !!adjustmentsToTransfers.status,
+          hasPairsToConvert: adjustmentsToTransfers.hasPairsToConvert,
+          totalPairs: adjustmentsToTransfers.status?.pairsFound ?? 0,
+          isScanning: adjustmentsToTransfers.isScanning,
+          isRunning: adjustmentsToTransfers.isRunning,
+          result: adjustmentsToTransfers.result,
+          scanStatus: adjustmentsToTransfers.scanStatus,
+          runMigration: adjustmentsToTransfers.runMigration,
+        }}
+        precisionCleanup={{
+          status: precisionCleanup.status,
+          hasData: precisionCleanup.hasData,
+          hasIssues: precisionCleanup.hasIssues,
+          totalIssues: precisionCleanup.totalIssues,
+          isScanning: precisionCleanup.isScanning,
+          isRunning: precisionCleanup.isRunning,
+          result: precisionCleanup.result,
+          scan: precisionCleanup.scan,
+          runCleanup: precisionCleanup.runCleanup,
+        }}
       />
 
-      <OrphanedIdCleanupCard
-        hasData={!!orphanedIdCleanup.status}
-        status={orphanedIdCleanup.status}
-        hasItemsToFix={orphanedIdCleanup.hasItemsToFix}
-        isRunning={orphanedIdCleanup.isRunning}
-        result={orphanedIdCleanup.result}
-        onRunMigration={orphanedIdCleanup.runMigration}
-        onRefresh={orphanedIdCleanup.scanStatus}
-        isRefreshing={orphanedIdCleanup.isScanning}
+      {/* Utilities Section */}
+      <UtilitySection
         disabled={!current_user}
+        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
+        isDownloadingBackup={diagnosticDownload.isDownloading}
+        diagnosticDownload={{
+          isDownloading: diagnosticDownload.isDownloading,
+          progress: diagnosticDownload.progress,
+          error: diagnosticDownload.error,
+          downloadDiagnostics: diagnosticDownload.downloadDiagnostics,
+        }}
+        deleteAllMonths={{
+          status: deleteAllMonths.status,
+          hasData: !!deleteAllMonths.status,
+          monthsCount: deleteAllMonths.status?.monthsCount ?? 0,
+          budgetCount: deleteAllMonths.status?.budgetCount ?? 0,
+          isScanning: deleteAllMonths.isScanning,
+          isDeleting: deleteAllMonths.isDeleting,
+          deleteResult: deleteAllMonths.deleteResult,
+          deleteProgress: deleteAllMonths.deleteProgress,
+          scanStatus: deleteAllMonths.scanStatus,
+          deleteAllMonths: deleteAllMonths.deleteAllMonths,
+        }}
+        deleteSampleUserBudget={{
+          status: deleteSampleUserBudget.status,
+          hasData: !!deleteSampleUserBudget.status,
+          totalBudgets: deleteSampleUserBudget.status?.totalBudgets ?? 0,
+          totalMonths: deleteSampleUserBudget.status?.totalMonths ?? 0,
+          isScanning: deleteSampleUserBudget.isScanning,
+          isDeleting: deleteSampleUserBudget.isDeleting,
+          deleteResult: deleteSampleUserBudget.deleteResult,
+          deleteProgress: deleteSampleUserBudget.deleteProgress,
+          scanStatus: deleteSampleUserBudget.scanStatus,
+          deleteSampleUserBudget: deleteSampleUserBudget.deleteSampleUserBudget,
+        }}
+        restoreFromDiagnostic={{
+          status: restoreFromDiagnostic.status,
+          result: restoreFromDiagnostic.result,
+          isScanning: restoreFromDiagnostic.isScanning,
+          isRunning: restoreFromDiagnostic.isRunning,
+          scan: restoreFromDiagnostic.scan,
+          run: restoreFromDiagnostic.run,
+        }}
+        onClearCache={handleClearAllCachesAndReload}
       />
 
-      <ExpenseToAdjustmentCard
-        hasData={!!expenseToAdjustment.status}
-        status={expenseToAdjustment.status}
-        hasItemsToMigrate={expenseToAdjustment.hasItemsToMigrate}
-        isRunning={expenseToAdjustment.isRunning}
-        result={expenseToAdjustment.result}
-        onRunMigration={expenseToAdjustment.runMigration}
-        onRefresh={expenseToAdjustment.scanStatus}
-        isRefreshing={expenseToAdjustment.isScanning}
-        disabled={!current_user}
-      />
-
-      <AdjustmentsToTransfersCard
-        hasData={!!adjustmentsToTransfers.status}
-        status={adjustmentsToTransfers.status}
-        hasPairsToConvert={adjustmentsToTransfers.hasPairsToConvert}
-        isRunning={adjustmentsToTransfers.isRunning}
-        result={adjustmentsToTransfers.result}
-        onRunMigration={adjustmentsToTransfers.runMigration}
-        onRefresh={adjustmentsToTransfers.scanStatus}
-        isRefreshing={adjustmentsToTransfers.isScanning}
-        disabled={!current_user}
-      />
-
-      <PrecisionCleanupCard
-        hasData={precisionCleanup.hasData}
-        status={precisionCleanup.status}
-        hasIssues={precisionCleanup.hasIssues}
-        totalIssues={precisionCleanup.totalIssues}
-        isRunning={precisionCleanup.isRunning}
-        result={precisionCleanup.result}
-        onRunCleanup={precisionCleanup.runCleanup}
-        onRefresh={precisionCleanup.scan}
-        isRefreshing={precisionCleanup.isScanning}
-        disabled={!current_user}
-      />
-
-      <DatabaseCleanupCard
-        hasData={!!databaseCleanup.status}
-        status={databaseCleanup.status}
-        hasIssues={databaseCleanup.hasIssues}
-        totalIssues={databaseCleanup.totalIssues}
-        isRunning={databaseCleanup.isRunning}
-        result={databaseCleanup.result}
-        onRunCleanup={databaseCleanup.runCleanup}
-        onRefresh={databaseCleanup.scanStatus}
-        isRefreshing={databaseCleanup.isScanning}
-        disabled={!current_user}
-      />
-
-      <FeedbackMigrationCard
-        hasData={!!feedbackMigration.status}
-        status={feedbackMigration.status}
-        isMigrating={feedbackMigration.isMigratingFeedback}
-        onMigrate={feedbackMigration.migrateFeedbackDocuments}
-        onRefresh={feedbackMigration.scanStatus}
-        isRefreshing={feedbackMigration.isScanning}
-        disabled={!current_user}
-        migrationResult={feedbackMigration.feedbackMigrationResult}
-      />
-
-      <DeleteAllMonthsCard
-        hasData={!!deleteAllMonths.status}
-        monthsCount={deleteAllMonths.status?.monthsCount ?? 0}
-        budgetCount={deleteAllMonths.status?.budgetCount ?? 0}
-        monthsToDelete={deleteAllMonths.status?.monthsToDelete ?? []}
-        isDeleting={deleteAllMonths.isDeleting}
-        onDelete={deleteAllMonths.deleteAllMonths}
-        onRefresh={deleteAllMonths.scanStatus}
-        isRefreshing={deleteAllMonths.isScanning}
-        disabled={!current_user}
-        deleteResult={deleteAllMonths.deleteResult}
-        deleteProgress={deleteAllMonths.deleteProgress}
-      />
-
-      <DeleteSampleUserBudgetCard
-        hasData={!!deleteSampleUserBudget.status}
-        status={deleteSampleUserBudget.status}
-        isDeleting={deleteSampleUserBudget.isDeleting}
-        onDelete={deleteSampleUserBudget.deleteSampleUserBudget}
-        onRefresh={deleteSampleUserBudget.scanStatus}
-        isRefreshing={deleteSampleUserBudget.isScanning}
-        disabled={!current_user}
-        deleteResult={deleteSampleUserBudget.deleteResult}
-        deleteProgress={deleteSampleUserBudget.deleteProgress}
-      />
-
-      <SeedImportCard
-        disabled={!current_user}
-      />
-
-      {/* Diagnostic Download Card */}
-      <div style={{
-        background: 'color-mix(in srgb, currentColor 5%, transparent)',
-        borderRadius: '8px',
-        padding: '1rem',
-        marginBottom: '1rem',
-        border: '1px solid color-mix(in srgb, #17a2b8 30%, transparent)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1rem', color: '#17a2b8' }}>
-              📊 Diagnostic Download
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>
-              Downloads all budget and month data as JSON for troubleshooting balance discrepancies.
-              Includes stored vs calculated balances, transfers, adjustments, and full month breakdowns.
-            </p>
-            {diagnosticDownload.error && (
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#dc3545' }}>
-                Error: {diagnosticDownload.error}
-              </p>
-            )}
-            {diagnosticDownload.progress && (
-              <div style={{ marginTop: '0.5rem' }}>
-                <div style={{
-                  background: 'rgba(0,0,0,0.2)',
-                  borderRadius: '4px',
-                  height: '6px',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    background: '#17a2b8',
-                    height: '100%',
-                    width: `${diagnosticDownload.progress.percentComplete}%`,
-                    transition: 'width 0.3s',
-                  }} />
-                </div>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', opacity: 0.7 }}>
-                  {diagnosticDownload.progress.phase === 'reading' && 'Reading data from Firestore...'}
-                  {diagnosticDownload.progress.phase === 'analyzing' && `Analyzing budget ${diagnosticDownload.progress.current}/${diagnosticDownload.progress.total}...`}
-                  {diagnosticDownload.progress.phase === 'complete' && 'Download complete!'}
-                </p>
-              </div>
-            )}
-          </div>
-          <Button
-            variant="secondary"
-            actionName="Download Diagnostics"
-            onClick={diagnosticDownload.downloadDiagnostics}
-            disabled={!current_user || diagnosticDownload.isDownloading}
-            style={{ flexShrink: 0 }}
-          >
-            {diagnosticDownload.isDownloading ? (
-              <>
-                <Spinner noMargin /> Downloading...
-              </>
-            ) : (
-              '⬇️ Download JSON'
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Restore from Diagnostic Card */}
-      <RestoreFromDiagnosticCard
-        status={restoreFromDiagnostic.status}
-        result={restoreFromDiagnostic.result}
-        isScanning={restoreFromDiagnostic.isScanning}
-        isRunning={restoreFromDiagnostic.isRunning}
-        onScan={restoreFromDiagnostic.scan}
-        onRun={restoreFromDiagnostic.run}
-        disabled={!current_user}
-      />
-
-      {/* Info about migration scope */}
+      {/* Info Note */}
       <div style={{ background: 'color-mix(in srgb, currentColor 3%, transparent)', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
         <p style={{ margin: 0, opacity: 0.7 }}>
           <strong>Note:</strong> These migrations will process <strong>all budgets and months</strong> in the system, not just the ones you own or are invited to.
         </p>
       </div>
 
-      {/* Clear all caches button */}
-      <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'color-mix(in srgb, #ff6b6b 10%, transparent)', borderRadius: '8px', border: '1px solid color-mix(in srgb, #ff6b6b 30%, transparent)' }}>
-        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem' }}>
-          <strong>🗑️ Clear All Caches</strong>
-          <span style={{ opacity: 0.7, display: 'block', marginTop: '0.25rem' }}>If you're seeing stale data after running migrations, clear all cached data and reload to fetch fresh data from Firestore.</span>
-        </p>
-        <Button
-          variant="danger"
-          actionName="Open Clear Caches Modal"
-          onClick={() => setShowReloadModal(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-          }}
-        >
-          🔄 Clear All Caches & Reload
-        </Button>
-      </div>
-
-      {/* Confirmation modal for clearing caches and reloading */}
-      <Modal
-        isOpen={showReloadModal}
-        onClose={() => setShowReloadModal(false)}
-        title="Clear Caches & Reload?"
-      >
-        <p style={{ margin: '0 0 1rem 0', opacity: 0.8 }}>
-          This will clear all cached data from localStorage and reload the page.
-          The app will fetch fresh data from Firestore for everything.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <Button
-            variant="secondary"
-            actionName="Cancel Clear Caches"
-            onClick={() => setShowReloadModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            actionName="Confirm Clear Caches & Reload"
-            onClick={handleClearAllCachesAndReload}
-          >
-            Clear & Reload
-          </Button>
-        </div>
-      </Modal>
+      {/* Migration Progress Modal (auto-shown during migrations) */}
+      <MigrationProgressModal />
     </div>
   )
 }
 
 export default Migration
-
