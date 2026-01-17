@@ -28,8 +28,6 @@ export default function Account() {
         firebase_auth_hook.logout_firebase_user().then(function() {
             // Clear all React Query cache
             queryClient.clear()
-            // Clear persisted cache from localStorage
-            localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
             // Reload to fully clear app state
             window.location.href = '/'
         })
@@ -92,7 +90,6 @@ function LoginForm() {
 
         // Clear any stale cache from previous sessions before logging in
         queryClient.clear()
-        localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
 
         firebase_auth_hook.login_firebase_user(username, password).then(
             function() {

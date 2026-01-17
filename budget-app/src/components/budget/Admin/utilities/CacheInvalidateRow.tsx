@@ -47,7 +47,7 @@ export function CacheInvalidateRow({
         title="Clear Caches & Reload?"
       >
         <p style={{ margin: '0 0 1rem 0', opacity: 0.8 }}>
-          This will clear all cached data from localStorage and reload the page.
+          This will clear all cached data and reload the page.
           The app will fetch fresh data from Firestore for everything.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

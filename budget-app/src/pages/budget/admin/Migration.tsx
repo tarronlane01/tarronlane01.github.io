@@ -33,10 +33,11 @@ import { OnetimeSection } from '../../../components/budget/Admin/onetime'
 import { MaintenanceSection } from '../../../components/budget/Admin/maintenance'
 import { UtilitySection } from '../../../components/budget/Admin/utilities'
 import { logUserAction } from '@utils/actionLogger'
+import { queryClient } from '@data/queryClient'
 
 /** Clear ALL React Query caches and reload */
 function handleClearAllCachesAndReload() {
-  try { localStorage.removeItem('BUDGET_APP_QUERY_CACHE') } catch { /* ignore */ }
+  queryClient.clear()
   window.location.reload()
 }
 

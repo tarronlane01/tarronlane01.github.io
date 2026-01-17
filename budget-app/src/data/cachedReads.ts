@@ -3,7 +3,7 @@
  *
  * Provides React Query-backed read functions that can be called from anywhere
  * (not just React components). All reads go through queryClient.fetchQuery
- * to leverage caching and persistence.
+ * to leverage in-memory caching.
  *
  * Use these instead of direct Firestore calls for reads.
  */

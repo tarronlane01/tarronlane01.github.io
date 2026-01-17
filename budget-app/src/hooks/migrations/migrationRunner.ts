@@ -33,7 +33,7 @@
 import { queryClient } from '@data/queryClient'
 
 /**
- * Clear all React Query caches (in-memory and localStorage).
+ * Clear all React Query caches (in-memory only).
  * This is called automatically after every migration.
  */
 export function clearAllCaches(): void {
@@ -43,13 +43,6 @@ export function clearAllCaches(): void {
   queryClient.removeQueries({ queryKey: ['accessibleBudgets'] })
   queryClient.removeQueries({ queryKey: ['payees'] })
   queryClient.removeQueries({ queryKey: ['user'] })
-
-  // Clear localStorage persistence
-  try {
-    localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
-  } catch {
-    // localStorage access might fail in some contexts
-  }
 
   console.log('[Migration] All caches cleared')
 }

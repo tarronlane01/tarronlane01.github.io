@@ -80,7 +80,6 @@ export function MonthNavigation({
       // Clear caches
       queryClient.removeQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
       queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
-      localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
 
       const prev = getPrevMonth(currentYear, currentMonthNumber)
       setShowDeleteConfirm(false)

@@ -16,7 +16,7 @@ import { Settings, Accounts, Categories, Users as SettingsUsers } from './pages/
 import { Admin, AdminBudget, AdminFeedback, AdminMigration, AdminTests } from './pages/budget/admin'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
-import { FeedbackButton, CacheInvalidateButton } from './components/ui'
+import { FeedbackButton } from './components/ui'
 import { LoadingOverlay } from './components/app/LoadingOverlay'
 import type { type_user_context } from '@types'
 
@@ -104,7 +104,6 @@ function AppContent() {
                   </Route>
                 </Route>
               </Routes>
-              <CacheInvalidateButton />
               <FeedbackButton />
               <MigrationProgressModal />
             </BrowserRouter>

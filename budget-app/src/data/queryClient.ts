@@ -7,11 +7,9 @@
  * - No automatic refetch on window focus (avoids unnecessary reads)
  * - Refetch on mount when data is stale (ensures max 5 min staleness)
  * - Refetch on reconnect
- * - LocalStorage persistence via async storage persister (max 5 min age)
  */
 
 import { QueryClient } from '@tanstack/react-query'
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 
 // Cache timing constants
 export const STALE_TIME = 5 * 60 * 1000        // 5 minutes - data considered fresh
@@ -46,16 +44,6 @@ queryClient.getQueryCache().subscribe(event => {
       console.error('[RQ] Query FAILED:', query.queryKey, state.error)
     }
   }
-})
-
-// LocalStorage persister for React Query cache (async wrapper)
-export const localStoragePersister = createAsyncStoragePersister({
-  storage: typeof window !== 'undefined' ? {
-    getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
-    setItem: (key: string, value: string) => Promise.resolve(localStorage.setItem(key, value)),
-    removeItem: (key: string) => Promise.resolve(localStorage.removeItem(key)),
-  } : undefined,
-  key: 'BUDGET_APP_QUERY_CACHE',
 })
 
 // Query key factory - ensures consistent query keys

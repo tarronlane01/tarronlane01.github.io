@@ -1,9 +1,9 @@
-# Deploy
+# Let's deploy the code by following these instructions
 
-**Manual review before deploying:**
+**AI should review these items before deploying:**
 - Remove any dead code introduced in this session
 - Restruture any code that should conform to newly created patterns or systems
-- Make sure all changes work well on desktop and mobile
+- Make sure all changes have accounted for desktop vs mobile views
 
 **Then**
 Deploy using the publish script from the budget-app directory, ensuring commit message is 10 words or less:

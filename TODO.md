@@ -1,4 +1,9 @@
-I deleted an expense, and it optimistically updated the account balance, and it didn't load when I went to the accounts overview, but it should have triggered recalculation. I clicked the floating reload button at the bottom ofthe page and it shows the wrong pre-delete balance still. So something didn't get saved correctly.
+I want to revise how I'm handing recalculation to make a better user experience. I want to move away from the system of hmarking months as needing recalculation and then recalculating when I go to certain pages. Here's how I want it to work
+
+- Expand the feedback saved bottom banner so it it an also be used to show errors. Any console errors should show up on the page in red with the bottom banner. That way we can show the user if there was any errors in saving to firestore, or with syncing, etc.
+- Create a global background-saving bottom floating icon, that has a queue just like the global loading overlay, and components can hook into it to add items to the global background saving queue and they will make it show up with certain text, and they have a callback they can use to remove items from the queue once they're resolved. The floating bottom queue-loading indicator should display a throbber and the text of the top-most item in the queue, then as things resolve it should display the next-down item, until all items are resolved / removed from the queue at which point the floating loader should disappear.
+- All changes will update the cache, and recalculate locally, so user never is having to wait
+- Saves to firestore will happen immediately behind the scenes for the currently viewing document (current month, or the budget page)
 
 # Account Reconcilliation
 

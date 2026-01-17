@@ -20,7 +20,7 @@
  */
 
 // Query client and provider
-export { queryClient, queryKeys, localStoragePersister } from './queryClient'
+export { queryClient, queryKeys } from './queryClient'
 export { QueryProvider } from './QueryProvider'
 
 // ============================================================================

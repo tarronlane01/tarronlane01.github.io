@@ -23,7 +23,7 @@ export type { BudgetData }
  * Query hook for budget-level document
  *
  * Returns the complete budget data including accounts, categories, etc.
- * Data is cached for 24 hours and persisted to localStorage.
+ * Data is cached in-memory only and will be refetched on reload.
  *
  * @param budgetId - The budget ID to fetch
  * @param options - Additional query options

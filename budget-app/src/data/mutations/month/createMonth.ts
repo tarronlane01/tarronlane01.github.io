@@ -82,7 +82,6 @@ export async function createMonth(
   if (!budgetExists || !budgetData) {
     // Clear the user's cached data since their budget no longer exists
     queryClient.removeQueries({ queryKey: queryKeys.budget(budgetId) })
-    localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
 
     const errorMsg = `[createMonth] Budget ${budgetId} does not exist. ` +
       `It may have been deleted. Please refresh the page.`

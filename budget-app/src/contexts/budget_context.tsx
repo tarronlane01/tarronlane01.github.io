@@ -22,6 +22,7 @@ import {
   useAccessibleBudgetsQuery,
   fetchBudgetInviteStatus,
 } from '@data'
+import { queryClient } from '@data/queryClient'
 
 // Import types from centralized types file
 import type {
@@ -322,11 +323,9 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // CACHE UTILITIES
   // ==========================================================================
 
-  // Clear localStorage cache - should be followed by page reload
-  // Note: Don't call queryClient.clear() first - the async persister may write back
-  // to localStorage after we clear it. Just clear localStorage and reload.
+  // Clear in-memory cache - should be followed by page reload
   const clearCache = useCallback(() => {
-    localStorage.removeItem('BUDGET_APP_QUERY_CACHE')
+    queryClient.clear()
   }, [])
 
   // ==========================================================================
