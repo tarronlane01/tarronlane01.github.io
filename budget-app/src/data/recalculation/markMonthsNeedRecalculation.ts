@@ -113,6 +113,10 @@ export async function markMonthsNeedRecalculation(
     updated_at: new Date().toISOString(),
   }, `marking budget and ${markedCount} future months as needing recalculation`)
 
+  // Note: updateCacheWithMarking (called above) updates the React Query cache via setQueryData,
+  // which should trigger re-renders in components using useBudgetData/useBudgetQuery.
+  // No invalidation needed - the cache update is sufficient.
+
   return { markedCount, budgetUpdated: true }
 }
 
@@ -216,6 +220,10 @@ export async function markAllMonthsFromOrdinal(
     month_map: updatedMonthMap,
     updated_at: new Date().toISOString(),
   }, `marking ${markedCount} months from ${startingYear}/${startingMonth} as needing recalculation`)
+
+  // Note: updateCacheWithAllMonthsMarked (called above) updates the React Query cache via setQueryData,
+  // which should trigger re-renders in components using useBudgetData/useBudgetQuery.
+  // No invalidation needed - the cache update is sufficient.
 
   return { markedCount, budgetUpdated: true }
 }

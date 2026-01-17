@@ -77,6 +77,12 @@ export function recalculateMonth(
   month: MonthDocument,
   prevSnapshot: PreviousMonthSnapshot
 ): MonthDocument {
+  // Recalculate totals from transactions (ensures totals match actual transactions)
+  const income = month.income || []
+  const expenses = month.expenses || []
+  const totalIncome = roundCurrency(income.reduce((sum, inc) => sum + inc.amount, 0))
+  const totalExpenses = roundCurrency(expenses.reduce((sum, exp) => sum + exp.amount, 0))
+
   // Calculate category adjustments from transfers and adjustments (combined, for legacy compatibility)
   const categoryAdjustments = calculateCategoryAdjustments(month)
 
@@ -100,6 +106,8 @@ export function recalculateMonth(
 
   return {
     ...month,
+    total_income: totalIncome,
+    total_expenses: totalExpenses,
     previous_month_income: prevSnapshot.totalIncome,
     category_balances: categoryBalances,
     account_balances: accountBalances,

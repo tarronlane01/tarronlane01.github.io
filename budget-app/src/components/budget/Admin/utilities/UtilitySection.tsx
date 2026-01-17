@@ -2,23 +2,20 @@
  * Utility Section
  *
  * Contains utility actions that aren't migrations but are useful for administration:
- * - Download diagnostics
+ * - Budget backup & restore (download/upload zip)
  * - Delete months
  * - Delete sample user budget
  * - Cache invalidation
- * - Restore from diagnostic
- * - Seed import
  */
 
 import { MigrationSection, BackupPrompt, useBackupPrompt } from '../common'
-import { DiagnosticDownloadRow } from './DiagnosticDownloadRow'
+import { BudgetDownloadUploadRow } from './BudgetDownloadUploadRow'
 import { DeleteMonthsRow } from './DeleteMonthsRow'
 import { DeleteSampleUserRow } from './DeleteSampleUserRow'
 import { CacheInvalidateRow } from './CacheInvalidateRow'
-import { RestoreFromDiagnosticRow } from './RestoreFromDiagnosticRow'
-import { SeedImportRow } from './SeedImportRow'
 
-import type { DownloadProgress } from '@hooks/migrations/useDiagnosticDownload'
+import type { DownloadBudgetProgress } from '@hooks/migrations/useDownloadBudget'
+import type { UploadBudgetProgress, UploadBudgetStatus, UploadBudgetResult } from '@hooks/migrations/useUploadBudget'
 import type {
   DeleteAllMonthsStatus,
   DeleteAllMonthsResult,
@@ -29,19 +26,26 @@ import type {
   DeleteSampleUserBudgetResult,
   DeleteSampleProgress,
 } from '@hooks/migrations/useDeleteSampleUserBudget'
-import type { RestoreStatus, RestoreResult } from '@hooks/migrations/useRestoreFromDiagnostic'
 
 interface UtilitySectionProps {
   disabled: boolean
   onDownloadBackup: () => Promise<void>
   isDownloadingBackup: boolean
 
-  // Diagnostic Download
-  diagnosticDownload: {
+  // Budget Download/Upload
+  budgetDownloadUpload: {
     isDownloading: boolean
-    progress: DownloadProgress | null
-    error: string | null
-    downloadDiagnostics: () => Promise<void>
+    downloadProgress: DownloadBudgetProgress | null
+    downloadError: string | null
+    downloadBudget: () => Promise<void>
+    isScanning: boolean
+    isUploading: boolean
+    uploadStatus: UploadBudgetStatus | null
+    uploadProgress: UploadBudgetProgress | null
+    uploadError: string | null
+    uploadResult: UploadBudgetResult | null
+    scanZipFile: (file: File) => Promise<void>
+    uploadBudget: (file: File) => Promise<void>
   }
 
   // Delete All Months
@@ -72,16 +76,6 @@ interface UtilitySectionProps {
     deleteSampleUserBudget: () => void
   }
 
-  // Restore from Diagnostic
-  restoreFromDiagnostic: {
-    status: RestoreStatus | null
-    result: RestoreResult | null
-    isScanning: boolean
-    isRunning: boolean
-    scan: (json: string) => Promise<void>
-    run: () => Promise<void>
-  }
-
   // Cache invalidation handler
   onClearCache: () => void
 }
@@ -90,17 +84,16 @@ export function UtilitySection({
   disabled,
   onDownloadBackup,
   isDownloadingBackup,
-  diagnosticDownload,
+  budgetDownloadUpload,
   deleteAllMonths,
   deleteSampleUserBudget,
-  restoreFromDiagnostic,
   onClearCache,
 }: UtilitySectionProps) {
   const isAnyRunning =
-    diagnosticDownload.isDownloading ||
+    budgetDownloadUpload.isDownloading ||
+    budgetDownloadUpload.isUploading ||
     deleteAllMonths.isDeleting ||
-    deleteSampleUserBudget.isDeleting ||
-    restoreFromDiagnostic.isRunning
+    deleteSampleUserBudget.isDeleting
 
   // Backup prompts for destructive actions
   const deleteMonthsBackup = useBackupPrompt({
@@ -115,8 +108,8 @@ export function UtilitySection({
     onDownloadBackup,
   })
 
-  const restoreBackup = useBackupPrompt({
-    migrationName: 'Restore from Diagnostic',
+  const uploadBackup = useBackupPrompt({
+    migrationName: 'Upload Budget',
     isDestructive: true,
     onDownloadBackup,
   })
@@ -130,28 +123,26 @@ export function UtilitySection({
         type="utility"
         isAnyRunning={isAnyRunning}
       >
-        {/* Download Section */}
-        <DiagnosticDownloadRow
-          isDownloading={diagnosticDownload.isDownloading}
-          progress={diagnosticDownload.progress}
-          error={diagnosticDownload.error}
-          onDownload={diagnosticDownload.downloadDiagnostics}
+        {/* Budget Backup & Restore */}
+        <BudgetDownloadUploadRow
+          isDownloading={budgetDownloadUpload.isDownloading}
+          downloadProgress={budgetDownloadUpload.downloadProgress}
+          downloadError={budgetDownloadUpload.downloadError}
+          onDownload={budgetDownloadUpload.downloadBudget}
+          isScanning={budgetDownloadUpload.isScanning}
+          isUploading={budgetDownloadUpload.isUploading}
+          uploadStatus={budgetDownloadUpload.uploadStatus}
+          uploadProgress={budgetDownloadUpload.uploadProgress}
+          uploadError={budgetDownloadUpload.uploadError}
+          uploadResult={budgetDownloadUpload.uploadResult}
+          onScan={budgetDownloadUpload.scanZipFile}
+          onUpload={async (file) => {
+            uploadBackup.promptBeforeAction(() => {
+              budgetDownloadUpload.uploadBudget(file).catch(err => console.error('Upload failed:', err))
+            })
+          }}
           disabled={disabled}
         />
-
-        {/* Restore from Diagnostic */}
-        <RestoreFromDiagnosticRow
-          status={restoreFromDiagnostic.status}
-          result={restoreFromDiagnostic.result}
-          isScanning={restoreFromDiagnostic.isScanning}
-          isRunning={restoreFromDiagnostic.isRunning}
-          onScan={restoreFromDiagnostic.scan}
-          onRun={() => restoreBackup.promptBeforeAction(restoreFromDiagnostic.run)}
-          disabled={disabled}
-        />
-
-        {/* Seed Import */}
-        <SeedImportRow disabled={disabled} />
 
         {/* Destructive Operations */}
         <div style={{
@@ -208,7 +199,7 @@ export function UtilitySection({
       {/* Backup Prompts */}
       <BackupPrompt {...deleteMonthsBackup.promptProps} isDownloading={isDownloadingBackup} />
       <BackupPrompt {...deleteSampleBackup.promptProps} isDownloading={isDownloadingBackup} />
-      <BackupPrompt {...restoreBackup.promptProps} isDownloading={isDownloadingBackup} />
+      <BackupPrompt {...uploadBackup.promptProps} isDownloading={isDownloadingBackup} />
     </>
   )
 }

@@ -18,6 +18,7 @@ import {
 // eslint-disable-next-line no-restricted-imports
 import { deleteDocByPath } from '@firestore'
 import { queryClient, queryKeys } from '@data/queryClient'
+import JSZip from 'jszip'
 
 interface MonthNavigationProps {
   onPreviousMonth: () => void
@@ -122,17 +123,53 @@ export function MonthNavigation({
     setShowMonthMenu(false)
   }
 
-  function handleDownloadJson() {
+  async function handleDownloadJson() {
     if (!currentMonth || !currentBudget) return
-    const monthData = {
-      ...currentMonth,
-      _meta: { downloaded_at: new Date().toISOString(), budget_id: currentBudget.id, budget_name: currentBudget.name }
+
+    const now = new Date()
+    const datePrefix = now.toISOString().split('T')[0] // YYYY-MM-DD format
+    const monthPrefix = `${datePrefix}_month_${currentYear}_${String(currentMonthNumber).padStart(2, '0')}`
+
+    const zip = new JSZip()
+
+    // Create separate files for each transaction type
+    const files: Array<{ name: string; data: unknown }> = [
+      { name: `${monthPrefix}_income.json`, data: currentMonth.income || [] },
+      { name: `${monthPrefix}_expenses.json`, data: currentMonth.expenses || [] },
+      { name: `${monthPrefix}_transfers.json`, data: currentMonth.transfers || [] },
+      { name: `${monthPrefix}_adjustments.json`, data: currentMonth.adjustments || [] },
+      { name: `${monthPrefix}_account_balances.json`, data: currentMonth.account_balances || [] },
+      { name: `${monthPrefix}_category_balances.json`, data: currentMonth.category_balances || [] },
+    ]
+
+    // Add metadata file
+    const metadata = {
+      budget_id: currentBudget.id,
+      budget_name: currentBudget.name,
+      year_month_ordinal: currentMonth.year_month_ordinal,
+      year: currentMonth.year,
+      month: currentMonth.month,
+      total_income: currentMonth.total_income,
+      previous_month_income: currentMonth.previous_month_income,
+      total_expenses: currentMonth.total_expenses,
+      are_allocations_finalized: currentMonth.are_allocations_finalized,
+      created_at: currentMonth.created_at,
+      updated_at: currentMonth.updated_at,
+      downloaded_at: now.toISOString(),
     }
-    const blob = new Blob([JSON.stringify(monthData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
+    files.push({ name: `${monthPrefix}_metadata.json`, data: metadata })
+
+    // Add all files to zip
+    for (const file of files) {
+      zip.file(file.name, JSON.stringify(file.data, null, 2))
+    }
+
+    // Generate zip file
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(zipBlob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `month_${currentYear}_${String(currentMonthNumber).padStart(2, '0')}.json`
+    a.download = `${monthPrefix}.zip`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

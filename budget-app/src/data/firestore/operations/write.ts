@@ -34,6 +34,10 @@ export interface BatchWriteDoc {
  * Write multiple documents in batches.
  * Firestore limits batches to 500 operations, so this automatically
  * splits larger writes into multiple batches.
+ *
+ * IMPORTANT: This is a DESTRUCTIVE operation.
+ * Uses batch.set() which completely replaces each document.
+ * Any existing fields not in the provided data will be removed.
  */
 export async function batchWriteDocs(
   docs: BatchWriteDoc[],
@@ -49,11 +53,24 @@ export async function batchWriteDocs(
 
     for (const { collectionPath, docId, data } of chunk) {
       const docRef = doc(db, collectionPath, docId)
+      // batch.set() completely replaces the document (no merge)
       batch.set(docRef, data)
     }
 
     logFirebase('BATCH_WRITE', `${chunk.length} docs`, source, chunk.length, undefined, chunk)
-    await batch.commit()
+    try {
+      await batch.commit()
+    } catch (error) {
+      console.error(`[Firebase] BATCH_WRITE ERROR in ${source}:`, error)
+      console.error(`[Firebase] Failed batch details:`, {
+        batchIndex: Math.floor(i / BATCH_SIZE) + 1,
+        totalBatches: Math.ceil(docs.length / BATCH_SIZE),
+        docsInBatch: chunk.length,
+        firstDoc: chunk[0] ? `${chunk[0].collectionPath}/${chunk[0].docId}` : 'none',
+      })
+      // Re-throw to allow caller to handle
+      throw error
+    }
   }
 }
 

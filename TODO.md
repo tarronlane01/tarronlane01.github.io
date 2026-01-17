@@ -1,3 +1,14 @@
+I deleted an expense, and it optimistically updated the account balance, and it didn't load when I went to the accounts overview, but it should have triggered recalculation. I clicked the floating reload button at the bottom ofthe page and it shows the wrong pre-delete balance still. So something didn't get saved correctly.
+
+# Account Reconcilliation
+
+- set up the seed in the repo with a fresh download with the new format
+- Make sure our import works with out download format, so I could download, edit, zip, then reupload to change budget values en-mass if I wanted to.
+- Remove the month download feature, and just make sure it's easy to find the month we're after in the main admin download.
+- confirm we aren't re-summing all months when we recalculate the account/category balances on the budget doc
+
+# Other
+
 - let's make sure the multiple transactorion form components share component components so that we don't duplicate logic or have possibility for shared behavior to deviate.
 
 - add a download month doc on the month dropdown (for admins). Have it download separate files for all the transaction types, to make it easier to parse the long json lists. Have each file prefixed with the same thing so I can easily group them together when scanning through the downloads. include the date in the prfix. Can it also open those downloads in new tabs so I can look through the josn quickly.

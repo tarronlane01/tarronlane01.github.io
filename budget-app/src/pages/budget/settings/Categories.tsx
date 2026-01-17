@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useCategoriesPage } from '@hooks'
-import { useApp } from '@contexts'
+import { useCategoriesPage, useBudgetData, useAutoRecalculation } from '@hooks'
+import { useApp, useBudget } from '@contexts'
 import {
   ErrorAlert,
   Button,
@@ -20,6 +20,9 @@ import {
 import { RecalculateAllButton } from '../../../components/budget/Month'
 
 function Categories() {
+  const { selectedBudgetId } = useBudget()
+  const { monthMap, isLoading: isBudgetLoading } = useBudgetData()
+
   const {
     // Data
     currentBudget,
@@ -63,6 +66,9 @@ function Categories() {
     handleGroupDragStart,
     handleGroupDrop,
   } = useCategoriesPage()
+
+  // Auto-trigger recalculation when navigating to Categories settings if ANY month needs recalc
+  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isBudgetLoading && !isLoading && !!currentBudget, logPrefix: '[Settings/Categories]' })
 
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()

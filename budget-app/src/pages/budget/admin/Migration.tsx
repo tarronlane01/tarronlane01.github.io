@@ -13,6 +13,7 @@
  */
 
 import { useFirebaseAuth } from '@hooks'
+import { useBudget } from '@contexts'
 import {
   useDatabaseCleanup,
   useFeedbackMigration,
@@ -24,9 +25,9 @@ import {
   useAdjustmentsToTransfersMigration,
   useAccountCategoryValidation,
   useHiddenFieldMigration,
-  useDiagnosticDownload,
+  useDownloadBudget,
+  useUploadBudget,
 } from '@hooks'
-import { useRestoreFromDiagnostic } from '../../../hooks/migrations/useRestoreFromDiagnostic'
 import { MigrationProgressModal, Spinner } from '../../../components/budget/Admin'
 import { OnetimeSection } from '../../../components/budget/Admin/onetime'
 import { MaintenanceSection } from '../../../components/budget/Admin/maintenance'
@@ -42,6 +43,7 @@ function handleClearAllCachesAndReload() {
 function Migration() {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
+  const { selectedBudgetId } = useBudget()
 
   // =========================================================================
   // MIGRATION HOOKS
@@ -60,10 +62,10 @@ function Migration() {
   const precisionCleanup = usePrecisionCleanup({ currentUser: current_user })
 
   // Utilities
-  const diagnosticDownload = useDiagnosticDownload({ currentUser: current_user })
+  const budgetDownload = useDownloadBudget({ currentUser: current_user, budgetId: selectedBudgetId })
+  const budgetUpload = useUploadBudget({ currentUser: current_user })
   const deleteAllMonths = useDeleteAllMonths({ currentUser: current_user })
   const deleteSampleUserBudget = useDeleteSampleUserBudget({ currentUser: current_user })
-  const restoreFromDiagnostic = useRestoreFromDiagnostic()
 
   // =========================================================================
   // AGGREGATE STATE
@@ -91,8 +93,8 @@ function Migration() {
     precisionCleanup.isRunning ||
     deleteAllMonths.isDeleting ||
     deleteSampleUserBudget.isDeleting ||
-    diagnosticDownload.isDownloading ||
-    restoreFromDiagnostic.isRunning
+    budgetDownload.isDownloading ||
+    budgetUpload.isUploading
 
   // =========================================================================
   // REFRESH ALL
@@ -172,8 +174,8 @@ function Migration() {
       {/* One-time Migrations Section */}
       <OnetimeSection
         disabled={!current_user}
-        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
-        isDownloadingBackup={diagnosticDownload.isDownloading}
+        onDownloadBackup={budgetDownload.downloadBudget}
+        isDownloadingBackup={budgetDownload.isDownloading}
         databaseCleanup={{
           status: databaseCleanup.status,
           hasData: !!databaseCleanup.status,
@@ -212,8 +214,8 @@ function Migration() {
       {/* Maintenance Section */}
       <MaintenanceSection
         disabled={!current_user}
-        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
-        isDownloadingBackup={diagnosticDownload.isDownloading}
+        onDownloadBackup={budgetDownload.downloadBudget}
+        isDownloadingBackup={budgetDownload.isDownloading}
         accountCategoryValidation={{
           status: accountCategoryValidation.status,
           hasData: !!accountCategoryValidation.status,
@@ -274,13 +276,21 @@ function Migration() {
       {/* Utilities Section */}
       <UtilitySection
         disabled={!current_user}
-        onDownloadBackup={diagnosticDownload.downloadDiagnostics}
-        isDownloadingBackup={diagnosticDownload.isDownloading}
-        diagnosticDownload={{
-          isDownloading: diagnosticDownload.isDownloading,
-          progress: diagnosticDownload.progress,
-          error: diagnosticDownload.error,
-          downloadDiagnostics: diagnosticDownload.downloadDiagnostics,
+        onDownloadBackup={budgetDownload.downloadBudget}
+        isDownloadingBackup={budgetDownload.isDownloading}
+        budgetDownloadUpload={{
+          isDownloading: budgetDownload.isDownloading,
+          downloadProgress: budgetDownload.progress,
+          downloadError: budgetDownload.error,
+          downloadBudget: budgetDownload.downloadBudget,
+          isScanning: budgetUpload.isScanning,
+          isUploading: budgetUpload.isUploading,
+          uploadStatus: budgetUpload.status,
+          uploadProgress: budgetUpload.progress,
+          uploadError: budgetUpload.error,
+          uploadResult: budgetUpload.result,
+          scanZipFile: budgetUpload.scanZipFile,
+          uploadBudget: budgetUpload.uploadBudget,
         }}
         deleteAllMonths={{
           status: deleteAllMonths.status,
@@ -305,14 +315,6 @@ function Migration() {
           deleteProgress: deleteSampleUserBudget.deleteProgress,
           scanStatus: deleteSampleUserBudget.scanStatus,
           deleteSampleUserBudget: deleteSampleUserBudget.deleteSampleUserBudget,
-        }}
-        restoreFromDiagnostic={{
-          status: restoreFromDiagnostic.status,
-          result: restoreFromDiagnostic.result,
-          isScanning: restoreFromDiagnostic.isScanning,
-          isRunning: restoreFromDiagnostic.isRunning,
-          scan: restoreFromDiagnostic.scan,
-          run: restoreFromDiagnostic.run,
         }}
         onClearCache={handleClearAllCachesAndReload}
       />

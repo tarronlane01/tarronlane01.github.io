@@ -82,6 +82,8 @@ export { useAccountCategoryValidation, type ValidationStatus, type TransactionVi
 export { useHiddenFieldMigration, type HiddenFieldMigrationStatus, type HiddenFieldMigrationResult } from './useHiddenFieldMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
 export { useRestoreFromDiagnostic, type RestoreStatus, type RestoreResult } from './useRestoreFromDiagnostic'
+export { useDownloadBudget, type DownloadBudgetProgress } from './useDownloadBudget'
+export { useUploadBudget, type UploadBudgetProgress, type UploadBudgetStatus, type UploadBudgetResult } from './useUploadBudget'
 
 // Seed data import
 export {

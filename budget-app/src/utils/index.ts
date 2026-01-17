@@ -15,4 +15,5 @@ export {
   trackedSubmit,
 } from './actionLogger'
 export { roundCurrency, needsPrecisionFix } from './currency'
+export { cleanForFirestore } from './firestore'
 

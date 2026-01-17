@@ -5,19 +5,17 @@
  * Uses CSS Grid with sticky subgrid header for column alignment.
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useAllocationsPage, useMonthData } from '@hooks'
+import { useBudgetData, useAllocationsPage, useMonthData, useAutoRecalculation } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
 import { ErrorAlert } from '../../ui'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 import { CategoryGroupRows } from './CategoryGridRows'
-import { triggerRecalculation, type RecalculationProgress } from '@data/recalculation'
-import { queryClient, queryKeys } from '@data/queryClient'
-import { getYearMonthOrdinal } from '@utils'
+import type { RecalculationProgress } from '@data/recalculation'
 import { LoadingOverlay, ProgressBar, StatItem, PercentLabel } from '../../app/LoadingOverlay'
 import { calculateCategoriesByGroup, calculateLiveCategoryBalances, calculateBalanceTotals } from '@calculations'
 import { GrandTotalsRow, MobileGrandTotals } from './MonthCategoriesHeader'
@@ -29,37 +27,18 @@ export function MonthCategories() {
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
-  // Check if current month needs recalculation from budget's month_map
-  const currentMonthOrdinal = getYearMonthOrdinal(currentYear, currentMonthNumber)
-  const monthNeedsRecalc = monthMap[currentMonthOrdinal]?.needs_recalculation === true
-
-  // Track recalculation in progress and progress state
-  const recalcInProgressRef = useRef(false)
+  // Auto-trigger recalculation when navigating to this month's balances page and it needs recalc
   const [recalcProgress, setRecalcProgress] = useState<RecalculationProgress | null>(null)
-
-  // Trigger recalculation when viewing and month needs it
-  useEffect(() => {
-    if (!selectedBudgetId || !currentMonth) return
-    if (!monthNeedsRecalc || recalcInProgressRef.current) return
-
-    recalcInProgressRef.current = true
-    const triggeringMonthOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
-
-    triggerRecalculation(selectedBudgetId, {
-      triggeringMonthOrdinal,
-      onProgress: (progress) => setRecalcProgress(progress),
-    })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
-      })
-      .catch((err) => {
-        console.error('[MonthCategories] Recalculation failed:', err)
-      })
-      .finally(() => {
-        recalcInProgressRef.current = false
-        setRecalcProgress(null)
-      })
-  }, [selectedBudgetId, monthNeedsRecalc, currentMonth, currentYear, currentMonthNumber])
+  useAutoRecalculation({
+    budgetId: selectedBudgetId,
+    year: currentYear,
+    month: currentMonthNumber,
+    monthMap,
+    requireMonthLoaded: true,
+    currentMonth,
+    onProgress: (progress) => setRecalcProgress(progress),
+    logPrefix: '[MonthCategories]',
+  })
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 

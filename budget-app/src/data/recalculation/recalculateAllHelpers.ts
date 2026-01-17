@@ -259,7 +259,7 @@ export async function calculateAccountBalancesFromAllMonths(
     [{ field: 'budget_id', op: '==', value: budgetId }]
   )
 
-  // Sum up income and expenses from ALL months
+  // Sum up income, expenses, transfers, and adjustments from ALL months
   for (const monthDoc of allMonthsResult.docs) {
     const monthDocId = getMonthDocId(budgetId, monthDoc.data.year, monthDoc.data.month)
     const { exists, data: fullMonthData } = await readDocByPath<FirestoreData>(
@@ -270,16 +270,37 @@ export async function calculateAccountBalancesFromAllMonths(
 
     const income = fullMonthData.income || []
     const expenses = fullMonthData.expenses || []
+    const transfers = (fullMonthData.transfers || []) as TransferTransaction[]
+    const adjustments = (fullMonthData.adjustments || []) as AdjustmentTransaction[]
 
+    // Sum income
     for (const inc of income) {
       if (inc.account_id && accountBalances[inc.account_id] !== undefined) {
         accountBalances[inc.account_id] += inc.amount
       }
     }
 
+    // Sum expenses (note: expenses follow CSV convention - negative = money out)
     for (const exp of expenses) {
       if (exp.account_id && accountBalances[exp.account_id] !== undefined) {
-        accountBalances[exp.account_id] -= exp.amount
+        accountBalances[exp.account_id] += exp.amount // Already includes sign
+      }
+    }
+
+    // Sum transfers (transfers TO account add, transfers FROM account subtract)
+    for (const transfer of transfers) {
+      if (transfer.to_account_id && accountBalances[transfer.to_account_id] !== undefined) {
+        accountBalances[transfer.to_account_id] += transfer.amount
+      }
+      if (transfer.from_account_id && accountBalances[transfer.from_account_id] !== undefined) {
+        accountBalances[transfer.from_account_id] -= transfer.amount
+      }
+    }
+
+    // Sum adjustments
+    for (const adj of adjustments) {
+      if (adj.account_id && accountBalances[adj.account_id] !== undefined) {
+        accountBalances[adj.account_id] += adj.amount
       }
     }
   }

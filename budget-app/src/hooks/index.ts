@@ -12,6 +12,7 @@ export { useAccountsPage, type AccountWithId } from './useAccountsPage'
 export { useAllocationsPage } from './useAllocationsPage'
 export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
 export { useMonthNavigationError } from './useMonthNavigationError'
+export { useAutoRecalculation } from './useAutoRecalculation'
 
 // Migration hooks
 export {
@@ -50,5 +51,11 @@ export {
   type HiddenFieldMigrationResult,
   useDiagnosticDownload,
   type DownloadProgress,
+  useDownloadBudget,
+  type DownloadBudgetProgress,
+  useUploadBudget,
+  type UploadBudgetProgress,
+  type UploadBudgetStatus,
+  type UploadBudgetResult,
 } from './migrations'
 

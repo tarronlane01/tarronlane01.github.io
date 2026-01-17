@@ -1,5 +1,6 @@
 import { useState, useMemo, type DragEvent } from 'react'
-import { useAccountsPage } from '@hooks'
+import { useAccountsPage, useBudgetData, useAutoRecalculation } from '@hooks'
+import { useBudget } from '@contexts'
 import {
   ErrorAlert,
   Button,
@@ -20,6 +21,9 @@ import { RecalculateAllButton } from '../../../components/budget/Month'
 type DragType = 'account' | 'group' | null
 
 function Accounts() {
+  const { selectedBudgetId } = useBudget()
+  const { monthMap, isLoading: isBudgetLoading } = useBudgetData()
+
   const {
     accounts,
     accountsByGroup,
@@ -41,6 +45,9 @@ function Accounts() {
   } = useAccountsPage()
 
   const isMobile = useIsMobile()
+
+  // Auto-trigger recalculation when navigating to Accounts settings if ANY month needs recalc
+  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isBudgetLoading && !!currentBudget, logPrefix: '[Settings/Accounts]' })
 
   // Account editing state
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)

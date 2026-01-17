@@ -11,7 +11,7 @@
 
 ## General Architecture Review
 
-You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws (avoid issues specific to larger user counts, as this will be a low-user count architecture with max 10 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues. Suggest better code organization and architecture standards to follow best practices.
+You're an expert front-end JavaScript / React / Firebase engineer. Review this project and identify any design flaws (avoid issues specific to larger user counts, as this will be a low-user count architecture with max 10 users), drawing upon your knowledge of how to reduce complexity and avoid future code maintenance and evolution issues. Suggest better code organization and architecture standards to follow best practices, avoid redundant systems, combine code and features.
 
 ## React Organization
 
