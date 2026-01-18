@@ -11,9 +11,9 @@ import { queryKeys } from '@data'
 import { readMonth } from '@data/queries/month'
 import type { MonthDocument, IncomeTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 /**
  * Check if income values have actually changed (no-op detection)
@@ -45,7 +45,9 @@ function hasIncomeChanges(
 
 export function useUpdateIncome() {
   const queryClient = useQueryClient()
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade, trackChange } = useMonthMutationHelpers()
 
   const updateIncome = async (
     budgetId: string,
@@ -70,9 +72,6 @@ export function useUpdateIncome() {
       return { updatedMonth: monthData, noOp: true }
     }
 
-    const oldAmount = oldIncome?.amount ?? 0
-    const oldAccountId = oldIncome?.account_id ?? accountId
-
     const updatedIncome: IncomeTransaction = {
       id: incomeId,
       amount,
@@ -85,33 +84,45 @@ export function useUpdateIncome() {
 
     const updatedIncomeList = (monthData.income || []).map(inc => inc.id === incomeId ? updatedIncome : inc)
 
-    // Re-total to update all derived values (totals, account_balances, etc.)
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with new transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       income: updatedIncomeList,
       updated_at: new Date().toISOString(),
-    })
-
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update income' })
-
-    // Update budget's account balance
-    // If account changed: remove from old, add to new
-    // If same account: apply delta
-    if (oldAccountId === accountId) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount - oldAmount }])
-    } else {
-      await updateBudgetAccountBalances(budgetId, [
-        { accountId: oldAccountId, delta: -oldAmount },
-        { accountId, delta: amount },
-      ])
     }
 
-    // Save payee if new
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
+
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useUpdateIncome] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save payee if new (this still writes immediately since it's just adding to a list)
     if (payee?.trim()) {
       const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
       const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
       if (updatedPayees) {
         queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
+        trackChange({ type: 'payees', budgetId })
+      }
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useUpdateIncome] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
       }
     }
 
@@ -120,8 +131,8 @@ export function useUpdateIncome() {
 
   return {
     updateIncome,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false, // No longer using mutation, so no pending state
+    isError: false,
+    error: null,
   }
 }

@@ -8,10 +8,9 @@
 
 import type { MonthDocument, AdjustmentTransaction } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isNoAccount } from '../../../constants'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 /**
  * Check if adjustment values have actually changed (no-op detection)
@@ -45,7 +44,9 @@ function hasAdjustmentChanges(
 }
 
 export function useUpdateAdjustment() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const updateAdjustment = async (
     budgetId: string,
@@ -72,8 +73,7 @@ export function useUpdateAdjustment() {
       return { updatedMonth: monthData, noOp: true }
     }
 
-    const oldAmount = oldAdjustment?.amount ?? 0
-    const oldAccountId = oldAdjustment?.account_id ?? accountId
+    // Note: oldAmount and oldAccountId are not needed since we recalculate from full state
 
     const updatedAdjustment: AdjustmentTransaction = {
       id: adjustmentId,
@@ -89,31 +89,35 @@ export function useUpdateAdjustment() {
 
     const updatedAdjustmentsList = (monthData.adjustments || []).map(a => a.id === adjustmentId ? updatedAdjustment : a)
 
-    // Re-total to update all derived values
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with updated transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       adjustments: updatedAdjustmentsList,
       updated_at: new Date().toISOString(),
-    })
+    }
 
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update adjustment' })
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
 
-    // Update budget's account balances
-    // Reverse old effect and apply new effect
-    if (!isNoAccount(oldAccountId) && oldAccountId === accountId) {
-      // Same account - just apply delta
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount - oldAmount }])
-    } else {
-      // Different accounts
-      const balanceUpdates: { accountId: string; delta: number }[] = []
-      if (!isNoAccount(oldAccountId)) {
-        balanceUpdates.push({ accountId: oldAccountId, delta: -oldAmount })
-      }
-      if (!isNoAccount(accountId)) {
-        balanceUpdates.push({ accountId, delta: amount })
-      }
-      if (balanceUpdates.length > 0) {
-        await updateBudgetAccountBalances(budgetId, balanceUpdates)
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useUpdateAdjustment] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useUpdateAdjustment] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
       }
     }
 
@@ -122,8 +126,8 @@ export function useUpdateAdjustment() {
 
   return {
     updateAdjustment,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

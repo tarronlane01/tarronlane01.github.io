@@ -19,6 +19,7 @@ import { useBudgetData } from './useBudgetData'
 import { useCategoryBalances } from './useCategoryBalances'
 import { useCategoryDragDrop } from './useCategoryDragDrop'
 import type { CategoryFormData } from '../components/budget/Categories'
+import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 
 export type CategoryWithId = {
   id: string
@@ -104,11 +105,11 @@ export function useCategoriesPage() {
   async function handleCreateCategory(formData: CategoryFormData, forGroupId: string | null) {
     if (!currentBudget) return
 
-    // Use the group from the context (where form was opened from)
-    const effectiveGroupId = forGroupId === 'ungrouped' ? null : forGroupId
+    // Use ungrouped group ID if null is passed
+    const effectiveGroupId = forGroupId || UNGROUPED_CATEGORY_GROUP_ID
 
     const groupCategories = Object.values(categories).filter(c =>
-      (forGroupId === 'ungrouped' ? !c.category_group_id : c.category_group_id === forGroupId)
+      c.category_group_id === effectiveGroupId
     )
     const maxSortOrder = groupCategories.length > 0
       ? Math.max(...groupCategories.map(c => c.sort_order))
@@ -143,15 +144,15 @@ export function useCategoriesPage() {
       const category = categories[categoryId]
       if (!category) return
 
-      const oldGroupId = category.category_group_id || 'ungrouped'
-      const newGroupId = formData.category_group_id
+      const oldGroupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
+      // Use ungrouped group ID if null is passed
+      const newGroupId = formData.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
 
       // If group changed, update sort_order for the new group
       let newSortOrder = category.sort_order
-      if (oldGroupId !== (newGroupId || 'ungrouped')) {
+      if (oldGroupId !== newGroupId) {
         const targetGroupCategories = Object.values(categories).filter(c => {
-          const catGroupId = c.category_group_id || 'ungrouped'
-          return catGroupId === (newGroupId || 'ungrouped')
+          return c.category_group_id === newGroupId
         }).filter((_, idx, arr) => {
           // Exclude the current category from the count
           const currentCat = categories[categoryId]
@@ -200,9 +201,9 @@ export function useCategoriesPage() {
     const category = categories[categoryId]
     if (!category) return
 
-    const groupId = category.category_group_id || 'ungrouped'
+    const groupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
     const groupCategories = Object.entries(categories)
-      .filter(([, c]) => (c.category_group_id || 'ungrouped') === groupId)
+      .filter(([, c]) => c.category_group_id === groupId)
       .sort((a, b) => a[1].sort_order - b[1].sort_order)
 
     const currentIndex = groupCategories.findIndex(([catId]) => catId === categoryId)
@@ -273,6 +274,11 @@ export function useCategoriesPage() {
   }
 
   async function handleDeleteGroup(groupId: string) {
+    // Prevent deleting the default ungrouped category group
+    if (groupId === UNGROUPED_CATEGORY_GROUP_ID) {
+      alert('Cannot delete the default Uncategorized category group.')
+      return
+    }
     if (!confirm('Are you sure you want to delete this group? Categories in this group will move to Uncategorized.')) return
     if (!currentBudget) return
     try {
@@ -280,7 +286,7 @@ export function useCategoriesPage() {
       const newCategories: CategoriesMap = {}
       Object.entries(categories).forEach(([catId, category]) => {
         newCategories[catId] = category.category_group_id === groupId
-          ? { ...category, category_group_id: null }
+          ? { ...category, category_group_id: UNGROUPED_CATEGORY_GROUP_ID }
           : category
       })
       const newGroups = categoryGroups.filter(group => group.id !== groupId)
@@ -330,7 +336,7 @@ export function useCategoriesPage() {
   const categoriesByGroup = Object.entries(categories)
     .filter(([, category]) => !category.is_hidden)
     .reduce((acc, [catId, category]) => {
-      const groupId = category.category_group_id || 'ungrouped'
+      const groupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
       if (!acc[groupId]) acc[groupId] = []
       acc[groupId].push([catId, category] as CategoryEntry)
       return acc

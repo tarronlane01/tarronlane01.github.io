@@ -22,7 +22,8 @@ import {
   useAccessibleBudgetsQuery,
   fetchBudgetInviteStatus,
 } from '@data'
-import { queryClient } from '@data/queryClient'
+import { queryClient, queryKeys } from '@data/queryClient'
+import { useInitialDataLoad } from '@hooks/useInitialDataLoad'
 
 // Import types from centralized types file
 import type {
@@ -50,32 +51,15 @@ import type {
 
 // Re-export all types so existing imports continue to work
 export type {
-  PermissionFlags,
-  UserDocument,
-  ExpectedBalanceType,
-  AccountGroup,
-  AccountGroupsMap,
-  FinancialAccount,
-  AccountsMap,
-  DefaultAmountType,
-  Category,
-  CategoriesMap,
-  CategoryGroup,
-  IncomeTransaction,
-  ExpenseTransaction,
-  PayeesDocument,
-  CategoryMonthBalance,
-  AccountMonthBalance,
-  MonthDocument,
-  Budget,
-  BudgetInvite,
-  BudgetSummary,
+  PermissionFlags, UserDocument, ExpectedBalanceType, AccountGroup, AccountGroupsMap,
+  FinancialAccount, AccountsMap, DefaultAmountType, Category, CategoriesMap, CategoryGroup,
+  IncomeTransaction, ExpenseTransaction, PayeesDocument, CategoryMonthBalance, AccountMonthBalance,
+  MonthDocument, Budget, BudgetInvite, BudgetSummary,
 }
 
 // ============================================================================
 // CONTEXT TYPE - Minimal: identifiers and UI state only
 // ============================================================================
-
 // Valid tabs for each section
 export type BudgetTab = 'income' | 'categories' | 'accounts' | 'spend' | 'transfers' | 'adjustments'
 export type SettingsTab = 'accounts' | 'categories' | 'users'
@@ -93,6 +77,10 @@ interface BudgetContextType {
   lastSettingsTab: SettingsTab
   lastAdminTab: AdminTab
 
+  // Current viewing document (for immediate saves)
+  currentViewingDocument: { type: 'month' | 'budget' | null; year?: number; month?: number }
+  setCurrentViewingDocument: (doc: { type: 'month' | 'budget' | null; year?: number; month?: number }) => void
+
   // Selection setters
   setSelectedBudgetId: (id: string | null) => void
   setCurrentYear: (year: number) => void
@@ -108,6 +96,7 @@ interface BudgetContextType {
   // UI/initialization state
   isInitialized: boolean
   needsFirstBudget: boolean
+  initialDataLoadComplete: boolean
 
   // Convenience navigation (just changes identifiers)
   goToPreviousMonth: () => void
@@ -134,7 +123,6 @@ interface BudgetContextType {
 // ============================================================================
 // DEFAULT CONTEXT VALUE
 // ============================================================================
-
 const defaultContextValue: BudgetContextType = {
   currentUserId: null,
   selectedBudgetId: null,
@@ -143,6 +131,8 @@ const defaultContextValue: BudgetContextType = {
   lastActiveTab: 'categories',
   lastSettingsTab: 'categories',
   lastAdminTab: 'budget',
+  currentViewingDocument: { type: null },
+  setCurrentViewingDocument: () => {},
   setSelectedBudgetId: () => {},
   setCurrentYear: () => {},
   setCurrentMonthNumber: () => {},
@@ -153,6 +143,7 @@ const defaultContextValue: BudgetContextType = {
   setPageTitle: () => {},
   isInitialized: false,
   needsFirstBudget: false,
+  initialDataLoadComplete: false,
   goToPreviousMonth: () => {},
   goToNextMonth: () => {},
   pendingInvites: [],
@@ -171,7 +162,6 @@ const BudgetContext = createContext<BudgetContextType>(defaultContextValue)
 // ============================================================================
 // PROVIDER COMPONENT
 // ============================================================================
-
 export function BudgetProvider({ children }: { children: ReactNode }) {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
@@ -192,6 +182,13 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setPageTitleState(prev => prev === title ? prev : title)
   }, [])
 
+  // Current viewing document (for immediate saves)
+  const [currentViewingDocument, setCurrentViewingDocument] = useState<{
+    type: 'month' | 'budget' | null
+    year?: number
+    month?: number
+  }>({ type: null })
+
   // UI state
   const [isInitialized, setIsInitialized] = useState(false)
   const [needsFirstBudget, setNeedsFirstBudget] = useState(false)
@@ -199,8 +196,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // User query - for admin flags and budget access
   const userQuery = useUserQuery(current_user?.uid || null, current_user?.email || null)
 
-  // Accessible budgets query - LAZY: only runs for new users (no budget_ids)
-  // For existing users, this query is triggered manually when visiting MyBudgets page
+  // Accessible budgets query - LAZY: only runs for new users (no budget_ids). For existing users, triggered manually when visiting MyBudgets page
   const userHasNoBudgets = userQuery.data && userQuery.data.budget_ids.length === 0
   const accessibleBudgetsQuery = useAccessibleBudgetsQuery(
     current_user?.uid || null,
@@ -208,19 +204,46 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     { enabled: !!current_user?.uid && !!userQuery.data && userHasNoBudgets }
   )
 
-  // Derive user flags
+  // Initial data load - pre-populate cache with last 3 months, current, all future, budget, payees
+  const initialDataLoad = useInitialDataLoad(selectedBudgetId, { enabled: !!selectedBudgetId && isInitialized })
+  // Track if initial data load is complete (data loaded AND cache populated)
+  const [initialDataLoadComplete, setInitialDataLoadComplete] = useState(false)
+
+  // Populate cache with initial data when it loads (set staleTime to 5 minutes)
+  useEffect(() => {
+    if (!initialDataLoad.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInitialDataLoadComplete(false)
+      return
+    }
+
+    const { budget, payees, months } = initialDataLoad.data
+    const now = Date.now()
+    // Set budget, payees, and months in cache with fresh timestamp
+    queryClient.setQueryData(queryKeys.budget(selectedBudgetId!), budget, { updatedAt: now })
+    queryClient.setQueryData(queryKeys.payees(selectedBudgetId!), payees, { updatedAt: now })
+    for (const month of months) {
+      queryClient.setQueryData(queryKeys.month(selectedBudgetId!, month.year, month.month), { month }, { updatedAt: now })
+    }
+    setInitialDataLoadComplete(true) // Mark initial data load as complete after cache is populated
+  }, [initialDataLoad.data, selectedBudgetId]) // queryClient is stable, no need to include
+
+  // Reset initialDataLoadComplete when budget changes
+  useEffect(() => {
+    if (!selectedBudgetId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInitialDataLoadComplete(false)
+    }
+  }, [selectedBudgetId])
+  // Derive user flags and onboarding state
   const isAdmin = userQuery.data?.permission_flags?.is_admin === true
   const isTest = userQuery.data?.permission_flags?.is_test === true
-
-  // Derive onboarding state
   const pendingInvites = accessibleBudgetsQuery.data?.pendingInvites || []
   const accessibleBudgets = accessibleBudgetsQuery.data?.budgets || []
   const hasPendingInvites = pendingInvites.length > 0
-
   // ==========================================================================
   // INITIALIZATION - Auto-select first budget
   // ==========================================================================
-
   useEffect(() => {
     if (!current_user) return
     if (isInitialized) return
@@ -233,32 +256,21 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
     // Determine which budget to load (initialization pattern - setState is intentional)
     if (userData && userData.budget_ids.length > 0) {
-      // User has budgets - select the first one, no need to wait for accessibleBudgetsQuery
       setSelectedBudgetId(userData.budget_ids[0]) // eslint-disable-line react-hooks/set-state-in-effect
       setNeedsFirstBudget(false)
       setIsInitialized(true)
     } else {
-      // User has no budgets - wait for accessibleBudgetsQuery to check for pending invites
       if (accessibleBudgetsQuery.isLoading) return
-
       const budgetsData = accessibleBudgetsQuery.data
-      if (budgetsData?.pendingInvites && budgetsData.pendingInvites.length > 0) {
-        // Has pending invites but no budgets
-        setNeedsFirstBudget(false)
-      } else {
-        // New user, needs to create first budget
-        setNeedsFirstBudget(true)
-      }
+      setNeedsFirstBudget(!(budgetsData?.pendingInvites && budgetsData.pendingInvites.length > 0))
       setIsInitialized(true)
     }
   }, [current_user, isInitialized, userQuery.data, userQuery.isLoading, userQuery.isError, accessibleBudgetsQuery.data, accessibleBudgetsQuery.isLoading])
 
   // ==========================================================================
   // MONTH NAVIGATION - Just changes identifiers
-  // Note: Don't nest setState calls inside updater functions - React Strict Mode
-  // can run updaters twice, causing double increments.
+  // Note: Don't nest setState calls inside updater functions - React Strict Mode can run updaters twice
   // ==========================================================================
-
   const goToPreviousMonth = useCallback(() => {
     if (currentMonthNumber === 1) {
       setCurrentYear(y => y - 1)
@@ -276,14 +288,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       setCurrentMonthNumber(m => m + 1)
     }
   }, [currentMonthNumber])
-
   // ==========================================================================
   // BUDGET MANAGEMENT UTILITIES
   // ==========================================================================
-
   const loadAccessibleBudgets = useCallback(async (options?: { force?: boolean }) => {
-    // If force=true (e.g., after mutations), always refetch
-    // Otherwise, only refetch if we don't have data yet (prevents duplicate queries)
+    // If force=true (e.g., after mutations), always refetch. Otherwise, only refetch if we don't have data yet (prevents duplicate queries)
     if (options?.force || !accessibleBudgetsQuery.data) {
       await accessibleBudgetsQuery.refetch()
     }
@@ -291,8 +300,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 
   const switchToBudget = useCallback((budgetId: string) => {
     setSelectedBudgetId(budgetId)
-    // If switching to a budget, we clearly don't need to create a first budget
-    setNeedsFirstBudget(false)
+    setNeedsFirstBudget(false) // If switching to a budget, we clearly don't need to create a first budget
   }, [])
 
   const checkBudgetInvite = useCallback(async (budgetId: string): Promise<BudgetInvite | null> => {
@@ -322,16 +330,13 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // ==========================================================================
   // CACHE UTILITIES
   // ==========================================================================
-
   // Clear in-memory cache - should be followed by page reload
   const clearCache = useCallback(() => {
     queryClient.clear()
   }, [])
-
   // ==========================================================================
   // CONTEXT VALUE
   // ==========================================================================
-
   const contextValue: BudgetContextType = {
     currentUserId: current_user?.uid || null,
     selectedBudgetId,
@@ -340,6 +345,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     lastActiveTab,
     lastSettingsTab,
     lastAdminTab,
+    currentViewingDocument,
+    setCurrentViewingDocument,
     setSelectedBudgetId,
     setCurrentYear,
     setCurrentMonthNumber,
@@ -350,6 +357,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setPageTitle,
     isInitialized,
     needsFirstBudget,
+    initialDataLoadComplete,
     goToPreviousMonth,
     goToNextMonth,
     pendingInvites,
@@ -373,7 +381,6 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
 // =============================================================================
 // HOOK
 // =============================================================================
-
 // eslint-disable-next-line react-refresh/only-export-components
 export function useBudget() {
   const context = useContext(BudgetContext)
@@ -382,5 +389,4 @@ export function useBudget() {
   }
   return context
 }
-
 export default BudgetContext

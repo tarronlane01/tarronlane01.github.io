@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { CategoryGroup, DefaultAmountType } from '@types'
+import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import {
   Button,
   FormWrapper,
@@ -76,13 +77,13 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
         <FormField label="Category Group" htmlFor="category-group">
           <SelectInput
             id="category-group"
-            value={formData.category_group_id || 'ungrouped'}
+            value={formData.category_group_id || UNGROUPED_CATEGORY_GROUP_ID}
             onChange={(e) => setFormData({
               ...formData,
-              category_group_id: e.target.value === 'ungrouped' ? null : e.target.value
+              category_group_id: e.target.value === UNGROUPED_CATEGORY_GROUP_ID ? null : e.target.value
             })}
           >
-            <option value="ungrouped">Uncategorized</option>
+            <option value={UNGROUPED_CATEGORY_GROUP_ID}>Uncategorized</option>
             {categoryGroups.map(group => (
               <option key={group.id} value={group.id}>{group.name}</option>
             ))}

@@ -11,6 +11,7 @@ import {
   CollapsibleSection,
 } from '../../../components/ui'
 import { useIsMobile } from '@hooks'
+import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import {
   CategoryGroupForm,
   CategoryGroupCard,
@@ -221,7 +222,7 @@ function Categories() {
 
         {/* Uncategorized section */}
         <UncategorizedSection
-          ungroupedCategories={(categoriesByGroup['ungrouped'] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)}
+          ungroupedCategories={(categoriesByGroup[UNGROUPED_CATEGORY_GROUP_ID] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)}
           categoryGroups={categoryGroups}
           categoryBalances={categoryBalances}
           loadingBalances={loadingBalances}

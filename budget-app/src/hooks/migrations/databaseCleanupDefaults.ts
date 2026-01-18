@@ -50,15 +50,16 @@ export function applyCategoryDefaults(category: FirestoreData): Category {
 
 /**
  * Apply defaults to an AccountGroup based on AccountGroup interface
+ * All fields are required - use null for optional override fields if not set
  */
 export function applyAccountGroupDefaults(group: FirestoreData): AccountGroup {
   return {
     name: group.name ?? '',
     sort_order: group.sort_order ?? 0,
-    // These are optional in the interface, so only include if defined
-    ...(group.expected_balance !== undefined && { expected_balance: group.expected_balance }),
-    ...(group.on_budget !== undefined && { on_budget: group.on_budget }),
-    ...(group.is_active !== undefined && { is_active: group.is_active }),
+    expected_balance: group.expected_balance ?? 'positive',
+    // Use null for missing override fields (means "use account default")
+    on_budget: group.on_budget !== undefined ? group.on_budget : null,
+    is_active: group.is_active !== undefined ? group.is_active : null,
   }
 }
 

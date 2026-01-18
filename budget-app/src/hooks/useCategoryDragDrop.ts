@@ -9,6 +9,7 @@
 
 import { useState, type DragEvent } from 'react'
 import type { CategoriesMap, CategoryGroup, Budget } from '@types'
+import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 
 type DragType = 'category' | 'group' | null
 
@@ -92,7 +93,7 @@ export function useCategoryDragDrop({
     const draggedCategory = categories[draggedId]
     if (!draggedCategory) return
 
-    const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId
+    const newGroupId = targetGroupId === 'ungrouped' ? UNGROUPED_CATEGORY_GROUP_ID : targetGroupId
     const targetGroupCategories = Object.entries(categories).filter(([, c]) => {
       const catGroupId = c.category_group_id || 'ungrouped'
       return catGroupId === targetGroupId

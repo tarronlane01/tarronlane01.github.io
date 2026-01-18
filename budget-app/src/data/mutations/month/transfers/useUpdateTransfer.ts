@@ -8,10 +8,9 @@
 
 import type { MonthDocument, TransferTransaction } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isNoAccount } from '../../../constants'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 /**
  * Check if transfer values have actually changed (no-op detection)
@@ -45,7 +44,9 @@ function hasTransferChanges(
 }
 
 export function useUpdateTransfer() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const updateTransfer = async (
     budgetId: string,
@@ -73,10 +74,6 @@ export function useUpdateTransfer() {
       return { updatedMonth: monthData, noOp: true }
     }
 
-    const oldAmount = oldTransfer?.amount ?? 0
-    const oldFromAccountId = oldTransfer?.from_account_id ?? fromAccountId
-    const oldToAccountId = oldTransfer?.to_account_id ?? toAccountId
-
     const updatedTransfer: TransferTransaction = {
       id: transferId,
       amount,
@@ -92,38 +89,36 @@ export function useUpdateTransfer() {
 
     const updatedTransfersList = (monthData.transfers || []).map(t => t.id === transferId ? updatedTransfer : t)
 
-    // Re-total to update all derived values
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with updated transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       transfers: updatedTransfersList,
       updated_at: new Date().toISOString(),
-    })
-
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update transfer' })
-
-    // Update budget's account balances
-    // Need to reverse old effects and apply new effects
-    const balanceUpdates: { accountId: string; delta: number }[] = []
-
-    // Reverse old from-account effect (was -oldAmount, so add back)
-    if (!isNoAccount(oldFromAccountId)) {
-      balanceUpdates.push({ accountId: oldFromAccountId, delta: oldAmount })
-    }
-    // Reverse old to-account effect (was +oldAmount, so subtract)
-    if (!isNoAccount(oldToAccountId)) {
-      balanceUpdates.push({ accountId: oldToAccountId, delta: -oldAmount })
-    }
-    // Apply new from-account effect
-    if (!isNoAccount(fromAccountId)) {
-      balanceUpdates.push({ accountId: fromAccountId, delta: -amount })
-    }
-    // Apply new to-account effect
-    if (!isNoAccount(toAccountId)) {
-      balanceUpdates.push({ accountId: toAccountId, delta: amount })
     }
 
-    if (balanceUpdates.length > 0) {
-      await updateBudgetAccountBalances(budgetId, balanceUpdates)
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
+
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useUpdateTransfer] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useUpdateTransfer] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
+      }
     }
 
     return { updatedMonth }
@@ -131,8 +126,8 @@ export function useUpdateTransfer() {
 
   return {
     updateTransfer,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

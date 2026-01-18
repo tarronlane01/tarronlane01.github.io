@@ -16,13 +16,15 @@
  * (which is in mutations since it's a write operation).
  */
 
-import { useQuery } from '@tanstack/react-query'
-import { queryKeys } from '@data/queryClient'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys, STALE_TIME } from '@data/queryClient'
 import type { MonthDocument, FirestoreData } from '@types'
 import type { MonthQueryData } from './readMonth'
+import type { BudgetData } from '@data/queries/budget/fetchBudget'
 import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { useBudget } from '@contexts'
 
 /**
  * Parse raw Firestore month data into typed MonthDocument.
@@ -60,7 +62,7 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
  * try to read a non-existent month document - the security rule fails because
  * it can't access resource.data.budget_id on a non-existent document.
  */
-async function readMonthDirect(
+export async function readMonthDirect(
   budgetId: string,
   year: number,
   month: number
@@ -101,11 +103,15 @@ async function readMonthDirect(
  *
  * NOTE: Recalculation is NOT triggered here. It's handled in the useMonthQuery
  * hook via useEffect to ensure it runs whether data came from cache or Firestore.
+ *
+ * IMPORTANT: Only creates a month if it exists in the budget's month_map.
+ * This prevents creating months when navigating backwards to months that don't exist.
  */
-async function fetchMonth(
+export async function fetchMonth(
   budgetId: string,
   year: number,
-  month: number
+  month: number,
+  queryClient?: ReturnType<typeof useQueryClient>
 ): Promise<MonthDocument> {
   // Read directly from Firestore (no fetchQuery to avoid deadlock)
   const existingMonth = await readMonthDirect(budgetId, year, month)
@@ -114,8 +120,38 @@ async function fetchMonth(
     return existingMonth
   }
 
-  // Create new month document with start balances from previous month
-  return createMonth(budgetId, year, month)
+  // Check if month exists in month_map before creating
+  // If queryClient is provided, check cache first (faster)
+  let monthExistsInMap = false
+  if (queryClient) {
+    const budgetData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+    if (budgetData?.monthMap) {
+      const monthOrdinal = getYearMonthOrdinal(year, month)
+      monthExistsInMap = monthOrdinal in budgetData.monthMap
+    }
+  } else {
+    // If not in cache, read budget to check month_map
+    const { exists, data } = await readDocByPath<FirestoreData>(
+      'budgets',
+      budgetId,
+      'checking month_map before creating month'
+    )
+    if (exists && data?.month_map) {
+      const monthOrdinal = getYearMonthOrdinal(year, month)
+      const monthMap = data.month_map as Record<string, unknown>
+      monthExistsInMap = monthOrdinal in monthMap
+    }
+  }
+
+  // Only create if month exists in month_map
+  // If month_map is empty/missing, allow creation (legacy support for budgets without month_map)
+  if (monthExistsInMap) {
+    // Create new month document with start balances from previous month
+    return createMonth(budgetId, year, month)
+  }
+
+  // Month doesn't exist in month_map - throw error instead of creating
+  throw new Error(`Month ${year}/${month} does not exist in budget. Cannot create months that are not in month_map.`)
 }
 
 /**
@@ -139,14 +175,30 @@ export function useMonthQuery(
   month: number,
   options?: { enabled?: boolean }
 ) {
-  const isEnabled = !!budgetId && (options?.enabled !== false)
+  const queryClient = useQueryClient()
+  const { initialDataLoadComplete } = useBudget()
+
+  const queryKey = budgetId ? queryKeys.month(budgetId, year, month) : ['month', 'none']
+
+  // Enable query only if:
+  // 1. Budget ID is provided
+  // 2. Options don't explicitly disable it
+  // 3. Initial data load is complete (cache is populated) OR we need to fetch
+  // This ensures we don't try to fetch before cache is ready on initial load
+  const isEnabled = !!budgetId &&
+    (options?.enabled !== false) &&
+    initialDataLoadComplete
 
   return useQuery({
-    queryKey: budgetId ? queryKeys.month(budgetId, year, month) : ['month', 'none'],
+    queryKey,
     queryFn: async (): Promise<MonthQueryData> => {
-      const monthData = await fetchMonth(budgetId!, year, month)
+      const monthData = await fetchMonth(budgetId!, year, month, queryClient)
       return { month: monthData }
     },
     enabled: isEnabled,
+    // React Query will automatically use cached data if it exists and is not stale
+    // The cache is populated by useInitialDataLoad with updatedAt timestamps
+    // Setting staleTime ensures React Query knows when data is fresh (5 minutes)
+    staleTime: STALE_TIME, // 5 minutes - matches queryClient default
   })
 }

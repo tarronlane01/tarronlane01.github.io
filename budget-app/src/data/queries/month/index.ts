@@ -9,4 +9,4 @@ export { getFutureMonths, type MonthWithId } from './getFutureMonths'
 export { getEndBalancesFromMonth } from './getEndBalancesFromMonth'
 
 // React Query hook
-export { useMonthQuery } from './useMonthQuery'
+export { useMonthQuery, fetchMonth, readMonthDirect } from './useMonthQuery'

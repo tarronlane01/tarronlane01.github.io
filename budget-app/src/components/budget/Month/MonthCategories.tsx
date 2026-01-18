@@ -12,6 +12,7 @@ import { useBudgetData, useAllocationsPage, useMonthData, useAutoRecalculation }
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
 import { ErrorAlert } from '../../ui'
+import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 import { CategoryGroupRows } from './CategoryGridRows'
@@ -208,8 +209,8 @@ export function MonthCategories() {
         })}
 
         {/* Ungrouped categories */}
-        {categoriesByGroup['ungrouped']?.length > 0 && (() => {
-          const ungroupedCats = categoriesByGroup['ungrouped']
+        {categoriesByGroup[UNGROUPED_CATEGORY_GROUP_ID]?.length > 0 && (() => {
+          const ungroupedCats = categoriesByGroup[UNGROUPED_CATEGORY_GROUP_ID]
           const ungroupedTotals = ungroupedCats.reduce((acc, [catId]) => {
             const bal = getCategoryBalance(catId)
             if (!bal) return acc
@@ -217,7 +218,7 @@ export function MonthCategories() {
           }, { start: 0, allocated: 0, spent: 0, transfers: 0, adjustments: 0, end: 0 })
 
           return (
-            <CategoryGroupRows key="ungrouped" name="Uncategorized" categories={ungroupedCats} groupTotals={ungroupedTotals}
+            <CategoryGroupRows key={UNGROUPED_CATEGORY_GROUP_ID} name="Uncategorized" categories={ungroupedCats} groupTotals={ungroupedTotals}
               getCategoryBalance={getCategoryBalance} localAllocations={localAllocations} savedAllocations={savedAllocations}
               previousMonthIncome={previousMonthIncome} isDraftMode={isDraftMode} onAllocationChange={handleAllocationChange}
               isMobile={isMobile} isUngrouped getAllocationAmount={getAllocationAmount} />

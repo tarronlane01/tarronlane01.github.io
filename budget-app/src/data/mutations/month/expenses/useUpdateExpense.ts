@@ -11,9 +11,9 @@ import { queryKeys } from '@data'
 import { readMonth } from '@data/queries/month'
 import type { MonthDocument, ExpenseTransaction } from '@types'
 import { savePayeeIfNew } from '../../payees'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 /**
  * Check if expense values have actually changed (no-op detection)
@@ -49,7 +49,9 @@ function hasExpenseChanges(
 
 export function useUpdateExpense() {
   const queryClient = useQueryClient()
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const updateExpense = async (
     budgetId: string,
@@ -76,9 +78,6 @@ export function useUpdateExpense() {
       return { updatedMonth: monthData, noOp: true }
     }
 
-    const oldAmount = oldExpense?.amount ?? 0
-    const oldAccountId = oldExpense?.account_id ?? accountId
-
     const updatedExpense: ExpenseTransaction = {
       id: expenseId,
       amount,
@@ -93,34 +92,47 @@ export function useUpdateExpense() {
 
     const updatedExpensesList = (monthData.expenses || []).map(exp => exp.id === expenseId ? updatedExpense : exp)
 
-    // Re-total to update all derived values (totals, account_balances, category spent, etc.)
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with updated transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       expenses: updatedExpensesList,
       updated_at: new Date().toISOString(),
-    })
-
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'update expense' })
-
-    // Update budget's account balance
-    // Amounts are signed: negative = expense (money out), positive = refund (money in)
-    // To update: reverse old effect (-oldAmount) and apply new effect (+amount)
-    // Delta = amount - oldAmount
-    if (oldAccountId === accountId) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount - oldAmount }])
-    } else {
-      await updateBudgetAccountBalances(budgetId, [
-        { accountId: oldAccountId, delta: -oldAmount },  // Reverse old account effect
-        { accountId, delta: amount },                     // Apply new account effect
-      ])
     }
 
-    // Save payee if new
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
+
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useUpdateExpense] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save payee if new (this still writes immediately since it's just adding to a list)
+    // Note: payee changes are tracked separately since they're a different document type
     if (payee?.trim()) {
       const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
       const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
       if (updatedPayees) {
         queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
+        // Payee changes need to be tracked separately - this is handled by savePayeeIfNew or we need to track it
+        // For now, we'll leave this as-is since payees are a special case
+      }
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useUpdateExpense] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
       }
     }
 
@@ -129,8 +141,8 @@ export function useUpdateExpense() {
 
   return {
     updateExpense,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false, // No longer using mutation, so no pending state
+    isError: false,
+    error: null,
   }
 }

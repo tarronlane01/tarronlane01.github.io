@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
+import { useQueryClient } from '@tanstack/react-query'
 
-import { AppProvider, useApp, UserContext, BudgetProvider } from '@contexts'
+import { AppProvider, useApp, UserContext, BudgetProvider, SyncProvider, useBudget } from '@contexts'
 import { QueryProvider } from '@data'
 import { useFirebaseAuth, MigrationProgressProvider } from '@hooks'
 import { MigrationProgressModal } from './components/budget/Admin'
@@ -16,8 +17,11 @@ import { Settings, Accounts, Categories, Users as SettingsUsers } from './pages/
 import { Admin, AdminBudget, AdminFeedback, AdminMigration, AdminTests } from './pages/budget/admin'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
-import { FeedbackButton } from './components/ui'
+import { FeedbackButton, Banner, bannerQueue } from './components/ui'
 import { LoadingOverlay } from './components/app/LoadingOverlay'
+import { useBackgroundSave } from './hooks/useBackgroundSave'
+import { useNavigationSave } from './hooks/useNavigationSave'
+import { useSyncCheck } from './hooks/useSyncCheck'
 import type { type_user_context } from '@types'
 
 const initial_user_context: type_user_context = {
@@ -32,6 +36,84 @@ function GlobalLoadingOverlay() {
   const { isLoading, loadingMessage } = useApp()
   if (!isLoading) return null
   return <LoadingOverlay message={loadingMessage} />
+}
+
+/** Banner display - shows current banner from queue */
+function GlobalBanner() {
+  const [currentBanner, setCurrentBanner] = useState<ReturnType<typeof bannerQueue.getCurrent>>(null)
+
+  useEffect(() => {
+    return bannerQueue.subscribe(setCurrentBanner)
+  }, [])
+
+  if (!currentBanner) return null
+
+  return (
+    <Banner
+      item={currentBanner}
+      onDismiss={(id) => bannerQueue.remove(id)}
+    />
+  )
+}
+
+/** Budget app content with sync and save functionality */
+function BudgetAppContent() {
+  const { selectedBudgetId, isInitialized } = useBudget()
+  const queryClient = useQueryClient()
+
+  // Check if initial data load is complete
+  // Initial data load query key: ['initialDataLoad', budgetId]
+  const initialDataLoadKey = selectedBudgetId ? ['initialDataLoad', selectedBudgetId] : null
+  const initialDataLoadComplete = initialDataLoadKey
+    ? queryClient.getQueryState(initialDataLoadKey)?.status === 'success'
+    : false
+
+  // Set up background save
+  useBackgroundSave()
+
+  // Set up navigation save
+  useNavigationSave()
+
+  // Set up sync check - only after initial load completes (we're already synced on initial load)
+  useSyncCheck(selectedBudgetId, initialDataLoadComplete && isInitialized)
+
+  return (
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/account" element={<Account />} />
+
+        {/* Protected budget routes */}
+        <Route path="/budget" element={<ProtectedRoute />}>
+          <Route element={<BudgetLayout />}>
+            <Route index element={<Budget />} />
+            <Route path=":year/:month/:tab/:view?" element={<Budget />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="my-budgets" element={<MyBudgets />} />
+
+            {/* Budget Settings routes */}
+            <Route path="settings" element={<Settings />}>
+              <Route index element={<Navigate to="categories" replace />} />
+              <Route path="accounts" element={<Accounts />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="users" element={<SettingsUsers />} />
+            </Route>
+
+            {/* Admin routes (admin-only) */}
+            <Route path="admin" element={<Admin />}>
+              <Route path="budget" element={<AdminBudget />} />
+              <Route path="feedback" element={<AdminFeedback />} />
+              <Route path="migration" element={<AdminMigration />} />
+              <Route path="tests" element={<AdminTests />} />
+            </Route>
+          </Route>
+        </Route>
+      </Routes>
+      <FeedbackButton />
+      <MigrationProgressModal />
+      <GlobalBanner />
+    </>
+  )
 }
 
 /** Main app content with auth handling */
@@ -72,42 +154,13 @@ function AppContent() {
     <UserContext.Provider value={user_context}>
       <QueryProvider>
         <BudgetProvider>
-          <MigrationProgressProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/account" element={<Account />} />
-
-                {/* Protected budget routes */}
-                <Route path="/budget" element={<ProtectedRoute />}>
-                  <Route element={<BudgetLayout />}>
-                    <Route index element={<Budget />} />
-                    <Route path=":year/:month/:tab/:view?" element={<Budget />} />
-                    <Route path="analytics" element={<Analytics />} />
-                    <Route path="my-budgets" element={<MyBudgets />} />
-
-                    {/* Budget Settings routes */}
-                    <Route path="settings" element={<Settings />}>
-                      <Route index element={<Navigate to="categories" replace />} />
-                      <Route path="accounts" element={<Accounts />} />
-                      <Route path="categories" element={<Categories />} />
-                      <Route path="users" element={<SettingsUsers />} />
-                    </Route>
-
-                    {/* Admin routes (admin-only) */}
-                    <Route path="admin" element={<Admin />}>
-                      <Route path="budget" element={<AdminBudget />} />
-                      <Route path="feedback" element={<AdminFeedback />} />
-                      <Route path="migration" element={<AdminMigration />} />
-                      <Route path="tests" element={<AdminTests />} />
-                    </Route>
-                  </Route>
-                </Route>
-              </Routes>
-              <FeedbackButton />
-              <MigrationProgressModal />
-            </BrowserRouter>
-          </MigrationProgressProvider>
+          <SyncProvider>
+            <MigrationProgressProvider>
+              <BrowserRouter>
+                <BudgetAppContent />
+              </BrowserRouter>
+            </MigrationProgressProvider>
+          </SyncProvider>
         </BudgetProvider>
       </QueryProvider>
     </UserContext.Provider>

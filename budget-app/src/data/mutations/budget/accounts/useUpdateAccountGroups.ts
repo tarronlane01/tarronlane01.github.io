@@ -9,29 +9,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import type { AccountGroupsMap, FirestoreData } from '@types'
-import { writeBudgetData } from '../writeBudgetData'
+import type { AccountGroupsMap } from '@types'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useBudgetMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-/**
- * Clean account groups for Firestore
- */
-function cleanAccountGroupsForFirestore(groups: AccountGroupsMap): FirestoreData {
-  const cleaned: FirestoreData = {}
-  Object.entries(groups).forEach(([groupId, group]) => {
-    cleaned[groupId] = {
-      name: group.name,
-      sort_order: group.sort_order,
-    }
-    if (group.expected_balance !== undefined) cleaned[groupId].expected_balance = group.expected_balance
-    if (group.on_budget !== undefined) cleaned[groupId].on_budget = group.on_budget
-    if (group.is_active !== undefined) cleaned[groupId].is_active = group.is_active
-  })
-  return cleaned
-}
 
 // ============================================================================
 // TYPES
@@ -56,6 +41,9 @@ interface MutationContext {
 
 export function useUpdateAccountGroups() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<UpdateAccountGroupsResult, Error, UpdateAccountGroupsParams, MutationContext>({
     onMutate: async (params) => {
@@ -66,27 +54,33 @@ export function useUpdateAccountGroups() {
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
 
-      // Optimistically update the cache
+      // Optimistically update the cache and track change automatically
       if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKey, {
+        const updatedBudget: BudgetData = {
           ...previousData,
           accountGroups,
-        })
+        }
+        updateBudgetCacheAndTrack(budgetId, updatedBudget)
+      }
+
+      // Save current document immediately if viewing budget settings
+      const isCurrentDocument = currentViewingDocument.type === 'budget'
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'budget')
+        } catch (error) {
+          console.warn('[useUpdateAccountGroups] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       return { previousData }
     },
 
     mutationFn: async (params) => {
-      const { budgetId, accountGroups } = params
-      const cleanedGroups = cleanAccountGroupsForFirestore(accountGroups)
-
-      await writeBudgetData({
-        budgetId,
-        updates: { account_groups: cleanedGroups },
-        description: 'saving updated account groups (user edited group settings)',
-      })
-
+      // NO Firestore write! Just return the cached data
+      const { accountGroups } = params
       return { accountGroups }
     },
 

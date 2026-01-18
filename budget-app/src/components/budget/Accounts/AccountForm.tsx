@@ -10,6 +10,7 @@ import {
 } from '../../ui'
 import { colors } from '@styles/shared'
 import type { AccountGroup } from '@types'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 
 // Type for account group with its ID (for passing to child components)
 export type GroupWithId = AccountGroup & { id: string }
@@ -55,8 +56,8 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
   // Find the current group to check for overrides
   const effectiveGroupId = formData.account_group_id || currentGroupId
   const currentGroup = effectiveGroupId ? accountGroups.find(g => g.id === effectiveGroupId) : null
-  const groupOverridesActive = currentGroup?.is_active !== undefined
-  const groupOverridesBudget = currentGroup?.on_budget !== undefined
+  const groupOverridesActive = currentGroup?.is_active !== null
+  const groupOverridesBudget = currentGroup?.on_budget !== null
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -98,13 +99,13 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
         <FormField label="Account Type" htmlFor="account-group">
           <SelectInput
             id="account-group"
-            value={formData.account_group_id || 'ungrouped'}
+            value={formData.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID}
             onChange={(e) => setFormData({
               ...formData,
-              account_group_id: e.target.value === 'ungrouped' ? null : e.target.value
+              account_group_id: e.target.value === UNGROUPED_ACCOUNT_GROUP_ID ? null : e.target.value
             })}
           >
-            <option value="ungrouped">Ungrouped</option>
+            <option value={UNGROUPED_ACCOUNT_GROUP_ID}>Ungrouped</option>
             {accountGroups.map(group => (
               <option key={group.id} value={group.id}>{group.name}</option>
             ))}

@@ -6,6 +6,7 @@ import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } fr
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'
 import type { GroupFormData } from '../components/budget/Accounts/GroupForm'
 import { useAccountReorder } from './useAccountReorder'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 
 // Re-export types for convenience
 export type { AccountFormData, GroupFormData, GroupWithId }
@@ -55,7 +56,7 @@ export function useAccountsPage() {
     return Object.entries(accounts)
       .filter(([, account]) => !account.is_hidden) // Exclude hidden accounts from normal view
       .reduce((acc, [accId, account]) => {
-        const groupId = account.account_group_id || 'ungrouped'
+        const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
         if (!acc[groupId]) acc[groupId] = []
         acc[groupId].push({ ...account, id: accId })
         return acc
@@ -81,15 +82,17 @@ export function useAccountsPage() {
   const handleCreateAccount = useCallback((formData: AccountFormData, forGroupId: string | null) => {
     if (!currentBudget) return
 
+    // Use ungrouped group ID if null is passed
+    const effectiveGroupId = forGroupId || UNGROUPED_ACCOUNT_GROUP_ID
     const groupAccounts = Object.values(accounts).filter(a =>
-      (forGroupId === 'ungrouped' ? !a.account_group_id : a.account_group_id === forGroupId)
+      a.account_group_id === effectiveGroupId
     )
     const maxSortOrder = groupAccounts.length > 0 ? Math.max(...groupAccounts.map(a => a.sort_order)) : -1
 
     const newAccountId = `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     const newAccount: FinancialAccount = {
       nickname: formData.nickname, description: '', balance: 0,
-      account_group_id: forGroupId === 'ungrouped' ? null : forGroupId,
+      account_group_id: effectiveGroupId,
       sort_order: maxSortOrder + 1,
       is_income_account: formData.is_income_account ?? false,
       is_income_default: formData.is_income_default ?? false,
@@ -118,11 +121,12 @@ export function useAccountsPage() {
     const account = accounts[accountId]
     if (!account) return
 
-    const oldGroupId = account.account_group_id || 'ungrouped'
-    const newGroupId = formData.account_group_id
+    const oldGroupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
+    // Use ungrouped group ID if null is passed
+    const newGroupId = formData.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
     let newSortOrder = account.sort_order
-    if (oldGroupId !== (newGroupId || 'ungrouped')) {
-      const targetGroupAccounts = Object.values(accounts).filter(a => (a.account_group_id || 'ungrouped') === (newGroupId || 'ungrouped'))
+    if (oldGroupId !== newGroupId) {
+      const targetGroupAccounts = Object.values(accounts).filter(a => a.account_group_id === newGroupId)
       newSortOrder = targetGroupAccounts.length > 0 ? Math.max(...targetGroupAccounts.map(a => a.sort_order)) + 1 : 0
     }
 
@@ -157,8 +161,8 @@ export function useAccountsPage() {
   const handleMoveAccount = useCallback(async (accountId: string, direction: 'up' | 'down') => {
     const account = accounts[accountId]
     if (!account) return
-    const groupId = account.account_group_id || 'ungrouped'
-    const groupAccountEntries = Object.entries(accounts).filter(([, a]) => (a.account_group_id || 'ungrouped') === groupId).sort(([, a], [, b]) => a.sort_order - b.sort_order)
+    const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
+    const groupAccountEntries = Object.entries(accounts).filter(([, a]) => a.account_group_id === groupId).sort(([, a], [, b]) => a.sort_order - b.sort_order)
     const currentIndex = groupAccountEntries.findIndex(([accId]) => accId === accountId)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
     if (targetIndex < 0 || targetIndex >= groupAccountEntries.length) return
@@ -182,7 +186,7 @@ export function useAccountsPage() {
     const sortOrders = Object.values(accountGroups).map(g => g.sort_order)
     const maxSortOrder = sortOrders.length > 0 ? Math.max(...sortOrders) : -1
     const newGroupId = `account_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const newGroup: AccountGroup = { name: formData.name, sort_order: maxSortOrder + 1, expected_balance: formData.expected_balance, on_budget: formData.on_budget, is_active: formData.is_active }
+    const newGroup: AccountGroup = { name: formData.name, sort_order: maxSortOrder + 1, expected_balance: formData.expected_balance, on_budget: formData.on_budget ?? null, is_active: formData.is_active ?? null }
     const newGroups: AccountGroupsMap = { ...accountGroups, [newGroupId]: newGroup }
     setAccountGroupsOptimistic(newGroups)
     saveAccountGroups(newGroups).catch(err => setError(err instanceof Error ? err.message : 'Failed to create account type.'))
@@ -190,16 +194,26 @@ export function useAccountsPage() {
 
   const handleUpdateGroup = useCallback((groupId: string, formData: GroupFormData) => {
     if (!currentBudget) return
-    const newGroups: AccountGroupsMap = { ...accountGroups, [groupId]: { ...accountGroups[groupId], name: formData.name, expected_balance: formData.expected_balance, on_budget: formData.on_budget, is_active: formData.is_active } }
+    const newGroups: AccountGroupsMap = { ...accountGroups, [groupId]: { ...accountGroups[groupId], name: formData.name, expected_balance: formData.expected_balance, on_budget: formData.on_budget ?? null, is_active: formData.is_active ?? null } }
     setAccountGroupsOptimistic(newGroups)
     saveAccountGroups(newGroups).catch(err => setError(err instanceof Error ? err.message : 'Failed to update account type.'))
   }, [currentBudget, accountGroups, setAccountGroupsOptimistic, saveAccountGroups])
 
   const handleDeleteGroup = useCallback((groupId: string) => {
+    // Prevent deleting the default ungrouped group
+    if (groupId === UNGROUPED_ACCOUNT_GROUP_ID) {
+      alert('Cannot delete the default Ungrouped account type.')
+      return
+    }
     if (!confirm('Are you sure you want to delete this account type? Accounts in this type will move to Ungrouped.')) return
     if (!currentBudget) return
     const newAccounts: AccountsMap = {}
-    Object.entries(accounts).forEach(([accId, account]) => { newAccounts[accId] = account.account_group_id === groupId ? { ...account, account_group_id: null } : account })
+    // Move accounts from deleted group to ungrouped group
+    Object.entries(accounts).forEach(([accId, account]) => {
+      newAccounts[accId] = account.account_group_id === groupId
+        ? { ...account, account_group_id: UNGROUPED_ACCOUNT_GROUP_ID }
+        : account
+    })
     const { [groupId]: _removedGroup, ...newGroups } = accountGroups
     void _removedGroup
     setAccountsOptimistic(newAccounts)

@@ -12,13 +12,12 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { writeMonthData } from '@data'
 import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, TransferTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isNoAccount } from '../../../constants'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // TYPES
@@ -78,6 +77,9 @@ function createTransferObject(
 
 export function useAddTransfer() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+      const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const mutation = useMutation<AddTransferResult, Error, AddTransferParams, MutationContext>({
     // onMutate runs BEFORE mutationFn - this is where we do optimistic updates
@@ -95,23 +97,46 @@ export function useAddTransfer() {
       const transferId = `transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const newTransfer = createTransferObject(params, transferId)
 
-      // Optimistically update the cache
+      // Optimistically update the cache with the new transaction
+      // Retotalling and recalculation will happen in recalculateMonthAndCascade
       if (previousData?.month) {
-        const optimisticMonth: MonthDocument = retotalMonth({
+        const optimisticMonth: MonthDocument = {
           ...previousData.month,
           transfers: [...(previousData.month.transfers || []), newTransfer],
           updated_at: new Date().toISOString(),
-        })
-        queryClient.setQueryData<MonthQueryData>(queryKey, { month: optimisticMonth })
+        }
+        updateMonthCacheAndTrack(budgetId, year, month, optimisticMonth)
+      }
+
+      // Recalculate month, all future months, and budget - all in one call
+      try {
+        await recalculateMonthAndCascade(budgetId, year, month)
+      } catch (error) {
+        console.warn('[useAddTransfer] Failed to recalculate month and cascade:', error)
+        // Continue even if recalculation fails
+      }
+
+      // Save current document immediately if it's the one being viewed
+      const isCurrentDocument = currentViewingDocument.type === 'month' &&
+        currentViewingDocument.year === year &&
+        currentViewingDocument.month === month
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'month', year, month)
+        } catch (error) {
+          console.warn('[useAddTransfer] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       // Return context for rollback and for mutationFn to use
       return { previousData, transferId, newTransfer }
     },
 
-    // mutationFn does the actual Firestore write
+    // mutationFn no longer writes to Firestore - just returns the updated data
     mutationFn: async (params) => {
-      const { budgetId, year, month, fromAccountId, toAccountId, amount } = params
+      const { budgetId, year, month } = params
       const queryKey = queryKeys.month(budgetId, year, month)
 
       // Get the optimistic data we just set (includes the new transfer)
@@ -121,21 +146,6 @@ export function useAddTransfer() {
       }
 
       const updatedMonth = cachedData.month
-
-      // Write to Firestore
-      await writeMonthData({ budgetId, month: updatedMonth, description: 'add transfer' })
-
-      // Update budget's account balances for transfers between real accounts
-      const balanceUpdates: { accountId: string; delta: number }[] = []
-      if (!isNoAccount(fromAccountId)) {
-        balanceUpdates.push({ accountId: fromAccountId, delta: -amount })
-      }
-      if (!isNoAccount(toAccountId)) {
-        balanceUpdates.push({ accountId: toAccountId, delta: amount })
-      }
-      if (balanceUpdates.length > 0) {
-        await updateBudgetAccountBalances(budgetId, balanceUpdates)
-      }
 
       // Find the transfer we added (last one in the array)
       const newTransfer = updatedMonth.transfers?.[updatedMonth.transfers.length - 1]

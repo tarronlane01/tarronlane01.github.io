@@ -9,10 +9,20 @@ const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
 
 function Settings() {
   const { addLoadingHold, removeLoadingHold } = useApp()
-  const { lastSettingsTab, setLastSettingsTab, setPageTitle } = useBudget()
+  const { lastSettingsTab, setLastSettingsTab, setPageTitle, selectedBudgetId, setCurrentViewingDocument } = useBudget()
 
   // Set page title for layout header
   useLayoutEffect(() => { setPageTitle('Budget Settings') }, [setPageTitle])
+
+  // Track current viewing document (budget settings = budget document)
+  useEffect(() => {
+    if (selectedBudgetId) {
+      setCurrentViewingDocument({ type: 'budget' })
+    }
+    return () => {
+      setCurrentViewingDocument({ type: null })
+    }
+  }, [selectedBudgetId, setCurrentViewingDocument])
 
   // Hook: budget data
   const {

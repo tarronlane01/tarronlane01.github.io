@@ -13,6 +13,7 @@ import { useIsMobile } from '@hooks'
 import type { FinancialAccount } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { colors } from '@styles/shared'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import { AccountStatsRow } from './MonthBalances'
 import { AccountGroupRows } from './AccountGridRows'
 import type { RecalculationProgress } from '@data/recalculation'
@@ -84,7 +85,7 @@ export function MonthAccounts() {
     Object.entries(accounts)
       .filter(([, account]) => !account.is_hidden) // Exclude hidden accounts
       .forEach(([accountId, account]) => {
-        const groupId = account.account_group_id || 'ungrouped'
+        const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
         if (!result[groupId]) result[groupId] = []
         result[groupId].push([accountId, account])
       })
@@ -291,8 +292,8 @@ export function MonthAccounts() {
         })}
 
         {/* Ungrouped Accounts */}
-        {accountsByGroup['ungrouped']?.length > 0 && (() => {
-          const ungroupedAccounts = accountsByGroup['ungrouped']
+        {accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]?.length > 0 && (() => {
+          const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]
           const ungroupedTotals = ungroupedAccounts.reduce((acc, [accountId]) => {
             const bal = accountBalances[accountId]
             if (!bal) return acc
@@ -309,7 +310,7 @@ export function MonthAccounts() {
 
           return (
             <AccountGroupRows
-              key="ungrouped"
+              key={UNGROUPED_ACCOUNT_GROUP_ID}
               name="Ungrouped"
               accounts={ungroupedAccounts}
               groupTotals={ungroupedTotals}

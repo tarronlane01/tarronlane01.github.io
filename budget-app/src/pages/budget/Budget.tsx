@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
-import { useBudgetData, useMonthData, useAutoRecalculation } from '@hooks'
+import { useBudgetData, useMonthData, useAutoRecalculation, useMonthPrefetch } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -57,6 +57,7 @@ function Budget() {
     goToNextMonth,
     hasPendingInvites,
     needsFirstBudget,
+    initialDataLoadComplete,
   } = useBudget()
 
   const {
@@ -71,13 +72,15 @@ function Budget() {
   // Track if we're in the middle of a redirect due to month creation error
   const [isRedirecting, setIsRedirecting] = useState(false)
 
-  // Add loading hold while waiting for budget data to be available
+  // Add loading hold while waiting for budget data and initial data load to be available
   useEffect(() => {
-    if (!isBudgetDataLoaded) {
+    if (!isBudgetDataLoaded || !initialDataLoadComplete) {
       addLoadingHold('budget-data', 'Loading budget data...')
+    } else {
+      removeLoadingHold('budget-data')
     }
     return () => removeLoadingHold('budget-data')
-  }, [isBudgetDataLoaded, addLoadingHold, removeLoadingHold])
+  }, [isBudgetDataLoaded, initialDataLoadComplete, addLoadingHold, removeLoadingHold])
 
   const urlInitializedRef = useRef(false)
 
@@ -185,6 +188,21 @@ function Budget() {
     setPageTitle(currentBudget?.name || 'Budget')
   }, [currentBudget?.name, setPageTitle])
 
+  // Track current viewing document for immediate saves
+  const { setCurrentViewingDocument } = useBudget()
+  useEffect(() => {
+    if (currentBudget && currentYear && currentMonthNumber) {
+      setCurrentViewingDocument({
+        type: 'month',
+        year: currentYear,
+        month: currentMonthNumber,
+      })
+    }
+    return () => {
+      setCurrentViewingDocument({ type: null })
+    }
+  }, [currentBudget, currentYear, currentMonthNumber, setCurrentViewingDocument])
+
   // Redirect to My Budgets page if user has no budget selected
   // This handles: new users, users with pending invites, budget-not-found scenarios
   useEffect(() => {
@@ -210,6 +228,9 @@ function Budget() {
     }
   }, [isBudgetDataLoaded, isRedirecting, currentBudget, selectedBudgetId, hasPendingInvites, needsFirstBudget, navigate])
 
+  // Prefetch next month in navigation direction for smooth navigation
+  useMonthPrefetch(selectedBudgetId, currentYear, currentMonthNumber)
+
   // Auto-trigger recalculation when navigating to budget page if current month needs recalc
   useAutoRecalculation({
     budgetId: selectedBudgetId,
@@ -220,8 +241,9 @@ function Budget() {
     logPrefix: '[Budget]',
   })
 
-  // Don't render content while budget data is loading or redirecting (loading overlay shows via loading hold)
-  if (!isBudgetDataLoaded || isRedirecting) {
+  // Don't render content while budget data is loading, initial data load is incomplete, or redirecting
+  // This ensures the cache is populated before any queries run
+  if (!isBudgetDataLoaded || !initialDataLoadComplete || isRedirecting) {
     return null
   }
 

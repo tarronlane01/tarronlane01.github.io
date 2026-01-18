@@ -16,12 +16,13 @@ export function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
     : null
 
   // Effective values (group overrides take precedence)
-  const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
-  const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
+  // Check if group exists AND has a non-null override value
+  const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
+  const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
 
   // Inactive flag (most important - show first)
   if (!effectiveActive) {
-    const isFromGroup = group?.is_active !== undefined
+    const isFromGroup = group && group.is_active !== null
     flags.push(
       <AccountBadge
         key="inactive"
@@ -35,7 +36,7 @@ export function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
 
   // Off-budget flag
   if (!effectiveOnBudget) {
-    const isFromGroup = group?.on_budget !== undefined
+    const isFromGroup = group && group.on_budget !== null
     flags.push(
       <AccountBadge
         key="off-budget"

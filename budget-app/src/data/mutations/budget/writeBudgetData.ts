@@ -12,6 +12,7 @@ import type { FirestoreData } from '@types'
 import { readDocByPath, writeDocByPath } from '@firestore'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
+import { cleanForFirestore } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -86,8 +87,11 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
     updated_at: new Date().toISOString(),
   }
 
+  // Clean undefined values before writing (Firestore doesn't allow undefined)
+  const cleanedData = cleanForFirestore(dataToWrite)
+
   // Write with merge: true - only updates specified fields, doesn't overwrite others
-  await writeDocByPath('budgets', budgetId, dataToWrite, description, { merge: true })
+  await writeDocByPath('budgets', budgetId, cleanedData, description, { merge: true })
 
   // Update cache after successful write
   const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))

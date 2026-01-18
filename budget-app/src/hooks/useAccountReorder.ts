@@ -4,6 +4,7 @@
 
 import { useCallback } from 'react'
 import type { AccountsMap, AccountGroupsMap, Budget } from '@types'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 
 interface UseAccountReorderParams {
   currentBudget: Budget | null
@@ -34,7 +35,7 @@ export function useAccountReorder({
     const draggedAccount = accounts[draggedId]
     if (!draggedAccount) return
 
-    const newGroupId = targetGroupId === 'ungrouped' ? null : targetGroupId
+    const newGroupId = targetGroupId === 'ungrouped' ? UNGROUPED_ACCOUNT_GROUP_ID : targetGroupId
     const targetGroupAccounts = Object.entries(accounts).filter(([, a]) => {
       const accGroupId = a.account_group_id || 'ungrouped'
       return accGroupId === targetGroupId

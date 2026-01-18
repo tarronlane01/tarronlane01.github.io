@@ -9,32 +9,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
-import type { CategoriesMap, FirestoreData } from '@types'
-import { writeBudgetData } from '../writeBudgetData'
+import type { CategoriesMap } from '@types'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useBudgetMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-/**
- * Clean categories for Firestore (removes undefined values)
- */
-function cleanCategoriesForFirestore(categories: CategoriesMap): FirestoreData {
-  const cleaned: FirestoreData = {}
-  Object.entries(categories).forEach(([catId, cat]) => {
-    cleaned[catId] = {
-      name: cat.name,
-      category_group_id: cat.category_group_id ?? null,
-      sort_order: cat.sort_order,
-      balance: cat.balance ?? 0,
-    }
-    if (cat.description !== undefined) cleaned[catId].description = cat.description
-    if (cat.default_monthly_amount !== undefined) cleaned[catId].default_monthly_amount = cat.default_monthly_amount
-    if (cat.default_monthly_type !== undefined) cleaned[catId].default_monthly_type = cat.default_monthly_type
-    if (cat.is_hidden !== undefined) cleaned[catId].is_hidden = cat.is_hidden
-  })
-  return cleaned
-}
 
 // ============================================================================
 // TYPES
@@ -59,6 +41,9 @@ interface MutationContext {
 
 export function useUpdateCategories() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<UpdateCategoriesResult, Error, UpdateCategoriesParams, MutationContext>({
     onMutate: async (params) => {
@@ -69,27 +54,33 @@ export function useUpdateCategories() {
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
 
-      // Optimistically update the cache
+      // Optimistically update the cache and track change automatically
       if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKey, {
+        const updatedBudget: BudgetData = {
           ...previousData,
           categories,
-        })
+        }
+        updateBudgetCacheAndTrack(budgetId, updatedBudget)
+      }
+
+      // Save current document immediately if viewing budget settings
+      const isCurrentDocument = currentViewingDocument.type === 'budget'
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'budget')
+        } catch (error) {
+          console.warn('[useUpdateCategories] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       return { previousData }
     },
 
     mutationFn: async (params) => {
-      const { budgetId, categories } = params
-      const cleanedCategories = cleanCategoriesForFirestore(categories)
-
-      await writeBudgetData({
-        budgetId,
-        updates: { categories: cleanedCategories },
-        description: 'saving updated categories (user edited category settings)',
-      })
-
+      // NO Firestore write! Just return the cached data
+      const { categories } = params
       return { categories }
     },
 

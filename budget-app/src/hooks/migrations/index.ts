@@ -71,7 +71,7 @@ export {
 } from './useDatabaseCleanup'
 
 // Special-purpose migrations
-export { useFeedbackMigration, type FeedbackMigrationResult, type FeedbackMigrationStatus } from './useFeedbackMigration'
+export { useEnsureUngroupedGroups, type EnsureUngroupedGroupsStatus, type EnsureUngroupedGroupsResult } from './useEnsureUngroupedGroups'
 export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo, type DeleteProgress, type DeletePhase } from './useDeleteAllMonths'
 export { useDeleteSampleUserBudget, type DeleteSampleUserBudgetStatus, type DeleteSampleUserBudgetResult, type SampleBudgetInfo, type DeleteSampleProgress, type DeleteSamplePhase } from './useDeleteSampleUserBudget'
 export { usePrecisionCleanup, type PrecisionCleanupStatus, type PrecisionCleanupResult } from './usePrecisionCleanup'
@@ -79,7 +79,6 @@ export { useExpenseToAdjustmentMigration, type ExpenseToAdjustmentStatus, type E
 export { useOrphanedIdCleanup, type OrphanedIdCleanupStatus, type OrphanedIdCleanupResult } from './useOrphanedIdCleanup'
 export { useAdjustmentsToTransfersMigration, type AdjustmentsToTransfersStatus, type AdjustmentsToTransfersResult } from './useAdjustmentsToTransfersMigration'
 export { useAccountCategoryValidation, type ValidationStatus, type TransactionViolation } from './useAccountCategoryValidation'
-export { useHiddenFieldMigration, type HiddenFieldMigrationStatus, type HiddenFieldMigrationResult } from './useHiddenFieldMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
 export { useRestoreFromDiagnostic, type RestoreStatus, type RestoreResult } from './useRestoreFromDiagnostic'
 export { useDownloadBudget, type DownloadBudgetProgress } from './useDownloadBudget'

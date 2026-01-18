@@ -208,8 +208,8 @@ export function AccountGroupCard({
             initialData={{
               name: group.name,
               expected_balance: group.expected_balance || 'positive',
-              on_budget: group.on_budget,
-              is_active: group.is_active,
+              on_budget: group.on_budget ?? undefined,
+              is_active: group.is_active ?? undefined,
             }}
             onSubmit={(data) => onUpdateGroup(group.id, data)}
             onCancel={() => setEditingGroupId(null)}

@@ -11,13 +11,13 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { writeMonthData } from '@data'
 import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, ExpenseTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { savePayeeIfNew } from '../../payees'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // TYPES
@@ -75,6 +75,9 @@ function createExpenseObject(
 
 export function useAddExpense() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade, trackChange } = useMonthMutationHelpers()
 
   const mutation = useMutation<AddExpenseResult, Error, AddExpenseParams, MutationContext>({
     // onMutate runs BEFORE mutationFn - this is where we do optimistic updates
@@ -92,23 +95,56 @@ export function useAddExpense() {
       const expenseId = `expense_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const newExpense = createExpenseObject(params, expenseId)
 
-      // Optimistically update the cache
+      // Optimistically update the cache with the new transaction
+      // Retotalling and recalculation will happen in recalculateMonthAndCascade
       if (previousData?.month) {
-        const optimisticMonth: MonthDocument = retotalMonth({
+        const optimisticMonth: MonthDocument = {
           ...previousData.month,
           expenses: [...(previousData.month.expenses || []), newExpense],
           updated_at: new Date().toISOString(),
-        })
-        queryClient.setQueryData<MonthQueryData>(queryKey, { month: optimisticMonth })
+        }
+        updateMonthCacheAndTrack(budgetId, year, month, optimisticMonth)
+      }
+
+      // Recalculate month, all future months, and budget - all in one call
+      try {
+        await recalculateMonthAndCascade(budgetId, year, month)
+      } catch (error) {
+        console.warn('[useAddExpense] Failed to recalculate month and cascade:', error)
+        // Continue even if recalculation fails
+      }
+
+      // Save payee if new (this still writes immediately since it's just adding to a list)
+      if (params.payee?.trim()) {
+        const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+        const updatedPayees = await savePayeeIfNew(budgetId, params.payee, cachedPayees)
+        if (updatedPayees) {
+          queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
+          trackChange({ type: 'payees', budgetId })
+        }
+      }
+
+      // Save current document immediately if it's the one being viewed
+      const isCurrentDocument = currentViewingDocument.type === 'month' &&
+        currentViewingDocument.year === year &&
+        currentViewingDocument.month === month
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'month', year, month)
+        } catch (error) {
+          console.warn('[useAddExpense] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       // Return context for rollback and for mutationFn to use
       return { previousData, expenseId, newExpense }
     },
 
-    // mutationFn does the actual Firestore write
+    // mutationFn no longer writes to Firestore - just returns the updated data
     mutationFn: async (params) => {
-      const { budgetId, year, month, accountId, payee, amount } = params
+      const { budgetId, year, month } = params
       const queryKey = queryKeys.month(budgetId, year, month)
 
       // Get the optimistic data we just set (includes the new expense)
@@ -118,21 +154,6 @@ export function useAddExpense() {
       }
 
       const updatedMonth = cachedData.month
-
-      // Write to Firestore
-      await writeMonthData({ budgetId, month: updatedMonth, description: 'add expense' })
-
-      // Update budget's account balance
-      await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
-
-      // Save payee if new
-      if (payee?.trim()) {
-        const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
-        const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
-        if (updatedPayees) {
-          queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
-        }
-      }
 
       // Find the expense we added (last one in the array)
       const newExpense = updatedMonth.expenses?.[updatedMonth.expenses.length - 1]

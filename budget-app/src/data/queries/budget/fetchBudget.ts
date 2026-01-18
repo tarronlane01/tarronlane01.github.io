@@ -20,6 +20,7 @@ import type {
   Category,
   MonthMap,
 } from '@types'
+import { UNGROUPED_ACCOUNT_GROUP_ID, UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 
 // ============================================================================
 // TYPES
@@ -71,7 +72,8 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
       nickname: account.nickname ?? '',
       description: account.description ?? '',
       balance: account.balance ?? 0,
-      account_group_id: account.account_group_id ?? null,
+      // Always use ungrouped group ID if not set (never null)
+      account_group_id: account.account_group_id ?? UNGROUPED_ACCOUNT_GROUP_ID,
       sort_order: account.sort_order ?? 0,
       is_income_account: account.is_income_account ?? false,
       is_income_default: account.is_income_default ?? false,
@@ -86,6 +88,7 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
 
 /**
  * Parse raw Firestore account groups data into typed AccountGroupsMap
+ * Ensures the default ungrouped group always exists
  */
 function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroupsMap {
   const groups: AccountGroupsMap = {}
@@ -94,15 +97,30 @@ function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroup
       name: group.name,
       sort_order: group.sort_order ?? 0,
       expected_balance: group.expected_balance ?? 'positive',
-      on_budget: group.on_budget,
-      is_active: group.is_active,
+      // Use null for missing override fields (means "use account default")
+      // Firestore doesn't allow undefined, so we use null
+      on_budget: group.on_budget !== undefined ? group.on_budget : null,
+      is_active: group.is_active !== undefined ? group.is_active : null,
     } as AccountGroup
   })
+
+  // Ensure ungrouped group always exists
+  if (!groups[UNGROUPED_ACCOUNT_GROUP_ID]) {
+    groups[UNGROUPED_ACCOUNT_GROUP_ID] = {
+      name: 'Ungrouped',
+      sort_order: 0,
+      expected_balance: 'positive',
+      on_budget: null,
+      is_active: null,
+    }
+  }
+
   return groups
 }
 
 /**
  * Parse raw Firestore categories data into typed CategoriesMap
+ * Always uses ungrouped category group ID if not set (never null)
  */
 function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
   const categories: CategoriesMap = {}
@@ -110,11 +128,13 @@ function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
     categories[id] = {
       name: category.name,
       description: category.description,
-      category_group_id: category.category_group_id ?? null,
+      // Always use ungrouped group ID if not set (never null)
+      category_group_id: category.category_group_id ?? UNGROUPED_CATEGORY_GROUP_ID,
       sort_order: category.sort_order ?? 0,
       default_monthly_amount: category.default_monthly_amount,
       default_monthly_type: category.default_monthly_type,
       balance: category.balance ?? 0,
+      is_hidden: category.is_hidden ?? false,
     } as Category
   })
   return categories
@@ -122,6 +142,7 @@ function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
 
 /**
  * Parse raw Firestore category groups data into typed CategoryGroupWithId[]
+ * Ensures the default ungrouped category group always exists
  */
 function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): CategoryGroupWithId[] {
   const groups: CategoryGroupWithId[] = categoryGroupsData.map((group) => ({
@@ -129,6 +150,17 @@ function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): Category
     name: group.name as string,
     sort_order: (group.sort_order as number) ?? 0,
   }))
+
+  // Ensure ungrouped category group always exists
+  const hasUngrouped = groups.some(g => g.id === UNGROUPED_CATEGORY_GROUP_ID)
+  if (!hasUngrouped) {
+    groups.push({
+      id: UNGROUPED_CATEGORY_GROUP_ID,
+      name: 'Uncategorized',
+      sort_order: 0,
+    })
+  }
+
   groups.sort((a, b) => a.sort_order - b.sort_order)
   return groups
 }

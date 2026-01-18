@@ -7,12 +7,14 @@
 
 import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 export function useDeleteIncome() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const deleteIncome = async (
     budgetId: string,
@@ -24,25 +26,38 @@ export function useDeleteIncome() {
     const monthData = await readMonth(budgetId, year, month)
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
-    // Find income being deleted to get amount and account
-    const deletedIncome = (monthData.income || []).find(inc => inc.id === incomeId)
-    const deletedAmount = deletedIncome?.amount ?? 0
-    const deletedAccountId = deletedIncome?.account_id
-
     const updatedIncomeList = (monthData.income || []).filter(inc => inc.id !== incomeId)
 
-    // Re-total to update all derived values (totals, account_balances, etc.)
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with removed transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       income: updatedIncomeList,
       updated_at: new Date().toISOString(),
-    })
+    }
 
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'delete income' })
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
 
-    // Update budget's account balance (income deletion decreases balance)
-    if (deletedAccountId && deletedAmount > 0) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId: deletedAccountId, delta: -deletedAmount }])
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useDeleteIncome] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useDeleteIncome] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
+      }
     }
 
     return { updatedMonth }
@@ -50,8 +65,8 @@ export function useDeleteIncome() {
 
   return {
     deleteIncome,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

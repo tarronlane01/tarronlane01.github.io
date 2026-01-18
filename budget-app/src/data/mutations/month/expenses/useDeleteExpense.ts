@@ -7,12 +7,14 @@
 
 import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 export function useDeleteExpense() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const deleteExpense = async (
     budgetId: string,
@@ -24,27 +26,38 @@ export function useDeleteExpense() {
     const monthData = await readMonth(budgetId, year, month)
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
-    // Find expense being deleted to get amount and account
-    const deletedExpense = (monthData.expenses || []).find(exp => exp.id === expenseId)
-    const deletedAmount = deletedExpense?.amount ?? 0
-    const deletedAccountId = deletedExpense?.account_id
-
     const updatedExpensesList = (monthData.expenses || []).filter(exp => exp.id !== expenseId)
 
-    // Re-total to update all derived values (totals, account_balances, category spent, etc.)
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with removed transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       expenses: updatedExpensesList,
       updated_at: new Date().toISOString(),
-    })
+    }
 
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'delete expense' })
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
 
-    // Update budget's account balance - reverse the deleted expense's effect
-    // Amounts are signed: negative = expense, positive = refund
-    // Reversing: delta = -deletedAmount
-    if (deletedAccountId && deletedAmount !== 0) {
-      await updateBudgetAccountBalances(budgetId, [{ accountId: deletedAccountId, delta: -deletedAmount }])
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useDeleteExpense] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useDeleteExpense] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
+      }
     }
 
     return { updatedMonth }
@@ -52,8 +65,8 @@ export function useDeleteExpense() {
 
   return {
     deleteExpense,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

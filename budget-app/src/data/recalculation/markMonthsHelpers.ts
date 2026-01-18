@@ -105,8 +105,13 @@ export function updateCacheWithMarking(
 
 /**
  * Update cache for setMonthInBudgetMap
+ * Optionally tracks the budget change for background save.
  */
-export function updateCacheWithMonth(budgetId: string, cleanedMonthMap: MonthMap): void {
+export function updateCacheWithMonth(
+  budgetId: string,
+  cleanedMonthMap: MonthMap,
+  trackChange?: (change: { type: 'budget'; budgetId: string }) => void
+): void {
   const budgetKey = queryKeys.budget(budgetId)
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (cachedBudget) {
@@ -118,6 +123,11 @@ export function updateCacheWithMonth(budgetId: string, cleanedMonthMap: MonthMap
         month_map: cleanedMonthMap,
       },
     })
+
+    // Track change for background save if callback provided
+    if (trackChange) {
+      trackChange({ type: 'budget', budgetId })
+    }
   }
 }
 
@@ -139,5 +149,47 @@ export function updateCacheWithAllMonthsMarked(budgetId: string, updatedMonthMap
       },
     })
   }
+}
+
+/**
+ * Remove a month from the budget's month_map.
+ * Updates cache immediately and optionally tracks the budget change for background save.
+ */
+export function removeMonthFromMap(
+  budgetId: string,
+  year: number,
+  month: number,
+  trackChange?: (change: { type: 'budget'; budgetId: string }) => void
+): MonthMap {
+  const monthOrdinal = getYearMonthOrdinal(year, month)
+  const budgetKey = queryKeys.budget(budgetId)
+  const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
+
+  if (!cachedBudget) {
+    console.warn(`[removeMonthFromMap] Budget ${budgetId} not found in cache`)
+    return {}
+  }
+
+  const existingMonthMap: MonthMap = cachedBudget.monthMap || {}
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [monthOrdinal]: _removed, ...updatedMonthMap } = existingMonthMap
+  const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
+
+  // Update cache immediately
+  queryClient.setQueryData<BudgetData>(budgetKey, {
+    ...cachedBudget,
+    monthMap: cleanedMonthMap,
+    budget: {
+      ...cachedBudget.budget,
+      month_map: cleanedMonthMap,
+    },
+  })
+
+  // Track change for background save if callback provided
+  if (trackChange) {
+    trackChange({ type: 'budget', budgetId })
+  }
+
+  return cleanedMonthMap
 }
 

@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { sectionHeader } from '@styles/shared'
-import { featureFlags } from '@constants'
+import { featureFlags, UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 
 interface AccountBalancesViewProps {
   accounts: AccountsMap
@@ -36,7 +36,7 @@ export function AccountBalancesView({
     const result: Record<string, Array<[string, FinancialAccount]>> = {}
 
     Object.entries(accounts).forEach(([accountId, account]) => {
-      const groupId = account.account_group_id || 'ungrouped'
+        const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
       if (!result[groupId]) result[groupId] = []
       result[groupId].push([accountId, account])
     })
@@ -90,8 +90,8 @@ export function AccountBalancesView({
       })}
 
       {/* Ungrouped Accounts */}
-      {accountsByGroup['ungrouped']?.length > 0 && (() => {
-        const ungroupedAccounts = accountsByGroup['ungrouped']
+      {accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]?.length > 0 && (() => {
+        const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]
         const ungroupedTotals = ungroupedAccounts.reduce((acc, [accountId]) => {
           const bal = accountBalances[accountId]
           if (!bal) return acc

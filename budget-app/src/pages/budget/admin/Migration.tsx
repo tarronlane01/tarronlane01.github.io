@@ -15,8 +15,7 @@
 import { useFirebaseAuth } from '@hooks'
 import { useBudget } from '@contexts'
 import {
-  useDatabaseCleanup,
-  useFeedbackMigration,
+  useEnsureUngroupedGroups,
   useDeleteAllMonths,
   useDeleteSampleUserBudget,
   usePrecisionCleanup,
@@ -24,7 +23,6 @@ import {
   useOrphanedIdCleanup,
   useAdjustmentsToTransfersMigration,
   useAccountCategoryValidation,
-  useHiddenFieldMigration,
   useDownloadBudget,
   useUploadBudget,
 } from '@hooks'
@@ -51,9 +49,7 @@ function Migration() {
   // =========================================================================
 
   // One-time migrations
-  const databaseCleanup = useDatabaseCleanup({ currentUser: current_user })
-  const hiddenFieldMigration = useHiddenFieldMigration({ currentUser: current_user })
-  const feedbackMigration = useFeedbackMigration({ currentUser: current_user })
+  const ensureUngroupedGroups = useEnsureUngroupedGroups()
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -73,9 +69,7 @@ function Migration() {
   // =========================================================================
 
   const isAnyScanning =
-    databaseCleanup.isScanning ||
-    hiddenFieldMigration.isScanning ||
-    feedbackMigration.isScanning ||
+    ensureUngroupedGroups.isScanning ||
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
     expenseToAdjustment.isScanning ||
@@ -85,9 +79,7 @@ function Migration() {
     deleteSampleUserBudget.isScanning
 
   const isAnyRunning =
-    databaseCleanup.isRunning ||
-    hiddenFieldMigration.isRunning ||
-    feedbackMigration.isMigratingFeedback ||
+    ensureUngroupedGroups.isRunning ||
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
     adjustmentsToTransfers.isRunning ||
@@ -105,9 +97,7 @@ function Migration() {
     logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
       // One-time
-      databaseCleanup.scanStatus(),
-      hiddenFieldMigration.scanStatus(),
-      feedbackMigration.scanStatus(),
+      ensureUngroupedGroups.scanStatus(),
       // Maintenance
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
@@ -119,18 +109,6 @@ function Migration() {
       deleteSampleUserBudget.scanStatus(),
     ])
   }
-
-  // =========================================================================
-  // COMPUTED VALUES FOR FEEDBACK
-  // =========================================================================
-
-  const feedbackHasIssues = feedbackMigration.status && (
-    feedbackMigration.status.sanitizedDocuments.length > 0 ||
-    feedbackMigration.status.corruptedDocuments.length > 0
-  )
-  const feedbackTotalIssues = feedbackMigration.status
-    ? feedbackMigration.status.sanitizedDocuments.length + feedbackMigration.status.corruptedDocuments.length
-    : 0
 
   // =========================================================================
   // RENDER
@@ -177,38 +155,16 @@ function Migration() {
         disabled={!current_user}
         onDownloadBackup={budgetDownload.downloadBudget}
         isDownloadingBackup={budgetDownload.isDownloading}
-        databaseCleanup={{
-          status: databaseCleanup.status,
-          hasData: !!databaseCleanup.status,
-          hasIssues: databaseCleanup.hasIssues,
-          totalIssues: databaseCleanup.totalIssues,
-          isScanning: databaseCleanup.isScanning,
-          isRunning: databaseCleanup.isRunning,
-          result: databaseCleanup.result,
-          scanStatus: databaseCleanup.scanStatus,
-          runCleanup: databaseCleanup.runCleanup,
-        }}
-        hiddenField={{
-          status: hiddenFieldMigration.status,
-          hasData: !!hiddenFieldMigration.status,
-          needsMigration: hiddenFieldMigration.needsMigration,
-          totalItemsToFix: hiddenFieldMigration.totalItemsToFix,
-          isScanning: hiddenFieldMigration.isScanning,
-          isRunning: hiddenFieldMigration.isRunning,
-          result: hiddenFieldMigration.result,
-          scanStatus: hiddenFieldMigration.scanStatus,
-          runMigration: hiddenFieldMigration.runMigration,
-        }}
-        feedback={{
-          status: feedbackMigration.status,
-          hasData: !!feedbackMigration.status,
-          hasIssues: !!feedbackHasIssues,
-          totalIssues: feedbackTotalIssues,
-          isScanning: feedbackMigration.isScanning,
-          isMigrating: feedbackMigration.isMigratingFeedback,
-          result: feedbackMigration.feedbackMigrationResult,
-          scanStatus: feedbackMigration.scanStatus,
-          migrateFeedbackDocuments: feedbackMigration.migrateFeedbackDocuments,
+        ensureUngroupedGroups={{
+          status: ensureUngroupedGroups.status,
+          hasData: !!ensureUngroupedGroups.status,
+          needsMigration: ensureUngroupedGroups.status ? ensureUngroupedGroups.status.budgetsNeedingUpdate > 0 : false,
+          totalBudgetsToUpdate: ensureUngroupedGroups.status?.budgetsNeedingUpdate ?? 0,
+          isScanning: ensureUngroupedGroups.isScanning,
+          isRunning: ensureUngroupedGroups.isRunning,
+          result: ensureUngroupedGroups.result,
+          scanStatus: ensureUngroupedGroups.scanStatus,
+          runMigration: ensureUngroupedGroups.runMigration,
         }}
       />
 

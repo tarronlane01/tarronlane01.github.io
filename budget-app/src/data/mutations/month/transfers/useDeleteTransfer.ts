@@ -7,13 +7,14 @@
 
 import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isNoAccount } from '../../../constants'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 export function useDeleteTransfer() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const deleteTransfer = async (
     budgetId: string,
@@ -25,37 +26,38 @@ export function useDeleteTransfer() {
     const monthData = await readMonth(budgetId, year, month)
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
-    // Find transfer being deleted to get amount and accounts
-    const deletedTransfer = (monthData.transfers || []).find(t => t.id === transferId)
-    const deletedAmount = deletedTransfer?.amount ?? 0
-    const deletedFromAccountId = deletedTransfer?.from_account_id
-    const deletedToAccountId = deletedTransfer?.to_account_id
-
     const updatedTransfersList = (monthData.transfers || []).filter(t => t.id !== transferId)
 
-    // Re-total to update all derived values
-    const updatedMonth: MonthDocument = retotalMonth({
+    // Update month with removed transaction - retotalling and recalculation happens in recalculateMonthAndCascade
+    const updatedMonth: MonthDocument = {
       ...monthData,
       transfers: updatedTransfersList,
       updated_at: new Date().toISOString(),
-    })
-
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, description: 'delete transfer' })
-
-    // Update budget's account balances - reverse the deleted transfer's effect
-    const balanceUpdates: { accountId: string; delta: number }[] = []
-
-    // Reverse from-account effect (was -amount, so add back)
-    if (deletedFromAccountId && !isNoAccount(deletedFromAccountId) && deletedAmount !== 0) {
-      balanceUpdates.push({ accountId: deletedFromAccountId, delta: deletedAmount })
-    }
-    // Reverse to-account effect (was +amount, so subtract)
-    if (deletedToAccountId && !isNoAccount(deletedToAccountId) && deletedAmount !== 0) {
-      balanceUpdates.push({ accountId: deletedToAccountId, delta: -deletedAmount })
     }
 
-    if (balanceUpdates.length > 0) {
-      await updateBudgetAccountBalances(budgetId, balanceUpdates)
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
+
+    // Recalculate month, all future months, and budget - all in one call
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useDeleteTransfer] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
+
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useDeleteTransfer] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
+      }
     }
 
     return { updatedMonth }
@@ -63,8 +65,8 @@ export function useDeleteTransfer() {
 
   return {
     deleteTransfer,
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

@@ -13,13 +13,12 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { writeMonthData } from '@data'
 import { queryKeys } from '@data/queryClient'
 import type { MonthDocument, AdjustmentTransaction } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
-import { retotalMonth } from '../retotalMonth'
-import { updateBudgetAccountBalances } from '../../budget/accounts/updateBudgetAccountBalance'
-import { isNoAccount } from '../../../constants'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // TYPES
@@ -77,6 +76,9 @@ function createAdjustmentObject(
 
 export function useAddAdjustment() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const mutation = useMutation<AddAdjustmentResult, Error, AddAdjustmentParams, MutationContext>({
     // onMutate runs BEFORE mutationFn - this is where we do optimistic updates
@@ -94,25 +96,46 @@ export function useAddAdjustment() {
       const adjustmentId = `adjustment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const newAdjustment = createAdjustmentObject(params, adjustmentId)
 
-      // Optimistically update the cache
+      // Optimistically update the cache with the new transaction
+      // Retotalling and recalculation will happen in recalculateMonthAndCascade
       if (previousData?.month) {
-        const optimisticMonth: MonthDocument = retotalMonth({
+        const optimisticMonth: MonthDocument = {
           ...previousData.month,
           adjustments: [...(previousData.month.adjustments || []), newAdjustment],
           updated_at: new Date().toISOString(),
-        })
-        queryClient.setQueryData<MonthQueryData>(queryKey, { month: optimisticMonth })
+        }
+        updateMonthCacheAndTrack(budgetId, year, month, optimisticMonth)
+      }
+
+      // Recalculate month, all future months, and budget - all in one call
+      try {
+        await recalculateMonthAndCascade(budgetId, year, month)
+      } catch (error) {
+        console.warn('[useAddAdjustment] Failed to recalculate month and cascade:', error)
+        // Continue even if recalculation fails
+      }
+
+      // Save current document immediately if it's the one being viewed
+      const isCurrentDocument = currentViewingDocument.type === 'month' &&
+        currentViewingDocument.year === year &&
+        currentViewingDocument.month === month
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'month', year, month)
+        } catch (error) {
+          console.warn('[useAddAdjustment] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       // Return context for rollback and for mutationFn to use
       return { previousData, adjustmentId, newAdjustment }
     },
 
-    // mutationFn does the actual Firestore write
+    // mutationFn no longer writes to Firestore - just returns the updated data
     mutationFn: async (params) => {
-      // Context is not directly available here, but we can get from cache
-      // which now has our optimistic update
-      const { budgetId, year, month, accountId, amount } = params
+      const { budgetId, year, month } = params
       const queryKey = queryKeys.month(budgetId, year, month)
 
       // Get the optimistic data we just set (includes the new adjustment)
@@ -122,14 +145,6 @@ export function useAddAdjustment() {
       }
 
       const updatedMonth = cachedData.month
-
-      // Write to Firestore
-      await writeMonthData({ budgetId, month: updatedMonth, description: 'add adjustment' })
-
-      // Update budget's account balance for real accounts
-      if (!isNoAccount(accountId)) {
-        await updateBudgetAccountBalances(budgetId, [{ accountId, delta: amount }])
-      }
 
       // Find the adjustment we added (last one in the array)
       const newAdjustment = updatedMonth.adjustments?.[updatedMonth.adjustments.length - 1]

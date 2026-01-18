@@ -1,3 +1,7 @@
+# UseEffect
+
+Audit our use of useEffect to see if it conforms with best practices and the intended use for that in the react documentation.
+
 # Integration Testing
 - Organize page files into folder structure matching site URLs (e.g., settings/ for /budget/settings/*, admin/ for /budget/admin/*)
 - Make Sure recalc writes happen effciently are won't happen more than once

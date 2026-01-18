@@ -6,67 +6,31 @@
  */
 
 import { MigrationSection } from '../common'
-import { DatabaseCleanupRow } from './DatabaseCleanupRow'
-import { HiddenFieldRow } from './HiddenFieldRow'
-import { FeedbackConsolidationRow } from './FeedbackConsolidationRow'
+import { EnsureUngroupedGroupsRow } from './EnsureUngroupedGroupsRow'
 import { BackupPrompt, useBackupPrompt } from '../common'
 
 // Import hooks
 import type {
-  DatabaseCleanupStatus,
-  DatabaseCleanupResult,
-} from '@hooks/migrations/useDatabaseCleanup'
-import type {
-  HiddenFieldMigrationStatus,
-  HiddenFieldMigrationResult,
-} from '@hooks/migrations/useHiddenFieldMigration'
-import type {
-  FeedbackMigrationStatus,
-  FeedbackMigrationResult,
-} from '@hooks/migrations/useFeedbackMigration'
+  EnsureUngroupedGroupsStatus,
+  EnsureUngroupedGroupsResult,
+} from '@hooks/migrations/useEnsureUngroupedGroups'
 
 interface OnetimeSectionProps {
   disabled: boolean
   onDownloadBackup: () => Promise<void>
   isDownloadingBackup: boolean
 
-  // Database Cleanup
-  databaseCleanup: {
-    status: DatabaseCleanupStatus | null
-    hasData: boolean
-    hasIssues: boolean
-    totalIssues: number
-    isScanning: boolean
-    isRunning: boolean
-    result: DatabaseCleanupResult | null
-    scanStatus: () => void
-    runCleanup: () => void
-  }
-
-  // Hidden Field Migration
-  hiddenField: {
-    status: HiddenFieldMigrationStatus | null
+  // Ensure Ungrouped Groups Migration
+  ensureUngroupedGroups: {
+    status: EnsureUngroupedGroupsStatus | null
     hasData: boolean
     needsMigration: boolean
-    totalItemsToFix: number
+    totalBudgetsToUpdate: number
     isScanning: boolean
     isRunning: boolean
-    result: HiddenFieldMigrationResult | null
+    result: EnsureUngroupedGroupsResult | null
     scanStatus: () => void
     runMigration: () => void
-  }
-
-  // Feedback Migration
-  feedback: {
-    status: FeedbackMigrationStatus | null
-    hasData: boolean
-    hasIssues: boolean
-    totalIssues: number
-    isScanning: boolean
-    isMigrating: boolean
-    result: FeedbackMigrationResult | null
-    scanStatus: () => void
-    migrateFeedbackDocuments: () => void
   }
 }
 
@@ -74,31 +38,14 @@ export function OnetimeSection({
   disabled,
   onDownloadBackup,
   isDownloadingBackup,
-  databaseCleanup,
-  hiddenField,
-  feedback,
+  ensureUngroupedGroups,
 }: OnetimeSectionProps) {
-  const isAnyRunning =
-    databaseCleanup.isRunning ||
-    hiddenField.isRunning ||
-    feedback.isMigrating
+  const isAnyRunning = ensureUngroupedGroups.isRunning
 
-  // Backup prompts for each migration
-  const dbCleanupBackup = useBackupPrompt({
-    migrationName: 'Database Cleanup',
-    isDestructive: true,
-    onDownloadBackup,
-  })
-
-  const hiddenFieldBackup = useBackupPrompt({
-    migrationName: 'Hidden Field Migration',
-    isDestructive: true,
-    onDownloadBackup,
-  })
-
-  const feedbackBackup = useBackupPrompt({
-    migrationName: 'Feedback Consolidation',
-    isDestructive: true,
+  // Backup prompt for migration
+  const ensureUngroupedGroupsBackup = useBackupPrompt({
+    migrationName: 'Ensure Ungrouped Groups',
+    isDestructive: false,
     onDownloadBackup,
   })
 
@@ -111,50 +58,22 @@ export function OnetimeSection({
         type="onetime"
         isAnyRunning={isAnyRunning}
       >
-        <DatabaseCleanupRow
-          status={databaseCleanup.status}
-          hasData={databaseCleanup.hasData}
-          hasIssues={databaseCleanup.hasIssues}
-          totalIssues={databaseCleanup.totalIssues}
-          isChecking={databaseCleanup.isScanning}
-          isRunning={databaseCleanup.isRunning}
-          result={databaseCleanup.result}
-          onCheck={databaseCleanup.scanStatus}
-          onRun={() => dbCleanupBackup.promptBeforeAction(databaseCleanup.runCleanup)}
-          disabled={disabled}
-        />
-
-        <HiddenFieldRow
-          status={hiddenField.status}
-          hasData={hiddenField.hasData}
-          needsMigration={hiddenField.needsMigration}
-          totalItemsToFix={hiddenField.totalItemsToFix}
-          isChecking={hiddenField.isScanning}
-          isRunning={hiddenField.isRunning}
-          result={hiddenField.result}
-          onCheck={hiddenField.scanStatus}
-          onRun={() => hiddenFieldBackup.promptBeforeAction(hiddenField.runMigration)}
-          disabled={disabled}
-        />
-
-        <FeedbackConsolidationRow
-          status={feedback.status}
-          hasData={feedback.hasData}
-          hasIssues={feedback.hasIssues}
-          totalIssues={feedback.totalIssues}
-          isChecking={feedback.isScanning}
-          isRunning={feedback.isMigrating}
-          result={feedback.result}
-          onCheck={feedback.scanStatus}
-          onRun={() => feedbackBackup.promptBeforeAction(feedback.migrateFeedbackDocuments)}
+        <EnsureUngroupedGroupsRow
+          status={ensureUngroupedGroups.status}
+          hasData={ensureUngroupedGroups.hasData}
+          needsMigration={ensureUngroupedGroups.needsMigration}
+          totalBudgetsToUpdate={ensureUngroupedGroups.totalBudgetsToUpdate}
+          isChecking={ensureUngroupedGroups.isScanning}
+          isRunning={ensureUngroupedGroups.isRunning}
+          result={ensureUngroupedGroups.result}
+          onCheck={ensureUngroupedGroups.scanStatus}
+          onRun={() => ensureUngroupedGroupsBackup.promptBeforeAction(ensureUngroupedGroups.runMigration)}
           disabled={disabled}
         />
       </MigrationSection>
 
-      {/* Backup Prompts */}
-      <BackupPrompt {...dbCleanupBackup.promptProps} isDownloading={isDownloadingBackup} />
-      <BackupPrompt {...hiddenFieldBackup.promptProps} isDownloading={isDownloadingBackup} />
-      <BackupPrompt {...feedbackBackup.promptProps} isDownloading={isDownloadingBackup} />
+      {/* Backup Prompt */}
+      <BackupPrompt {...ensureUngroupedGroupsBackup.promptProps} isDownloading={isDownloadingBackup} />
     </>
   )
 }

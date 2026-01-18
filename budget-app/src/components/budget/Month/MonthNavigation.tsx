@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '@contexts'
-import { useBudget } from '@contexts'
+import { useBudget, useSync } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { colors } from '@styles/shared'
 import { MONTH_NAMES } from '@constants'
@@ -18,6 +18,7 @@ import {
 // eslint-disable-next-line no-restricted-imports
 import { deleteDocByPath } from '@firestore'
 import { queryClient, queryKeys } from '@data/queryClient'
+import { removeMonthFromMap } from '@data/recalculation/markMonthsHelpers'
 import JSZip from 'jszip'
 
 interface MonthNavigationProps {
@@ -69,17 +70,24 @@ export function MonthNavigation({
     return Number(currentOrdinal) === maxOrdinalInMap
   })()
 
+  const { trackChange } = useSync()
+
   async function handleDeleteMonth() {
     if (!selectedBudgetId) return
     setIsDeleting(true)
     try {
       const monthDocId = getMonthDocId(selectedBudgetId, currentYear, currentMonthNumber)
+
+      // Remove month from month_map in cache immediately (instant UI feedback)
+      removeMonthFromMap(selectedBudgetId, currentYear, currentMonthNumber, trackChange)
+
+      // Delete month document (this is a destructive operation, so we do it immediately)
+      // The month_map update will be saved in the background via the sync system
       await deleteDocByPath('months', monthDocId, `deleting month ${currentYear}/${currentMonthNumber}`)
       logUserAction('DELETE', 'Delete Month', { details: `${currentYear}/${currentMonthNumber}` })
 
-      // Clear caches
+      // Clear month cache
       queryClient.removeQueries({ queryKey: queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber) })
-      queryClient.invalidateQueries({ queryKey: queryKeys.budget(selectedBudgetId) })
 
       const prev = getPrevMonth(currentYear, currentMonthNumber)
       setShowDeleteConfirm(false)

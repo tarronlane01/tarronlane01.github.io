@@ -20,3 +20,6 @@ export {
 // User context - authentication state
 export { default as UserContext } from './user_context'
 
+// Sync context - document change tracking and background saves
+export { SyncProvider, useSync } from './sync_context'
+

@@ -89,7 +89,7 @@ export async function runHiddenFieldMigration(progress: ProgressReporter): Promi
       if (!alerusAccountId) {
         alerusAccountId = `account_hidden_${Date.now()}_alerus`
         const maxSortOrder = Math.max(0, ...Object.values(accounts).map(a => a.sort_order || 0))
-        accounts[alerusAccountId] = { nickname: alerusAccountName, description: 'Historical 401K account (hidden)', balance: 0, account_group_id: null, sort_order: maxSortOrder + 1, is_income_account: false, is_income_default: false, is_outgo_account: false, is_outgo_default: false, on_budget: false, is_active: true, is_hidden: true }
+        accounts[alerusAccountId] = { nickname: alerusAccountName, description: 'Historical 401K account (hidden)', balance: 0, account_group_id: 'ungrouped_accounts', sort_order: maxSortOrder + 1, is_income_account: false, is_income_default: false, is_outgo_account: false, is_outgo_default: false, on_budget: false, is_active: true, is_hidden: true }
         result.hiddenAccountsCreated++; budgetNeedsUpdate = true
       } else if (!accounts[alerusAccountId].is_hidden) { accounts[alerusAccountId] = { ...accounts[alerusAccountId], is_hidden: true }; budgetNeedsUpdate = true }
 
@@ -100,7 +100,7 @@ export async function runHiddenFieldMigration(progress: ProgressReporter): Promi
       if (!houseCategoryId) {
         houseCategoryId = `category_hidden_${Date.now()}_house`
         const maxSortOrder = Math.max(0, ...Object.values(categories).map(c => c.sort_order || 0))
-        categories[houseCategoryId] = { name: houseCategoryName, description: 'Historical house-related transactions (hidden)', category_group_id: null, sort_order: maxSortOrder + 1, default_monthly_amount: 0, default_monthly_type: 'fixed', balance: 0, is_hidden: true }
+        categories[houseCategoryId] = { name: houseCategoryName, description: 'Historical house-related transactions (hidden)', category_group_id: 'ungrouped_categories', sort_order: maxSortOrder + 1, default_monthly_amount: 0, default_monthly_type: 'fixed', balance: 0, is_hidden: true }
         result.hiddenCategoriesCreated++; budgetNeedsUpdate = true
       } else if (!categories[houseCategoryId].is_hidden) { categories[houseCategoryId] = { ...categories[houseCategoryId], is_hidden: true }; budgetNeedsUpdate = true }
 

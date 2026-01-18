@@ -10,7 +10,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { CategoryGroup } from '@types'
-import { writeBudgetData } from '../writeBudgetData'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useBudgetMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // TYPES
@@ -35,6 +37,9 @@ interface MutationContext {
 
 export function useUpdateCategoryGroups() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<UpdateCategoryGroupsResult, Error, UpdateCategoryGroupsParams, MutationContext>({
     onMutate: async (params) => {
@@ -45,26 +50,33 @@ export function useUpdateCategoryGroups() {
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
 
-      // Optimistically update the cache
+      // Optimistically update the cache and track change automatically
       if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKey, {
+        const updatedBudget: BudgetData = {
           ...previousData,
           categoryGroups,
-        })
+        }
+        updateBudgetCacheAndTrack(budgetId, updatedBudget)
+      }
+
+      // Save current document immediately if viewing budget settings
+      const isCurrentDocument = currentViewingDocument.type === 'budget'
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'budget')
+        } catch (error) {
+          console.warn('[useUpdateCategoryGroups] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       return { previousData }
     },
 
     mutationFn: async (params) => {
-      const { budgetId, categoryGroups } = params
-
-      await writeBudgetData({
-        budgetId,
-        updates: { category_groups: categoryGroups },
-        description: 'saving updated category groups (user edited group settings)',
-      })
-
+      // NO Firestore write! Just return the cached data
+      const { categoryGroups } = params
       return { categoryGroups }
     },
 

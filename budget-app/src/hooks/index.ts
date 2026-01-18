@@ -13,6 +13,12 @@ export { useAllocationsPage } from './useAllocationsPage'
 export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
 export { useMonthNavigationError } from './useMonthNavigationError'
 export { useAutoRecalculation } from './useAutoRecalculation'
+export { useInitialDataLoad } from './useInitialDataLoad'
+export { useLocalRecalculation, recalculateMonthLocally, recalculateMonthsLocally } from './useLocalRecalculation'
+export { useBackgroundSave } from './useBackgroundSave'
+export { useNavigationSave } from './useNavigationSave'
+export { useSyncCheck } from './useSyncCheck'
+export { useMonthPrefetch } from './useMonthPrefetch'
 
 // Migration hooks
 export {
@@ -22,16 +28,14 @@ export {
   type ProgressReporter,
   type MigrationProgressState,
   // Individual migration hooks
-  useDatabaseCleanup,
-  useFeedbackMigration,
+  useEnsureUngroupedGroups,
+  type EnsureUngroupedGroupsStatus,
+  type EnsureUngroupedGroupsResult,
   useDeleteAllMonths,
   useDeleteSampleUserBudget,
   usePrecisionCleanup,
   useExpenseToAdjustmentMigration,
   useOrphanedIdCleanup,
-  type DatabaseCleanupStatus,
-  type DatabaseCleanupResult,
-  type FeedbackMigrationResult,
   type DeleteAllMonthsResult,
   type DeleteSampleUserBudgetResult,
   type PrecisionCleanupStatus,
@@ -46,9 +50,6 @@ export {
   useAccountCategoryValidation,
   type ValidationStatus,
   type TransactionViolation,
-  useHiddenFieldMigration,
-  type HiddenFieldMigrationStatus,
-  type HiddenFieldMigrationResult,
   useDiagnosticDownload,
   type DownloadProgress,
   useDownloadBudget,

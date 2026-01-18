@@ -5,7 +5,7 @@
  * Uses the migration framework to ensure cache invalidation.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import type { PrecisionCleanupStatus, PrecisionCleanupResult } from './precisionCleanupTypes'
 import { scanPrecisionStatus } from './precisionCleanupScanner'
 import { runPrecisionCleanup } from './precisionCleanupRunner'
@@ -72,13 +72,6 @@ export function usePrecisionCleanup({ currentUser, onComplete }: UsePrecisionCle
       setIsRunning(false)
     }
   }, [currentUser, hasIssues, onComplete])
-
-  // Auto-scan on mount when user is available
-  useEffect(() => {
-    if (currentUser && !status && !isScanning) {
-      scan()
-    }
-  }, [currentUser, status, isScanning, scan])
 
   return {
     status,

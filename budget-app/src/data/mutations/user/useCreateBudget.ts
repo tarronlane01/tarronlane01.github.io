@@ -10,6 +10,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import { writeDocByPath, arrayUnion } from '@firestore'
+import { UNGROUPED_ACCOUNT_GROUP_ID, UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 
 interface CreateBudgetParams {
   name: string
@@ -26,6 +27,7 @@ export function useCreateBudget() {
       const now = new Date().toISOString()
 
       // Create budget document (new doc, no merge needed)
+      // Always create default ungrouped groups that cannot be deleted
       const newBudget = {
         name: name.trim() || 'My Budget',
         user_ids: [userId],
@@ -33,9 +35,23 @@ export function useCreateBudget() {
         owner_id: userId,
         owner_email: userEmail,
         accounts: {},
-        account_groups: {},
+        account_groups: {
+          [UNGROUPED_ACCOUNT_GROUP_ID]: {
+            name: 'Ungrouped',
+            sort_order: 0,
+            expected_balance: 'positive',
+            on_budget: null,
+            is_active: null,
+          },
+        },
         categories: {},
-        category_groups: [],
+        category_groups: [
+          {
+            id: UNGROUPED_CATEGORY_GROUP_ID,
+            name: 'Uncategorized',
+            sort_order: 0,
+          },
+        ],
         // Initialize calculated fields
         total_available: 0,
         is_needs_recalculation: false,

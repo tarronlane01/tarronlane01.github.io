@@ -10,6 +10,7 @@ import {
   CollapsibleSection,
 } from '../../../components/ui'
 import { useIsMobile } from '@hooks'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import {
   GroupForm,
   AccountGroupCard,
@@ -178,7 +179,7 @@ function Accounts() {
     return <p>No budget found. Please log in.</p>
   }
 
-  const ungroupedAccounts = accountsByGroup['ungrouped'] || []
+  const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID] || []
 
   return (
     <div>

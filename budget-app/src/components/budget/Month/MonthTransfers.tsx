@@ -44,14 +44,14 @@ export function MonthTransfers() {
   // Helper to get effective is_active value considering group overrides
   function getEffectiveActive(account: FinancialAccount): boolean {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group?.is_active !== undefined) return group.is_active
+    if (group && group.is_active !== null) return group.is_active
     return account.is_active !== false
   }
 
   // Helper to get effective on_budget value considering group overrides
   function getEffectiveOnBudget(account: FinancialAccount): boolean {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group?.on_budget !== undefined) return group.on_budget
+    if (group && group.on_budget !== null) return group.on_budget
     return account.on_budget !== false
   }
 

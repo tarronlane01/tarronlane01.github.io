@@ -153,8 +153,8 @@ export function useBudgetData(): UseBudgetDataReturn {
     return Object.entries(accounts)
       .filter(([, acc]) => {
         const group = acc.account_group_id ? accountGroups[acc.account_group_id] : undefined
-        const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (acc.on_budget !== false)
-        const effectiveActive = group?.is_active !== undefined ? group.is_active : (acc.is_active !== false)
+        const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (acc.on_budget !== false)
+        const effectiveActive = (group && group.is_active !== null) ? group.is_active : (acc.is_active !== false)
         return effectiveOnBudget && effectiveActive
       })
       .reduce((sum, [, acc]) => sum + acc.balance, 0)

@@ -12,10 +12,11 @@
 
 import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
-import { useWriteMonthData } from '..'
 import { calculateCategoryBalancesForMonth, type AllocationData } from '.'
-import { triggerRecalculation, type RecalculationProgress } from '../../../recalculation'
-import { queryClient, queryKeys } from '../../../queryClient'
+import type { RecalculationProgress } from '../../../recalculation'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useMonthMutationHelpers } from '../mutationHelpers'
 
 export interface FinalizeAllocationsParams {
   budgetId: string
@@ -38,7 +39,9 @@ export interface AllocationProgress {
 }
 
 export function useFinalizeAllocations() {
-  const { writeData } = useWriteMonthData()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const finalizeAllocations = async (params: FinalizeAllocationsParams) => {
     const { budgetId, year, month, allocations, onProgress } = params
@@ -69,41 +72,32 @@ export function useFinalizeAllocations() {
       updated_at: new Date().toISOString(),
     }
 
-    // Write month data with cascade marking (marks future months as needing recalc)
-    await writeData.mutateAsync({
-      budgetId,
-      month: updatedMonth,
-      description: 'finalize allocations',
-    })
+    // Update cache and track change automatically
+    updateMonthCacheAndTrack(budgetId, year, month, updatedMonth)
 
-    // Phase 2: Trigger immediate recalculation
+    // Phase 2: Recalculate locally (instant feedback)
     onProgress?.({ phase: 'recalculating', message: 'Recalculating month balances...' })
 
-    await triggerRecalculation(budgetId, {
-      triggeringMonthOrdinal: `${year}${String(month).padStart(2, '0')}`,
-      onProgress: (recalcProgress) => {
-        // Forward recalculation progress with a user-friendly message
-        let message = 'Recalculating balances...'
-        if (recalcProgress.phase === 'fetching-months') {
-          message = `Loading month data (${recalcProgress.monthsFetched}/${recalcProgress.totalMonthsToFetch})...`
-        } else if (recalcProgress.phase === 'recalculating' && recalcProgress.currentMonth) {
-          message = `Recalculating ${recalcProgress.currentMonth}...`
-        } else if (recalcProgress.phase === 'saving') {
-          message = 'Saving recalculated balances...'
-        }
-        onProgress?.({
-          phase: 'recalculating',
-          message,
-          recalcProgress,
-        })
-      },
-    })
+    try {
+      await recalculateMonthAndCascade(budgetId, year, month)
+    } catch (error) {
+      console.warn('[useFinalizeAllocations] Failed to recalculate month and cascade:', error)
+      // Continue even if recalculation fails
+    }
 
-    // Force refetch month and budget data after recalculation
-    // Using refetchQueries instead of invalidateQueries because refetchOnMount: false
-    // means invalidated queries won't refetch when navigating to a new page
-    await queryClient.refetchQueries({ queryKey: queryKeys.month(budgetId, year, month) })
-    await queryClient.refetchQueries({ queryKey: queryKeys.budget(budgetId) })
+    // Save current document immediately if it's the one being viewed
+    const isCurrentDocument = currentViewingDocument.type === 'month' &&
+      currentViewingDocument.year === year &&
+      currentViewingDocument.month === month
+
+    if (isCurrentDocument) {
+      try {
+        await saveCurrentDocument(budgetId, 'month', year, month)
+      } catch (error) {
+        console.warn('[useFinalizeAllocations] Failed to save current document immediately:', error)
+        // Continue even if immediate save fails - background save will handle it
+      }
+    }
 
     onProgress?.({ phase: 'complete', message: 'Allocations applied!' })
 
@@ -112,9 +106,9 @@ export function useFinalizeAllocations() {
 
   return {
     finalizeAllocations,
-    // Expose mutation state for UI loading indicators
-    isPending: writeData.isPending,
-    isError: writeData.isError,
-    error: writeData.error,
+    // No longer using mutation, so no pending state
+    isPending: false,
+    isError: false,
+    error: null,
   }
 }

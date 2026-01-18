@@ -5,7 +5,5 @@
  */
 
 export { OnetimeSection } from './OnetimeSection'
-export { DatabaseCleanupRow } from './DatabaseCleanupRow'
-export { HiddenFieldRow } from './HiddenFieldRow'
-export { FeedbackConsolidationRow } from './FeedbackConsolidationRow'
+export { EnsureUngroupedGroupsRow } from './EnsureUngroupedGroupsRow'
 

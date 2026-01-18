@@ -10,7 +10,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { AccountsMap } from '@types'
-import { writeBudgetData } from '../writeBudgetData'
+import { useBudget } from '@contexts'
+import { useBackgroundSave } from '@hooks/useBackgroundSave'
+import { useBudgetMutationHelpers } from '../mutationHelpers'
 
 // ============================================================================
 // TYPES
@@ -35,6 +37,9 @@ interface MutationContext {
 
 export function useUpdateAccounts() {
   const queryClient = useQueryClient()
+  const { currentViewingDocument } = useBudget()
+  const { saveCurrentDocument } = useBackgroundSave()
+  const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<UpdateAccountsResult, Error, UpdateAccountsParams, MutationContext>({
     onMutate: async (params) => {
@@ -45,26 +50,33 @@ export function useUpdateAccounts() {
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
 
-      // Optimistically update the cache
+      // Optimistically update the cache and track change automatically
       if (previousData) {
-        queryClient.setQueryData<BudgetData>(queryKey, {
+        const updatedBudget: BudgetData = {
           ...previousData,
           accounts,
-        })
+        }
+        updateBudgetCacheAndTrack(budgetId, updatedBudget)
+      }
+
+      // Save current document immediately if viewing budget settings
+      const isCurrentDocument = currentViewingDocument.type === 'budget'
+
+      if (isCurrentDocument) {
+        try {
+          await saveCurrentDocument(budgetId, 'budget')
+        } catch (error) {
+          console.warn('[useUpdateAccounts] Failed to save current document immediately:', error)
+          // Continue even if immediate save fails - background save will handle it
+        }
       }
 
       return { previousData }
     },
 
     mutationFn: async (params) => {
-      const { budgetId, accounts } = params
-
-      await writeBudgetData({
-        budgetId,
-        updates: { accounts },
-        description: 'saving updated accounts (user edited account settings)',
-      })
-
+      // NO Firestore write! Just return the cached data
+      const { accounts } = params
       return { accounts }
     },
 

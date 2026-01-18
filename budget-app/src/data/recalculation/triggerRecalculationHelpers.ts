@@ -88,8 +88,8 @@ export function clearMonthMapFlags(monthMap: MonthMap): MonthMap {
 export function calculateTotalAvailable(accounts: FirestoreData, categories: FirestoreData, accountGroups: FirestoreData): number {
   const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    const effectiveOnBudget = group?.on_budget !== undefined ? group.on_budget : (account.on_budget !== false)
-    const effectiveActive = group?.is_active !== undefined ? group.is_active : (account.is_active !== false)
+    const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
+    const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
     return (effectiveOnBudget && effectiveActive) ? sum + (account.balance ?? 0) : sum
   }, 0)
   const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {

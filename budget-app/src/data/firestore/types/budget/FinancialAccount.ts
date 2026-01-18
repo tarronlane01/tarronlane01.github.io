@@ -2,7 +2,7 @@ export interface FinancialAccount {
   nickname: string
   description: string
   balance: number
-  account_group_id: string | null
+  account_group_id: string // Always required - use UNGROUPED_ACCOUNT_GROUP_ID for ungrouped accounts
   sort_order: number
   is_income_account: boolean
   is_income_default: boolean
