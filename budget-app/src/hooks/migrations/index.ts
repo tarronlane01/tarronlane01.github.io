@@ -71,7 +71,11 @@ export {
 } from './useDatabaseCleanup'
 
 // Special-purpose migrations
-export { useEnsureUngroupedGroups, type EnsureUngroupedGroupsStatus, type EnsureUngroupedGroupsResult } from './useEnsureUngroupedGroups'
+// Export migration hooks here when adding new migrations
+// Example: export { useMyNewMigration, type MyNewMigrationStatus, type MyNewMigrationResult } from './useMyNewMigration'
+//
+// See useEnsureUngroupedGroups.ts as an example of how to structure a migration hook
+// Note: useEnsureUngroupedGroups is kept as an example but not exported since it's not currently active
 export { useDeleteAllMonths, type DeleteAllMonthsResult, type DeleteAllMonthsStatus, type MonthInfo, type DeleteProgress, type DeletePhase } from './useDeleteAllMonths'
 export { useDeleteSampleUserBudget, type DeleteSampleUserBudgetStatus, type DeleteSampleUserBudgetResult, type SampleBudgetInfo, type DeleteSampleProgress, type DeleteSamplePhase } from './useDeleteSampleUserBudget'
 export { usePrecisionCleanup, type PrecisionCleanupStatus, type PrecisionCleanupResult } from './usePrecisionCleanup'

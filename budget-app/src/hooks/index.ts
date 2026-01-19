@@ -28,9 +28,9 @@ export {
   type ProgressReporter,
   type MigrationProgressState,
   // Individual migration hooks
-  useEnsureUngroupedGroups,
-  type EnsureUngroupedGroupsStatus,
-  type EnsureUngroupedGroupsResult,
+  // Add migration hooks here when adding new migrations
+  // Example: useMyNewMigration, type MyNewMigrationStatus, type MyNewMigrationResult,
+  // Note: useEnsureUngroupedGroups exists as an example but is not exported since it's not currently active
   useDeleteAllMonths,
   useDeleteSampleUserBudget,
   usePrecisionCleanup,

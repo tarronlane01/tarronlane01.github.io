@@ -1,13 +1,16 @@
-- Handle situation when closing before save period hits. We should save immediately to the budget a field called latest edited month, and if we read a bduget and see that value is set, we should do a local recalc, to make sure we're showing latest values, then immediately trigger a save to firestore after the local recalc works. That way if a user comes back to a budget that they had exited before a recalc could save to firestore, they'll know to recalc locally and not use the pulled totals that are no longer valid.
-    - Migration to update monthmap to have a value called is_edited_but_unsaved so we can track months that need edited as they get edits. Default to false for now.
+I'm worried about what happens if a user closes the browser and ends their session before the recalculations are saved. The actual direct edits should be saved no matter once since those happen immediately when the edit is saved, but the recalculated values won't have been saved. Could we solve this by including a local recalc or all months locally whenever we first load the app? What are potential issues with that approach to sovle this problem? Just tell me, don't make any changes yet.
 
-- Make sure our cache is all set up to use a sonsistent 5 minute timeout for most updates, unless we have a valid reason to change that.
+--- Bookmark
 
-- Make sure the background saving won't trigger if we're in the process of saving locally or recalculating locally.
-- Let's take a step back and look at our CRUD processes, with this new system, and see if we can refine. Is there anything redundant or round-about that we can simplify without sacrificing functionality? Are the redundant hooks that we can combine without going over the 400 line limit? Are we doing similar things in multiple places that we should combine to avoid too much spaghetti?
+Make sure our cache is all set up to use a sonsistent 5 minute timeout for most updates, unless we have a valid reason to change that.
 
-- Expand the feedback saved bottom banner so it it an also be used to show errors. Any console errors should show up on the page in red with the bottom banner. That way we can show the user if there was any errors in saving to firestore, or with syncing, etc.
-- Create a global background-saving bottom floating banner/icon, that has a queue just like the global loading overlay, and components can hook into it to add items to the global background saving queue and they will make it show up with certain text, and they have a callback they can use to remove items from the queue once they're resolved. The floating bottom queue-loading indicator should display a throbber and the text of the top-most item in the queue, then as things resolve it should display the next-down item, until all items are resolved / removed from the queue at which point the floating loader should disappear.
+Make sure the background saving won't trigger if we're in the process of saving locally or recalculating locally.
+
+Let's take a step back and look at our CRUD processes, with this new system, and see if we can refine. Is there anything redundant or round-about that we can simplify without sacrificing functionality? Are the redundant hooks that we can combine without going over the 400 line limit? Are we doing similar things in multiple places that we should combine to avoid too much spaghetti?
+
+Expand the feedback saved bottom banner so it it an also be used to show errors. Any console errors should show up on the page in red with the bottom banner. That way we can show the user if there was any errors in saving to firestore, or with syncing, etc.
+
+Create a global background-saving bottom floating banner/icon, that has a queue just like the global loading overlay, and components can hook into it to add items to the global background saving queue and they will make it show up with certain text, and they have a callback they can use to remove items from the queue once they're resolved. The floating bottom queue-loading indicator should display a throbber and the text of the top-most item in the queue, then as things resolve it should display the next-down item, until all items are resolved / removed from the queue at which point the floating loader should disappear.
 
 
 

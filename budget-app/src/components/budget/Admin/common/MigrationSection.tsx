@@ -30,18 +30,21 @@ interface MigrationSectionProps {
   isAnyRunning?: boolean
 }
 
-const sectionStyles: Record<SectionType, { borderColor: string; iconBg: string }> = {
+const sectionStyles: Record<SectionType, { borderColor: string; iconBg: string; headerBg: string }> = {
   onetime: {
     borderColor: 'color-mix(in srgb, #a855f7 30%, transparent)',
     iconBg: 'color-mix(in srgb, #a855f7 15%, transparent)',
+    headerBg: 'color-mix(in srgb, #a855f7 8%, transparent)',
   },
   maintenance: {
     borderColor: 'color-mix(in srgb, #3b82f6 30%, transparent)',
     iconBg: 'color-mix(in srgb, #3b82f6 15%, transparent)',
+    headerBg: 'color-mix(in srgb, #3b82f6 8%, transparent)',
   },
   utility: {
     borderColor: 'color-mix(in srgb, #22c55e 30%, transparent)',
     iconBg: 'color-mix(in srgb, #22c55e 15%, transparent)',
+    headerBg: 'color-mix(in srgb, #22c55e 8%, transparent)',
   },
 }
 
@@ -73,28 +76,46 @@ export function MigrationSection({
       marginBottom: '1.5rem',
       overflow: 'hidden',
     }}>
-      {/* Section Header */}
+      {/* Section Header - More prominent styling */}
       <div style={{
-        padding: '1rem 1.25rem',
-        borderBottom: `1px solid ${styles.borderColor}`,
+        background: styles.headerBg,
+        padding: '1.25rem 1.5rem',
+        borderBottom: `2px solid ${styles.borderColor}`,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         gap: '1rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem', flex: 1 }}>
           <span style={{
-            fontSize: '1.5rem',
+            fontSize: '1.75rem',
             background: styles.iconBg,
-            padding: '0.5rem',
-            borderRadius: '8px',
+            padding: '0.625rem',
+            borderRadius: '10px',
             lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '48px',
+            minHeight: '48px',
           }}>
             {icon}
           </span>
           <div>
-            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.1rem' }}>{title}</h3>
-            <p style={{ margin: 0, opacity: 0.7, fontSize: '0.85rem' }}>
+            <h3 style={{
+              margin: '0 0 0.375rem 0',
+              fontSize: '1.25rem',
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
+            }}>
+              {title}
+            </h3>
+            <p style={{
+              margin: 0,
+              opacity: 0.75,
+              fontSize: '0.9rem',
+              lineHeight: 1.4,
+            }}>
               {description}
             </p>
           </div>
@@ -132,8 +153,11 @@ export function MigrationSection({
         )}
       </div>
 
-      {/* Migration Rows */}
-      <div style={{ padding: '0.5rem' }}>
+      {/* Migration Rows - Child items with distinct styling */}
+      <div style={{
+        padding: '0.75rem',
+        background: 'color-mix(in srgb, currentColor 1%, transparent)',
+      }}>
         {children}
       </div>
     </section>

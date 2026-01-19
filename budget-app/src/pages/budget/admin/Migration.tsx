@@ -15,7 +15,6 @@
 import { useFirebaseAuth } from '@hooks'
 import { useBudget } from '@contexts'
 import {
-  useEnsureUngroupedGroups,
   useDeleteAllMonths,
   useDeleteSampleUserBudget,
   usePrecisionCleanup,
@@ -49,7 +48,8 @@ function Migration() {
   // =========================================================================
 
   // One-time migrations
-  const ensureUngroupedGroups = useEnsureUngroupedGroups()
+  // Add migration hooks here when adding new migrations
+  // Example: const myNewMigration = useMyNewMigration()
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -69,7 +69,8 @@ function Migration() {
   // =========================================================================
 
   const isAnyScanning =
-    ensureUngroupedGroups.isScanning ||
+    // Add migration scanning states here
+    // Example: myNewMigration.isScanning ||
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
     expenseToAdjustment.isScanning ||
@@ -79,7 +80,8 @@ function Migration() {
     deleteSampleUserBudget.isScanning
 
   const isAnyRunning =
-    ensureUngroupedGroups.isRunning ||
+    // Add migration running states here
+    // Example: myNewMigration.isRunning ||
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
     adjustmentsToTransfers.isRunning ||
@@ -96,8 +98,9 @@ function Migration() {
   const handleRefreshAll = async () => {
     logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
-      // One-time
-      ensureUngroupedGroups.scanStatus(),
+      // One-time migrations
+      // Add migration scanStatus calls here
+      // Example: myNewMigration.scanStatus(),
       // Maintenance
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
@@ -155,17 +158,19 @@ function Migration() {
         disabled={!current_user}
         onDownloadBackup={budgetDownload.downloadBudget}
         isDownloadingBackup={budgetDownload.isDownloading}
-        ensureUngroupedGroups={{
-          status: ensureUngroupedGroups.status,
-          hasData: !!ensureUngroupedGroups.status,
-          needsMigration: ensureUngroupedGroups.status ? ensureUngroupedGroups.status.budgetsNeedingUpdate > 0 : false,
-          totalBudgetsToUpdate: ensureUngroupedGroups.status?.budgetsNeedingUpdate ?? 0,
-          isScanning: ensureUngroupedGroups.isScanning,
-          isRunning: ensureUngroupedGroups.isRunning,
-          result: ensureUngroupedGroups.result,
-          scanStatus: ensureUngroupedGroups.scanStatus,
-          runMigration: ensureUngroupedGroups.runMigration,
-        }}
+        // Add migration props here when adding new migrations
+        // Example:
+        // myNewMigration={{
+        //   status: myNewMigration.status,
+        //   hasData: !!myNewMigration.status,
+        //   needsMigration: myNewMigration.status ? myNewMigration.status.budgetsNeedingUpdate > 0 : false,
+        //   totalBudgetsToUpdate: myNewMigration.status?.budgetsNeedingUpdate ?? 0,
+        //   isScanning: myNewMigration.isScanning,
+        //   isRunning: myNewMigration.isRunning,
+        //   result: myNewMigration.result,
+        //   scanStatus: myNewMigration.scanStatus,
+        //   runMigration: myNewMigration.runMigration,
+        // }}
       />
 
       {/* Maintenance Section */}
