@@ -1,16 +1,15 @@
 import { useState, useContext, useEffect, type DragEvent, type FormEvent } from 'react'
 import { UserContext } from '@contexts'
-import { useFirebaseAuth } from '@hooks'
+import { useFirebaseAuth, useIsMobile } from '@hooks'
 import { useFeedbackQuery, type FlattenedFeedbackItem, type FeedbackItem } from '@data'
 import { useSubmitFeedback, useToggleFeedback, useUpdateSortOrder } from '@data/mutations/feedback'
-import { ErrorAlert, Button, DropZone, FormWrapper, TextAreaInput, FormButtonGroup, CollapsibleSection, Modal } from '@components/ui'
+import { Button, DropZone, FormWrapper, TextAreaInput, FormButtonGroup, CollapsibleSection, Modal, bannerQueue } from '@components/ui'
 import { useApp } from '@contexts'
 import { pageSubtitle, listContainer } from '@styles/shared'
-import { FeedbackCard, CompletedFeedbackItem, type FeedbackType } from '@components/budget/Admin'
+import { FeedbackCard, CompletedFeedbackItem, type FeedbackType, feedbackTypeConfig } from '@components/budget/Admin'
 import { FeedbackTypeSelector } from './FeedbackTypeSelector'
 
 function Feedback() {
-  const [error, setError] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -27,6 +26,7 @@ function Feedback() {
   const { toggleFeedback } = useToggleFeedback()
   const { updateSortOrder } = useUpdateSortOrder()
   const allFeedback = feedbackQuery.data?.items || []
+  const isMobile = useIsMobile()
 
   const { addLoadingHold, removeLoadingHold } = useApp()
 
@@ -52,7 +52,10 @@ function Feedback() {
 
   async function performToggleDone(item: FlattenedFeedbackItem) {
     try { await toggleFeedback.mutateAsync({ item }) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to update feedback') }
+    catch (err) {
+      console.error('[Feedback] Error updating feedback:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to update feedback', autoDismissMs: 5000 })
+    }
   }
 
   function confirmComplete() {
@@ -68,7 +71,10 @@ function Feedback() {
         feedback_type: fi.id === editingTypeItem.id ? newType : fi.feedback_type,
       }))
       await updateSortOrder.mutateAsync({ docId: editingTypeItem.doc_id, items: updatedItems })
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to update feedback type') }
+    } catch (err) {
+      console.error('[Feedback] Error updating feedback type:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to update feedback type', autoDismissMs: 5000 })
+    }
     setEditingTypeItem(null)
   }
 
@@ -104,16 +110,91 @@ function Feedback() {
     }
 
     try { for (const [docId, items] of byDocId) await updateSortOrder.mutateAsync({ docId, items }) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to save order') }
+    catch (err) {
+      console.error('[Feedback] Error saving order:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to save order', autoDismissMs: 5000 })
+    }
+  }
+
+  function handleDownloadMarkdown() {
+    const markdown = generateMarkdown(allFeedback)
+    const blob = new Blob([markdown], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `feedback-${new Date().toISOString().split('T')[0]}.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function generateMarkdown(items: FlattenedFeedbackItem[]): string {
+    const pending = items.filter(item => !item.is_done).sort((a, b) => a.sort_order - b.sort_order)
+    const completed = items.filter(item => item.is_done).sort((a, b) => (new Date(b.completed_at || 0).getTime()) - (new Date(a.completed_at || 0).getTime()))
+
+    let markdown = '# Feedback Export\n\n'
+    markdown += `Generated: ${new Date().toISOString()}\n\n`
+
+    if (pending.length > 0) {
+      markdown += '## Pending\n\n'
+      pending.forEach((item, index) => {
+        const typeLabel = item.feedback_type ? feedbackTypeConfig[item.feedback_type]?.label || item.feedback_type : 'Unknown'
+        markdown += `### ${index + 1}. [${typeLabel}] ${item.text.split('\n')[0].substring(0, 60)}${item.text.split('\n')[0].length > 60 ? '...' : ''}\n\n`
+        markdown += `- **Type:** ${typeLabel}\n`
+        markdown += `- **Created:** ${item.created_at}\n`
+        markdown += `- **User:** ${item.user_email || item.doc_id}\n`
+        markdown += `- **ID:** ${item.id}\n\n`
+        markdown += `${item.text}\n\n`
+        markdown += '---\n\n'
+      })
+    }
+
+    if (completed.length > 0) {
+      markdown += '## Completed\n\n'
+      completed.forEach((item, index) => {
+        const typeLabel = item.feedback_type ? feedbackTypeConfig[item.feedback_type]?.label || item.feedback_type : 'Unknown'
+        markdown += `### ${index + 1}. [${typeLabel}] ${item.text.split('\n')[0].substring(0, 60)}${item.text.split('\n')[0].length > 60 ? '...' : ''}\n\n`
+        markdown += `- **Type:** ${typeLabel}\n`
+        markdown += `- **Created:** ${item.created_at}\n`
+        markdown += `- **Completed:** ${item.completed_at || 'N/A'}\n`
+        markdown += `- **User:** ${item.user_email || item.doc_id}\n`
+        markdown += `- **ID:** ${item.id}\n\n`
+        markdown += `${item.text}\n\n`
+        markdown += '---\n\n'
+      })
+    }
+
+    return markdown
   }
 
   if (feedbackQuery.isLoading) return null
 
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Feedback</h2>
-      <p style={{ ...pageSubtitle, fontSize: '0.9rem' }}>View and manage user feedback. Drag to reorder pending items.</p>
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'stretch' : 'flex-start', 
+        gap: isMobile ? '0.75rem' : '1rem',
+        marginTop: '1.5rem', 
+        marginBottom: '0.5rem' 
+      }}>
+        <div>
+          <h2 style={{ marginTop: 0 }}>Feedback</h2>
+          <p style={{ ...pageSubtitle, fontSize: '0.9rem' }}>View and manage user feedback. Drag to reorder pending items.</p>
+        </div>
+        <Button 
+          variant="secondary" 
+          actionName="Download Feedback as Markdown" 
+          onClick={handleDownloadMarkdown} 
+          disabled={allFeedback.length === 0}
+          style={isMobile ? { width: '100%' } : undefined}
+        >
+          Download Markdown
+        </Button>
+      </div>
 
       <div style={listContainer}>
         {pendingItems.length === 0 && !showAddForm && <p style={{ opacity: 0.7 }}>No pending feedback.</p>}

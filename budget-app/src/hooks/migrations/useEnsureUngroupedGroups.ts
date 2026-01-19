@@ -12,6 +12,15 @@ import { getFirestore, collection, getDocs, updateDoc, doc } from 'firebase/fire
 import app from '@firestore/app'
 import { useMigrationProgress, type ProgressReporter } from './migrationProgress'
 import { UNGROUPED_ACCOUNT_GROUP_ID, UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
+import type { FirestoreData } from '@types'
+
+// Type for category group in raw Firestore data (array format)
+interface CategoryGroupData {
+  id: string
+  name?: string
+  sort_order?: number
+  [key: string]: unknown
+}
 
 export interface EnsureUngroupedGroupsStatus {
   totalBudgets: number
@@ -42,9 +51,9 @@ export async function scanEnsureUngroupedGroupsStatus(): Promise<EnsureUngrouped
     const hasUngroupedAccountGroup = accountGroups[UNGROUPED_ACCOUNT_GROUP_ID] !== undefined
 
     // Check if ungrouped category group exists
-    const categoryGroups = Array.isArray(data.category_groups) ? data.category_groups : []
+    const categoryGroups = Array.isArray(data.category_groups) ? data.category_groups as CategoryGroupData[] : []
     const hasUngroupedCategoryGroup = categoryGroups.some(
-      (g: any) => g && g.id === UNGROUPED_CATEGORY_GROUP_ID
+      (g: CategoryGroupData) => g && g.id === UNGROUPED_CATEGORY_GROUP_ID
     )
 
     if (!hasUngroupedAccountGroup || !hasUngroupedCategoryGroup) {
@@ -79,7 +88,7 @@ export async function runEnsureUngroupedGroupsMigration(
 
   progress.setDetails(`Found ${snapshot.size} budget(s) to process`)
 
-  const budgetsToUpdate: Array<{ id: string; name: string; updates: any }> = []
+  const budgetsToUpdate: Array<{ id: string; name: string; updates: FirestoreData }> = []
 
   progress.setStage('Scanning budgets...')
 
@@ -89,7 +98,7 @@ export async function runEnsureUngroupedGroupsMigration(
     progress.updateItemProgress(index, snapshot.size, `Budget: ${docSnapshot.data().name || docSnapshot.id}`)
 
     const data = docSnapshot.data()
-    const updates: any = {}
+    const updates: FirestoreData = {}
     let needsUpdate = false
 
     // Check and add ungrouped account group if missing
@@ -109,9 +118,9 @@ export async function runEnsureUngroupedGroupsMigration(
     }
 
     // Check and add ungrouped category group if missing
-    const categoryGroups = Array.isArray(data.category_groups) ? data.category_groups : []
+    const categoryGroups = Array.isArray(data.category_groups) ? data.category_groups as CategoryGroupData[] : []
     const hasUngroupedCategoryGroup = categoryGroups.some(
-      (g: any) => g && g.id === UNGROUPED_CATEGORY_GROUP_ID
+      (g: CategoryGroupData) => g && g.id === UNGROUPED_CATEGORY_GROUP_ID
     )
 
     if (!hasUngroupedCategoryGroup) {

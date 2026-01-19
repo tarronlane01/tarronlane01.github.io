@@ -1,6 +1,6 @@
 # Let's deploy the code by following these instructions
 
-Deploy using the publish script from the budget-app directory, ensuring commit message is 10 words or less:
+Deploy using the publish script from the budget-app directory, ensuring commit message is 10 words or less, and captures what was done on this thread.
 
 ```bash
 cd budget-app && ./scripts/publish.sh "your commit message"

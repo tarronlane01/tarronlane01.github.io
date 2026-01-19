@@ -97,9 +97,9 @@ async function checkSyncConflicts(budgetId: string, changes: DocumentChange[]): 
 
   // Check budget
   if (remoteBudget) {
-    const localBudget = queryClient.getQueryData(queryKeys.budget(budgetId))
+    const localBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
     if (localBudget) {
-      const localUpdatedAt = (localBudget as any).budget?.updated_at
+      const localUpdatedAt = localBudget.budget?.updated_at
       if (isRemoteNewer(localUpdatedAt, remoteBudget.budget.updated_at)) {
         // Check if local has unsaved changes
         const hasLocalChanges = changes.some(

@@ -37,6 +37,7 @@ interface UpdateAccountBalanceResult {
 
 interface MutationContext {
   previousData: BudgetData | undefined
+  newBalance: number
 }
 
 // ============================================================================
@@ -49,7 +50,12 @@ export function useUpdateAccountBalance() {
   const { saveCurrentDocument } = useBackgroundSave()
   const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
-  const mutation = useMutation<UpdateAccountBalanceResult, Error, UpdateAccountBalanceParams, MutationContext>({
+  const mutation = useMutation<
+    UpdateAccountBalanceResult,
+    Error,
+    UpdateAccountBalanceParams,
+    MutationContext
+  >({
     onMutate: async (params) => {
       const { budgetId, accountId, delta } = params
       const queryKey = queryKeys.budget(budgetId)
@@ -92,10 +98,12 @@ export function useUpdateAccountBalance() {
       return { previousData, newBalance }
     },
 
-    mutationFn: async (params, context) => {
+    mutationFn: async (params, context): Promise<UpdateAccountBalanceResult> => {
       // NO Firestore write! Just return the cached data
+      // Context is the return value from onMutate (MutationContext)
       const { accountId } = params
-      const newBalance = (context as any)?.newBalance ?? 0
+      const typedContext = context as unknown as MutationContext | undefined
+      const newBalance = typedContext?.newBalance ?? 0
       return { accountId, newBalance }
     },
 
