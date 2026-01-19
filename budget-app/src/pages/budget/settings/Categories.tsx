@@ -1,24 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useCategoriesPage, useBudgetData, useAutoRecalculation } from '@hooks'
 import { useApp, useBudget } from '@contexts'
 import {
-  ErrorAlert,
   Button,
-  DropZone,
   formatCurrency,
   getBalanceColor,
   getAllocatedColor,
   CollapsibleSection,
-} from '../../../components/ui'
+  bannerQueue,
+} from '@components/ui'
 import { useIsMobile } from '@hooks'
 import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import {
   CategoryGroupForm,
-  CategoryGroupCard,
-  UncategorizedSection,
   CategoryForm,
-} from '../../../components/budget/Categories'
-import { RecalculateAllButton } from '../../../components/budget/Month'
+} from '@components/budget/Categories'
+import { SettingsCategoryGroupRows } from '@components/budget/Categories/SettingsCategoryGroupRows'
+import { RecalculateAllButton } from '@components/budget/Month'
 
 function Categories() {
   const { selectedBudgetId } = useBudget()
@@ -31,7 +29,7 @@ function Categories() {
     categoryGroups,
     categoriesByGroup,
     hiddenCategories,
-    sortedGroups,
+    sortedGroups: allSortedGroups,
     categoryBalances,
     isLoading,
     loadingBalances,
@@ -48,24 +46,6 @@ function Categories() {
     handleUpdateGroup,
     handleDeleteGroup,
     handleMoveGroup,
-    // Drag state
-    dragType,
-    draggedId,
-    dragOverId,
-    dragOverGroupId,
-    setDragOverId,
-    setDragOverGroupId,
-    // Drag handlers
-    handleCategoryDragStart,
-    handleCategoryDragOver,
-    handleDragOverGroup,
-    handleDragLeave,
-    handleDragLeaveGroup,
-    handleDragEnd,
-    handleCategoryDrop,
-    handleDropOnGroup,
-    handleGroupDragStart,
-    handleGroupDrop,
   } = useCategoriesPage()
 
   // Auto-trigger recalculation when navigating to Categories settings if ANY month needs recalc
@@ -74,21 +54,54 @@ function Categories() {
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
 
-  // Add loading hold while loading
+  // Add loading hold while loading - keep it up until budget data is fully loaded
   useEffect(() => {
-    if (isLoading) {
+    if (isBudgetLoading || isLoading || !currentBudget) {
       addLoadingHold('categories', 'Loading categories...')
     } else {
       removeLoadingHold('categories')
     }
     return () => removeLoadingHold('categories')
-  }, [isLoading, addLoadingHold, removeLoadingHold])
+  }, [isBudgetLoading, isLoading, currentBudget, addLoadingHold, removeLoadingHold])
 
   // UI state for editing
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [createForGroupId, setCreateForGroupId] = useState<string | null>(null)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
+
+  // Filter out ungrouped group from sortedGroups so it appears last
+  const sortedGroups = useMemo(() => {
+    return allSortedGroups.filter(g => g.id !== UNGROUPED_CATEGORY_GROUP_ID)
+  }, [allSortedGroups])
+
+  // Create ungrouped group object for table display - must be before early returns
+  const ungroupedGroup = useMemo(() => ({
+    id: UNGROUPED_CATEGORY_GROUP_ID,
+    name: 'Uncategorized',
+    sort_order: sortedGroups.length,
+  }), [sortedGroups.length])
+
+  const ungroupedCategories = (categoriesByGroup[UNGROUPED_CATEGORY_GROUP_ID] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
+
+  // Show errors via banner system
+  useEffect(() => {
+    if (error) {
+      console.error('[Settings/Categories] Error:', error)
+      bannerQueue.add({
+        type: 'error',
+        message: 'Failed to update categories. See console for details.',
+        autoDismissMs: 0,
+      })
+      // Clear error after showing banner
+      setError(null)
+    }
+  }, [error, setError])
+
+  // Don't show "No budget found" while still loading
+  if (isBudgetLoading || isLoading) {
+    return null
+  }
 
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
@@ -100,11 +113,19 @@ function Categories() {
   const availableNow = getOnBudgetTotal() - totalCurrentAllocated
   const hasFutureAllocations = Math.abs(totalAllocated - totalCurrentAllocated) > 0.01
 
-  if (isLoading) return null
+  // Column header style - matches month pages
+  const columnHeaderStyle: React.CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    opacity: 0.6,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    padding: '0.5rem',
+    borderBottom: '2px solid rgba(255,255,255,0.2)',
+  }
 
   return (
     <div>
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
       {/* Sticky header: title + stats + buttons */}
       <div style={{
@@ -144,9 +165,7 @@ function Categories() {
               <span style={{ color: getBalanceColor(availableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(availableNow)}</span>
             </span>
             <span style={{ opacity: 0.6 }}>
-              {isMobile
-                ? 'Drag to move between groups.'
-                : 'Drag categories between groups, or use ▲▼ to reorder.'}
+              Use ▲▼ buttons to reorder categories.
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
@@ -155,102 +174,120 @@ function Categories() {
         </div>
       </div>
 
-      {/* Category Groups */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', paddingTop: '1rem' }}>
+      {/* CSS Grid container - header and content share the same grid */}
+      <div style={{
+        display: 'grid',
+        // Category, Balance, Description, Actions
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 2fr 1fr',
+        marginTop: '1rem',
+        marginBottom: '1.5rem',
+      }}>
+        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
+        <div style={{
+          gridColumn: '1 / -1',
+          position: 'sticky',
+          top: '3.5rem', // Below the stats header
+          zIndex: 49,
+          backgroundColor: '#242424',
+          display: isMobile ? 'block' : 'grid',
+          gridTemplateColumns: isMobile ? undefined : 'subgrid',
+        }}>
+          {/* Column headers row - desktop only */}
+          {!isMobile && (
+            <>
+              <div style={columnHeaderStyle}>Category</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Balance</div>
+              <div style={columnHeaderStyle}>Description</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Actions</div>
+            </>
+          )}
+        </div>
+
+        {/* Empty state */}
         {Object.keys(categories).length === 0 && categoryGroups.length === 0 && (
-          <p style={{ opacity: 0.7 }}>No categories yet. Create a group first, then add categories!</p>
+          <p style={{ gridColumn: '1 / -1', opacity: 0.7, textAlign: 'center', padding: '2rem' }}>
+            No categories yet. Create a group first, then add categories!
+          </p>
         )}
 
+        {/* Render groups */}
         {sortedGroups.map((group, groupIndex) => {
           const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
+          if (groupCategories.length === 0 && editingGroupId !== group.id && createForGroupId !== group.id) return null
+
+          // If editing group, show form outside grid
+          if (editingGroupId === group.id) {
+            return (
+              <div key={group.id} style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
+                <CategoryGroupForm
+                  initialData={{ name: group.name }}
+                  onSubmit={(data) => {
+                    handleUpdateGroup(group.id, data)
+                    setEditingGroupId(null)
+                  }}
+                  onCancel={() => setEditingGroupId(null)}
+                  submitLabel="Save"
+                />
+              </div>
+            )
+          }
 
           return (
-            <CategoryGroupCard
+            <SettingsCategoryGroupRows
               key={group.id}
               group={group}
-              groupIndex={groupIndex}
-              groupCategories={groupCategories}
-              sortedGroups={sortedGroups}
+              categories={groupCategories}
               categoryGroups={categoryGroups}
               categoryBalances={categoryBalances}
               loadingBalances={loadingBalances}
-              dragType={dragType}
-              draggedId={draggedId}
-              dragOverId={dragOverId}
-              dragOverGroupId={dragOverGroupId}
               editingCategoryId={editingCategoryId}
-              setEditingCategoryId={setEditingCategoryId}
               createForGroupId={createForGroupId}
+              setEditingCategoryId={setEditingCategoryId}
               setCreateForGroupId={setCreateForGroupId}
-              editingGroupId={editingGroupId}
-              setEditingGroupId={setEditingGroupId}
-              handleCreateCategory={handleCreateCategory}
               handleUpdateCategory={handleUpdateCategory}
               handleDeleteCategory={handleDeleteCategory}
               handleMoveCategory={handleMoveCategory}
-              handleUpdateGroup={handleUpdateGroup}
-              handleDeleteGroup={handleDeleteGroup}
-              handleMoveGroup={handleMoveGroup}
-              handleCategoryDragStart={handleCategoryDragStart}
-              handleCategoryDragOver={handleCategoryDragOver}
-              handleDragOverGroup={handleDragOverGroup}
-              handleDragLeave={handleDragLeave}
-              handleDragLeaveGroup={handleDragLeaveGroup}
-              handleDragEnd={handleDragEnd}
-              handleCategoryDrop={handleCategoryDrop}
-              handleDropOnGroup={handleDropOnGroup}
-              handleGroupDragStart={handleGroupDragStart}
-              handleGroupDrop={handleGroupDrop}
-              setDragOverId={setDragOverId}
-              setDragOverGroupId={setDragOverGroupId}
+              handleCreateCategory={handleCreateCategory}
               isMobile={isMobile}
-              categories={categories}
+              canMoveGroupUp={groupIndex > 0}
+              canMoveGroupDown={groupIndex < sortedGroups.length - 1}
+              onEditGroup={() => setEditingGroupId(group.id)}
+              onDeleteGroup={() => handleDeleteGroup(group.id)}
+              onMoveGroupUp={() => handleMoveGroup(group.id, 'up')}
+              onMoveGroupDown={() => handleMoveGroup(group.id, 'down')}
             />
           )
         })}
 
-        {/* Drop zone for reordering groups to end */}
-        {dragType === 'group' && sortedGroups.length > 0 && (
-          <DropZone
-            isActive={dragOverId === '__end__'}
-            onDragOver={(e) => { e.preventDefault(); setDragOverId('__end__') }}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleGroupDrop(e, '__end__')}
-            label="Move group to end"
+        {/* Uncategorized section - always rendered last, after all groups */}
+        {(ungroupedCategories.length > 0 || createForGroupId === 'ungrouped') && (
+          <SettingsCategoryGroupRows
+            group={ungroupedGroup}
+            categories={ungroupedCategories}
+            categoryGroups={categoryGroups}
+            categoryBalances={categoryBalances}
+            loadingBalances={loadingBalances}
+            editingCategoryId={editingCategoryId}
+            createForGroupId={createForGroupId}
+            setEditingCategoryId={setEditingCategoryId}
+            setCreateForGroupId={setCreateForGroupId}
+            handleUpdateCategory={handleUpdateCategory}
+            handleDeleteCategory={handleDeleteCategory}
+            handleMoveCategory={handleMoveCategory}
+            handleCreateCategory={handleCreateCategory}
+            isMobile={isMobile}
+            isUngrouped
+            canMoveGroupUp={false}
+            canMoveGroupDown={false}
+            onEditGroup={() => {}} // Uncategorized can't be edited
+            onDeleteGroup={() => {}} // Uncategorized can't be deleted
+            onMoveGroupUp={() => {}}
+            onMoveGroupDown={() => {}}
           />
         )}
 
-        {/* Uncategorized section */}
-        <UncategorizedSection
-          ungroupedCategories={(categoriesByGroup[UNGROUPED_CATEGORY_GROUP_ID] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)}
-          categoryGroups={categoryGroups}
-          categoryBalances={categoryBalances}
-          loadingBalances={loadingBalances}
-          dragType={dragType}
-          draggedId={draggedId}
-          dragOverId={dragOverId}
-          dragOverGroupId={dragOverGroupId}
-          editingCategoryId={editingCategoryId}
-          setEditingCategoryId={setEditingCategoryId}
-          createForGroupId={createForGroupId}
-          setCreateForGroupId={setCreateForGroupId}
-          handleCreateCategory={handleCreateCategory}
-          handleUpdateCategory={handleUpdateCategory}
-          handleDeleteCategory={handleDeleteCategory}
-          handleMoveCategory={handleMoveCategory}
-          handleCategoryDragStart={handleCategoryDragStart}
-          handleCategoryDragOver={handleCategoryDragOver}
-          handleDragOverGroup={handleDragOverGroup}
-          handleDragLeaveGroup={handleDragLeaveGroup}
-          handleDragLeave={handleDragLeave}
-          handleDragEnd={handleDragEnd}
-          handleCategoryDrop={handleCategoryDrop}
-          handleDropOnGroup={handleDropOnGroup}
-          setDragOverId={setDragOverId}
-          setDragOverGroupId={setDragOverGroupId}
-          categories={categories}
-          hasGroups={categoryGroups.length > 0}
-        />
+        {/* Bottom padding */}
+        <div style={{ gridColumn: '1 / -1', height: '1rem' }} />
       </div>
 
       {/* Hidden categories section */}

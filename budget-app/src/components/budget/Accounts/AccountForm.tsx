@@ -38,9 +38,10 @@ interface AccountFormProps {
   hasExistingIncomeDefault?: boolean
   hasExistingOutgoDefault?: boolean
   currentGroupId?: string | null // For checking group-level overrides
+  onDelete?: () => void // Optional delete handler
 }
 
-export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGroups, showGroupSelector = false, showIncomeSettings = false, hasExistingIncomeDefault = false, hasExistingOutgoDefault = false, currentGroupId }: AccountFormProps) {
+export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, accountGroups, showGroupSelector = false, showIncomeSettings = false, hasExistingIncomeDefault = false, hasExistingOutgoDefault = false, currentGroupId, onDelete }: AccountFormProps) {
   const [formData, setFormData] = useState<AccountFormData>(initialData || {
     nickname: '',
     account_group_id: null,
@@ -236,6 +237,20 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
       <FormButtonGroup>
         <Button type="submit" actionName={submitLabel}>{submitLabel}</Button>
         <Button type="button" variant="secondary" actionName="Cancel Account Form" onClick={onCancel}>Cancel</Button>
+        {onDelete && (
+          <Button
+            type="button"
+            variant="secondary"
+            actionName="Delete Account"
+            onClick={(e) => {
+              e.preventDefault()
+              onDelete()
+            }}
+            style={{ color: '#ff6b6b', borderColor: '#ff6b6b' }}
+          >
+            🗑️ Delete
+          </Button>
+        )}
       </FormButtonGroup>
     </FormWrapper>
   )

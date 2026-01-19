@@ -50,7 +50,6 @@ export function GroupHeader({
       flexWrap: isMobile ? 'wrap' : 'nowrap',
     }}>
       <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
-        {!isMobile && <span style={{ cursor: 'grab', opacity: 0.4 }}>⋮⋮</span>}
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '2px solid currentColor', paddingBottom: '2px' }}>
           {group.name}
         </span>

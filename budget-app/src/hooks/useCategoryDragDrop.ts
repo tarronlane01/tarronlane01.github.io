@@ -11,7 +11,7 @@ import { useState, type DragEvent } from 'react'
 import type { CategoriesMap, CategoryGroup, Budget } from '@types'
 import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 
-type DragType = 'category' | 'group' | null
+type DragType = 'category' | null
 
 interface UseCategoryDragDropParams {
   categories: CategoriesMap
@@ -26,12 +26,15 @@ interface UseCategoryDragDropParams {
 
 export function useCategoryDragDrop({
   categories,
-  categoryGroups,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  categoryGroups: _categoryGroups,
   currentBudget,
   setCategoriesOptimistic,
-  setCategoryGroupsOptimistic,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setCategoryGroupsOptimistic: _setCategoryGroupsOptimistic,
   saveCategories,
-  saveCategoryGroups,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  saveCategoryGroups: _saveCategoryGroups,
   setError,
 }: UseCategoryDragDropParams) {
   // Drag state
@@ -61,8 +64,6 @@ export function useCategoryDragDrop({
     if (dragType === 'category') {
       setDragOverGroupId(groupId)
       setDragOverId(null)
-    } else if (dragType === 'group' && groupId !== draggedId) {
-      setDragOverId(groupId)
     }
   }
 
@@ -152,50 +153,6 @@ export function useCategoryDragDrop({
     e.preventDefault()
     if (dragType === 'category') {
       await handleCategoryDrop(e, '__group_end__', groupId)
-    } else if (dragType === 'group') {
-      await handleGroupDrop(e, groupId)
-    }
-  }
-
-  // Group drag handlers
-  function handleGroupDragStart(e: DragEvent, groupId: string) {
-    e.stopPropagation()
-    setDragType('group')
-    setDraggedId(groupId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  async function handleGroupDrop(e: DragEvent, targetId: string) {
-    e.preventDefault()
-    if (!draggedId || dragType !== 'group' || draggedId === targetId) {
-      handleDragEnd()
-      return
-    }
-
-    const draggedIndex = categoryGroups.findIndex(g => g.id === draggedId)
-    const newGroups = [...categoryGroups]
-    const [draggedItem] = newGroups.splice(draggedIndex, 1)
-
-    if (targetId === '__end__') {
-      newGroups.push(draggedItem)
-    } else {
-      const targetIndex = newGroups.findIndex(g => g.id === targetId)
-      newGroups.splice(targetIndex, 0, draggedItem)
-    }
-
-    const updatedGroups = newGroups.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }))
-
-    setCategoryGroupsOptimistic(updatedGroups)
-    handleDragEnd()
-
-    if (!currentBudget) return
-    try {
-      await saveCategoryGroups(updatedGroups)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save new order')
     }
   }
 
@@ -216,8 +173,6 @@ export function useCategoryDragDrop({
     handleDragEnd,
     handleCategoryDrop,
     handleDropOnGroup,
-    handleGroupDragStart,
-    handleGroupDrop,
   }
 }
 

@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { useBudget } from '@contexts'
+import { useState, useEffect, type FormEvent } from 'react'
+import { useBudget, useApp } from '@contexts'
 import { useBudgetData } from '@hooks'
 import { useInviteUser, useRevokeUser } from '@data/mutations/user'
 import { logUserAction } from '@utils/actionLogger'
@@ -7,13 +7,25 @@ import { logUserAction } from '@utils/actionLogger'
 function Users() {
   // Context: identifiers only
   const { selectedBudgetId, currentUserId } = useBudget()
+  const { addLoadingHold, removeLoadingHold } = useApp()
 
   // Hook: budget data (read-only)
   const {
     budget: currentBudget,
     budgetUserIds,
     acceptedUserIds,
+    isLoading,
   } = useBudgetData()
+
+  // Add loading hold while loading - keep it up until budget data is fully loaded
+  useEffect(() => {
+    if (isLoading || !currentBudget) {
+      addLoadingHold('users', 'Loading users...')
+    } else {
+      removeLoadingHold('users')
+    }
+    return () => removeLoadingHold('users')
+  }, [isLoading, currentBudget, addLoadingHold, removeLoadingHold])
 
   // User mutations - imported directly
   const { inviteUser } = useInviteUser()
@@ -24,9 +36,9 @@ function Users() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  if (!currentBudget) {
-    return <p>No budget found.</p>
-  }
+  // Don't show "No budget found" while still loading
+  if (isLoading) return null
+  if (!currentBudget) return <p>No budget found.</p>
 
   async function handleInviteUser(e: FormEvent) {
     e.preventDefault()
@@ -83,7 +95,6 @@ function Users() {
   // Separate users into accepted and pending
   const acceptedUsers = budgetUserIds.filter(id => acceptedUserIds.includes(id))
   const pendingUsers = budgetUserIds.filter(id => !acceptedUserIds.includes(id))
-
   return (
     <div>
       <h2 style={{ marginTop: 0 }}>Budget Users</h2>

@@ -395,7 +395,5 @@ export function useCategoriesPage() {
     handleDragEnd: dragDrop.handleDragEnd,
     handleCategoryDrop: dragDrop.handleCategoryDrop,
     handleDropOnGroup: dragDrop.handleDropOnGroup,
-    handleGroupDragStart: dragDrop.handleGroupDragStart,
-    handleGroupDrop: dragDrop.handleGroupDrop,
   }
 }

@@ -1,25 +1,21 @@
-import { useState, useMemo, type DragEvent } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useAccountsPage, useBudgetData, useAutoRecalculation } from '@hooks'
-import { useBudget } from '@contexts'
+import { useBudget, useApp } from '@contexts'
 import {
-  ErrorAlert,
   Button,
-  DropZone,
   formatCurrency,
   getBalanceColor,
   CollapsibleSection,
-} from '../../../components/ui'
+  bannerQueue,
+} from '@components/ui'
 import { useIsMobile } from '@hooks'
 import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import {
   GroupForm,
-  AccountGroupCard,
-  UngroupedAccountsSection,
   AccountForm,
-} from '../../../components/budget/Accounts'
-import { RecalculateAllButton } from '../../../components/budget/Month'
-
-type DragType = 'account' | 'group' | null
+} from '@components/budget/Accounts'
+import { SettingsAccountGroupRows } from '@components/budget/Accounts/SettingsAccountGroupRows'
+import { RecalculateAllButton } from '@components/budget/Month'
 
 function Accounts() {
   const { selectedBudgetId } = useBudget()
@@ -29,7 +25,7 @@ function Accounts() {
     accounts,
     accountsByGroup,
     hiddenAccounts,
-    sortedGroups,
+    sortedGroups: allSortedGroups,
     currentBudget,
     error,
     setError,
@@ -41,11 +37,20 @@ function Accounts() {
     handleUpdateGroup,
     handleDeleteGroup,
     handleMoveGroup,
-    reorderAccountsInGroup,
-    reorderGroups,
   } = useAccountsPage()
 
   const isMobile = useIsMobile()
+  const { addLoadingHold, removeLoadingHold } = useApp()
+
+  // Add loading hold while loading - keep it up until budget data is fully loaded
+  useEffect(() => {
+    if (isBudgetLoading || !currentBudget) {
+      addLoadingHold('accounts', 'Loading accounts...')
+    } else {
+      removeLoadingHold('accounts')
+    }
+    return () => removeLoadingHold('accounts')
+  }, [isBudgetLoading, currentBudget, addLoadingHold, removeLoadingHold])
 
   // Auto-trigger recalculation when navigating to Accounts settings if ANY month needs recalc
   useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isBudgetLoading && !!currentBudget, logPrefix: '[Settings/Accounts]' })
@@ -58,94 +63,6 @@ function Accounts() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
 
-  // Drag state
-  const [dragType, setDragType] = useState<DragType>(null)
-  const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
-  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null)
-
-  // Account drag handlers
-  function handleAccountDragStart(e: DragEvent, accountId: string) {
-    setDragType('account')
-    setDraggedId(accountId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  function handleAccountDragOver(e: DragEvent, accountId: string, groupId: string) {
-    e.preventDefault()
-    if (dragType !== 'account') return
-    if (accountId !== draggedId) {
-      setDragOverId(accountId)
-    }
-    setDragOverGroupId(groupId)
-  }
-
-  function handleDragOverGroup(e: DragEvent, groupId: string) {
-    e.preventDefault()
-    if (dragType === 'account') {
-      setDragOverGroupId(groupId)
-      setDragOverId(null)
-    } else if (dragType === 'group' && groupId !== draggedId) {
-      setDragOverId(groupId)
-    }
-  }
-
-  function handleDragLeave() {
-    setDragOverId(null)
-  }
-
-  function handleDragLeaveGroup() {
-    setDragOverGroupId(null)
-  }
-
-  function handleDragEnd() {
-    setDragType(null)
-    setDraggedId(null)
-    setDragOverId(null)
-    setDragOverGroupId(null)
-  }
-
-  async function handleAccountDrop(e: DragEvent, targetId: string, targetGroupId: string) {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!draggedId || dragType !== 'account') {
-      handleDragEnd()
-      return
-    }
-
-    await reorderAccountsInGroup(draggedId, targetId, targetGroupId)
-    handleDragEnd()
-  }
-
-  async function handleDropOnGroup(e: DragEvent, groupId: string) {
-    e.preventDefault()
-    if (dragType === 'account') {
-      await handleAccountDrop(e, '__group_end__', groupId)
-    } else if (dragType === 'group') {
-      await handleGroupDrop(e, groupId)
-    }
-  }
-
-  // Group drag handlers
-  function handleGroupDragStart(e: DragEvent, groupId: string) {
-    e.stopPropagation()
-    setDragType('group')
-    setDraggedId(groupId)
-    e.dataTransfer.effectAllowed = 'move'
-  }
-
-  async function handleGroupDrop(e: DragEvent, targetId: string) {
-    e.preventDefault()
-    if (!draggedId || dragType !== 'group' || draggedId === targetId) {
-      handleDragEnd()
-      return
-    }
-
-    await reorderGroups(draggedId, targetId)
-    handleDragEnd()
-  }
-
   // Calculate stats for header
   const stats = useMemo(() => {
     const accountList = Object.values(accounts)
@@ -156,7 +73,7 @@ function Accounts() {
     let offBudgetTotal = 0
 
     for (const acc of accountList) {
-      const group = sortedGroups.find(g => g.id === acc.account_group_id)
+      const group = allSortedGroups.find(g => g.id === acc.account_group_id)
       // Account is on-budget if: its own on_budget is true, OR (on_budget is undefined and group's on_budget is true or undefined)
       const isOnBudget = acc.on_budget === true || (acc.on_budget === undefined && (group?.on_budget !== false))
       if (isOnBudget) {
@@ -168,22 +85,66 @@ function Accounts() {
 
     return {
       count: accountList.length,
-      groupCount: sortedGroups.length,
+      groupCount: allSortedGroups.filter(g => g.id !== UNGROUPED_ACCOUNT_GROUP_ID).length,
       totalBalance,
       onBudgetTotal,
       offBudgetTotal,
     }
-  }, [accounts, sortedGroups])
+  }, [accounts, allSortedGroups])
+
+  // Filter out ungrouped group from sortedGroups so it appears last
+  const sortedGroups = useMemo(() => {
+    return allSortedGroups.filter(g => g.id !== UNGROUPED_ACCOUNT_GROUP_ID)
+  }, [allSortedGroups])
+
+  // Create ungrouped group object for table display - must be before early return
+  const ungroupedGroup = useMemo(() => ({
+    id: UNGROUPED_ACCOUNT_GROUP_ID,
+    name: 'Ungrouped',
+    sort_order: sortedGroups.length,
+    expected_balance: 'any' as const,
+    on_budget: null,
+    is_active: null,
+  }), [sortedGroups.length])
+
+  const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID] || []
+
+  // Column header style - matches month pages
+  const columnHeaderStyle: React.CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    opacity: 0.6,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    padding: '0.5rem',
+    borderBottom: '2px solid rgba(255,255,255,0.2)',
+  }
+
+  // Show errors via banner system
+  useEffect(() => {
+    if (error) {
+      console.error('[Settings/Accounts] Error:', error)
+      bannerQueue.add({
+        type: 'error',
+        message: 'Failed to update accounts. See console for details.',
+        autoDismissMs: 0,
+      })
+      // Clear error after showing banner
+      setError(null)
+    }
+  }, [error, setError])
+
+  // Don't show "No budget found" while still loading
+  if (isBudgetLoading) {
+    return null
+  }
 
   if (!currentBudget) {
     return <p>No budget found. Please log in.</p>
   }
 
-  const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID] || []
-
   return (
     <div>
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
       {/* Sticky header: title + stats + buttons */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: '#242424', marginLeft: 'calc(-1 * var(--page-padding, 2rem))', marginRight: 'calc(-1 * var(--page-padding, 2rem))', paddingLeft: 'var(--page-padding, 2rem)', paddingRight: 'var(--page-padding, 2rem)', paddingTop: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
@@ -206,7 +167,7 @@ function Accounts() {
               <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatCurrency(stats.totalBalance)}</span>
             </span>
             <span style={{ opacity: 0.5, fontSize: '0.8rem' }}>
-              {isMobile ? 'Drag to move.' : 'Drag between types or use ▲▼ to reorder.'}
+              Use ▲▼ buttons to reorder accounts.
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
@@ -215,93 +176,123 @@ function Accounts() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', paddingTop: '1rem' }}>
+      {/* CSS Grid container - header and content share the same grid */}
+      <div style={{
+        display: 'grid',
+        // Account, Balance, Flags, Actions
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1.5fr 1fr',
+        marginTop: '1rem',
+        marginBottom: '1.5rem',
+      }}>
+        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
+        <div style={{
+          gridColumn: '1 / -1',
+          position: 'sticky',
+          top: '3.5rem', // Below the stats header
+          zIndex: 49,
+          backgroundColor: '#242424',
+          display: isMobile ? 'block' : 'grid',
+          gridTemplateColumns: isMobile ? undefined : 'subgrid',
+        }}>
+          {/* Column headers row - desktop only */}
+          {!isMobile && (
+            <>
+              <div style={columnHeaderStyle}>Account</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Balance</div>
+              <div style={columnHeaderStyle}>Flags</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Actions</div>
+            </>
+          )}
+        </div>
+
+        {/* Empty state */}
         {Object.keys(accounts).length === 0 && sortedGroups.length === 0 && (
-          <p style={{ opacity: 0.7 }}>No accounts yet. Create an account type first, then add accounts!</p>
+          <p style={{ gridColumn: '1 / -1', opacity: 0.7, textAlign: 'center', padding: '2rem' }}>
+            No accounts yet. Create an account type first, then add accounts!
+          </p>
         )}
 
         {/* Render groups */}
-        {sortedGroups.map((group, groupIndex) => (
-          <AccountGroupCard
-            key={group.id}
-            group={group}
-            groupIndex={groupIndex}
-            totalGroups={sortedGroups.length}
-            accounts={accountsByGroup[group.id] || []}
+        {sortedGroups.map((group, groupIndex) => {
+          const groupAccounts = accountsByGroup[group.id] || []
+          if (groupAccounts.length === 0 && editingGroupId !== group.id && createForGroupId !== group.id) return null
+
+          // If editing group, show form outside grid
+          if (editingGroupId === group.id) {
+            return (
+              <div key={group.id} style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
+                <GroupForm
+                  initialData={{
+                    name: group.name,
+                    expected_balance: group.expected_balance || 'positive',
+                    on_budget: group.on_budget ?? undefined,
+                    is_active: group.is_active ?? undefined,
+                  }}
+                  onSubmit={(data) => {
+                    handleUpdateGroup(group.id, data)
+                    setEditingGroupId(null)
+                  }}
+                  onCancel={() => setEditingGroupId(null)}
+                  submitLabel="Save"
+                />
+              </div>
+            )
+          }
+
+          return (
+            <SettingsAccountGroupRows
+              key={group.id}
+              group={group}
+              accounts={groupAccounts}
+              allGroups={sortedGroups}
+              allAccounts={accounts}
+              editingAccountId={editingAccountId}
+              createForGroupId={createForGroupId}
+              setEditingAccountId={setEditingAccountId}
+              setCreateForGroupId={setCreateForGroupId}
+              onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
+              onDeleteAccount={handleDeleteAccount}
+              onMoveAccount={handleMoveAccount}
+              onCreateAccount={handleCreateAccount}
+              isMobile={isMobile}
+              canMoveGroupUp={groupIndex > 0}
+              canMoveGroupDown={groupIndex < sortedGroups.length - 1}
+              onEditGroup={() => setEditingGroupId(group.id)}
+              onDeleteGroup={() => handleDeleteGroup(group.id)}
+              onMoveGroupUp={() => handleMoveGroup(group.id, 'up')}
+              onMoveGroupDown={() => handleMoveGroup(group.id, 'down')}
+            />
+          )
+        })}
+
+        {/* Ungrouped section - always rendered last, after all groups */}
+        {(ungroupedAccounts.length > 0 || createForGroupId === 'ungrouped') && (
+          <SettingsAccountGroupRows
+            group={ungroupedGroup}
+            accounts={ungroupedAccounts}
             allGroups={sortedGroups}
             allAccounts={accounts}
             editingAccountId={editingAccountId}
-            editingGroupId={editingGroupId}
             createForGroupId={createForGroupId}
             setEditingAccountId={setEditingAccountId}
-            setEditingGroupId={setEditingGroupId}
             setCreateForGroupId={setCreateForGroupId}
-            dragType={dragType}
-            draggedId={draggedId}
-            dragOverId={dragOverId}
-            dragOverGroupId={dragOverGroupId}
-            setDragOverId={setDragOverId}
-            setDragOverGroupId={setDragOverGroupId}
-            onAccountDragStart={handleAccountDragStart}
-            onAccountDragOver={handleAccountDragOver}
-            onAccountDrop={handleAccountDrop}
-            onGroupDragStart={handleGroupDragStart}
-            onGroupDragOver={handleDragOverGroup}
-            onGroupDrop={handleGroupDrop}
-            onDragLeave={handleDragLeave}
-            onDragLeaveGroup={handleDragLeaveGroup}
-            onDragEnd={handleDragEnd}
-            onDropOnGroup={handleDropOnGroup}
-            onCreateAccount={handleCreateAccount}
             onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
             onDeleteAccount={handleDeleteAccount}
             onMoveAccount={handleMoveAccount}
-            onUpdateGroup={(id, data) => { handleUpdateGroup(id, data); setEditingGroupId(null) }}
-            onDeleteGroup={handleDeleteGroup}
-            onMoveGroup={handleMoveGroup}
-          />
-        ))}
-
-        {/* Drop zone for reordering groups to end */}
-        {dragType === 'group' && sortedGroups.length > 0 && (
-          <DropZone
-            isActive={dragOverId === '__end__'}
-            onDragOver={(e) => { e.preventDefault(); setDragOverId('__end__') }}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleGroupDrop(e, '__end__')}
-            label="Move account type to end"
+            onCreateAccount={handleCreateAccount}
+            isMobile={isMobile}
+            isUngrouped
+            canMoveGroupUp={false}
+            canMoveGroupDown={false}
+            onEditGroup={() => {}} // Ungrouped can't be edited
+            onDeleteGroup={() => {}} // Ungrouped can't be deleted
+            onMoveGroupUp={() => {}}
+            onMoveGroupDown={() => {}}
           />
         )}
 
-        {/* Ungrouped section */}
-        <UngroupedAccountsSection
-          accounts={ungroupedAccounts}
-          allGroups={sortedGroups}
-          allAccounts={accounts}
-          hasGroups={sortedGroups.length > 0}
-          editingAccountId={editingAccountId}
-          createForGroupId={createForGroupId}
-          setEditingAccountId={setEditingAccountId}
-          setCreateForGroupId={setCreateForGroupId}
-          dragType={dragType}
-          draggedId={draggedId}
-          dragOverId={dragOverId}
-          dragOverGroupId={dragOverGroupId}
-          setDragOverId={setDragOverId}
-          setDragOverGroupId={setDragOverGroupId}
-          onAccountDragStart={handleAccountDragStart}
-          onAccountDragOver={handleAccountDragOver}
-          onAccountDrop={handleAccountDrop}
-          onDragOverGroup={handleDragOverGroup}
-          onDropOnGroup={handleDropOnGroup}
-          onDragLeave={handleDragLeave}
-          onDragLeaveGroup={handleDragLeaveGroup}
-          onDragEnd={handleDragEnd}
-          onCreateAccount={handleCreateAccount}
-          onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
-          onDeleteAccount={handleDeleteAccount}
-          onMoveAccount={handleMoveAccount}
-        />
+        {/* Bottom padding */}
+        <div style={{ gridColumn: '1 / -1', height: '1rem' }} />
       </div>
 
       {/* Hidden accounts section */}

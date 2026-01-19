@@ -29,9 +29,10 @@ interface CategoryFormProps {
   submitLabel: string
   categoryGroups?: CategoryGroup[]
   showGroupSelector?: boolean
+  onDelete?: () => void // Optional delete handler
 }
 
-export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGroups = [], showGroupSelector = false }: CategoryFormProps) {
+export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, categoryGroups = [], showGroupSelector = false, onDelete }: CategoryFormProps) {
   const [formData, setFormData] = useState<CategoryFormData>(initialData || { name: '', category_group_id: null, is_hidden: false })
   const [defaultAmount, setDefaultAmount] = useState(initialData?.default_monthly_amount?.toString() || '')
   const [defaultType, setDefaultType] = useState<DefaultAmountType>(initialData?.default_monthly_type || 'fixed')
@@ -150,6 +151,20 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
       <FormButtonGroup>
         <Button type="submit" actionName={submitLabel === 'Create' ? 'Create Category' : 'Save Category'} isLoading={isSubmitting}>{submitLabel}</Button>
         <Button type="button" variant="secondary" actionName="Cancel Category Form" onClick={onCancel}>Cancel</Button>
+        {onDelete && (
+          <Button
+            type="button"
+            variant="secondary"
+            actionName="Delete Category"
+            onClick={(e) => {
+              e.preventDefault()
+              onDelete()
+            }}
+            style={{ color: '#ff6b6b', borderColor: '#ff6b6b' }}
+          >
+            🗑️ Delete
+          </Button>
+        )}
       </FormButtonGroup>
     </FormWrapper>
   )

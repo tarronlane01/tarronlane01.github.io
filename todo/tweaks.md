@@ -1,28 +1,19 @@
-# Straightforward Tweaks
 
-## Quality of Life Improvements
 
-### Mobile UX
+Make the budget settings account/category edit/create forms full-page instead of inline
 
-**Mobile, instead of edit button just edit if user clicks on it**
-Mobile, instead of edit button just edit if user clicks on it
+Let's change the blue check mark to a button that says either add or save, depending on if this is editing or adding a row. this applies to the income / spend / adjustments etc, (basically all forms)
 
-### UI Text and Labels
+For mobile views, let's not have an edit button but just open the edit form if a user clicks on a row (for budget settings accounts / categories, as well as month income / spend / adjustments / transfers). Is there a way we can do this while still allowing mobile users to hold to highlight / copy amounts?
 
-**Say current instead of end on current month**
-Say current instead of end on current month
+When we're on the month that page that matches the current month (based on the calendar), then instead of end for the column name we should say current.
 
-**Have download have date instead of timestamp in download**
+When looking at future months, let's avoid showing the start and end month values, since those are practically guaranteed to change before we actually get to that month.
+
 Have download have date instead of timestamp in download, to make it easier to human read
 
-### Form Behavior
-
-**Don't auto-focus amount when creating adjustments**
 Don't auto-focus amount when creating adjustments
 
-### Navigation and Quick Actions
-
-**On the my-budgets page, give a go-to-budget button**
 On the my-budgets page (since it's the landing page) Give a go-to-budget button on the budget line, or when creating a budget, auto-take them to that budget
 
 **On month categories or accounts page, give a button to quickly go to settings**

@@ -1,3 +1,7 @@
+# Code Quality Automations
+
+Expand to check more things to ensure good behavior without having to remember
+
 # Modals
 
 Make sure we are using a consistent modal approach across the app, so all modals share a component where it makes sense, and behave the same, and we avoid redundant code.

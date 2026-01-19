@@ -52,7 +52,7 @@ interface AccountGroupCardProps {
   setCreateForGroupId: (id: string | null) => void
 
   // Drag state
-  dragType: 'account' | 'group' | null
+  dragType: 'account' | null
   draggedId: string | null
   dragOverId: string | null
   dragOverGroupId: string | null
@@ -63,9 +63,7 @@ interface AccountGroupCardProps {
   onAccountDragStart: (e: DragEvent, accountId: string) => void
   onAccountDragOver: (e: DragEvent, accountId: string, groupId: string) => void
   onAccountDrop: (e: DragEvent, targetId: string, targetGroupId: string) => void
-  onGroupDragStart: (e: DragEvent, groupId: string) => void
-  onGroupDragOver: (e: DragEvent, groupId: string) => void
-  onGroupDrop: (e: DragEvent, targetId: string) => void
+  onDragOverGroup: (e: DragEvent, groupId: string) => void
   onDragLeave: () => void
   onDragLeaveGroup: () => void
   onDragEnd: () => void
@@ -103,9 +101,7 @@ export function AccountGroupCard({
   onAccountDragStart,
   onAccountDragOver,
   onAccountDrop,
-  onGroupDragStart,
-  onGroupDragOver,
-  onGroupDrop,
+  onDragOverGroup,
   onDragLeave,
   onDragLeaveGroup,
   onDragEnd,
@@ -121,85 +117,29 @@ export function AccountGroupCard({
   const isMobile = useIsMobile()
   const sortedAccounts = [...accounts].sort((a, b) => a.sort_order - b.sort_order)
 
-  const isGroupDragging = dragType === 'group' && draggedId === group.id
-  const isGroupDragOver = dragType === 'group' && dragOverId === group.id
   const isAccountMovingHere = dragType === 'account' && dragOverGroupId === group.id
   const draggedAccount = draggedId && dragType === 'account' ? allAccounts[draggedId] : null
   const isMovingToDifferentGroup = draggedAccount && Object.entries(allAccounts).find(([id]) => id === draggedId)?.[1] &&
     (Object.entries(allAccounts).find(([id]) => id === draggedId)?.[1] as { account_group_id?: string | null })?.account_group_id !== group.id
-
-  const showDropIndicator = dragType === 'group' && isGroupDragOver && draggedId !== group.id
   const canMoveGroupUp = groupIndex > 0
   const canMoveGroupDown = groupIndex < totalGroups - 1
   const groupTotal = sortedAccounts.reduce((sum, acc) => sum + acc.balance, 0)
 
   return (
     <div>
-      {/* Drop indicator line above group */}
-      {dragType === 'group' && !isGroupDragging && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOverId(group.id) }}
-          onDragLeave={onDragLeave}
-          onDrop={(e) => onGroupDrop(e, group.id)}
-          style={{
-            position: 'relative',
-            height: showDropIndicator ? '2.5rem' : '0.5rem',
-            marginBottom: showDropIndicator ? '-0.5rem' : '-0.25rem',
-            transition: 'height 0.15s',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: 0,
-              right: 0,
-              height: '3px',
-              background: colors.primary,
-              borderRadius: '2px',
-              opacity: showDropIndicator ? 1 : 0,
-              transition: 'opacity 0.15s',
-              boxShadow: showDropIndicator ? `0 0 8px rgba(100, 108, 255, 0.6)` : 'none',
-            }}
-          />
-          {showDropIndicator && (
-            <span style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '0.75rem',
-              opacity: 0.7,
-              background: 'var(--background, #1a1a1a)',
-              padding: '0 0.5rem',
-              whiteSpace: 'nowrap',
-            }}>
-              Drop here
-            </span>
-          )}
-        </div>
-      )}
-
       <div
-        draggable={editingGroupId !== group.id}
-        onDragStart={(e) => onGroupDragStart(e, group.id)}
-        onDragOver={(e) => onGroupDragOver(e, group.id)}
+        onDragOver={(e) => onDragOverGroup(e, group.id)}
         onDragLeave={onDragLeaveGroup}
-        onDragEnd={onDragEnd}
         onDrop={(e) => onDropOnGroup(e, group.id)}
         style={{
-          background: isGroupDragging
-            ? 'color-mix(in srgb, currentColor 3%, transparent)'
-            : (isAccountMovingHere && isMovingToDifferentGroup)
-              ? `color-mix(in srgb, ${colors.primary} 10%, transparent)`
-              : 'color-mix(in srgb, currentColor 5%, transparent)',
+          background: (isAccountMovingHere && isMovingToDifferentGroup)
+            ? `color-mix(in srgb, ${colors.primary} 10%, transparent)`
+            : 'color-mix(in srgb, currentColor 5%, transparent)',
           borderRadius: '12px',
           padding: '1rem',
-          opacity: isGroupDragging ? 0.5 : 1,
           border: (isAccountMovingHere && isMovingToDifferentGroup)
             ? `2px dashed ${colors.primary}`
             : '2px solid transparent',
-          cursor: editingGroupId === group.id ? 'default' : 'grab',
           transition: 'all 0.15s',
         }}
       >

@@ -2,7 +2,6 @@
  * CategoryGroupHeader - Header for category group cards
  */
 
-import type { DragEvent } from 'react'
 import type { CategoryGroup } from '@contexts/budget_context'
 import { Button } from '../../ui'
 import { sectionHeader, reorderButton, reorderButtonGroup } from '@styles/shared'
@@ -20,8 +19,6 @@ interface CategoryGroupHeaderProps {
   onMoveUp: () => void
   onMoveDown: () => void
   onAddCategory: () => void
-  onDragStart: (e: DragEvent) => void
-  onDragEnd: () => void
 }
 
 export function CategoryGroupHeader({
@@ -36,8 +33,6 @@ export function CategoryGroupHeader({
   onMoveUp,
   onMoveDown,
   onAddCategory,
-  onDragStart,
-  onDragEnd,
 }: CategoryGroupHeaderProps) {
   return (
     <div style={{
@@ -51,24 +46,6 @@ export function CategoryGroupHeader({
       flexWrap: isMobile ? 'wrap' : 'nowrap',
     }}>
       <h3 style={{ ...sectionHeader, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
-        {!isMobile && (
-          <span
-            draggable
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-            style={{
-              cursor: 'grab',
-              opacity: 0.4,
-              padding: '0.25rem',
-              margin: '-0.25rem',
-              borderRadius: '4px',
-              userSelect: 'none',
-            }}
-            title="Drag to reorder group"
-          >
-            ⋮⋮
-          </span>
-        )}
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {group.name}
         </span>

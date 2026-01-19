@@ -11,7 +11,7 @@ import type { CategoryBalance } from '@hooks'
 import { logUserAction } from '@utils'
 
 type CategoryEntry = [string, Category]
-type DragType = 'category' | 'group' | null
+type DragType = 'category' | null
 
 interface CategoryGroupCardProps {
   group: CategoryGroup
@@ -46,8 +46,6 @@ interface CategoryGroupCardProps {
   handleDragEnd: () => void
   handleCategoryDrop: (e: DragEvent, targetId: string, targetGroupId: string) => Promise<void>
   handleDropOnGroup: (e: DragEvent, groupId: string) => Promise<void>
-  handleGroupDragStart: (e: DragEvent, groupId: string) => void
-  handleGroupDrop: (e: DragEvent, targetId: string) => Promise<void>
   setDragOverId: (id: string | null) => void
   setDragOverGroupId: (id: string | null) => void
   isMobile: boolean
@@ -61,57 +59,25 @@ export function CategoryGroupCard({
   handleCreateCategory, handleUpdateCategory, handleDeleteCategory, handleMoveCategory,
   handleUpdateGroup, handleDeleteGroup, handleMoveGroup,
   handleCategoryDragStart, handleCategoryDragOver, handleDragOverGroup, handleDragLeave, handleDragLeaveGroup, handleDragEnd,
-  handleCategoryDrop, handleDropOnGroup, handleGroupDragStart, handleGroupDrop,
+  handleCategoryDrop, handleDropOnGroup,
   setDragOverId, setDragOverGroupId, isMobile, categories,
 }: CategoryGroupCardProps) {
-  const isGroupDragging = dragType === 'group' && draggedId === group.id
-  const isGroupDragOver = dragType === 'group' && dragOverId === group.id
   const isCategoryMovingHere = dragType === 'category' && dragOverGroupId === group.id
   const draggedCategory = draggedId && dragType === 'category' ? categories[draggedId] : null
   const isMovingToDifferentGroup = draggedCategory && (draggedCategory.category_group_id || 'ungrouped') !== group.id
-  const showDropIndicator = dragType === 'group' && isGroupDragOver && draggedId !== group.id
   const canMoveGroupUp = groupIndex > 0
   const canMoveGroupDown = groupIndex < sortedGroups.length - 1
 
   return (
     <div>
-      {dragType === 'group' && !isGroupDragging && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOverId(group.id) }}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleGroupDrop(e, group.id)}
-          style={{
-            position: 'relative',
-            height: showDropIndicator ? '2.5rem' : '0.5rem',
-            marginBottom: showDropIndicator ? '-0.5rem' : '-0.25rem',
-            transition: 'height 0.15s',
-          }}
-        >
-          <div style={{
-            position: 'absolute', top: '50%', left: 0, right: 0, height: '3px',
-            background: colors.primary, borderRadius: '2px', opacity: showDropIndicator ? 1 : 0,
-            transition: 'opacity 0.15s', boxShadow: showDropIndicator ? `0 0 8px rgba(100, 108, 255, 0.6)` : 'none',
-          }} />
-          {showDropIndicator && (
-            <span style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              fontSize: '0.75rem', opacity: 0.7, background: 'var(--background, #1a1a1a)', padding: '0 0.5rem', whiteSpace: 'nowrap',
-            }}>
-              Drop here
-            </span>
-          )}
-        </div>
-      )}
-
       <div
         onDragOver={(e) => handleDragOverGroup(e, group.id)}
         onDragLeave={handleDragLeaveGroup}
         onDrop={(e) => handleDropOnGroup(e, group.id)}
         style={{
-          background: isGroupDragging ? 'color-mix(in srgb, currentColor 3%, transparent)'
-            : (isCategoryMovingHere && isMovingToDifferentGroup) ? `color-mix(in srgb, ${colors.primary} 10%, transparent)`
+          background: (isCategoryMovingHere && isMovingToDifferentGroup) ? `color-mix(in srgb, ${colors.primary} 10%, transparent)`
             : 'color-mix(in srgb, currentColor 5%, transparent)',
-          borderRadius: '12px', padding: '1rem', opacity: isGroupDragging ? 0.5 : 1,
+          borderRadius: '12px', padding: '1rem',
           border: (isCategoryMovingHere && isMovingToDifferentGroup) ? `2px dashed ${colors.primary}` : '2px solid transparent',
           transition: 'all 0.15s',
         }}
@@ -126,7 +92,6 @@ export function CategoryGroupCard({
               onEdit={() => setEditingGroupId(group.id)} onDelete={() => handleDeleteGroup(group.id)}
               onMoveUp={() => handleMoveGroup(group.id, 'up')} onMoveDown={() => handleMoveGroup(group.id, 'down')}
               onAddCategory={() => setCreateForGroupId(group.id)}
-              onDragStart={(e) => handleGroupDragStart(e, group.id)} onDragEnd={handleDragEnd}
             />
 
             {isMobile && (

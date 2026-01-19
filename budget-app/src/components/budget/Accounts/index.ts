@@ -16,4 +16,6 @@ export { AccountEndDropZone } from './AccountEndDropZone'
 // Section components
 export { AccountGroupCard } from './AccountGroupCard'
 export { UngroupedAccountsSection } from './UngroupedAccountsSection'
+export { SettingsAccountGroupRows } from './SettingsAccountGroupRows'
+export { SettingsAccountTableRow } from './SettingsAccountTableRow'
 

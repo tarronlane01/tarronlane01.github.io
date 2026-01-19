@@ -1,12 +1,7 @@
-# Bugs
-
-## Data Synchronization and Display
-
-**When saving income, there's still a delay between saving and having it show up**
-When saving income, there's still a delay between saving and having it show up
-
 **When going to a month that isn't loaded yet, it flashes the name of the month**
 When going to a month that isn't loaded yet, it flashes the name of the month for split second before showing the loading screen. Let's show the loading overlay before we even update the month name or anything on the page, when switching months.
+
+What is causing this? What are our options to fix? Don't make any changes yet.
 
 **Month name still flashes for a second before it shows the loading overlay**
 Month name still flashes for a second before it shows the loading overlay, when creating or loading a month
@@ -24,9 +19,6 @@ On main budget page, the available now and the total available are always matchi
 
 **Click on account or category to edit**
 Click on account or category to edit
-
-**Feedback submit not showing confirmations**
-Feedback submit not showing confirmations
 
 **Order of columns should match on all budget category views**
 Order of columns should match on all budget category views

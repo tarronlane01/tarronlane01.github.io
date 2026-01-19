@@ -86,10 +86,12 @@ export function DraggableCard({
           <span
             draggable
             onDragStart={(e) => {
+              e.stopPropagation()
               logUserAction('DRAG_START', itemName || 'Item')
               onDragStart(e)
             }}
-            onDragEnd={() => {
+            onDragEnd={(e) => {
+              e.stopPropagation()
               logUserAction('DRAG_END', itemName || 'Item')
               onDragEnd()
             }}
@@ -106,7 +108,20 @@ export function DraggableCard({
           >
             ⋮⋮
           </span>
-          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div
+            draggable={false}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              userSelect: 'text',
+            }}
+            onDragStart={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+          >
             {children}
           </div>
         </div>
