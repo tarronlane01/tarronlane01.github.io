@@ -15,8 +15,8 @@ msg="$*"
 echo "📋 Running precommit checks (lint, file length)..."
 npm run precommit
 
-echo "🔍 Running pre-deploy checks (console statements, imports)..."
-bash scripts/pre-deploy-checks.sh
+echo "🔍 Running code quality checks (console statements, imports)..."
+bash scripts/review-checks.sh
 
 echo "🔨 Building..."
 npm run build

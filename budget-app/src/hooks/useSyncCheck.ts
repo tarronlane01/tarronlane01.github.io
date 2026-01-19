@@ -15,7 +15,7 @@ import { fetchPayees } from '@data/queries/payees/fetchPayees'
 import { queryCollection } from '@firestore'
 import type { FirestoreData, MonthDocument } from '@types'
 import { getYearMonthOrdinal } from '@utils'
-import { bannerQueue } from '@components/ui/Banner'
+import { bannerQueue } from '@components/ui'
 
 const SYNC_CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Pre-deploy automated checks
-# Validates code quality before deployment
+# Code quality checks for review process
+# Validates code quality patterns before deployment
+# This script should be run during the review process (ai/review.md)
 
 set -e
 
@@ -9,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/../src"
 EXIT_CODE=0
 
-echo "🔍 Running pre-deploy checks..."
+echo "🔍 Running code quality checks..."
 echo ""
 
 # =============================================================================
@@ -87,10 +88,12 @@ BYPASS_VIOLATIONS=$(grep -rn "from '.*components/ui/[A-Z]" "$SRC_DIR" \
   || true)
 
 if [ -n "$BYPASS_VIOLATIONS" ]; then
-  echo "⚠️  Found imports bypassing barrel files (use index.ts exports):"
+  echo "❌ Found imports bypassing barrel files (use index.ts exports):"
   echo "$BYPASS_VIOLATIONS"
   echo ""
-  # Warning only, not blocking
+  echo "   Import from @components/ui instead of @components/ui/ComponentName"
+  echo ""
+  EXIT_CODE=1
 else
   echo "✅ All imports use barrel files correctly"
 fi
@@ -101,9 +104,9 @@ echo ""
 # Summary
 # =============================================================================
 if [ $EXIT_CODE -eq 0 ]; then
-  echo "✅ All pre-deploy checks passed!"
+  echo "✅ All code quality checks passed!"
 else
-  echo "❌ Pre-deploy checks failed. Please fix the issues above."
+  echo "❌ Code quality checks failed. Please fix the issues above."
 fi
 
 exit $EXIT_CODE

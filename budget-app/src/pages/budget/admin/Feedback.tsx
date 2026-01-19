@@ -1,8 +1,10 @@
 import { useState, useContext, useEffect, type DragEvent, type FormEvent } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { UserContext } from '@contexts'
 import { useFirebaseAuth, useIsMobile } from '@hooks'
-import { useFeedbackQuery, type FlattenedFeedbackItem, type FeedbackItem } from '@data'
+import { useFeedbackQuery, type FlattenedFeedbackItem, type FeedbackItem, type FeedbackData, queryKeys } from '@data'
 import { useSubmitFeedback, useToggleFeedback, useUpdateSortOrder } from '@data/mutations/feedback'
+import { readFeedbackForEdit, writeFeedbackData } from '@data/mutations/feedback/writeFeedbackData'
 import { Button, DropZone, FormWrapper, TextAreaInput, FormButtonGroup, CollapsibleSection, Modal, bannerQueue } from '@components/ui'
 import { useApp } from '@contexts'
 import { pageSubtitle, listContainer } from '@styles/shared'
@@ -16,11 +18,13 @@ function Feedback() {
   const [newFeedbackText, setNewFeedbackText] = useState('')
   const [newFeedbackType, setNewFeedbackType] = useState<FeedbackType>('bug')
   const [confirmingItem, setConfirmingItem] = useState<FlattenedFeedbackItem | null>(null)
+  const [confirmingMarkAll, setConfirmingMarkAll] = useState(false)
   const [editingTypeItem, setEditingTypeItem] = useState<FlattenedFeedbackItem | null>(null)
 
   const userContext = useContext(UserContext)
   const firebaseAuth = useFirebaseAuth()
   const currentUser = firebaseAuth.get_current_firebase_user()
+  const queryClient = useQueryClient()
   const feedbackQuery = useFeedbackQuery()
   const { submitFeedback } = useSubmitFeedback()
   const { toggleFeedback } = useToggleFeedback()
@@ -60,6 +64,90 @@ function Feedback() {
 
   function confirmComplete() {
     if (confirmingItem) { performToggleDone(confirmingItem); setConfirmingItem(null) }
+  }
+
+  async function performMarkAllComplete() {
+    // Close modal immediately
+    setConfirmingMarkAll(false)
+
+    // Show loading overlay
+    const loadingKey = 'mark-all-feedback-complete'
+    addLoadingHold(loadingKey, `Marking ${pendingItems.length} item${pendingItems.length !== 1 ? 's' : ''} as complete...`)
+
+    try {
+      const completedAt = new Date().toISOString()
+      const pendingItemIds = new Set(pendingItems.map(item => item.id))
+
+      // Group pending items by doc_id
+      const byDocId = new Map<string, FlattenedFeedbackItem[]>()
+      for (const item of pendingItems) {
+        if (!byDocId.has(item.doc_id)) {
+          byDocId.set(item.doc_id, [])
+        }
+        byDocId.get(item.doc_id)!.push(item)
+      }
+
+      // Update each document in batch
+      const updatePromises: Promise<void>[] = []
+      for (const [docId, itemsToUpdate] of byDocId) {
+        const promise = (async () => {
+          // Read current document state
+          const freshData = await readFeedbackForEdit(docId, 'mark all feedback complete')
+
+          // Update all pending items in this document
+          const updatedItems = freshData.items.map((item: FeedbackItem) => {
+            if (pendingItemIds.has(item.id)) {
+              return {
+                ...item,
+                is_done: true,
+                completed_at: completedAt,
+              }
+            }
+            return item
+          })
+
+          // Write back the updated document
+          await writeFeedbackData({
+            docId,
+            items: updatedItems,
+            description: `marking ${itemsToUpdate.length} feedback item${itemsToUpdate.length !== 1 ? 's' : ''} as complete`,
+          })
+        })()
+        updatePromises.push(promise)
+      }
+
+      // Wait for all updates to complete
+      await Promise.all(updatePromises)
+
+      // Optimistically update the cache
+      const queryKey = queryKeys.feedback()
+      const currentData = queryClient.getQueryData<FeedbackData>(queryKey)
+      if (currentData) {
+        queryClient.setQueryData<FeedbackData>(queryKey, {
+          items: currentData.items.map((item) =>
+            pendingItemIds.has(item.id)
+              ? { ...item, is_done: true, completed_at: completedAt }
+              : item
+          ),
+        })
+      }
+
+      // Invalidate to refetch and ensure consistency
+      await queryClient.invalidateQueries({ queryKey })
+
+      bannerQueue.add({ type: 'success', message: `Marked ${pendingItems.length} item${pendingItems.length !== 1 ? 's' : ''} as complete`, autoDismissMs: 3000 })
+    } catch (err) {
+      console.error('[Feedback] Error marking all as complete:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to mark all items as complete', autoDismissMs: 5000 })
+      // Revert cache on error
+      await queryClient.invalidateQueries({ queryKey: queryKeys.feedback() })
+    } finally {
+      removeLoadingHold(loadingKey)
+    }
+  }
+
+  function confirmMarkAllComplete() {
+    performMarkAllComplete()
   }
 
   async function handleTypeChange(newType: FeedbackType) {
@@ -117,7 +205,7 @@ function Feedback() {
   }
 
   function handleDownloadMarkdown() {
-    const markdown = generateMarkdown(allFeedback)
+    const markdown = generateMarkdown(pendingItems)
     const blob = new Blob([markdown], { type: 'text/markdown' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -130,34 +218,16 @@ function Feedback() {
   }
 
   function generateMarkdown(items: FlattenedFeedbackItem[]): string {
-    const pending = items.filter(item => !item.is_done).sort((a, b) => a.sort_order - b.sort_order)
-    const completed = items.filter(item => item.is_done).sort((a, b) => (new Date(b.completed_at || 0).getTime()) - (new Date(a.completed_at || 0).getTime()))
-
     let markdown = '# Feedback Export\n\n'
     markdown += `Generated: ${new Date().toISOString()}\n\n`
 
-    if (pending.length > 0) {
+    if (items.length > 0) {
       markdown += '## Pending\n\n'
-      pending.forEach((item, index) => {
+      items.forEach((item, index) => {
         const typeLabel = item.feedback_type ? feedbackTypeConfig[item.feedback_type]?.label || item.feedback_type : 'Unknown'
         markdown += `### ${index + 1}. [${typeLabel}] ${item.text.split('\n')[0].substring(0, 60)}${item.text.split('\n')[0].length > 60 ? '...' : ''}\n\n`
         markdown += `- **Type:** ${typeLabel}\n`
         markdown += `- **Created:** ${item.created_at}\n`
-        markdown += `- **User:** ${item.user_email || item.doc_id}\n`
-        markdown += `- **ID:** ${item.id}\n\n`
-        markdown += `${item.text}\n\n`
-        markdown += '---\n\n'
-      })
-    }
-
-    if (completed.length > 0) {
-      markdown += '## Completed\n\n'
-      completed.forEach((item, index) => {
-        const typeLabel = item.feedback_type ? feedbackTypeConfig[item.feedback_type]?.label || item.feedback_type : 'Unknown'
-        markdown += `### ${index + 1}. [${typeLabel}] ${item.text.split('\n')[0].substring(0, 60)}${item.text.split('\n')[0].length > 60 ? '...' : ''}\n\n`
-        markdown += `- **Type:** ${typeLabel}\n`
-        markdown += `- **Created:** ${item.created_at}\n`
-        markdown += `- **Completed:** ${item.completed_at || 'N/A'}\n`
         markdown += `- **User:** ${item.user_email || item.doc_id}\n`
         markdown += `- **ID:** ${item.id}\n\n`
         markdown += `${item.text}\n\n`
@@ -172,28 +242,39 @@ function Feedback() {
 
   return (
     <div>
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        justifyContent: 'space-between', 
-        alignItems: isMobile ? 'stretch' : 'flex-start', 
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'stretch' : 'flex-start',
         gap: isMobile ? '0.75rem' : '1rem',
-        marginTop: '1.5rem', 
-        marginBottom: '0.5rem' 
+        marginTop: '1.5rem',
+        marginBottom: '0.5rem'
       }}>
         <div>
           <h2 style={{ marginTop: 0 }}>Feedback</h2>
           <p style={{ ...pageSubtitle, fontSize: '0.9rem' }}>View and manage user feedback. Drag to reorder pending items.</p>
         </div>
-        <Button 
-          variant="secondary" 
-          actionName="Download Feedback as Markdown" 
-          onClick={handleDownloadMarkdown} 
-          disabled={allFeedback.length === 0}
-          style={isMobile ? { width: '100%' } : undefined}
-        >
-          Download Markdown
-        </Button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexDirection: isMobile ? 'column' : 'row' }}>
+          <Button
+            variant="secondary"
+            actionName="Download Feedback as Markdown"
+            onClick={handleDownloadMarkdown}
+            disabled={pendingItems.length === 0}
+            style={isMobile ? { width: '100%' } : undefined}
+          >
+            Download Markdown
+          </Button>
+          <Button
+            variant="secondary"
+            actionName="Mark All Complete"
+            onClick={() => setConfirmingMarkAll(true)}
+            disabled={pendingItems.length === 0}
+            style={isMobile ? { width: '100%' } : undefined}
+          >
+            Mark All Complete
+          </Button>
+        </div>
       </div>
 
       <div style={listContainer}>
@@ -236,6 +317,14 @@ function Feedback() {
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <Button variant="secondary" actionName="Cancel Mark Complete" onClick={() => setConfirmingItem(null)}>Cancel</Button>
           <Button variant="primary" actionName="Confirm Mark Complete" onClick={confirmComplete}>Mark Complete</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={confirmingMarkAll} onClose={() => setConfirmingMarkAll(false)} title="Mark All as Complete">
+        <p style={{ margin: '0 0 1.5rem 0' }}>Are you sure you want to mark all {pendingItems.length} pending feedback item{pendingItems.length !== 1 ? 's' : ''} as complete?</p>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <Button variant="secondary" actionName="Cancel Mark All Complete" onClick={() => setConfirmingMarkAll(false)}>Cancel</Button>
+          <Button variant="primary" actionName="Confirm Mark All Complete" onClick={confirmMarkAllComplete}>Mark All Complete</Button>
         </div>
       </Modal>
 

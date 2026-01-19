@@ -8,7 +8,7 @@
 
 import { useCallback, useRef, useEffect } from 'react'
 import { useSync } from '@contexts'
-import { bannerQueue } from '@components/ui/Banner'
+import { bannerQueue } from '@components/ui'
 import { writeMonthData } from '@data/mutations/month/useWriteMonthData'
 import { writeBudgetData } from '@data/mutations/budget/writeBudgetData'
 // eslint-disable-next-line no-restricted-imports

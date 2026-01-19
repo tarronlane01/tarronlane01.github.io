@@ -1,3 +1,7 @@
+# Modals
+
+Make sure we are using a consistent modal approach across the app, so all modals share a component where it makes sense, and behave the same, and we avoid redundant code.
+
 # UseEffect
 
 Audit our use of useEffect to see if it conforms with best practices and the intended use for that in the react documentation.
