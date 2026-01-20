@@ -1,0 +1,26 @@
+[
+  {
+    "from_category_id": "category_1766288743633_wkkcxygrr",
+    "date": "2021-08-01",
+    "to_category_id": "category_1766288833773_gbqpud8im",
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "id": "transfer_from_adj_1767672469360_aimtfwker",
+    "description": "Transfer",
+    "amount": 22.88,
+    "cleared": true
+  },
+  {
+    "amount": 25,
+    "id": "transfer_from_adj_1767672469360_2tj6yv30n",
+    "from_category_id": "category_1766265047006_n028ssip1",
+    "date": "2021-08-05",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "to_category_id": "category_1766288738225_b60g12x67",
+    "to_account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "from_account_id": "__NO_ACCOUNT__",
+    "description": "Transfer"
+  }
+]

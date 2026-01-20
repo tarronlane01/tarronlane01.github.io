@@ -1,0 +1,52 @@
+[
+  {
+    "payee": "Dividend",
+    "date": "2024-10-02",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "id": "income_import_1767473622536_yj468mbzk",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "amount": 0.19,
+    "cleared": true,
+    "description": ""
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "id": "income_import_1767473622536_v03bg6q6q",
+    "cleared": true,
+    "payee": "Aumni",
+    "description": "Income",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2024-10-15",
+    "amount": 5678.42
+  },
+  {
+    "date": "2024-10-30",
+    "amount": 6123.78,
+    "cleared": true,
+    "description": "",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "id": "income_import_1767473622536_rl0xx4tfa",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Aumni"
+  },
+  {
+    "date": "2024-10-31",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 10.78,
+    "id": "income_import_1767473622536_718esi99w",
+    "description": "",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "payee": "Charles Schwab"
+  },
+  {
+    "date": "2024-10-31",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "description": "",
+    "cleared": true,
+    "amount": 0.14,
+    "id": "income_import_1767473622536_zlgfy7m9u",
+    "payee": "Charles Schwab",
+    "account_id": "ZByDH9Vmv2BbQrfAWSq7"
+  }
+]

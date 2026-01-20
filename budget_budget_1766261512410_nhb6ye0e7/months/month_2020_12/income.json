@@ -1,0 +1,62 @@
+[
+  {
+    "date": "2020-12-04",
+    "payee": "Murdock Hyundai",
+    "id": "income_import_1767473622526_gdib7trnh",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 878.7,
+    "description": "Payroll for Kami",
+    "created_at": "2026-01-03T20:53:42.526Z"
+  },
+  {
+    "cleared": true,
+    "id": "income_import_1767473622526_ott2le6ek",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "payee": "Medium (Stripe)",
+    "description": "Kami's Articles",
+    "date": "2020-12-04",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 1.98
+  },
+  {
+    "date": "2020-12-14",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 2818.2,
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "id": "income_import_1767473622526_21mg6bx7o",
+    "payee": "Eide Bailly",
+    "description": "Payroll for Tarron"
+  },
+  {
+    "payee": "Murdock Hyundai",
+    "description": "Payroll for Kami",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "date": "2020-12-18",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 920.54,
+    "id": "income_import_1767473622526_yxonncsis"
+  },
+  {
+    "payee": "Eide Bailly",
+    "amount": 2776.61,
+    "description": "Payroll for Tarron",
+    "id": "income_import_1767473622526_w2fagxeaj",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "date": "2020-12-28"
+  },
+  {
+    "payee": "Charles Schwab",
+    "amount": 0.93,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Account interest",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "date": "2020-12-31",
+    "id": "income_import_1767473622526_0ip0jv04r",
+    "cleared": true
+  }
+]

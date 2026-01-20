@@ -1,0 +1,26 @@
+[
+  {
+    "cleared": true,
+    "description": "Transfer",
+    "amount": 200,
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "id": "transfer_from_adj_1767672469360_ivl0xq4hc",
+    "to_category_id": "category_1766265369105_ehvqlgukb",
+    "from_category_id": "category_1766265437406_yihi892i4",
+    "date": "2021-11-09"
+  },
+  {
+    "from_account_id": "__NO_ACCOUNT__",
+    "date": "2021-11-18",
+    "description": "Toffee supplies",
+    "amount": 40,
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "cleared": true,
+    "from_category_id": "category_1766288833773_gbqpud8im",
+    "id": "transfer_from_adj_1767672469360_y7qkxyarq",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "to_account_id": "__NO_ACCOUNT__"
+  }
+]

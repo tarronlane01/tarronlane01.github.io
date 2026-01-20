@@ -1,0 +1,42 @@
+[
+  {
+    "date": "2024-11-04",
+    "account_id": "account_1766289015844_afauk11gp",
+    "description": "Transfer",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622536_p3twve57w",
+    "cleared": true,
+    "amount": 512.17
+  },
+  {
+    "id": "adjustment_import_1767473622536_kjoezijsd",
+    "date": "2024-11-05",
+    "description": "Transfer",
+    "amount": -512.17,
+    "category_id": "__NO_CATEGORY__",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "cleared": true
+  },
+  {
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "id": "adjustment_import_1767473622536_49wxfwm2k",
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "amount": 2423.92,
+    "date": "2024-11-28",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "description": "Transfer"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -2423.92,
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "date": "2024-11-30",
+    "category_id": "__NO_CATEGORY__",
+    "description": "Payoff",
+    "id": "adjustment_import_1767473622536_cgykkaiks"
+  }
+]

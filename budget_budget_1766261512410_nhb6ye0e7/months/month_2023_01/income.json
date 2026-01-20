@@ -1,0 +1,52 @@
+[
+  {
+    "cleared": true,
+    "id": "income_import_1767473622531_3bogjkhi3",
+    "amount": 0.2,
+    "date": "2023-01-01",
+    "payee": "Golden 1",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "description": ""
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "date": "2023-01-30",
+    "amount": 12.81,
+    "description": "",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "payee": "Charles Schwab",
+    "id": "income_import_1767473622531_8retvgw5b"
+  },
+  {
+    "description": "Income",
+    "payee": "Hitachi",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "amount": 4951.23,
+    "id": "income_import_1767473622531_5di9gtvkv",
+    "date": "2023-01-13",
+    "created_at": "2026-01-03T20:53:42.531Z"
+  },
+  {
+    "payee": "Hitachi",
+    "date": "2023-01-31",
+    "amount": 4986.21,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Income",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "id": "income_import_1767473622531_gdrdjy02h"
+  },
+  {
+    "id": "income_import_1767473622531_mrpgzaas8",
+    "date": "2023-01-31",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "description": "",
+    "payee": "Income",
+    "amount": 16.14,
+    "cleared": true
+  }
+]

@@ -27,6 +27,7 @@ function getNetChangeColor(value: number): string {
   return value > 0 ? colors.success : colors.error
 }
 
+
 // =============================================================================
 // ACCOUNT GROUP ROWS - renders as grid items using display: contents
 // =============================================================================
@@ -66,7 +67,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
             <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({accounts.length})</span>
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.start) }}>
-            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatCurrency(groupTotals.start)}</span>}
+            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrency(groupTotals.start)}</span>}
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getIncomeColor(groupTotals.income) }}>
             {featureFlags.showGroupTotals && <span style={groupTotalText}>+{formatCurrency(groupTotals.income)}</span>}
@@ -84,13 +85,13 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
             {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrencyAlways(groupTotals.netChange)}</span>}
           </div>
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
-            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatCurrency(groupTotals.end)}</span>}
+            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatSignedCurrency(groupTotals.end)}</span>}
           </div>
           {/* Total, Cleared, Uncleared totals for group */}
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end' }}>
             {featureFlags.showGroupTotals && accountClearedBalances && (
               <span style={groupTotalText}>
-                {formatCurrency(
+                {formatSignedCurrency(
                   accounts.reduce((sum, [accountId]) => {
                     const bal = accountClearedBalances[accountId]
                     return sum + (bal?.uncleared_balance ?? 0)
@@ -113,7 +114,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
                   }, 0)
                   return Math.abs(unclearedTotal - clearedTotal) < 0.01
                     ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
-                    : formatCurrency(clearedTotal)
+                    : formatSignedCurrency(clearedTotal)
                 })()}
               </span>
             )}
@@ -158,7 +159,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
           </span>
           {featureFlags.showGroupTotals && (
             <span style={{ ...groupTotalText, color: getBalanceColor(groupTotals.end) }}>
-              {formatCurrency(groupTotals.end)}
+              {formatSignedCurrency(groupTotals.end)}
             </span>
           )}
         </div>
@@ -208,7 +209,7 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(balance.start_balance) }}>
-        {formatCurrency(balance.start_balance)}
+        {formatSignedCurrency(balance.start_balance)}
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getIncomeColor(balance.income) }}>
         +{formatCurrency(balance.income)}
@@ -226,12 +227,12 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
         {formatSignedCurrencyAlways(balance.net_change)}
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getBalanceColor(balance.end_balance) }}>
-        {formatCurrency(balance.end_balance)}
+        {formatSignedCurrency(balance.end_balance)}
       </div>
       {/* Total balance column (uncleared_balance) */}
       {clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
-          {formatCurrency(clearedBalance.uncleared_balance)}
+          {formatSignedCurrency(clearedBalance.uncleared_balance)}
         </div>
       ) : (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
@@ -243,7 +244,7 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
             ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
-            : formatCurrency(clearedBalance.cleared_balance)}
+            : formatSignedCurrency(clearedBalance.cleared_balance)}
         </div>
       ) : (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
@@ -277,7 +278,7 @@ function MobileAccountRow({ account, balance, clearedBalance }: { account: Finan
       <div style={{ display: 'grid', gridTemplateColumns: clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: '0.25rem', fontSize: '0.75rem' }}>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Start</span>
-          <span>{formatCurrency(balance.start_balance)}</span>
+          <span>{formatSignedCurrency(balance.start_balance)}</span>
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Net Change</span>
@@ -287,14 +288,14 @@ function MobileAccountRow({ account, balance, clearedBalance }: { account: Finan
         </div>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>End</span>
-          <span style={{ color: getBalanceColor(balance.end_balance) }}>{formatCurrency(balance.end_balance)}</span>
+          <span style={{ color: getBalanceColor(balance.end_balance) }}>{formatSignedCurrency(balance.end_balance)}</span>
         </div>
         {clearedBalance && (
           <>
             <div>
               <span style={{ opacity: 0.6, display: 'block' }}>Total</span>
               <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
-                {formatCurrency(clearedBalance.uncleared_balance)}
+                {formatSignedCurrency(clearedBalance.uncleared_balance)}
               </span>
             </div>
             {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
@@ -302,7 +303,7 @@ function MobileAccountRow({ account, balance, clearedBalance }: { account: Finan
                 <div>
                   <span style={{ opacity: 0.6, display: 'block' }}>Cleared</span>
                   <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>
-                    {formatCurrency(clearedBalance.cleared_balance)}
+                    {formatSignedCurrency(clearedBalance.cleared_balance)}
                   </span>
                 </div>
                 <div>

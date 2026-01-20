@@ -1,0 +1,38 @@
+[
+  {
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "date": "2023-04-13",
+    "from_category_id": "category_1766288625999_zpi9ppeqw",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "id": "transfer_from_adj_1767672469360_70kx0r3cg",
+    "cleared": true,
+    "amount": 150,
+    "to_account_id": "__NO_ACCOUNT__",
+    "description": "Transfer"
+  },
+  {
+    "description": "Transfer",
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_category_id": "category_1766288615238_l94bjlz89",
+    "from_category_id": "O5NtsCMtBm5J9L3ULRVO",
+    "cleared": true,
+    "to_account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "amount": 5000,
+    "date": "2023-04-28",
+    "id": "transfer_from_adj_1767672469360_k90ed3b1s"
+  },
+  {
+    "cleared": true,
+    "id": "transfer_from_adj_1767672469360_k4hl8q0hu",
+    "from_category_id": "__NO_CATEGORY__",
+    "to_category_id": "__NO_CATEGORY__",
+    "description": "Pay off credit card",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "amount": 631.77,
+    "to_account_id": "account_1766289004108_7ps0slg4g",
+    "date": "2023-04-28",
+    "from_account_id": "IO0iUrZNOLB125YrvUaF"
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "cleared": true,
+    "description": "payroll for kami",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "amount": 850.42,
+    "date": "2021-03-05",
+    "id": "income_import_1767473622527_h1dwbc6jj",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Murdock Hyundai"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "description": "payroll for tarron",
+    "id": "income_import_1767473622527_qqyllcczj",
+    "cleared": true,
+    "date": "2021-03-08",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Eide Bailly",
+    "amount": 2707.2
+  },
+  {
+    "cleared": true,
+    "payee": "Medium",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "amount": 0.51,
+    "description": "medium",
+    "id": "income_import_1767473622527_baiaitecq",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2021-03-08"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "payee": "Medium",
+    "date": "2021-03-08",
+    "cleared": true,
+    "id": "income_import_1767473622527_gojxd5r9i",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "medium",
+    "amount": 0.88
+  },
+  {
+    "amount": 806.36,
+    "date": "2021-03-19",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Murdock Hyundai",
+    "cleared": true,
+    "description": "payroll for kami",
+    "id": "income_import_1767473622527_w3t0851i0"
+  },
+  {
+    "description": "payroll for Tarron",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Eide Bailly",
+    "id": "income_import_1767473622527_f1z4ezmus",
+    "date": "2021-03-22",
+    "amount": 2707.2,
+    "created_at": "2026-01-03T20:53:42.527Z"
+  },
+  {
+    "date": "2021-03-31",
+    "id": "income_import_1767473622527_iphj9h5bi",
+    "cleared": true,
+    "payee": "Charles Schwab",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "description": "interest payment",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 0.56
+  }
+]

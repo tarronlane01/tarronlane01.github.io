@@ -1,0 +1,102 @@
+[
+  {
+    "account_id": "account_1766289015844_afauk11gp",
+    "date": "2023-05-04",
+    "amount": 1272.98,
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "description": "Pay off credit card",
+    "id": "adjustment_import_1767473622532_1l5sdrirt",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "cleared": true,
+    "category_id": "category_1766288829038_0ygxsees9",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": -30,
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622532_xbf1c828m",
+    "date": "2023-05-22"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "amount": -30,
+    "description": "Transfer",
+    "category_id": "category_1766288825592_glvgzh2u4",
+    "id": "adjustment_import_1767473622532_5n8ew1kxi",
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "date": "2023-05-22"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-05-22",
+    "description": "Transfer",
+    "cleared": true,
+    "id": "adjustment_import_1767473622532_9ly3kxerc",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": 60,
+    "category_id": "category_1766288625999_zpi9ppeqw"
+  },
+  {
+    "description": "Transfer",
+    "amount": -30,
+    "category_id": "category_1766265351648_ru851obn1",
+    "id": "adjustment_import_1767473622532_7c6nxdjq9",
+    "date": "2023-05-29",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "description": "Transfer",
+    "amount": 49,
+    "id": "adjustment_import_1767473622532_v5dopkisd",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-05-29",
+    "cleared": true
+  },
+  {
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "date": "2023-05-29",
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "id": "adjustment_import_1767473622532_xe6q2ochz",
+    "description": "Transfer",
+    "cleared": true,
+    "amount": -19
+  },
+  {
+    "id": "adjustment_import_1767473622532_z9tt9vh9r",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -1272.98,
+    "cleared": true,
+    "description": "Transfer",
+    "date": "2023-05-05",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-05-30",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Capital One Tarron",
+    "id": "adjustment_import_1767473622532_zm09jhepp",
+    "cleared": true,
+    "amount": -3940.12,
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "cleared": true,
+    "amount": 3940.12,
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622532_yp2vrx0t3",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "category_id": "__NO_CATEGORY__",
+    "date": "2023-05-28"
+  }
+]

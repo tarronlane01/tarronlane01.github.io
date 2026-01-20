@@ -1,0 +1,72 @@
+[
+  {
+    "description": "",
+    "id": "income_import_1767473622533_1ris6ndip",
+    "amount": 0.2,
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-07-03",
+    "payee": "Golden 1",
+    "cleared": true,
+    "account_id": "account_1766289996367_pzpaad94s"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-07-14",
+    "description": "",
+    "amount": 25,
+    "cleared": true,
+    "id": "income_import_1767473622533_9t9ncocrd",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Venmo"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 5190.02,
+    "description": "Income",
+    "date": "2023-07-14",
+    "id": "income_import_1767473622533_okvaticpx",
+    "payee": "Hitachi",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "cleared": true
+  },
+  {
+    "id": "income_import_1767473622533_gvijc4b2m",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Babysitting",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-07-20",
+    "payee": "Income",
+    "amount": 50
+  },
+  {
+    "amount": 25,
+    "date": "2023-07-27",
+    "id": "income_import_1767473622533_t0in0qk5l",
+    "payee": "Venmo",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "cleared": true,
+    "description": "",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "payee": "Hitachi",
+    "description": "Income",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 5229.16,
+    "date": "2023-07-30",
+    "id": "income_import_1767473622533_l71akrt73"
+  },
+  {
+    "date": "2023-07-31",
+    "payee": "Charles Schwab Checking",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622533_pakizn5r5",
+    "description": "Dividend",
+    "cleared": true,
+    "amount": 17.15,
+    "created_at": "2026-01-03T20:53:42.533Z"
+  }
+]

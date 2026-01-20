@@ -1,0 +1,38 @@
+[
+  {
+    "to_account_id": "__NO_ACCOUNT__",
+    "from_account_id": "__NO_ACCOUNT__",
+    "id": "transfer_from_adj_1767672469360_few16i1xf",
+    "from_category_id": "category_1766265357718_y7lydlt9a",
+    "description": "Redirect Funds",
+    "cleared": true,
+    "to_category_id": "category_1766288812979_he1q3x8jy",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "amount": 50,
+    "date": "2023-11-06"
+  },
+  {
+    "description": "Service",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "amount": 45,
+    "to_account_id": "__NO_ACCOUNT__",
+    "id": "transfer_from_adj_1767672469360_3at9iq0u6",
+    "from_account_id": "__NO_ACCOUNT__",
+    "date": "2023-11-20",
+    "from_category_id": "category_1766288833773_gbqpud8im",
+    "cleared": true,
+    "created_at": "2026-01-06T04:07:49.360Z"
+  },
+  {
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_category_id": "category_1766288625999_zpi9ppeqw",
+    "amount": 200,
+    "from_category_id": "category_1766265357718_y7lydlt9a",
+    "description": "Utilities",
+    "cleared": true,
+    "to_account_id": "__NO_ACCOUNT__",
+    "date": "2023-11-26",
+    "id": "transfer_from_adj_1767672469360_gztxqeehw",
+    "created_at": "2026-01-06T04:07:49.360Z"
+  }
+]

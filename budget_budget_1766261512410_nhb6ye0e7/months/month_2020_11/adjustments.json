@@ -1,0 +1,52 @@
+[
+  {
+    "amount": -1600,
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "House contribution for November",
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622526_78dtdumvf",
+    "date": "2020-11-05"
+  },
+  {
+    "amount": 137.32,
+    "date": "2020-11-04",
+    "id": "adjustment_import_1767473622526_t0dqqiw7r",
+    "account_id": "account_1766289015844_afauk11gp",
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "cleared": true,
+    "description": "Transfer"
+  },
+  {
+    "date": "2020-11-05",
+    "id": "adjustment_import_1767473622526_sciqgklhg",
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -137.32,
+    "description": "Paying of Kami's credit card",
+    "cleared": true
+  },
+  {
+    "description": "Transfer",
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "amount": 523.88,
+    "cleared": true,
+    "date": "2020-11-28",
+    "id": "adjustment_import_1767473622526_wwinv7dco"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.526Z",
+    "description": "Paying off Kami's Card",
+    "amount": -523.88,
+    "cleared": true,
+    "id": "adjustment_import_1767473622526_gugwbnm21",
+    "date": "2020-11-30",
+    "category_id": "__NO_CATEGORY__"
+  }
+]

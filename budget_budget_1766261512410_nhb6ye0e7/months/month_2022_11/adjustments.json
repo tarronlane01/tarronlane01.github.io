@@ -1,0 +1,42 @@
+[
+  {
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "amount": -1258.58,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "adjustment_import_1767473622531_7ui8l1kkv",
+    "category_id": "__NO_CATEGORY__",
+    "description": "Transfer",
+    "date": "2022-11-07",
+    "cleared": true
+  },
+  {
+    "amount": 1258.58,
+    "description": "Transfer",
+    "date": "2022-11-04",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "id": "adjustment_import_1767473622531_nyoe0xane",
+    "account_id": "account_1766289015844_afauk11gp"
+  },
+  {
+    "id": "adjustment_import_1767473622531_wpfdh0xbs",
+    "date": "2022-11-28",
+    "cleared": true,
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "amount": 484.74,
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "description": "Transfer"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "cleared": true,
+    "date": "2022-11-29",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -484.74,
+    "description": "Transfer",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622531_p8nems98u"
+  }
+]

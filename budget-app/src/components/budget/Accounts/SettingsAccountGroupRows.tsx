@@ -7,7 +7,7 @@
 import type { AccountWithId, GroupWithId } from '@hooks/useAccountsPage'
 import type { AccountFormData } from './AccountForm'
 import type { AccountsMap } from '@types'
-import { formatCurrency, getBalanceColor, Button } from '../../ui'
+import { formatSignedCurrency, getBalanceColor, Button } from '../../ui'
 import { groupTotalText, groupTotalRowBorder, reorderButton, reorderButtonGroup } from '@styles/shared'
 import { SettingsAccountTableRow } from './SettingsAccountTableRow'
 import { AccountForm } from './AccountForm'
@@ -149,7 +149,7 @@ export function SettingsAccountGroupRows({
             </span>
             {featureFlags.showGroupTotals && (
               <span style={{ ...groupTotalText, color: getBalanceColor(groupTotal) }}>
-                {formatCurrency(groupTotal)}
+                {formatSignedCurrency(groupTotal)}
               </span>
             )}
           </div>

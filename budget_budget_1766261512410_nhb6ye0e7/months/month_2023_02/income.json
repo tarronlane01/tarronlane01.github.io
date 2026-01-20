@@ -1,0 +1,42 @@
+[
+  {
+    "amount": 0.2,
+    "payee": "Golden 1",
+    "cleared": true,
+    "date": "2023-02-01",
+    "id": "income_import_1767473622532_asd14fc5i",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "description": "Dividend",
+    "created_at": "2026-01-03T20:53:42.532Z"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-02-15",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 4951.23,
+    "id": "income_import_1767473622532_er3pl89ze",
+    "payee": "Hitachi",
+    "cleared": true,
+    "description": "Income"
+  },
+  {
+    "cleared": true,
+    "amount": 4986.22,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2023-02-28",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "id": "income_import_1767473622532_kykdwqprl",
+    "description": "Income",
+    "payee": "Hitachi"
+  },
+  {
+    "date": "2023-02-28",
+    "description": "",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 13.94,
+    "id": "income_import_1767473622532_viv6otnfj",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "payee": "Charles Schwab",
+    "cleared": true
+  }
+]

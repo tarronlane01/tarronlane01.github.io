@@ -1,0 +1,14 @@
+[
+  {
+    "amount": 50,
+    "created_at": "2026-01-06T04:07:49.359Z",
+    "from_category_id": "category_1766265369105_ehvqlgukb",
+    "cleared": true,
+    "to_category_id": "category_1766265437406_yihi892i4",
+    "id": "transfer_from_adj_1767672469359_lsv7yut1j",
+    "to_account_id": "__NO_ACCOUNT__",
+    "date": "2021-07-17",
+    "description": "Transfer to fuel",
+    "from_account_id": "__NO_ACCOUNT__"
+  }
+]

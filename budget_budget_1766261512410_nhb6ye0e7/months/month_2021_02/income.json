@@ -1,0 +1,72 @@
+[
+  {
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "description": "Kami payroll",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622527_bll1h6y70",
+    "payee": "Murdock Hyundai",
+    "date": "2021-02-05",
+    "amount": 949.34
+  },
+  {
+    "amount": 1.84,
+    "payee": "Medium (Stripe)",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "cleared": true,
+    "date": "2021-02-05",
+    "description": "medium income",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622527_qve8uxs3l"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "payee": "Eide Bailly",
+    "id": "income_import_1767473622527_bfm9f5yj7",
+    "description": "Tarron payroll",
+    "date": "2021-02-08",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "amount": 2628.28
+  },
+  {
+    "payee": "Golden 1",
+    "id": "income_import_1767473622527_41iehjx2e",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "cleared": true,
+    "date": "2021-02-01",
+    "amount": 0.29,
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "description": "Dividend"
+  },
+  {
+    "date": "2021-02-19",
+    "payee": "Murdock Hyundai",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "id": "income_import_1767473622527_glpt59zof",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 1051.8,
+    "description": ""
+  },
+  {
+    "id": "income_import_1767473622527_k1obveh4b",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 2707.19,
+    "date": "2021-02-22",
+    "payee": "Eide Bailly",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "description": ""
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2021-02-26",
+    "amount": 0.59,
+    "cleared": true,
+    "description": "Dividend",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "payee": "Charles Schwab",
+    "id": "income_import_1767473622527_rbuzs7aux"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "income_import_1767473622530_omiw7nc3l",
+    "description": "dividend",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "date": "2022-05-01",
+    "created_at": "2026-01-03T20:53:42.530Z",
+    "payee": "Golden 1",
+    "amount": 0.2,
+    "cleared": true
+  },
+  {
+    "date": "2022-05-05",
+    "description": "",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622530_99mxb4592",
+    "amount": 534.86,
+    "created_at": "2026-01-03T20:53:42.530Z",
+    "cleared": true,
+    "payee": "Murdock Hyundai"
+  },
+  {
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.530Z",
+    "amount": 4785.15,
+    "payee": "Hitachi",
+    "id": "income_import_1767473622530_rur7seerd",
+    "description": "",
+    "date": "2022-05-13"
+  },
+  {
+    "cleared": true,
+    "date": "2022-05-20",
+    "description": "",
+    "id": "income_import_1767473622530_ntnu3spvs",
+    "created_at": "2026-01-03T20:53:42.530Z",
+    "payee": "Murdock Hyundai",
+    "amount": 557.87,
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "payee": "Hitachi",
+    "date": "2022-05-31",
+    "amount": 4827.24,
+    "description": "",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622530_m6sl7jqv4",
+    "created_at": "2026-01-03T20:53:42.530Z"
+  },
+  {
+    "id": "income_import_1767473622530_qunghn9nl",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 1.16,
+    "payee": "Charles Schwab",
+    "description": "Dividend",
+    "created_at": "2026-01-03T20:53:42.530Z",
+    "cleared": true,
+    "date": "2022-05-31"
+  }
+]

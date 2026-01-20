@@ -1,0 +1,312 @@
+[
+  {
+    "account_id": "account_hidden_1767678803953_alerus",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622525_qzkq34i7r",
+    "description": "Starting Balance on app switchover",
+    "amount": 14877.86,
+    "date": "2020-08-23",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.525Z"
+  },
+  {
+    "id": "adjustment_import_1767473622525_0mxxkqslt",
+    "cleared": true,
+    "date": "2020-08-23",
+    "amount": -705,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "description": "Starting Balance on app switchover",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "Zfr8EwlTWLmsk7vYirAT"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "category_1766265357718_y7lydlt9a",
+    "date": "2020-08-23",
+    "account_id": "__NO_ACCOUNT__",
+    "description": "Starting Balance on app switchover",
+    "amount": 22.97,
+    "id": "adjustment_import_1767473622525_w9ja4fguc",
+    "cleared": true
+  },
+  {
+    "category_id": "category_1766265432185_pysvj7ymm",
+    "id": "adjustment_import_1767473622525_hiwyr0f1g",
+    "description": "Starting Balance on app switchover",
+    "date": "2020-08-23",
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "amount": 154.74,
+    "cleared": true
+  },
+  {
+    "amount": -13.29,
+    "date": "2020-08-23",
+    "account_id": "__NO_ACCOUNT__",
+    "description": "Starting Balance on app switchover",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "id": "adjustment_import_1767473622525_m53w7cram",
+    "cleared": true
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_1766265369105_ehvqlgukb",
+    "cleared": true,
+    "amount": 109.56,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "date": "2020-08-23",
+    "id": "adjustment_import_1767473622525_6gr227xrh",
+    "description": "Starting Balance on app switchover"
+  },
+  {
+    "category_id": "category_1766265437406_yihi892i4",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": 386.38,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "date": "2020-08-23",
+    "id": "adjustment_import_1767473622525_yyqzt1kzp",
+    "cleared": true,
+    "description": "Starting Balance on app switchover"
+  },
+  {
+    "date": "2020-08-23",
+    "category_id": "category_1766288810298_429f26vq2",
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "id": "adjustment_import_1767473622525_2l810szb5",
+    "description": "Starting Balance on app switchover",
+    "amount": 24.87,
+    "created_at": "2026-01-03T20:53:42.525Z"
+  },
+  {
+    "description": "Starting Balance on app switchover",
+    "amount": 9749.42,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "__NO_ACCOUNT__",
+    "id": "adjustment_import_1767473622525_jsvib5g62",
+    "cleared": true,
+    "category_id": "category_1766288615238_l94bjlz89",
+    "date": "2020-08-23"
+  },
+  {
+    "date": "2020-08-23",
+    "amount": 1470.42,
+    "id": "adjustment_import_1767473622525_0yt1eacfx",
+    "cleared": true,
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "category_1766288731002_5v1826ijc",
+    "description": "Starting Balance on app switchover"
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "amount": 12000,
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_4fbdskk17",
+    "category_id": "category_1766288738225_b60g12x67",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "cleared": true,
+    "date": "2020-08-23"
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "id": "adjustment_import_1767473622525_q0fexgyct",
+    "date": "2020-08-23",
+    "cleared": true,
+    "description": "Starting Balance on app switchover",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "amount": 334.03,
+    "category_id": "category_1766288812979_he1q3x8jy"
+  },
+  {
+    "date": "2020-08-23",
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_r9ukodf5v",
+    "amount": 2478.49,
+    "cleared": true,
+    "category_id": "category_1766288820785_zhtwle8xm"
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "date": "2020-08-23",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "description": "Starting Balance on app switchover",
+    "amount": -146.91,
+    "category_id": "category_1766288625999_zpi9ppeqw",
+    "id": "adjustment_import_1767473622525_4hajuhrci"
+  },
+  {
+    "amount": 922.12,
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_712kpj50l",
+    "category_id": "category_1766288765095_ew8htogil",
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2020-08-23",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.525Z"
+  },
+  {
+    "date": "2020-08-23",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "category_1766288743633_wkkcxygrr",
+    "amount": 629.09,
+    "account_id": "__NO_ACCOUNT__",
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_uc2zx9oa5"
+  },
+  {
+    "cleared": true,
+    "date": "2020-08-23",
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_52f2zyg72",
+    "amount": 15.65,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_wdmcfram8",
+    "category_id": "category_1766288825592_glvgzh2u4",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "cleared": true,
+    "amount": 273.84,
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2020-08-23"
+  },
+  {
+    "cleared": true,
+    "category_id": "category_1766288829038_0ygxsees9",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_dd90zb0vs",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": 630.44,
+    "date": "2020-08-23"
+  },
+  {
+    "account_id": "FR91hqtm3olrgHn8aYDt",
+    "description": "Starting Balance on app switchover",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "id": "adjustment_import_1767473622525_ert2jv8ut",
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "amount": 2510.73,
+    "date": "2020-08-23"
+  },
+  {
+    "date": "2020-08-23",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "amount": 6650.17,
+    "description": "Starting Balance on app switchover",
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "id": "adjustment_import_1767473622525_ryab0sdly"
+  },
+  {
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622525_d12hfweur",
+    "description": "Starting Balance on app switchover",
+    "date": "2020-08-23",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "amount": -1120.83
+  },
+  {
+    "date": "2020-08-23",
+    "description": "Starting Balance on app switchover",
+    "id": "adjustment_import_1767473622525_2blkia24v",
+    "cleared": true,
+    "amount": 31884.02,
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "account_id": "account_1766289015844_afauk11gp",
+    "amount": -416.82,
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "id": "adjustment_import_1767473622525_e9i6fqeye",
+    "cleared": true,
+    "description": "Starting Balance on app switchover",
+    "date": "2020-08-23"
+  },
+  {
+    "account_id": "account_1766290329121_fzxbijeyi",
+    "description": "Starting Balance on app switchover",
+    "amount": 25010.23,
+    "date": "2020-08-23",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622525_esmpl13r9"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "description": "Starting Balance on app switchover",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "amount": 9333.36,
+    "cleared": true,
+    "date": "2020-08-23",
+    "account_id": "account_1766290334872_jf0ix8swh",
+    "id": "adjustment_import_1767473622525_g1xj2sfre"
+  },
+  {
+    "amount": 450.84,
+    "date": "2020-08-23",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "account_1766290108085_f863835t0",
+    "description": "Starting Balance on app switchover",
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622525_kckdpziih"
+  },
+  {
+    "amount": 5937.77,
+    "cleared": true,
+    "date": "2020-08-23",
+    "id": "adjustment_import_1767473622525_qqtvguob1",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "description": "Starting Balance on app switchover",
+    "category_id": "__NO_CATEGORY__",
+    "account_id": "account_1766290117504_3753hwck6"
+  },
+  {
+    "cleared": true,
+    "amount": 29241.32,
+    "date": "2020-08-23",
+    "id": "adjustment_import_1767473622525_j8wek812a",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "category_id": "__NO_CATEGORY__",
+    "description": "Starting Balance on app switchover",
+    "account_id": "account_1766290102117_4e04nppj6"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "category_id": "__NO_CATEGORY__",
+    "description": "Pay off credit card",
+    "id": "adjustment_import_1767473622525_d3cllaoks",
+    "amount": 205.64,
+    "date": "2020-08-28",
+    "cleared": true
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2020-08-31",
+    "cleared": true,
+    "id": "adjustment_import_1767473622525_3252fcgv6",
+    "category_id": "__NO_CATEGORY__",
+    "amount": -205.64,
+    "description": "Paying off Kami's credit card",
+    "created_at": "2026-01-03T20:53:42.525Z"
+  }
+]

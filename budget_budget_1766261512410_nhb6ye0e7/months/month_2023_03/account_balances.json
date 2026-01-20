@@ -1,0 +1,112 @@
+[
+  {
+    "expenses": 0,
+    "account_id": "account_1766289996367_pzpaad94s",
+    "income": 0.18,
+    "transfers": 0,
+    "net_change": 0.18,
+    "end_balance": 4807.04,
+    "adjustments": 0,
+    "start_balance": 4806.86
+  },
+  {
+    "income": 9952.91,
+    "start_balance": 46449.32,
+    "net_change": -623.2,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "adjustments": -3603.21,
+    "end_balance": 45826.12,
+    "expenses": -6972.9,
+    "transfers": 0
+  },
+  {
+    "adjustments": 1182.48,
+    "net_change": -99.39,
+    "expenses": -1281.87,
+    "start_balance": -2191.97,
+    "end_balance": -2291.36,
+    "account_id": "account_1766289015844_afauk11gp",
+    "transfers": 0,
+    "income": 0
+  },
+  {
+    "transfers": 0,
+    "net_change": 201.75,
+    "expenses": -631.84,
+    "adjustments": 833.59,
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "income": 0,
+    "start_balance": -787.43,
+    "end_balance": -585.68
+  },
+  {
+    "net_change": 0,
+    "start_balance": 2713.33,
+    "transfers": 0,
+    "income": 0,
+    "account_id": "FR91hqtm3olrgHn8aYDt",
+    "adjustments": 0,
+    "expenses": 0,
+    "end_balance": 2713.33
+  },
+  {
+    "transfers": 0,
+    "adjustments": 0,
+    "expenses": 0,
+    "income": 0,
+    "start_balance": 32441.32,
+    "account_id": "account_1766290102117_4e04nppj6",
+    "end_balance": 32441.32,
+    "net_change": 0
+  },
+  {
+    "account_id": "account_1766290329121_fzxbijeyi",
+    "start_balance": 25715.85,
+    "end_balance": 25715.85,
+    "transfers": 0,
+    "adjustments": 0,
+    "expenses": 0,
+    "net_change": 0,
+    "income": 0
+  },
+  {
+    "start_balance": 10666.68,
+    "adjustments": 0,
+    "transfers": 0,
+    "net_change": 0,
+    "expenses": 0,
+    "account_id": "account_1766290334872_jf0ix8swh",
+    "end_balance": 10666.68,
+    "income": 0
+  },
+  {
+    "end_balance": 14877.86,
+    "income": 0,
+    "transfers": 0,
+    "start_balance": 14877.86,
+    "account_id": "account_hidden_1767678803953_alerus",
+    "adjustments": 0,
+    "expenses": 0,
+    "net_change": 0
+  },
+  {
+    "transfers": 0,
+    "account_id": "account_1766290108085_f863835t0",
+    "start_balance": 450.84,
+    "income": 0,
+    "end_balance": 450.84,
+    "adjustments": 0,
+    "expenses": 0,
+    "net_change": 0
+  },
+  {
+    "transfers": 0,
+    "start_balance": 5937.77,
+    "adjustments": 0,
+    "net_change": 0,
+    "account_id": "account_1766290117504_3753hwck6",
+    "expenses": 0,
+    "income": 0,
+    "end_balance": 5937.77
+  }
+]

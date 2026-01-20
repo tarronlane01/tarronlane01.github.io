@@ -1,0 +1,279 @@
+[
+  {
+    "description": "Paintings",
+    "id": "expense_import_1767473622539_p7x4lcz3y",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.539Z",
+    "payee": "Hobby Lobby",
+    "amount": -64.22,
+    "category_id": "category_1766288625999_zpi9ppeqw",
+    "date": "2026-01-01"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.539Z",
+    "amount": -23.66,
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "description": "Gas",
+    "payee": "Costco Gas",
+    "cleared": true,
+    "category_id": "category_1766265437406_yihi892i4",
+    "date": "2026-01-01",
+    "id": "expense_import_1767473622539_qrrpx0eny"
+  },
+  {
+    "id": "expense_import_1767473622539_p3vss4v6d",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "date": "2026-01-01",
+    "description": "Supplies",
+    "payee": "Costco",
+    "amount": -397.86,
+    "created_at": "2026-01-03T20:53:42.539Z",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX"
+  },
+  {
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "payee": "Five Guys",
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "date": "2026-01-01",
+    "cleared": true,
+    "description": "Burgers for New Years",
+    "id": "expense_import_1767473622539_s4d8rk7yq",
+    "amount": -36.72,
+    "created_at": "2026-01-03T20:53:42.539Z"
+  },
+  {
+    "payee": "Centracom",
+    "created_at": "2026-01-03T20:53:42.539Z",
+    "date": "2026-01-01",
+    "id": "expense_import_1767473622539_lmbgoazp4",
+    "category_id": "category_1766265357718_y7lydlt9a",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "amount": -34.95
+  },
+  {
+    "created_at": "2026-01-04T20:18:41.351Z",
+    "date": "2026-01-06",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Church of Jesus Christ",
+    "category_id": "69LUQGMJrYlIPoixIkng",
+    "id": "expense_1767557921351_ah81bbla8",
+    "amount": -3086.38,
+    "cleared": true
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "category_id": "lvRJzTnpe7HkaAzJwmOn",
+    "date": "2026-01-06",
+    "amount": -110,
+    "payee": "Church of Jesus Christ",
+    "created_at": "2026-01-04T20:20:14.096Z",
+    "cleared": true,
+    "id": "expense_1767558014096_hkxt6shhb"
+  },
+  {
+    "cleared": true,
+    "created_at": "2026-01-10T00:23:21.741Z",
+    "date": "2026-01-06",
+    "id": "expense_1768004601741_y24ztler1",
+    "payee": "Amazon",
+    "category_id": "category_1766288625999_zpi9ppeqw",
+    "account_id": "account_1766289015844_afauk11gp",
+    "amount": -29.17,
+    "description": "House Hooks"
+  },
+  {
+    "date": "2026-01-05",
+    "created_at": "2026-01-10T00:24:07.898Z",
+    "id": "expense_1768004647898_ui6a22sq8",
+    "cleared": true,
+    "amount": -53.83,
+    "payee": "Amazon",
+    "category_id": "category_1766288833773_gbqpud8im",
+    "account_id": "account_1766289015844_afauk11gp",
+    "description": "Baby shower gifts"
+  },
+  {
+    "cleared": true,
+    "created_at": "2026-01-10T00:25:04.379Z",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "id": "expense_1768004704379_pkdaj8ngl",
+    "account_id": "account_1766289015844_afauk11gp",
+    "payee": "Walmart",
+    "amount": -106.5,
+    "date": "2026-01-06",
+    "description": "Groceries"
+  },
+  {
+    "category_id": "category_1766265351648_ru851obn1",
+    "created_at": "2026-01-10T00:26:18.090Z",
+    "id": "expense_1768004778090_spxu7s93r",
+    "payee": "Spotify",
+    "description": "Spotify",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "date": "2026-01-06",
+    "amount": -11.81
+  },
+  {
+    "payee": "Five guys",
+    "amount": 11.05,
+    "cleared": true,
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "created_at": "2026-01-10T00:26:59.624Z",
+    "description": "Refund",
+    "id": "expense_1768004819624_nibhguk7j",
+    "date": "2026-01-06"
+  },
+  {
+    "date": "2026-01-05",
+    "payee": "Dr Cooper Loan",
+    "cleared": true,
+    "amount": -4088.71,
+    "id": "expense_1768004879875_rwion0rjx",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-10T00:27:59.875Z",
+    "description": "Mortgage",
+    "category_id": "Zfr8EwlTWLmsk7vYirAT"
+  },
+  {
+    "amount": -1250,
+    "category_id": "category_1766288765095_ew8htogil",
+    "cleared": true,
+    "id": "expense_1768004933423_nd95dpjyu",
+    "date": "2026-01-06",
+    "payee": "Transfer",
+    "created_at": "2026-01-10T00:28:53.423Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "date": "2026-01-06",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "id": "expense_1768005002281_vj9zg6ei7",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "payee": "Walmart",
+    "amount": -27.75,
+    "created_at": "2026-01-10T00:30:02.281Z",
+    "cleared": true,
+    "description": "Grocery"
+  },
+  {
+    "cleared": true,
+    "payee": "Costco",
+    "category_id": "category_1766265437406_yihi892i4",
+    "created_at": "2026-01-10T00:30:53.211Z",
+    "id": "expense_1768005053211_4oldddd4x",
+    "amount": -12.95,
+    "date": "2026-01-09",
+    "description": "Gas",
+    "account_id": "account_1766289004108_7ps0slg4g"
+  },
+  {
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "date": "2026-01-09",
+    "created_at": "2026-01-10T00:31:21.245Z",
+    "payee": "Costco",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "cleared": true,
+    "amount": -309.34,
+    "id": "expense_1768005081245_cnd3rmxfk"
+  },
+  {
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "id": "expense_1768103060595_dxntjte8n",
+    "created_at": "2026-01-11T03:44:20.595Z",
+    "cleared": true,
+    "payee": "Creamery",
+    "amount": -6.49,
+    "date": "2026-01-10",
+    "account_id": "account_1766289004108_7ps0slg4g"
+  },
+  {
+    "created_at": "2026-01-11T03:45:57.119Z",
+    "cleared": true,
+    "date": "2026-01-10",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "id": "expense_1768103157119_2k3gmupa1",
+    "payee": "Creamery",
+    "amount": -8.64
+  },
+  {
+    "id": "expense_1768103226878_m4p9tqbux",
+    "description": "Credit Reward",
+    "amount": 35.92,
+    "date": "2026-01-10",
+    "payee": "Credit Reward",
+    "cleared": true,
+    "created_at": "2026-01-11T03:47:06.878Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX"
+  },
+  {
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "description": "Trampoline date with Grandma",
+    "account_id": "account_1766289015844_afauk11gp",
+    "amount": -12.89,
+    "created_at": "2026-01-13T21:51:43.428Z",
+    "date": "2026-01-13",
+    "id": "expense_1768341103428_he48e0o3f",
+    "payee": "Lowe's",
+    "cleared": true
+  },
+  {
+    "date": "2026-01-13",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "created_at": "2026-01-13T21:52:40.173Z",
+    "id": "expense_1768341160173_m3ngo9tpj",
+    "category_id": "category_1766265351648_ru851obn1",
+    "amount": -54.74,
+    "description": "Scents and soaps delivery",
+    "payee": "Bath and Body Works"
+  },
+  {
+    "cleared": true,
+    "amount": -88.98,
+    "id": "expense_1768491913173_febut59s9",
+    "date": "2026-01-15",
+    "category_id": "category_1766265357718_y7lydlt9a",
+    "created_at": "2026-01-15T15:45:13.173Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Dominion Energy"
+  },
+  {
+    "cleared": true,
+    "description": "Bunco",
+    "amount": -15,
+    "id": "expense_1768491955261_fep7jkvff",
+    "date": "2026-01-12",
+    "created_at": "2026-01-15T15:45:55.261Z",
+    "category_id": "category_1766288829038_0ygxsees9",
+    "payee": "Venmo",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "payee": "Canyon View Medical",
+    "description": "Medical Pregnancy Payment",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "category_id": "category_1766288615238_l94bjlz89",
+    "created_at": "2026-01-15T15:46:56.992Z",
+    "id": "expense_1768492016992_j1z3bkesj",
+    "date": "2026-01-15",
+    "cleared": true,
+    "amount": -135
+  },
+  {
+    "created_at": "2026-01-15T19:18:26.670Z",
+    "payee": "Walmart",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "cleared": false,
+    "date": "2026-01-15",
+    "account_id": "account_1766289015844_afauk11gp",
+    "amount": -64.42,
+    "id": "expense_1768504706670_d0tdz5duk"
+  }
+]

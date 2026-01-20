@@ -1,0 +1,62 @@
+[
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622538_08rszo6vp",
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "cleared": true,
+    "amount": 4.04,
+    "date": "2025-09-02",
+    "payee": "Dividend",
+    "description": ""
+  },
+  {
+    "cleared": true,
+    "date": "2025-09-01",
+    "payee": "Transfer",
+    "description": "",
+    "id": "income_import_1767473622538_psisynu9o",
+    "amount": 0.04,
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "account_id": "ZByDH9Vmv2BbQrfAWSq7"
+  },
+  {
+    "amount": 0.12,
+    "date": "2025-09-02",
+    "payee": "Golden 1",
+    "description": "",
+    "id": "income_import_1767473622538_ung0mg74s",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "account_id": "account_1766289996367_pzpaad94s"
+  },
+  {
+    "description": "",
+    "id": "income_import_1767473622538_pkfwenjzs",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 5098.6,
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "date": "2025-09-15",
+    "payee": "Gunderson"
+  },
+  {
+    "date": "2025-09-30",
+    "cleared": true,
+    "payee": "Gunderson",
+    "amount": 5098.61,
+    "description": "",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622538_uuiwfgdk3",
+    "created_at": "2026-01-03T20:53:42.538Z"
+  },
+  {
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "payee": "Dividend",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "",
+    "date": "2025-09-30",
+    "amount": 4.19,
+    "id": "income_import_1767473622538_m5w1osidt"
+  }
+]

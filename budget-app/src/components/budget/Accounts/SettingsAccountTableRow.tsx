@@ -8,7 +8,7 @@
 import type { AccountWithId, GroupWithId } from '@hooks/useAccountsPage'
 import type { AccountFormData } from './AccountForm'
 import type { AccountsMap } from '@types'
-import { formatCurrency, getBalanceColor } from '../../ui'
+import { formatSignedCurrency, getBalanceColor } from '../../ui'
 import { AccountFlags } from './AccountFlags'
 import { AccountForm } from './AccountForm'
 import { logUserAction } from '@utils'
@@ -107,7 +107,7 @@ export function SettingsAccountTableRow({
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                     <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Total</span>
                     <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
-                      {formatCurrency(clearedBalance.uncleared_balance)}
+                      {formatSignedCurrency(clearedBalance.uncleared_balance)}
                     </span>
                   </div>
                   {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
@@ -115,13 +115,13 @@ export function SettingsAccountTableRow({
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
                         <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>
-                          {formatCurrency(clearedBalance.cleared_balance)}
+                          {formatSignedCurrency(clearedBalance.cleared_balance)}
                         </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
                         <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
-                          {formatCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+                          {formatSignedCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
                         </span>
                       </div>
                     </>
@@ -141,7 +141,7 @@ export function SettingsAccountTableRow({
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                   <span style={{ color: getBalanceColor(account.balance), fontWeight: 600 }}>
-                    {formatCurrency(account.balance)}
+                    {formatSignedCurrency(account.balance)}
                   </span>
                 </div>
               )}
@@ -236,11 +236,11 @@ export function SettingsAccountTableRow({
       {/* Total balance (uncleared_balance) */}
       {clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
-          {formatCurrency(clearedBalance.uncleared_balance)}
+          {formatSignedCurrency(clearedBalance.uncleared_balance)}
         </div>
       ) : (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(account.balance), fontWeight: 600 }}>
-          {formatCurrency(account.balance)}
+          {formatSignedCurrency(account.balance)}
         </div>
       )}
       {/* Cleared balance - show dash if same as total */}
@@ -248,17 +248,17 @@ export function SettingsAccountTableRow({
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
             ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
-            : formatCurrency(clearedBalance.cleared_balance)}
+            : formatSignedCurrency(clearedBalance.cleared_balance)}
         </div>
       ) : (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(account.balance), fontWeight: 600 }}>
-          {formatCurrency(account.balance)}
+          {formatSignedCurrency(account.balance)}
         </div>
       )}
       {/* Uncleared portion (difference) - show dash if same as cleared */}
       {clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
-          {formatCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+          {formatSignedCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
         </div>
       ) : (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>

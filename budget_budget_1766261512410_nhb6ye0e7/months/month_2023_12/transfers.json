@@ -1,0 +1,38 @@
+[
+  {
+    "description": "Transfer",
+    "id": "transfer_from_adj_1767672469360_bnigv1b81",
+    "to_account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "amount": 35,
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "from_category_id": "category_1766288812979_he1q3x8jy",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "from_account_id": "__NO_ACCOUNT__",
+    "date": "2023-12-02"
+  },
+  {
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "from_account_id": "__NO_ACCOUNT__",
+    "date": "2023-12-10",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "amount": 30,
+    "from_category_id": "category_1766288810298_429f26vq2",
+    "cleared": true,
+    "description": "Transfer",
+    "to_account_id": "__NO_ACCOUNT__",
+    "id": "transfer_from_adj_1767672469360_yw3b89evj"
+  },
+  {
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "description": "Transfer",
+    "id": "transfer_from_adj_1767672469360_k8ifbcsxy",
+    "cleared": true,
+    "to_account_id": "__NO_ACCOUNT__",
+    "date": "2023-12-09",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "amount": 40,
+    "from_category_id": "category_1766288625999_zpi9ppeqw",
+    "from_account_id": "__NO_ACCOUNT__"
+  }
+]

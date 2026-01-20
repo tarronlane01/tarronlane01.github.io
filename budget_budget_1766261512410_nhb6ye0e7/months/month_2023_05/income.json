@@ -1,0 +1,42 @@
+[
+  {
+    "account_id": "account_1766289996367_pzpaad94s",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-05-01",
+    "amount": 0.2,
+    "description": "Dividend",
+    "payee": "Golden 1",
+    "cleared": true,
+    "id": "income_import_1767473622532_6gv5rv1vj"
+  },
+  {
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622532_wsg5j488l",
+    "date": "2023-05-09",
+    "amount": 25,
+    "payee": "Venmo",
+    "description": "",
+    "created_at": "2026-01-03T20:53:42.532Z"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "cleared": true,
+    "description": "Income",
+    "date": "2023-05-15",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622532_3wq9vsjad",
+    "amount": 5174.3,
+    "payee": "Hitachi"
+  },
+  {
+    "date": "2023-05-31",
+    "description": "",
+    "amount": 5209.31,
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "payee": "Hitachi",
+    "id": "income_import_1767473622532_dxyb16h9y",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  }
+]

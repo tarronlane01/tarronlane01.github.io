@@ -1,0 +1,112 @@
+[
+  {
+    "account_id": "account_1766289996367_pzpaad94s",
+    "expenses": 0,
+    "adjustments": 0,
+    "net_change": 0.19,
+    "income": 0.19,
+    "transfers": 0,
+    "start_balance": 4710,
+    "end_balance": 4710.19
+  },
+  {
+    "start_balance": 66555.42,
+    "adjustments": 0,
+    "income": 11244.24,
+    "transfers": -5701.95,
+    "end_balance": 66967.58,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "expenses": -5130.13,
+    "net_change": 412.16
+  },
+  {
+    "start_balance": -3684.97,
+    "adjustments": 0,
+    "expenses": -3069.02,
+    "net_change": 674.71,
+    "transfers": 3743.73,
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "income": 0,
+    "end_balance": -3010.26
+  },
+  {
+    "start_balance": -3960.65,
+    "net_change": 1465.93,
+    "transfers": 1958.22,
+    "end_balance": -2494.72,
+    "account_id": "account_1766289015844_afauk11gp",
+    "adjustments": 0,
+    "expenses": -492.29,
+    "income": 0
+  },
+  {
+    "transfers": 0,
+    "start_balance": 3013.33,
+    "expenses": 0,
+    "end_balance": 3013.33,
+    "account_id": "FR91hqtm3olrgHn8aYDt",
+    "net_change": 0,
+    "income": 0,
+    "adjustments": 0
+  },
+  {
+    "transfers": 0,
+    "account_id": "account_1766290102117_4e04nppj6",
+    "expenses": 0,
+    "end_balance": 32441.32,
+    "net_change": 0,
+    "income": 0,
+    "start_balance": 32441.32,
+    "adjustments": 0
+  },
+  {
+    "expenses": 0,
+    "account_id": "account_1766290329121_fzxbijeyi",
+    "net_change": 0,
+    "transfers": 0,
+    "adjustments": 0,
+    "income": 0,
+    "end_balance": 25715.85,
+    "start_balance": 25715.85
+  },
+  {
+    "transfers": 0,
+    "income": 0,
+    "account_id": "account_1766290334872_jf0ix8swh",
+    "adjustments": 0,
+    "expenses": 0,
+    "start_balance": 10666.68,
+    "net_change": 0,
+    "end_balance": 10666.68
+  },
+  {
+    "account_id": "account_hidden_1767678803953_alerus",
+    "net_change": 0,
+    "income": 0,
+    "expenses": 0,
+    "start_balance": 14877.86,
+    "end_balance": 14877.86,
+    "adjustments": 0,
+    "transfers": 0
+  },
+  {
+    "end_balance": 450.84,
+    "expenses": 0,
+    "net_change": 0,
+    "transfers": 0,
+    "start_balance": 450.84,
+    "account_id": "account_1766290108085_f863835t0",
+    "adjustments": 0,
+    "income": 0
+  },
+  {
+    "adjustments": 0,
+    "account_id": "account_1766290117504_3753hwck6",
+    "income": 0,
+    "end_balance": 5937.77,
+    "start_balance": 5937.77,
+    "net_change": 0,
+    "transfers": 0,
+    "expenses": 0
+  }
+]

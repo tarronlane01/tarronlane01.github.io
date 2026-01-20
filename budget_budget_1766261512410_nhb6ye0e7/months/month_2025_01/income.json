@@ -1,0 +1,32 @@
+[
+  {
+    "date": "2025-01-03",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "cleared": true,
+    "amount": 0.12,
+    "id": "income_import_1767473622536_8blmeteoq",
+    "description": "",
+    "payee": "Golden 1",
+    "account_id": "account_1766289996367_pzpaad94s"
+  },
+  {
+    "payee": "Aumni",
+    "date": "2025-01-15",
+    "id": "income_import_1767473622536_wgxxo6jwr",
+    "amount": 5633.63,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "description": "",
+    "cleared": true
+  },
+  {
+    "payee": "Aumni",
+    "amount": 5633.64,
+    "created_at": "2026-01-03T20:53:42.536Z",
+    "id": "income_import_1767473622536_a1mkx6ga2",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "date": "2025-01-30",
+    "description": ""
+  }
+]

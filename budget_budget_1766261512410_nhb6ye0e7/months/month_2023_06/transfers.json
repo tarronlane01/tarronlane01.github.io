@@ -1,0 +1,14 @@
+[
+  {
+    "from_category_id": "category_1766288743633_wkkcxygrr",
+    "description": "Transfer",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "from_account_id": "__NO_ACCOUNT__",
+    "to_account_id": "__NO_ACCOUNT__",
+    "amount": 10,
+    "cleared": true,
+    "date": "2023-06-14",
+    "id": "transfer_from_adj_1767672469360_54qqhn1c7",
+    "to_category_id": "category_1766288625999_zpi9ppeqw"
+  }
+]

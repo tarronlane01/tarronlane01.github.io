@@ -1,0 +1,52 @@
+[
+  {
+    "account_id": "account_1766289996367_pzpaad94s",
+    "date": "2023-04-01",
+    "amount": 0.2,
+    "cleared": true,
+    "description": "Dividend",
+    "payee": "Dividend",
+    "id": "income_import_1767473622532_9mn61blp0",
+    "created_at": "2026-01-03T20:53:42.532Z"
+  },
+  {
+    "description": "Hitachi",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "date": "2023-04-14",
+    "payee": "Hitachi",
+    "id": "income_import_1767473622532_2b4shrsum",
+    "amount": 5174.31,
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "amount": 1232.86,
+    "id": "income_import_1767473622532_uayil6738",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2023-04-28",
+    "payee": "Hitachi",
+    "cleared": true,
+    "description": "Bonus"
+  },
+  {
+    "amount": 5209.3,
+    "id": "income_import_1767473622532_wbej7gvhy",
+    "date": "2023-04-28",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "payee": "Hitachi",
+    "description": "Income",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.532Z"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "cleared": true,
+    "id": "income_import_1767473622532_39usi2rjv",
+    "amount": 14.42,
+    "payee": "Transfer",
+    "description": "Dividend",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2023-04-28"
+  }
+]

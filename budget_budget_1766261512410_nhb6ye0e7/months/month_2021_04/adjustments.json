@@ -1,0 +1,62 @@
+[
+  {
+    "description": "Housing",
+    "cleared": true,
+    "category_id": "category_1766288625999_zpi9ppeqw",
+    "id": "adjustment_import_1767473622527_elnohnj4x",
+    "amount": 2221.53,
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2021-04-04"
+  },
+  {
+    "amount": 94.71,
+    "id": "adjustment_import_1767473622527_ss22fthx8",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "cleared": true,
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2021-04-04",
+    "category_id": "category_1766288812979_he1q3x8jy",
+    "description": "Holiday"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622527_qo3ncfetg",
+    "date": "2021-04-06",
+    "amount": -3200,
+    "cleared": true,
+    "description": "x2 $1600 payments"
+  },
+  {
+    "id": "adjustment_import_1767473622527_j1jy5tgyv",
+    "amount": -69.97,
+    "account_id": "account_1766289015844_afauk11gp",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "date": "2021-04-18",
+    "description": "Transfer (Refund)",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "amount": 300.35,
+    "account_id": "account_1766289015844_afauk11gp",
+    "date": "2021-04-05",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "cleared": true,
+    "id": "adjustment_import_1767473622527_01i3cj097",
+    "description": "Transfer",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "description": "Pay off credit card",
+    "date": "2021-04-06",
+    "id": "adjustment_import_1767473622527_41evm15xc",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "amount": -300.35,
+    "created_at": "2026-01-03T20:53:42.527Z"
+  }
+]

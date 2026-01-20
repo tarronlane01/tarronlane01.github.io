@@ -1,0 +1,112 @@
+[
+  {
+    "description": "Rent",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "category_id": "Zfr8EwlTWLmsk7vYirAT",
+    "amount": -85,
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "id": "adjustment_import_1767473622533_fqqh671fi",
+    "date": "2023-11-04"
+  },
+  {
+    "description": "Utilities",
+    "id": "adjustment_import_1767473622533_fa87k6uvy",
+    "category_id": "category_1766265357718_y7lydlt9a",
+    "amount": -85,
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "date": "2023-11-04"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "amount": 170,
+    "description": "Grocery",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "cleared": true,
+    "id": "adjustment_import_1767473622533_06gzntt8p",
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2023-11-04"
+  },
+  {
+    "cleared": true,
+    "description": "Donation for Dates",
+    "id": "adjustment_import_1767473622533_qw3m8lxmw",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "category_id": "category_1766288825592_glvgzh2u4",
+    "amount": -30,
+    "date": "2023-11-06",
+    "account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "category_id": "category_1766288829038_0ygxsees9",
+    "id": "adjustment_import_1767473622533_j8p44yjzj",
+    "amount": -30,
+    "cleared": true,
+    "date": "2023-11-06",
+    "account_id": "__NO_ACCOUNT__",
+    "description": "Donation for Dates"
+  },
+  {
+    "cleared": true,
+    "date": "2023-11-06",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "id": "adjustment_import_1767473622533_8zuoe1pet",
+    "amount": -10,
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "description": "Transfer",
+    "account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "description": "More money from Donation",
+    "cleared": true,
+    "id": "adjustment_import_1767473622533_xpnpb3dkn",
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-11-06",
+    "amount": 70,
+    "category_id": "category_1766288816655_pee1xcbk6"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "id": "adjustment_import_1767473622533_tn0igqvaw",
+    "category_id": "__NO_CATEGORY__",
+    "date": "2023-11-04",
+    "amount": 581.82,
+    "description": "Capital one Kami",
+    "account_id": "account_1766289015844_afauk11gp",
+    "cleared": true
+  },
+  {
+    "description": "Transfer",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "id": "adjustment_import_1767473622533_07qxzetcs",
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "date": "2023-11-06",
+    "amount": -581.82
+  },
+  {
+    "id": "adjustment_import_1767473622533_krae3bbup",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Transfer",
+    "amount": -1265.09,
+    "date": "2023-11-29",
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.533Z"
+  },
+  {
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "date": "2023-11-28",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "description": "Transfer",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622533_nrhkqjd2b",
+    "amount": 1265.09
+  }
+]

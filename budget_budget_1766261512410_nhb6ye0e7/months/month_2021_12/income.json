@@ -1,0 +1,62 @@
+[
+  {
+    "id": "income_import_1767473622529_6zfyvvo8b",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "description": "Interest",
+    "amount": 1.15,
+    "payee": "Charles Schwab",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "date": "2021-12-01"
+  },
+  {
+    "cleared": true,
+    "payee": "Murdock Hyundai",
+    "amount": 2650.86,
+    "id": "income_import_1767473622529_kodv3efsz",
+    "date": "2021-12-03",
+    "description": "Monies",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.529Z"
+  },
+  {
+    "cleared": true,
+    "id": "income_import_1767473622529_u629f3t40",
+    "amount": 4426.93,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Payroll",
+    "date": "2021-12-15",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "payee": "Hitachi"
+  },
+  {
+    "description": "Dividend",
+    "date": "2021-12-01",
+    "amount": 0.2,
+    "payee": "Golden 1",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "cleared": true,
+    "account_id": "account_1766289996367_pzpaad94s",
+    "id": "income_import_1767473622529_w2hn9zbvd"
+  },
+  {
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Payroll",
+    "amount": 1256.05,
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "cleared": true,
+    "payee": "Murdock Hyundai",
+    "date": "2021-12-20",
+    "id": "income_import_1767473622529_6avzo8ker"
+  },
+  {
+    "date": "2021-12-31",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622529_cfkije27e",
+    "amount": 4461.92,
+    "payee": "Hitachi",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "description": "Payroll"
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "amount": -150,
+    "date": "2023-09-06",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "cleared": true,
+    "description": "Transfer",
+    "account_id": "__NO_ACCOUNT__",
+    "id": "adjustment_import_1767473622533_46l17jp3r",
+    "category_id": "category_1766288743633_wkkcxygrr"
+  },
+  {
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622533_tcugda1aq",
+    "category_id": "category_1766288625999_zpi9ppeqw",
+    "cleared": true,
+    "amount": -50,
+    "account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-09-06"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "description": "Transfer",
+    "date": "2023-09-06",
+    "cleared": true,
+    "account_id": "__NO_ACCOUNT__",
+    "id": "adjustment_import_1767473622533_lgphyfy2i",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "amount": 200
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "date": "2023-09-04",
+    "category_id": "__NO_CATEGORY__",
+    "description": "Pay off credit card",
+    "account_id": "account_1766289015844_afauk11gp",
+    "cleared": true,
+    "amount": 711.18,
+    "id": "adjustment_import_1767473622533_w11igcib9"
+  },
+  {
+    "amount": -711.18,
+    "id": "adjustment_import_1767473622533_yz10jtthz",
+    "date": "2023-09-05",
+    "cleared": true,
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.533Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Payoff credit card"
+  }
+]

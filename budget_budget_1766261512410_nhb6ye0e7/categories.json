@@ -1,0 +1,272 @@
+{
+  "category_1766288829038_0ygxsees9": {
+    "is_hidden": false,
+    "name": "Kami's",
+    "default_monthly_type": "fixed",
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J",
+    "default_monthly_amount": 50,
+    "sort_order": 5,
+    "balance": 236.25,
+    "description": ""
+  },
+  "category_1766288810298_429f26vq2": {
+    "default_monthly_amount": 30,
+    "is_hidden": false,
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J",
+    "balance": 72.12,
+    "name": "Clothing",
+    "description": "",
+    "default_monthly_type": "fixed",
+    "sort_order": 0
+  },
+  "category_1766288833773_gbqpud8im": {
+    "is_hidden": false,
+    "balance": 55.38,
+    "sort_order": 6,
+    "name": "Service",
+    "default_monthly_type": "fixed",
+    "description": "",
+    "default_monthly_amount": 50,
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J"
+  },
+  "Zfr8EwlTWLmsk7vYirAT": {
+    "default_monthly_type": "fixed",
+    "sort_order": 14,
+    "description": "Mortgage",
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "name": "Rent",
+    "balance": 4166.32,
+    "is_hidden": false,
+    "default_monthly_amount": 4090.1
+  },
+  "category_1766288738225_b60g12x67": {
+    "balance": 36025.23,
+    "default_monthly_type": "fixed",
+    "is_hidden": false,
+    "default_monthly_amount": 5,
+    "description": "",
+    "sort_order": 3,
+    "name": "Six-Month Savings",
+    "category_group_id": "category_group_1766265062617_yktkppnkt"
+  },
+  "lvRJzTnpe7HkaAzJwmOn": {
+    "is_hidden": false,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "default_monthly_amount": 50,
+    "description": "",
+    "balance": 0,
+    "sort_order": 9,
+    "name": "Fast Offerings",
+    "default_monthly_type": "fixed"
+  },
+  "category_1766265369105_ehvqlgukb": {
+    "is_hidden": false,
+    "balance": 1771.68,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "description": "",
+    "default_monthly_amount": 200,
+    "sort_order": 23,
+    "default_monthly_type": "fixed",
+    "name": "Car Repairs"
+  },
+  "category_1766288771747_qek6wlmy8": {
+    "balance": 9744.03,
+    "name": "House Repairs",
+    "description": "",
+    "default_monthly_amount": 325,
+    "default_monthly_type": "fixed",
+    "sort_order": 1,
+    "is_hidden": false,
+    "category_group_id": "CgFHfHs7Qn5BzWIWufCx"
+  },
+  "category_1766265047006_n028ssip1": {
+    "default_monthly_amount": 30,
+    "default_monthly_type": "fixed",
+    "name": "Emergency Prep",
+    "sort_order": 17,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "is_hidden": false,
+    "balance": 1060.47,
+    "description": ""
+  },
+  "69LUQGMJrYlIPoixIkng": {
+    "default_monthly_type": "percentage",
+    "description": "",
+    "default_monthly_amount": 10,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "balance": 0,
+    "name": "Tithing",
+    "is_hidden": false,
+    "sort_order": 8
+  },
+  "category_1766288731002_5v1826ijc": {
+    "is_hidden": false,
+    "default_monthly_amount": 500,
+    "default_monthly_type": "fixed",
+    "category_group_id": "category_group_1766265062617_yktkppnkt",
+    "name": "Car Payments",
+    "sort_order": 2,
+    "balance": 17609.15,
+    "description": "New Car"
+  },
+  "O5NtsCMtBm5J9L3ULRVO": {
+    "description": "",
+    "balance": 0.01,
+    "name": "Taxes",
+    "sort_order": 13,
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 0,
+    "is_hidden": true,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg"
+  },
+  "category_1766265357718_y7lydlt9a": {
+    "sort_order": 22,
+    "description": "",
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "default_monthly_type": "fixed",
+    "is_hidden": false,
+    "name": "Utilities",
+    "default_monthly_amount": 550,
+    "balance": 988.28
+  },
+  "category_1766265351648_ru851obn1": {
+    "is_hidden": false,
+    "default_monthly_amount": 30,
+    "description": "",
+    "balance": 33.44,
+    "default_monthly_type": "fixed",
+    "name": "Subscriptions",
+    "sort_order": 19,
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg"
+  },
+  "category_1766265437406_yihi892i4": {
+    "sort_order": 26,
+    "balance": 404.12,
+    "description": "",
+    "default_monthly_amount": 175,
+    "is_hidden": false,
+    "name": "Fuel",
+    "default_monthly_type": "fixed",
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg"
+  },
+  "category_hidden_1767678803954_house": {
+    "description": "Historical house-related transactions (hidden)",
+    "balance": -2000,
+    "name": "House",
+    "default_monthly_type": "fixed",
+    "category_group_id": "ungrouped_categories",
+    "sort_order": 27,
+    "default_monthly_amount": 0,
+    "is_hidden": true
+  },
+  "category_1766288765095_ew8htogil": {
+    "sort_order": 0,
+    "name": "Retirement",
+    "default_monthly_amount": 1168,
+    "is_hidden": false,
+    "description": "IRA's",
+    "default_monthly_type": "fixed",
+    "category_group_id": "CgFHfHs7Qn5BzWIWufCx",
+    "balance": 1090.64
+  },
+  "category_1766288625999_zpi9ppeqw": {
+    "name": "Home Improvement",
+    "sort_order": 1,
+    "category_group_id": "category_group_1766265062617_yktkppnkt",
+    "description": "",
+    "default_monthly_amount": 100,
+    "balance": 1762.45,
+    "default_monthly_type": "fixed",
+    "is_hidden": false
+  },
+  "pPQqTWxWz4IjeHW5Z1iX": {
+    "balance": 1144.26,
+    "default_monthly_type": "fixed",
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "is_hidden": false,
+    "default_monthly_amount": 1000,
+    "name": "Groceries/Supplies",
+    "sort_order": 15,
+    "description": ""
+  },
+  "category_1766265432185_pysvj7ymm": {
+    "category_group_id": "3h2WgMCSMmlWiHcnIPrg",
+    "description": "",
+    "default_monthly_amount": 125,
+    "balance": 498.09,
+    "name": "Car Insurance",
+    "default_monthly_type": "fixed",
+    "sort_order": 25,
+    "is_hidden": false
+  },
+  "category_1766288820785_zhtwle8xm": {
+    "sort_order": 3,
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J",
+    "default_monthly_type": "fixed",
+    "is_hidden": false,
+    "default_monthly_amount": 300,
+    "balance": 6004.79,
+    "name": "Trip",
+    "description": ""
+  },
+  "category_1766288743633_wkkcxygrr": {
+    "balance": 1038.4,
+    "default_monthly_amount": 100,
+    "is_hidden": false,
+    "name": "Big Purchases",
+    "description": "",
+    "sort_order": 4,
+    "category_group_id": "category_group_1766265062617_yktkppnkt",
+    "default_monthly_type": "fixed"
+  },
+  "category_1766288746550_763eaiy62": {
+    "category_group_id": "category_group_1766265062617_yktkppnkt",
+    "name": "Kids",
+    "default_monthly_amount": 55,
+    "description": "Penny's School, Swim Lessons",
+    "default_monthly_type": "fixed",
+    "balance": 535.54,
+    "is_hidden": false,
+    "sort_order": 5
+  },
+  "category_1766288812979_he1q3x8jy": {
+    "default_monthly_type": "fixed",
+    "balance": 101.07,
+    "default_monthly_amount": 50,
+    "name": "Holiday",
+    "sort_order": 1,
+    "is_hidden": false,
+    "description": "",
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J"
+  },
+  "category_1766288615238_l94bjlz89": {
+    "default_monthly_amount": 150,
+    "name": "Medical",
+    "balance": 11269.19,
+    "is_hidden": false,
+    "sort_order": 0,
+    "description": "Next Pregnancy",
+    "category_group_id": "category_group_1766265062617_yktkppnkt",
+    "default_monthly_type": "fixed"
+  },
+  "category_1766288816655_pee1xcbk6": {
+    "default_monthly_type": "fixed",
+    "sort_order": 2,
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J",
+    "name": "Dates",
+    "default_monthly_amount": 150,
+    "is_hidden": false,
+    "balance": 311.42,
+    "description": ""
+  },
+  "category_1766288825592_glvgzh2u4": {
+    "is_hidden": false,
+    "name": "Tarron's",
+    "default_monthly_type": "fixed",
+    "description": "",
+    "default_monthly_amount": 50,
+    "balance": 165.01,
+    "sort_order": 4,
+    "category_group_id": "aRAFIkhUx4ReZlvXXl0J"
+  }
+}

@@ -1,3 +1,9 @@
+Set account balances up to look like an equation, where you have Total = ( cleared + uncleared ) in both the header and the individual rows. Maybe add these signs in their own grid columns so they have good spacing from the values. If the cleared and uncleared would be dashes (meaning there is no uncleared abalances), then don't show the equation. Apply this to both the settings/accounts as well as the month/balance/accounts pages
+
+When showing OFF BUDGET badge, don't show (type). Same to any other of these badges on the settings/account page
+
+Let's right-align the buttons on the settins account/category groups, so they are more aligned with the "actions" columns that the individual rows use
+
 Should we not save balances and things on the firestore documents that we can re-calculate locally?
 
 Make the budget settings account/category edit/create forms full-page instead of inline

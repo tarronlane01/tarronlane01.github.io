@@ -1,0 +1,52 @@
+[
+  {
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "description": "house contribution",
+    "category_id": "__NO_CATEGORY__",
+    "amount": -4200,
+    "id": "adjustment_import_1767473622528_macugrwmy",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2021-07-06"
+  },
+  {
+    "id": "adjustment_import_1767473622528_mijnc4eyy",
+    "cleared": true,
+    "description": "Pay off credit card",
+    "category_id": "__NO_CATEGORY__",
+    "account_id": "account_1766289015844_afauk11gp",
+    "amount": 383.68,
+    "date": "2021-07-05",
+    "created_at": "2026-01-03T20:53:42.528Z"
+  },
+  {
+    "id": "adjustment_import_1767473622528_3f1h2bx92",
+    "date": "2021-07-06",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "paying off the credit card",
+    "category_id": "__NO_CATEGORY__",
+    "amount": -383.68,
+    "cleared": true
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "date": "2021-07-29",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -480.04,
+    "id": "adjustment_import_1767473622528_tsazufzd9",
+    "cleared": true,
+    "description": "paying off credit  car"
+  },
+  {
+    "description": "Pay off credit card",
+    "id": "adjustment_import_1767473622528_ixclkozlb",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "date": "2021-07-28",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "amount": 480.04,
+    "category_id": "__NO_CATEGORY__"
+  }
+]

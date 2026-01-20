@@ -12,8 +12,8 @@ import { useBudgetData, useMonthData, useAutoRecalculation } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { FinancialAccount } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { colors } from '@styles/shared'
 import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
+import { colors } from '@styles/shared'
 import { AccountStatsRow } from './MonthBalances'
 import { AccountGroupRows } from './AccountGridRows'
 import type { RecalculationProgress } from '@data/recalculation'
@@ -220,7 +220,7 @@ export function MonthAccounts() {
                 Grand Totals
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.start) }}>
-                {formatCurrency(accountBalanceTotals.start)}
+                {formatSignedCurrency(accountBalanceTotals.start)}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getIncomeColor(accountBalanceTotals.income) }}>
                 +{formatCurrency(accountBalanceTotals.income)}
@@ -238,12 +238,12 @@ export function MonthAccounts() {
                 {formatSignedCurrencyAlways(netChangeTotal)}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.end) }}>
-                {formatCurrency(accountBalanceTotals.end)}
+                {formatSignedCurrency(accountBalanceTotals.end)}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
                 {/* Total - sum of all uncleared balances */}
                 {Object.keys(accountClearedBalances).length > 0
-                  ? formatCurrency(Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0))
+                  ? formatSignedCurrency(Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0))
                   : <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
@@ -254,7 +254,7 @@ export function MonthAccounts() {
                   const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
                   return Math.abs(unclearedTotal - clearedTotal) < 0.01
                     ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
-                    : formatCurrency(clearedTotal)
+                    : formatSignedCurrency(clearedTotal)
                 })()}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>

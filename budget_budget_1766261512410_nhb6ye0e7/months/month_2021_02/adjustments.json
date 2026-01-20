@@ -1,0 +1,42 @@
+[
+  {
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -1200,
+    "date": "2021-02-12",
+    "id": "adjustment_import_1767473622527_bnfgjhxwg",
+    "description": "Transfering in the house money"
+  },
+  {
+    "description": "Paying off a credit card",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "category_id": "__NO_CATEGORY__",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "amount": -43.74,
+    "id": "adjustment_import_1767473622527_m2xsyjm6i",
+    "date": "2021-02-08",
+    "cleared": true
+  },
+  {
+    "account_id": "account_1766289015844_afauk11gp",
+    "category_id": "__NO_CATEGORY__",
+    "amount": 43.74,
+    "id": "adjustment_import_1767473622527_nrhdgxs9s",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "cleared": true,
+    "description": "Transfer",
+    "date": "2021-02-05"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "date": "2021-02-28",
+    "description": "paying off credit card",
+    "cleared": true,
+    "amount": 5357.14,
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "created_at": "2026-01-03T20:53:42.527Z",
+    "id": "adjustment_import_1767473622527_r9fn3rmsh"
+  }
+]

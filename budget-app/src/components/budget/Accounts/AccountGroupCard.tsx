@@ -3,7 +3,7 @@ import type { ExpectedBalanceType } from '@types'
 import {
   Button,
   DraggableCard,
-  formatCurrency,
+  formatSignedCurrency,
   getBalanceColor,
 } from '../../ui'
 import {
@@ -239,7 +239,7 @@ export function AccountGroupCard({
                         fontWeight: 600,
                         color: getBalanceColor(account.balance),
                       }}>
-                        {formatCurrency(account.balance)}
+                        {formatSignedCurrency(account.balance)}
                         {hasUnexpectedBalance(account.balance, group.expected_balance) && (
                           <span title={getBalanceWarning(account.balance, group.expected_balance) || ''} style={{ marginLeft: '0.5rem', fontSize: '0.85rem' }}>⚠️</span>
                         )}

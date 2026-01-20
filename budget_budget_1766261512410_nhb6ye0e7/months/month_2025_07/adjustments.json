@@ -1,0 +1,72 @@
+[
+  {
+    "date": "2025-07-28",
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "cleared": true,
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622537_9qzw1ujmv",
+    "amount": -50,
+    "category_id": "category_1766288810298_429f26vq2",
+    "account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622537_fkfyobb9b",
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "date": "2025-07-28",
+    "cleared": true,
+    "account_id": "__NO_ACCOUNT__",
+    "amount": -30,
+    "category_id": "category_1766265357718_y7lydlt9a"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "cleared": true,
+    "category_id": "category_1766265437406_yihi892i4",
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622537_6m09b05dl",
+    "account_id": "__NO_ACCOUNT__",
+    "date": "2025-07-28",
+    "amount": -20
+  },
+  {
+    "amount": -50,
+    "cleared": true,
+    "description": "Transfer",
+    "category_id": "category_1766288771747_qek6wlmy8",
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "id": "adjustment_import_1767473622537_6nfvvupm0",
+    "date": "2025-07-28",
+    "account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "description": "Transfer",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": 150,
+    "date": "2025-07-28",
+    "cleared": true,
+    "id": "adjustment_import_1767473622537_ttoksqqqf"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "amount": 4488.3,
+    "cleared": true,
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622537_6x6bfnwhg",
+    "date": "2025-07-28",
+    "created_at": "2026-01-03T20:53:42.537Z",
+    "account_id": "account_1766289004108_7ps0slg4g"
+  },
+  {
+    "amount": -4488.3,
+    "description": "Transfer",
+    "id": "adjustment_import_1767473622537_yz92w1q71",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2025-07-30",
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.537Z"
+  }
+]

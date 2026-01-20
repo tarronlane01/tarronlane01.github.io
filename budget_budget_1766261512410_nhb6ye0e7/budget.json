@@ -1,0 +1,450 @@
+{
+  "month_map": {
+    "202008": {
+      "needs_recalculation": false
+    },
+    "202009": {
+      "needs_recalculation": false
+    },
+    "202010": {
+      "needs_recalculation": false
+    },
+    "202011": {
+      "needs_recalculation": false
+    },
+    "202012": {
+      "needs_recalculation": false
+    },
+    "202101": {
+      "needs_recalculation": false
+    },
+    "202102": {
+      "needs_recalculation": false
+    },
+    "202103": {
+      "needs_recalculation": false
+    },
+    "202104": {
+      "needs_recalculation": false
+    },
+    "202105": {
+      "needs_recalculation": false
+    },
+    "202106": {
+      "needs_recalculation": false
+    },
+    "202107": {
+      "needs_recalculation": false
+    },
+    "202108": {
+      "needs_recalculation": false
+    },
+    "202109": {
+      "needs_recalculation": false
+    },
+    "202110": {
+      "needs_recalculation": false
+    },
+    "202111": {
+      "needs_recalculation": false
+    },
+    "202112": {
+      "needs_recalculation": false
+    },
+    "202201": {
+      "needs_recalculation": false
+    },
+    "202202": {
+      "needs_recalculation": false
+    },
+    "202203": {
+      "needs_recalculation": false
+    },
+    "202204": {
+      "needs_recalculation": false
+    },
+    "202205": {
+      "needs_recalculation": false
+    },
+    "202206": {
+      "needs_recalculation": false
+    },
+    "202207": {
+      "needs_recalculation": false
+    },
+    "202208": {
+      "needs_recalculation": false
+    },
+    "202209": {
+      "needs_recalculation": false
+    },
+    "202210": {
+      "needs_recalculation": false
+    },
+    "202211": {
+      "needs_recalculation": false
+    },
+    "202212": {
+      "needs_recalculation": false
+    },
+    "202301": {
+      "needs_recalculation": false
+    },
+    "202302": {
+      "needs_recalculation": false
+    },
+    "202303": {
+      "needs_recalculation": false
+    },
+    "202304": {
+      "needs_recalculation": false
+    },
+    "202305": {
+      "needs_recalculation": false
+    },
+    "202306": {
+      "needs_recalculation": false
+    },
+    "202307": {
+      "needs_recalculation": false
+    },
+    "202308": {
+      "needs_recalculation": false
+    },
+    "202309": {
+      "needs_recalculation": false
+    },
+    "202310": {
+      "needs_recalculation": false
+    },
+    "202311": {
+      "needs_recalculation": false
+    },
+    "202312": {
+      "needs_recalculation": false
+    },
+    "202401": {
+      "needs_recalculation": false
+    },
+    "202402": {
+      "needs_recalculation": false
+    },
+    "202403": {
+      "needs_recalculation": false
+    },
+    "202404": {
+      "needs_recalculation": false
+    },
+    "202405": {
+      "needs_recalculation": false
+    },
+    "202406": {
+      "needs_recalculation": false
+    },
+    "202407": {
+      "needs_recalculation": false
+    },
+    "202408": {
+      "needs_recalculation": false
+    },
+    "202409": {
+      "needs_recalculation": false
+    },
+    "202410": {
+      "needs_recalculation": false
+    },
+    "202411": {
+      "needs_recalculation": false
+    },
+    "202412": {
+      "needs_recalculation": false
+    },
+    "202501": {
+      "needs_recalculation": false
+    },
+    "202502": {
+      "needs_recalculation": false
+    },
+    "202503": {
+      "needs_recalculation": false
+    },
+    "202504": {
+      "needs_recalculation": false
+    },
+    "202505": {
+      "needs_recalculation": false
+    },
+    "202506": {
+      "needs_recalculation": false
+    },
+    "202507": {
+      "needs_recalculation": false
+    },
+    "202508": {
+      "needs_recalculation": false
+    },
+    "202509": {
+      "needs_recalculation": false
+    },
+    "202510": {
+      "needs_recalculation": false
+    },
+    "202511": {
+      "needs_recalculation": false
+    },
+    "202512": {
+      "needs_recalculation": false
+    },
+    "202601": {
+      "needs_recalculation": false
+    },
+    "202602": {
+      "needs_recalculation": false
+    },
+    "202603": {
+      "needs_recalculation": false
+    },
+    "202604": {
+      "needs_recalculation": false
+    }
+  },
+  "accepted_user_ids": [
+    "Bbn41nmAFqg91tA3PePi4e3H8a73",
+    "wRcd9bnZMtdtgcMj68794E5g0Jg2"
+  ],
+  "total_available": 5348.8,
+  "updated_at": "2026-01-19T01:45:29.960Z",
+  "is_needs_recalculation": false,
+  "category_balances_snapshot": {
+    "is_stale": true,
+    "computed_at": "2025-12-26T04:28:05.978Z",
+    "computed_for_month": 12,
+    "balances": {
+      "category_1766288615238_l94bjlz89": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288625999_zpi9ppeqw": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288825592_glvgzh2u4": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288810298_429f26vq2": {
+        "current": 0,
+        "total": 0
+      },
+      "O5NtsCMtBm5J9L3ULRVO": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288743633_wkkcxygrr": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265351648_ru851obn1": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265047006_n028ssip1": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288833773_gbqpud8im": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288738225_b60g12x67": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288771747_qek6wlmy8": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288820785_zhtwle8xm": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288812979_he1q3x8jy": {
+        "current": 0,
+        "total": 0
+      },
+      "Zfr8EwlTWLmsk7vYirAT": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288816655_pee1xcbk6": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766265357718_y7lydlt9a": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288731002_5v1826ijc": {
+        "total": 0,
+        "current": 0
+      },
+      "lvRJzTnpe7HkaAzJwmOn": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288746550_763eaiy62": {
+        "current": 0,
+        "total": 0
+      },
+      "pPQqTWxWz4IjeHW5Z1iX": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766265437406_yihi892i4": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265432185_pysvj7ymm": {
+        "current": 0,
+        "total": 0
+      },
+      "69LUQGMJrYlIPoixIkng": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265369105_ehvqlgukb": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288765095_ew8htogil": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288829038_0ygxsees9": {
+        "total": 0,
+        "current": 0
+      }
+    },
+    "computed_for_year": 2025
+  },
+  "owner_email": "tarronlane@gmail.com",
+  "name": "Tarron and Kami",
+  "category_balances_cache": {
+    "computed_for_year": 2025,
+    "balances": {
+      "category_1766288743633_wkkcxygrr": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288825592_glvgzh2u4": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288833773_gbqpud8im": {
+        "current": 0,
+        "total": 0
+      },
+      "69LUQGMJrYlIPoixIkng": {
+        "total": 0,
+        "current": 0
+      },
+      "lvRJzTnpe7HkaAzJwmOn": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288812979_he1q3x8jy": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288829038_0ygxsees9": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288765095_ew8htogil": {
+        "total": 0,
+        "current": 0
+      },
+      "Zfr8EwlTWLmsk7vYirAT": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288820785_zhtwle8xm": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766265432185_pysvj7ymm": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288738225_b60g12x67": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288816655_pee1xcbk6": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288810298_429f26vq2": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265437406_yihi892i4": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288625999_zpi9ppeqw": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288746550_763eaiy62": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265047006_n028ssip1": {
+        "total": 0,
+        "current": 0
+      },
+      "O5NtsCMtBm5J9L3ULRVO": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288731002_5v1826ijc": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265369105_ehvqlgukb": {
+        "total": 0,
+        "current": 0
+      },
+      "category_1766288615238_l94bjlz89": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265351648_ru851obn1": {
+        "total": 0,
+        "current": 0
+      },
+      "pPQqTWxWz4IjeHW5Z1iX": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766265357718_y7lydlt9a": {
+        "current": 0,
+        "total": 0
+      },
+      "category_1766288771747_qek6wlmy8": {
+        "current": 0,
+        "total": 0
+      }
+    },
+    "computed_at": "2025-12-24T16:38:56.240Z",
+    "computed_for_month": 12,
+    "is_stale": false
+  },
+  "migrated_at": "2025-12-20T20:17:13.506Z",
+  "owner_id": "Bbn41nmAFqg91tA3PePi4e3H8a73",
+  "user_ids": [
+    "Bbn41nmAFqg91tA3PePi4e3H8a73",
+    "wRcd9bnZMtdtgcMj68794E5g0Jg2"
+  ]
+}

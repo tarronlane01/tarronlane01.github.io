@@ -2,7 +2,7 @@ import type { DragEvent } from 'react'
 import {
   Button,
   DraggableCard,
-  formatCurrency,
+  formatSignedCurrency,
   getBalanceColor,
 } from '../../ui'
 import {
@@ -136,7 +136,7 @@ export function UngroupedAccountsSection({
               borderBottom: '2px solid currentColor',
               paddingBottom: '2px',
             }}>
-              {formatCurrency(ungroupedTotal)}
+              {formatSignedCurrency(ungroupedTotal)}
             </span>
           )}
         </h3>
@@ -204,7 +204,7 @@ export function UngroupedAccountsSection({
                   fontWeight: 600,
                   color: getBalanceColor(account.balance),
                 }}>
-                  {formatCurrency(account.balance)}
+                  {formatSignedCurrency(account.balance)}
                 </p>
               </div>
             </DraggableCard>

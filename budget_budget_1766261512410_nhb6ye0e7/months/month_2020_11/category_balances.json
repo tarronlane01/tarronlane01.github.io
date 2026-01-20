@@ -1,0 +1,245 @@
+[
+  {
+    "transfers": 0,
+    "end_balance": -132.6,
+    "start_balance": -168.01,
+    "category_id": "category_1766288816655_pee1xcbk6",
+    "adjustments": 0,
+    "allocated": 100,
+    "spent": -64.59
+  },
+  {
+    "adjustments": 0,
+    "spent": -18.21,
+    "category_id": "category_1766265351648_ru851obn1",
+    "start_balance": -3.92,
+    "allocated": 20,
+    "transfers": 0,
+    "end_balance": -2.13
+  },
+  {
+    "start_balance": 78,
+    "spent": -236.84,
+    "category_id": "category_1766288825592_glvgzh2u4",
+    "allocated": 50,
+    "transfers": 0,
+    "end_balance": -108.84,
+    "adjustments": 0
+  },
+  {
+    "end_balance": 162.83,
+    "allocated": 69,
+    "spent": -66.28,
+    "adjustments": 0,
+    "transfers": 0,
+    "category_id": "category_1766265432185_pysvj7ymm",
+    "start_balance": 160.11
+  },
+  {
+    "start_balance": -535.69,
+    "allocated": 400,
+    "spent": -392.49,
+    "transfers": 0,
+    "end_balance": -528.18,
+    "adjustments": 0,
+    "category_id": "pPQqTWxWz4IjeHW5Z1iX"
+  },
+  {
+    "start_balance": 60.94,
+    "end_balance": 119.19,
+    "spent": -91.75,
+    "adjustments": 0,
+    "category_id": "category_1766265437406_yihi892i4",
+    "allocated": 150,
+    "transfers": 0
+  },
+  {
+    "allocated": 1000,
+    "spent": -1019.47,
+    "end_balance": 1883.18,
+    "transfers": 0,
+    "start_balance": 1902.65,
+    "adjustments": 0,
+    "category_id": "category_1766288765095_ew8htogil"
+  },
+  {
+    "end_balance": 605.38,
+    "start_balance": 654.24,
+    "spent": -98.86,
+    "allocated": 50,
+    "transfers": 0,
+    "adjustments": 0,
+    "category_id": "category_1766288829038_0ygxsees9"
+  },
+  {
+    "spent": -1039.65,
+    "transfers": 0,
+    "adjustments": 0,
+    "start_balance": 0,
+    "allocated": 1039.65,
+    "category_id": "69LUQGMJrYlIPoixIkng",
+    "end_balance": 0
+  },
+  {
+    "adjustments": 0,
+    "end_balance": 0,
+    "start_balance": 0,
+    "allocated": 40,
+    "transfers": 0,
+    "spent": -40,
+    "category_id": "lvRJzTnpe7HkaAzJwmOn"
+  },
+  {
+    "spent": -90.59,
+    "adjustments": 0,
+    "transfers": 0,
+    "start_balance": -1737.22,
+    "end_balance": -1817.81,
+    "allocated": 10,
+    "category_id": "category_1766288625999_zpi9ppeqw"
+  },
+  {
+    "adjustments": 0,
+    "end_balance": 46.77,
+    "transfers": 0,
+    "allocated": 60,
+    "category_id": "category_1766265357718_y7lydlt9a",
+    "spent": -52.1,
+    "start_balance": 38.87
+  },
+  {
+    "end_balance": -172.02,
+    "allocated": 15,
+    "transfers": 0,
+    "adjustments": 0,
+    "spent": -538.74,
+    "category_id": "category_1766288812979_he1q3x8jy",
+    "start_balance": 351.72
+  },
+  {
+    "spent": 51.75,
+    "allocated": 200,
+    "transfers": 0,
+    "category_id": "category_1766288731002_5v1826ijc",
+    "start_balance": 1870.42,
+    "end_balance": 2122.17,
+    "adjustments": 0
+  },
+  {
+    "category_id": "Zfr8EwlTWLmsk7vYirAT",
+    "start_balance": -1200,
+    "spent": -1200,
+    "transfers": 0,
+    "adjustments": 0,
+    "allocated": 1200,
+    "end_balance": -1200
+  },
+  {
+    "adjustments": 0,
+    "start_balance": 166.23,
+    "spent": 0,
+    "end_balance": 266.23,
+    "transfers": 0,
+    "allocated": 100,
+    "category_id": "category_1766265369105_ehvqlgukb"
+  },
+  {
+    "start_balance": 0,
+    "transfers": 0,
+    "end_balance": 0,
+    "adjustments": 0,
+    "spent": 0,
+    "allocated": 0,
+    "category_id": "O5NtsCMtBm5J9L3ULRVO"
+  },
+  {
+    "category_id": "category_hidden_1767678803954_house",
+    "end_balance": 0,
+    "allocated": 0,
+    "spent": 0,
+    "adjustments": 0,
+    "transfers": 0,
+    "start_balance": 0
+  },
+  {
+    "adjustments": 0,
+    "allocated": 0,
+    "transfers": 0,
+    "start_balance": 0,
+    "category_id": "category_1766265047006_n028ssip1",
+    "end_balance": 0,
+    "spent": 0
+  },
+  {
+    "start_balance": 0,
+    "spent": 0,
+    "end_balance": 0,
+    "allocated": 0,
+    "category_id": "category_1766288771747_qek6wlmy8",
+    "transfers": 0,
+    "adjustments": 0
+  },
+  {
+    "start_balance": 0,
+    "spent": 0,
+    "transfers": 0,
+    "adjustments": 0,
+    "end_balance": 10,
+    "allocated": 10,
+    "category_id": "category_1766288743633_wkkcxygrr"
+  },
+  {
+    "adjustments": 0,
+    "spent": 0,
+    "end_balance": 11009.42,
+    "allocated": 420,
+    "category_id": "category_1766288615238_l94bjlz89",
+    "start_balance": 10589.42,
+    "transfers": 0
+  },
+  {
+    "adjustments": 0,
+    "spent": 0,
+    "category_id": "category_1766288810298_429f26vq2",
+    "transfers": 0,
+    "end_balance": 54.87,
+    "start_balance": 44.87,
+    "allocated": 10
+  },
+  {
+    "category_id": "category_1766288820785_zhtwle8xm",
+    "transfers": 0,
+    "start_balance": 1461.26,
+    "allocated": 150,
+    "spent": 0,
+    "adjustments": 0,
+    "end_balance": 1611.26
+  },
+  {
+    "end_balance": 0,
+    "allocated": 0,
+    "spent": 0,
+    "start_balance": 0,
+    "category_id": "category_1766288746550_763eaiy62",
+    "transfers": 0,
+    "adjustments": 0
+  },
+  {
+    "spent": 0,
+    "adjustments": 0,
+    "end_balance": 0,
+    "category_id": "category_1766288833773_gbqpud8im",
+    "start_balance": 0,
+    "transfers": 0,
+    "allocated": 0
+  },
+  {
+    "adjustments": 0,
+    "allocated": 0,
+    "start_balance": 12000,
+    "category_id": "category_1766288738225_b60g12x67",
+    "end_balance": 12000,
+    "transfers": 0,
+    "spent": 0
+  }
+]

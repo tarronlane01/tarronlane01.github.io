@@ -1,0 +1,52 @@
+[
+  {
+    "id": "adjustment_import_1767473622532_uj591w7ya",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "category_id": "category_1766288810298_429f26vq2",
+    "amount": 80,
+    "cleared": true,
+    "date": "2023-04-16",
+    "account_id": "__NO_ACCOUNT__",
+    "description": "Transfer"
+  },
+  {
+    "id": "adjustment_import_1767473622532_91oq7wypr",
+    "date": "2023-04-16",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_1766265437406_yihi892i4",
+    "amount": -60,
+    "description": "Transfer"
+  },
+  {
+    "description": "Make Up the Difference",
+    "category_id": "category_1766288825592_glvgzh2u4",
+    "cleared": true,
+    "date": "2023-04-16",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "id": "adjustment_import_1767473622532_xb5nkz1ol",
+    "account_id": "__NO_ACCOUNT__",
+    "amount": -20
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622532_r9nrnivzd",
+    "amount": 1546.25,
+    "cleared": true,
+    "description": "Payoff credit card",
+    "date": "2023-04-04",
+    "account_id": "account_1766289015844_afauk11gp",
+    "created_at": "2026-01-03T20:53:42.532Z"
+  },
+  {
+    "id": "adjustment_import_1767473622532_z5e4qbmw0",
+    "description": "Transfer",
+    "date": "2023-04-05",
+    "created_at": "2026-01-03T20:53:42.532Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "category_id": "__NO_CATEGORY__",
+    "amount": -1546.25,
+    "cleared": true
+  }
+]

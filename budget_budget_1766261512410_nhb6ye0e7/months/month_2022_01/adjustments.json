@@ -1,0 +1,52 @@
+[
+  {
+    "date": "2022-01-07",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "id": "adjustment_import_1767473622529_ape05z6s0",
+    "description": "House",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "amount": -4500,
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "amount": 735.45,
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "cleared": true,
+    "date": "2022-01-04",
+    "description": "Transfer",
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622529_qvqfrtp7n",
+    "account_id": "account_1766289015844_afauk11gp"
+  },
+  {
+    "amount": -735.45,
+    "id": "adjustment_import_1767473622529_8399rjwu4",
+    "date": "2022-01-05",
+    "category_id": "__NO_CATEGORY__",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "description": "Payoff credit card",
+    "created_at": "2026-01-03T20:53:42.529Z"
+  },
+  {
+    "id": "adjustment_import_1767473622529_ek79akgua",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "amount": 1089.14,
+    "cleared": true,
+    "account_id": "account_1766289015844_afauk11gp",
+    "description": "Payoff credit",
+    "date": "2022-01-22",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "id": "adjustment_import_1767473622529_08ghqd7pl",
+    "created_at": "2026-01-03T20:53:42.529Z",
+    "date": "2022-01-24",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": -1089.14,
+    "cleared": true,
+    "description": "Payoff credit",
+    "category_id": "__NO_CATEGORY__"
+  }
+]

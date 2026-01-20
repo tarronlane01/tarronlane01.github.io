@@ -1,0 +1,82 @@
+[
+  {
+    "description": "September Contribution",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "cleared": true,
+    "date": "2022-09-01",
+    "amount": -5000,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "adjustment_import_1767473622531_nrymv6c6c",
+    "category_id": "__NO_CATEGORY__"
+  },
+  {
+    "date": "2022-09-28",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "id": "adjustment_import_1767473622531_lyp6f63it",
+    "description": "House Inspection",
+    "amount": -510,
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.531Z"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "description": "Appraisal",
+    "date": "2022-09-30",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true,
+    "amount": -530,
+    "id": "adjustment_import_1767473622531_m8kkt5zd4"
+  },
+  {
+    "date": "2022-09-27",
+    "amount": -4015,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "id": "adjustment_import_1767473622531_58gd4nlbg",
+    "category_id": "__NO_CATEGORY__",
+    "cleared": true,
+    "description": "4000 and wire fee"
+  },
+  {
+    "category_id": "__NO_CATEGORY__",
+    "id": "adjustment_import_1767473622531_h8awor4i3",
+    "account_id": "account_1766289015844_afauk11gp",
+    "date": "2022-09-05",
+    "description": "Payoff credit card",
+    "cleared": true,
+    "amount": 1093.13,
+    "created_at": "2026-01-03T20:53:42.531Z"
+  },
+  {
+    "amount": -1093.13,
+    "id": "adjustment_import_1767473622531_cyfc4yycl",
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "category_id": "__NO_CATEGORY__",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "description": "Transfer",
+    "date": "2022-09-06",
+    "cleared": true
+  },
+  {
+    "description": "Pay off",
+    "id": "adjustment_import_1767473622531_rk2n4tj39",
+    "date": "2022-09-28",
+    "category_id": "__NO_CATEGORY__",
+    "amount": 858.03,
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "account_id": "account_1766289004108_7ps0slg4g",
+    "cleared": true
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.531Z",
+    "description": "Pay off",
+    "amount": -858.03,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "id": "adjustment_import_1767473622531_wdacemq6k",
+    "date": "2022-09-29",
+    "category_id": "__NO_CATEGORY__"
+  }
+]

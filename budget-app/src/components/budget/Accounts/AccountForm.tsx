@@ -57,8 +57,8 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
   // Find the current group to check for overrides
   const effectiveGroupId = formData.account_group_id || currentGroupId
   const currentGroup = effectiveGroupId ? accountGroups.find(g => g.id === effectiveGroupId) : null
-  const groupOverridesActive = currentGroup?.is_active !== null
-  const groupOverridesBudget = currentGroup?.on_budget !== null
+  const groupOverridesActive = Boolean(currentGroup && currentGroup.is_active !== null)
+  const groupOverridesBudget = Boolean(currentGroup && currentGroup.on_budget !== null)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -130,15 +130,21 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <Checkbox
                 id="is-active"
-                checked={groupOverridesActive ? currentGroup!.is_active! : (formData.is_active !== false)}
+                checked={(() => {
+                  if (groupOverridesActive && currentGroup) {
+                    const value = currentGroup.is_active
+                    return value === null ? false : (value === undefined ? false : value)
+                  }
+                  return formData.is_active ?? true
+                })()}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                 disabled={groupOverridesActive}
               >
                 <span style={{ opacity: groupOverridesActive ? 0.5 : 1 }}>Active account</span>
               </Checkbox>
-              {groupOverridesActive && (
+              {groupOverridesActive && currentGroup && (
                 <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
-                  Set by account type "{currentGroup!.name}"
+                  Set by account type "{currentGroup.name}"
                 </p>
               )}
             </div>
@@ -147,15 +153,21 @@ export function AccountForm({ initialData, onSubmit, onCancel, submitLabel, acco
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <Checkbox
                 id="on-budget"
-                checked={groupOverridesBudget ? currentGroup!.on_budget! : (formData.on_budget !== false)}
+                checked={(() => {
+                  if (groupOverridesBudget && currentGroup) {
+                    const value = currentGroup.on_budget
+                    return value === null ? false : (value === undefined ? false : value)
+                  }
+                  return formData.on_budget ?? true
+                })()}
                 onChange={(e) => setFormData({ ...formData, on_budget: e.target.checked })}
                 disabled={groupOverridesBudget}
               >
                 <span style={{ opacity: groupOverridesBudget ? 0.5 : 1 }}>On budget (affects budget totals)</span>
               </Checkbox>
-              {groupOverridesBudget && (
+              {groupOverridesBudget && currentGroup && (
                 <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.6, marginLeft: '2rem', color: colors.warning }}>
-                  Set by account type "{currentGroup!.name}"
+                  Set by account type "{currentGroup.name}"
                 </p>
               )}
             </div>

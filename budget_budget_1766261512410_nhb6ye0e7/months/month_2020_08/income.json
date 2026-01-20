@@ -1,0 +1,32 @@
+[
+  {
+    "date": "2020-08-24",
+    "description": "Payroll for Tarron",
+    "payee": "Eide Bailly",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "cleared": true,
+    "amount": 2592.14,
+    "id": "income_import_1767473622525_2ifd4jgs8"
+  },
+  {
+    "account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "date": "2020-08-24",
+    "id": "income_import_1767473622525_pf5eqipqe",
+    "payee": "Eide Bailly",
+    "description": "Payroll direct to 401k",
+    "amount": 255.77,
+    "created_at": "2026-01-03T20:53:42.525Z"
+  },
+  {
+    "cleared": true,
+    "description": "Interest",
+    "id": "income_import_1767473622525_5xlz5he8t",
+    "payee": "Charles Schwab",
+    "amount": 0.83,
+    "date": "2020-08-31",
+    "created_at": "2026-01-03T20:53:42.525Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  }
+]

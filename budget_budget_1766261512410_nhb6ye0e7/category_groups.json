@@ -1,0 +1,27 @@
+[
+  {
+    "id": "3h2WgMCSMmlWiHcnIPrg",
+    "sort_order": 0,
+    "name": "Monthly Recurring"
+  },
+  {
+    "id": "ungrouped_categories",
+    "name": "Uncategorized",
+    "sort_order": 0
+  },
+  {
+    "name": "Short-Term Saving",
+    "sort_order": 1,
+    "id": "category_group_1766265062617_yktkppnkt"
+  },
+  {
+    "name": "Long-Term Saving",
+    "sort_order": 2,
+    "id": "CgFHfHs7Qn5BzWIWufCx"
+  },
+  {
+    "id": "aRAFIkhUx4ReZlvXXl0J",
+    "sort_order": 3,
+    "name": "Guilt-Free Spending"
+  }
+]

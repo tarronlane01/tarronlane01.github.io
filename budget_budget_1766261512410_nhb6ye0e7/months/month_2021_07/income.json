@@ -1,0 +1,72 @@
+[
+  {
+    "date": "2021-07-11",
+    "account_id": "account_1766289996367_pzpaad94s",
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "description": "Dividends",
+    "payee": "Golden 1",
+    "amount": 0.4,
+    "id": "income_import_1767473622528_hd22oh8t6"
+  },
+  {
+    "id": "income_import_1767473622528_kade8udcu",
+    "amount": 1218.21,
+    "payee": "Murdock Hyundai",
+    "date": "2021-07-02",
+    "description": "kami's payroll",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "cleared": true,
+    "amount": 0.23,
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "payee": "Medium (Stripe)",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622528_ctaj7zw81",
+    "description": "medium articles",
+    "date": "2021-07-09"
+  },
+  {
+    "description": "tarron's payroll",
+    "payee": "Hitachi",
+    "cleared": true,
+    "id": "income_import_1767473622528_ytmepbbl8",
+    "amount": 4426.93,
+    "date": "2021-07-15",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.528Z"
+  },
+  {
+    "id": "income_import_1767473622528_oidy0gsn2",
+    "cleared": true,
+    "amount": 1152.61,
+    "description": "kami's payroll",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "payee": "Murdock Hyundai",
+    "date": "2021-07-20",
+    "account_id": "IO0iUrZNOLB125YrvUaF"
+  },
+  {
+    "payee": "Hitachi",
+    "id": "income_import_1767473622528_bhwy8kn9a",
+    "created_at": "2026-01-03T20:53:42.528Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "amount": 4461.93,
+    "date": "2021-07-30",
+    "cleared": true,
+    "description": "payroll for tarron"
+  },
+  {
+    "amount": 0.86,
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "date": "2021-07-30",
+    "description": "interest",
+    "id": "income_import_1767473622528_fi7y2wzjw",
+    "payee": "Charles Schwab",
+    "created_at": "2026-01-03T20:53:42.528Z"
+  }
+]

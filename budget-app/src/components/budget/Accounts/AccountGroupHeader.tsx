@@ -2,7 +2,7 @@
  * AccountGroupHeader - Header for account group cards
  */
 
-import { Button, formatCurrency, getBalanceColor } from '../../ui'
+import { Button, formatSignedCurrency, getBalanceColor } from '../../ui'
 import { sectionHeader, reorderButton, reorderButtonGroup } from '@styles/shared'
 import { GroupOverrideFlags } from './GroupOverrideFlags'
 import type { GroupWithId } from './AccountForm'
@@ -66,7 +66,7 @@ export function GroupHeader({
             borderBottom: '2px solid currentColor',
             paddingBottom: '2px',
           }}>
-            {formatCurrency(groupTotal)}
+            {formatSignedCurrency(groupTotal)}
           </span>
         )}
         <GroupOverrideFlags group={group} />

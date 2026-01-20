@@ -1,0 +1,50 @@
+[
+  {
+    "id": "transfer_from_adj_1767672469360_5z6783evt",
+    "date": "2023-07-19",
+    "from_category_id": "category_1766288625999_zpi9ppeqw",
+    "description": "Walmart",
+    "from_account_id": "__NO_ACCOUNT__",
+    "amount": 50,
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "cleared": true,
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "to_account_id": "__NO_ACCOUNT__"
+  },
+  {
+    "to_account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "amount": 380,
+    "date": "2023-07-25",
+    "to_category_id": "category_1766288743633_wkkcxygrr",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "from_category_id": "category_1766265357718_y7lydlt9a",
+    "id": "transfer_from_adj_1767672469360_temdsixl5",
+    "from_account_id": "__NO_ACCOUNT__",
+    "description": "Borrow for Mattress"
+  },
+  {
+    "amount": 10,
+    "date": "2023-07-27",
+    "from_account_id": "__NO_ACCOUNT__",
+    "cleared": true,
+    "description": "Service",
+    "from_category_id": "category_1766288833773_gbqpud8im",
+    "to_category_id": "pPQqTWxWz4IjeHW5Z1iX",
+    "id": "transfer_from_adj_1767672469360_g74uow5r0",
+    "to_account_id": "__NO_ACCOUNT__",
+    "created_at": "2026-01-06T04:07:49.360Z"
+  },
+  {
+    "from_account_id": "__NO_ACCOUNT__",
+    "amount": 200,
+    "date": "2023-07-31",
+    "description": "Transfer",
+    "created_at": "2026-01-06T04:07:49.360Z",
+    "cleared": true,
+    "to_account_id": "__NO_ACCOUNT__",
+    "from_category_id": "category_1766265357718_y7lydlt9a",
+    "id": "transfer_from_adj_1767672469360_i3wxjscl5",
+    "to_category_id": "category_1766288771747_qek6wlmy8"
+  }
+]

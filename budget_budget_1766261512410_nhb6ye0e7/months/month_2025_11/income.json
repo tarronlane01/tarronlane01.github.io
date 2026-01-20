@@ -1,0 +1,52 @@
+[
+  {
+    "payee": "Gunderson",
+    "id": "income_import_1767473622538_cpwwoes37",
+    "description": "",
+    "cleared": true,
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "amount": 5223.27,
+    "date": "2025-11-15"
+  },
+  {
+    "cleared": true,
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622538_bvz3w5dmr",
+    "payee": "Gunderson",
+    "description": "",
+    "date": "2025-11-21",
+    "amount": 9966.69
+  },
+  {
+    "description": "",
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "date": "2025-11-30",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "id": "income_import_1767473622538_6w4w5nvar",
+    "amount": 5223.28,
+    "cleared": true,
+    "payee": "Gunderson"
+  },
+  {
+    "amount": 3.68,
+    "id": "income_import_1767473622538_lkeqhw8rr",
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "description": "",
+    "date": "2025-11-30",
+    "account_id": "IO0iUrZNOLB125YrvUaF",
+    "cleared": true,
+    "payee": "Dividend"
+  },
+  {
+    "created_at": "2026-01-03T20:53:42.538Z",
+    "cleared": true,
+    "account_id": "ZByDH9Vmv2BbQrfAWSq7",
+    "amount": 0.04,
+    "id": "income_import_1767473622538_8ojc5tcwz",
+    "payee": "Dividend",
+    "description": "",
+    "date": "2025-11-30"
+  }
+]
