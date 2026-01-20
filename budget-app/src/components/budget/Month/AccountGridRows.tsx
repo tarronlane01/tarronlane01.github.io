@@ -31,16 +31,19 @@ function getNetChangeColor(value: number): string {
 // ACCOUNT GROUP ROWS - renders as grid items using display: contents
 // =============================================================================
 
+import type { AccountClearedBalance } from '@calculations'
+
 export interface AccountGroupRowsProps {
   name: string
   accounts: Array<[string, FinancialAccount]>
   groupTotals: { start: number; income: number; expenses: number; transfers: number; adjustments: number; netChange: number; end: number }
   accountBalances: Record<string, AccountMonthBalance>
+  accountClearedBalances?: Record<string, AccountClearedBalance>
   isMobile: boolean
   isUngrouped?: boolean
 }
 
-export function AccountGroupRows({ name, accounts, groupTotals, accountBalances, isMobile, isUngrouped }: AccountGroupRowsProps) {
+export function AccountGroupRows({ name, accounts, groupTotals, accountBalances, accountClearedBalances, isMobile, isUngrouped }: AccountGroupRowsProps) {
   const groupHeaderCellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
     marginTop: '1.25rem',
@@ -83,6 +86,56 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotals.end) }}>
             {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatCurrency(groupTotals.end)}</span>}
           </div>
+          {/* Total, Cleared, Uncleared totals for group */}
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end' }}>
+            {featureFlags.showGroupTotals && accountClearedBalances && (
+              <span style={groupTotalText}>
+                {formatCurrency(
+                  accounts.reduce((sum, [accountId]) => {
+                    const bal = accountClearedBalances[accountId]
+                    return sum + (bal?.uncleared_balance ?? 0)
+                  }, 0)
+                )}
+              </span>
+            )}
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end' }}>
+            {featureFlags.showGroupTotals && accountClearedBalances && (
+              <span style={groupTotalText}>
+                {(() => {
+                  const clearedTotal = accounts.reduce((sum, [accountId]) => {
+                    const bal = accountClearedBalances[accountId]
+                    return sum + (bal?.cleared_balance ?? 0)
+                  }, 0)
+                  const unclearedTotal = accounts.reduce((sum, [accountId]) => {
+                    const bal = accountClearedBalances[accountId]
+                    return sum + (bal?.uncleared_balance ?? 0)
+                  }, 0)
+                  return Math.abs(unclearedTotal - clearedTotal) < 0.01
+                    ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                    : formatCurrency(clearedTotal)
+                })()}
+              </span>
+            )}
+          </div>
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end' }}>
+            {featureFlags.showGroupTotals && accountClearedBalances && (
+              <span style={groupTotalText}>
+                {(() => {
+                  const clearedTotal = accounts.reduce((sum, [accountId]) => {
+                    const bal = accountClearedBalances[accountId]
+                    return sum + (bal?.cleared_balance ?? 0)
+                  }, 0)
+                  const unclearedTotal = accounts.reduce((sum, [accountId]) => {
+                    const bal = accountClearedBalances[accountId]
+                    return sum + (bal?.uncleared_balance ?? 0)
+                  }, 0)
+                  const difference = unclearedTotal - clearedTotal
+                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span> : formatSignedCurrencyAlways(difference)
+                })()}
+              </span>
+            )}
+          </div>
         </>
       )}
 
@@ -115,16 +168,17 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
       {accounts.map(([accountId, account], index) => {
         const bal = accountBalances[accountId]
         if (!bal) return null
+        const clearedBal = accountClearedBalances?.[accountId]
 
         if (isMobile) {
           return (
             <div key={accountId} style={{ gridColumn: '1 / -1' }}>
-              <MobileAccountRow account={account} balance={bal} />
+              <MobileAccountRow account={account} balance={bal} clearedBalance={clearedBal} />
             </div>
           )
         }
 
-        return <AccountGridRow key={accountId} account={account} balance={bal} isEvenRow={index % 2 === 0} />
+        return <AccountGridRow key={accountId} account={account} balance={bal} clearedBalance={clearedBal} isEvenRow={index % 2 === 0} />
       })}
     </div>
   )
@@ -134,18 +188,22 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
 // ACCOUNT GRID ROW - renders directly as grid items (display: contents)
 // =============================================================================
 
-function AccountGridRow({ account, balance, isEvenRow }: { account: FinancialAccount; balance: AccountMonthBalance; isEvenRow: boolean }) {
+function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { account: FinancialAccount; balance: AccountMonthBalance; clearedBalance?: AccountClearedBalance; isEvenRow: boolean }) {
   const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem 0.5rem',
-    background: rowBg,
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
   }
 
   return (
-    <div style={{ display: 'contents' }}>
+    <div style={{
+      gridColumn: '1 / -1',
+      background: rowBg,
+      display: 'grid',
+      gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', // Match parent grid columns
+    }}>
       <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
@@ -170,6 +228,38 @@ function AccountGridRow({ account, balance, isEvenRow }: { account: FinancialAcc
       <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getBalanceColor(balance.end_balance) }}>
         {formatCurrency(balance.end_balance)}
       </div>
+      {/* Total balance column (uncleared_balance) */}
+      {clearedBalance ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
+          {formatCurrency(clearedBalance.uncleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+          —
+        </div>
+      )}
+      {/* Cleared balance column - show dash if same as total */}
+      {clearedBalance ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
+          {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
+            ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+            : formatCurrency(clearedBalance.cleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+          —
+        </div>
+      )}
+      {/* Uncleared portion column (difference) - show dash if same as cleared */}
+      {clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getNetChangeColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
+          {formatSignedCurrencyAlways(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+          —
+        </div>
+      )}
     </div>
   )
 }
@@ -178,13 +268,13 @@ function AccountGridRow({ account, balance, isEvenRow }: { account: FinancialAcc
 // MOBILE ACCOUNT ROW
 // =============================================================================
 
-function MobileAccountRow({ account, balance }: { account: FinancialAccount; balance: AccountMonthBalance }) {
+function MobileAccountRow({ account, balance, clearedBalance }: { account: FinancialAccount; balance: AccountMonthBalance; clearedBalance?: AccountClearedBalance }) {
   return (
     <div style={{ background: 'color-mix(in srgb, currentColor 5%, transparent)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.25rem' }}>
       <div style={{ marginBottom: '0.5rem' }}>
         <span style={{ fontWeight: 500 }}>{account.nickname}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.25rem', fontSize: '0.75rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: '0.25rem', fontSize: '0.75rem' }}>
         <div>
           <span style={{ opacity: 0.6, display: 'block' }}>Start</span>
           <span>{formatCurrency(balance.start_balance)}</span>
@@ -199,6 +289,43 @@ function MobileAccountRow({ account, balance }: { account: FinancialAccount; bal
           <span style={{ opacity: 0.6, display: 'block' }}>End</span>
           <span style={{ color: getBalanceColor(balance.end_balance) }}>{formatCurrency(balance.end_balance)}</span>
         </div>
+        {clearedBalance && (
+          <>
+            <div>
+              <span style={{ opacity: 0.6, display: 'block' }}>Total</span>
+              <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
+                {formatCurrency(clearedBalance.uncleared_balance)}
+              </span>
+            </div>
+            {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+              <>
+                <div>
+                  <span style={{ opacity: 0.6, display: 'block' }}>Cleared</span>
+                  <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>
+                    {formatCurrency(clearedBalance.cleared_balance)}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.6, display: 'block' }}>Uncleared</span>
+                  <span style={{ color: getNetChangeColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
+                    {formatSignedCurrencyAlways(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span style={{ opacity: 0.6, display: 'block' }}>Cleared</span>
+                  <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                </div>
+                <div>
+                  <span style={{ opacity: 0.6, display: 'block' }}>Uncleared</span>
+                  <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
       {(balance.income !== 0 || balance.expenses !== 0 || balance.transfers !== 0 || balance.adjustments !== 0) && (
         <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', fontSize: '0.7rem', opacity: 0.7 }}>

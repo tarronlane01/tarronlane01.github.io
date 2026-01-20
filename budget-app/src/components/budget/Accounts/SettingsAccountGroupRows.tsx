@@ -14,11 +14,14 @@ import { AccountForm } from './AccountForm'
 import { featureFlags } from '@constants'
 import { logUserAction } from '@utils'
 
+import type { AccountClearedBalance } from '@calculations'
+
 interface SettingsAccountGroupRowsProps {
   group: GroupWithId
   accounts: AccountWithId[]
   allGroups: GroupWithId[]
   allAccounts: AccountsMap
+  accountClearedBalances?: Record<string, AccountClearedBalance>
   editingAccountId: string | null
   createForGroupId: string | null
   setEditingAccountId: (id: string | null) => void
@@ -43,6 +46,7 @@ export function SettingsAccountGroupRows({
   accounts,
   allGroups,
   allAccounts,
+  accountClearedBalances,
   editingAccountId,
   createForGroupId,
   setEditingAccountId,
@@ -117,10 +121,13 @@ export function SettingsAccountGroupRows({
               )}
             </div>
           </div>
-          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getBalanceColor(groupTotal) }}>
-            {featureFlags.showGroupTotals && <span style={groupTotalText}>{formatCurrency(groupTotal)}</span>}
-          </div>
+          {/* Cleared, Uncleared, Difference columns for group header - empty for now */}
           <div style={groupHeaderCellStyle}></div>
+          <div style={groupHeaderCellStyle}></div>
+          <div style={groupHeaderCellStyle}></div>
+          {/* Flags column - empty */}
+          <div style={groupHeaderCellStyle}></div>
+          {/* Actions column - empty */}
           <div style={groupHeaderCellStyle}></div>
         </>
       )}
@@ -187,6 +194,7 @@ export function SettingsAccountGroupRows({
           totalAccounts={sortedAccounts.length}
           allGroups={allGroups}
           allAccounts={allAccounts}
+          clearedBalance={accountClearedBalances?.[account.id]}
           onEdit={setEditingAccountId}
           onDelete={onDeleteAccount}
           onMoveUp={() => onMoveAccount(account.id, 'up')}

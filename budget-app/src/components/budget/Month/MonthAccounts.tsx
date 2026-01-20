@@ -21,6 +21,7 @@ import { LoadingOverlay, ProgressBar, StatItem, PercentLabel } from '../../app/L
 import {
   calculateAccountBalances,
   calculateAccountBalanceTotals,
+  calculateAccountClearedBalances,
 } from '@calculations'
 
 // Column header style for the grid
@@ -104,6 +105,12 @@ export function MonthAccounts() {
     [currentMonth, accounts]
   )
 
+  // Calculate cleared/uncleared balances for this month
+  const accountClearedBalances = useMemo(
+    () => calculateAccountClearedBalances(currentMonth, accounts),
+    [currentMonth, accounts]
+  )
+
   // Calculate account balance totals
   const accountBalanceTotals = useMemo(
     () => calculateAccountBalanceTotals(accountBalances),
@@ -176,8 +183,8 @@ export function MonthAccounts() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End, Total, Cleared, Uncleared
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
       }}>
         {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
@@ -200,6 +207,9 @@ export function MonthAccounts() {
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Adjust</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>End</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Total</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Cleared</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Uncleared</div>
             </>
           )}
 
@@ -229,6 +239,33 @@ export function MonthAccounts() {
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.end) }}>
                 {formatCurrency(accountBalanceTotals.end)}
+              </div>
+              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
+                {/* Total - sum of all uncleared balances */}
+                {Object.keys(accountClearedBalances).length > 0
+                  ? formatCurrency(Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0))
+                  : <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>}
+              </div>
+              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
+                {/* Cleared total - show dash if same as total */}
+                {(() => {
+                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
+                  const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
+                  return Math.abs(unclearedTotal - clearedTotal) < 0.01
+                    ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                    : formatCurrency(clearedTotal)
+                })()}
+              </div>
+              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
+                {/* Uncleared total (difference) - show dash if same as cleared */}
+                {(() => {
+                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
+                  const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
+                  const difference = unclearedTotal - clearedTotal
+                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span> : formatSignedCurrencyAlways(difference)
+                })()}
               </div>
             </>
           ) : (
@@ -286,6 +323,7 @@ export function MonthAccounts() {
               accounts={groupAccounts}
               groupTotals={groupTotals}
               accountBalances={accountBalances}
+              accountClearedBalances={accountClearedBalances}
               isMobile={isMobile}
             />
           )
@@ -315,6 +353,7 @@ export function MonthAccounts() {
               accounts={ungroupedAccounts}
               groupTotals={ungroupedTotals}
               accountBalances={accountBalances}
+              accountClearedBalances={accountClearedBalances}
               isMobile={isMobile}
               isUngrouped
             />

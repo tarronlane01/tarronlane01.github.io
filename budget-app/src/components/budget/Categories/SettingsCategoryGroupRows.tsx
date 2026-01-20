@@ -32,6 +32,7 @@ interface SettingsCategoryGroupRowsProps {
   handleCreateCategory: (data: CategoryFormData, groupId: string | null) => Promise<void>
   isMobile: boolean
   isUngrouped?: boolean
+  startRowIndex?: number // Global row index for consistent striping across groups
   // Group editing props
   canMoveGroupUp: boolean
   canMoveGroupDown: boolean
@@ -57,6 +58,7 @@ export function SettingsCategoryGroupRows({
   handleCreateCategory,
   isMobile,
   isUngrouped,
+  startRowIndex = 0,
   canMoveGroupUp,
   canMoveGroupDown,
   onEditGroup,
@@ -144,10 +146,25 @@ export function SettingsCategoryGroupRows({
               )}
             </div>
           </div>
+          {/* Default Allocation column - empty */}
+          <div style={groupHeaderCellStyle}></div>
+          {/* Available Now total */}
           <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(groupTotal) }}>
             {featureFlags.showGroupTotals && <span style={groupTotalText}>{loadingBalances ? '...' : formatBalanceCurrency(groupTotal)}</span>}
           </div>
+          {/* Total Allocated total */}
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(sortedCategories.reduce((sum, [catId]) => {
+            const bal = categoryBalances[catId]
+            return sum + (bal?.total || 0)
+          }, 0)) }}>
+            {featureFlags.showGroupTotals && <span style={groupTotalText}>{loadingBalances ? '...' : formatBalanceCurrency(sortedCategories.reduce((sum, [catId]) => {
+              const bal = categoryBalances[catId]
+              return sum + (bal?.total || 0)
+            }, 0))}</span>}
+          </div>
+          {/* Description column - empty */}
           <div style={groupHeaderCellStyle}></div>
+          {/* Actions column - empty */}
           <div style={groupHeaderCellStyle}></div>
         </>
       )}
@@ -226,28 +243,32 @@ export function SettingsCategoryGroupRows({
       )}
 
       {/* Category rows */}
-      {sortedCategories.map(([catId, category], idx) => (
-        <SettingsCategoryTableRow
-          key={catId}
-          category={category}
-          catId={catId}
-          categoryIndex={idx}
-          totalCategories={sortedCategories.length}
-          categoryGroups={categoryGroups}
-          categoryBalances={categoryBalances}
-          loadingBalances={loadingBalances}
-          onEdit={setEditingCategoryId}
-          onDelete={handleDeleteCategory}
-          onMoveUp={() => handleMoveCategory(catId, 'up')}
-          onMoveDown={() => handleMoveCategory(catId, 'down')}
-          canMoveUp={idx > 0}
-          canMoveDown={idx < sortedCategories.length - 1}
-          editingCategoryId={editingCategoryId}
-          setEditingCategoryId={setEditingCategoryId}
-          onUpdateCategory={handleUpdateCategory}
-          isMobile={isMobile}
-        />
-      ))}
+      {sortedCategories.map(([catId, category], idx) => {
+        // Use global row index for consistent striping across all groups
+        const globalRowIndex = startRowIndex + idx
+        return (
+          <SettingsCategoryTableRow
+            key={catId}
+            category={category}
+            catId={catId}
+            categoryIndex={globalRowIndex}
+            totalCategories={sortedCategories.length}
+            categoryGroups={categoryGroups}
+            categoryBalances={categoryBalances}
+            loadingBalances={loadingBalances}
+            onEdit={setEditingCategoryId}
+            onDelete={handleDeleteCategory}
+            onMoveUp={() => handleMoveCategory(catId, 'up')}
+            onMoveDown={() => handleMoveCategory(catId, 'down')}
+            canMoveUp={idx > 0}
+            canMoveDown={idx < sortedCategories.length - 1}
+            editingCategoryId={editingCategoryId}
+            setEditingCategoryId={setEditingCategoryId}
+            onUpdateCategory={handleUpdateCategory}
+            isMobile={isMobile}
+          />
+        )
+      })}
 
       {/* Create form */}
       {createForGroupId === group.id && (

@@ -80,17 +80,21 @@ export function ExpenseGridRow({ expense, categoryName, accountName, accountGrou
     )
   }
 
-  // Desktop: Grid row using display: contents
+  // Desktop: Grid row using wrapper div for consistent striping
   const cellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
-    background: rowBg,
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
   }
 
   return (
-    <div style={{ display: 'contents' }}>
+    <div style={{
+      gridColumn: '1 / -1',
+      background: rowBg,
+      display: 'grid',
+      gridTemplateColumns: '5rem 1.5fr 7rem 1fr 6rem 1fr 3rem 4rem', // Match parent grid columns
+    }}>
       {/* Date */}
       <div style={{ ...cellStyle, fontSize: '0.85rem', fontFamily: 'monospace' }}>
         <span style={{ opacity: 0.6 }}>{formattedDate}</span>

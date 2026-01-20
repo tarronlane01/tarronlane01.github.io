@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useAccountsPage, useBudgetData, useAutoRecalculation } from '@hooks'
+import { useAccountsPage, useBudgetData, useAutoRecalculation, useMonthData } from '@hooks'
 import { useBudget, useApp } from '@contexts'
+import { calculateAccountClearedBalances } from '@calculations'
 import {
   Button,
   formatCurrency,
@@ -18,8 +19,9 @@ import { SettingsAccountGroupRows } from '@components/budget/Accounts/SettingsAc
 import { RecalculateAllButton } from '@components/budget/Month'
 
 function Accounts() {
-  const { selectedBudgetId } = useBudget()
-  const { monthMap, isLoading: isBudgetLoading } = useBudgetData()
+  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { monthMap, isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts } = useBudgetData()
+  const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   const {
     accounts,
@@ -42,18 +44,19 @@ function Accounts() {
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
 
-  // Add loading hold while loading - keep it up until budget data is fully loaded
+  // Check fetching state BEFORE rendering to avoid flashing empty values
+  const isDataLoading = isBudgetLoading || isBudgetFetching || !currentBudget
+  // Auto-trigger recalculation when navigating to Accounts settings if ANY month needs recalc
+  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isDataLoading && !!currentBudget, logPrefix: '[Settings/Accounts]' })
+  // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
   useEffect(() => {
-    if (isBudgetLoading || !currentBudget) {
+    if (isDataLoading) {
       addLoadingHold('accounts', 'Loading accounts...')
     } else {
       removeLoadingHold('accounts')
     }
     return () => removeLoadingHold('accounts')
-  }, [isBudgetLoading, currentBudget, addLoadingHold, removeLoadingHold])
-
-  // Auto-trigger recalculation when navigating to Accounts settings if ANY month needs recalc
-  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isBudgetLoading && !!currentBudget, logPrefix: '[Settings/Accounts]' })
+  }, [isDataLoading, addLoadingHold, removeLoadingHold])
 
   // Account editing state
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
@@ -109,6 +112,12 @@ function Accounts() {
 
   const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID] || []
 
+  // Calculate cleared balances from current month
+  const accountClearedBalances = useMemo(() => {
+    if (!currentMonth) return {}
+    return calculateAccountClearedBalances(currentMonth, budgetAccounts)
+  }, [currentMonth, budgetAccounts])
+
   // Column header style - matches month pages
   const columnHeaderStyle: React.CSSProperties = {
     fontSize: '0.75rem',
@@ -134,18 +143,13 @@ function Accounts() {
     }
   }, [error, setError])
 
-  // Don't show "No budget found" while still loading
-  if (isBudgetLoading) {
-    return null
-  }
-
-  if (!currentBudget) {
-    return <p>No budget found. Please log in.</p>
+  // Don't render content if data is loading or fetching (cache invalid) - show loading overlay instead
+  if (isDataLoading || !currentBudget) {
+    return isDataLoading ? null : <p>No budget found. Please log in.</p>
   }
 
   return (
     <div>
-
       {/* Sticky header: title + stats + buttons */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: '#242424', marginLeft: 'calc(-1 * var(--page-padding, 2rem))', marginRight: 'calc(-1 * var(--page-padding, 2rem))', paddingLeft: 'var(--page-padding, 2rem)', paddingRight: 'var(--page-padding, 2rem)', paddingTop: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
         {/* Title + Stats + Buttons row */}
@@ -179,8 +183,8 @@ function Accounts() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Balance, Flags, Actions
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1.5fr 1fr',
+        // Account, Total, Cleared, Uncleared, Flags, Actions
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1.5fr 1fr',
         marginTop: '1rem',
         marginBottom: '1.5rem',
       }}>
@@ -198,7 +202,9 @@ function Accounts() {
           {!isMobile && (
             <>
               <div style={columnHeaderStyle}>Account</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Balance</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Total</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Cleared</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Uncleared</div>
               <div style={columnHeaderStyle}>Flags</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Actions</div>
             </>
@@ -246,6 +252,7 @@ function Accounts() {
               accounts={groupAccounts}
               allGroups={sortedGroups}
               allAccounts={accounts}
+              accountClearedBalances={accountClearedBalances}
               editingAccountId={editingAccountId}
               createForGroupId={createForGroupId}
               setEditingAccountId={setEditingAccountId}
@@ -272,6 +279,7 @@ function Accounts() {
             accounts={ungroupedAccounts}
             allGroups={sortedGroups}
             allAccounts={accounts}
+            accountClearedBalances={accountClearedBalances}
             editingAccountId={editingAccountId}
             createForGroupId={createForGroupId}
             setEditingAccountId={setEditingAccountId}
@@ -291,7 +299,6 @@ function Accounts() {
           />
         )}
 
-        {/* Bottom padding */}
         <div style={{ gridColumn: '1 / -1', height: '1rem' }} />
       </div>
 

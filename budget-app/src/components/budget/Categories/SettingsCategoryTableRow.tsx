@@ -7,7 +7,7 @@
 
 import type { Category, CategoryGroup } from '@contexts/budget_context'
 import type { CategoryFormData } from './CategoryForm'
-import { formatBalanceCurrency, getCategoryBalanceColor } from '../../ui'
+import { formatBalanceCurrency, formatCurrency, getCategoryBalanceColor } from '../../ui'
 import { CategoryForm } from './CategoryForm'
 import { logUserAction } from '@utils'
 import { colors } from '@styles/shared'
@@ -98,9 +98,30 @@ export function SettingsCategoryTableRow({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 500 }}>{category.name}</span>
-            <span style={{ color: getCategoryBalanceColor(balance.current), fontWeight: 600 }}>
-              {loadingBalances ? '...' : formatBalanceCurrency(balance.current)}
-            </span>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
+              {category.default_monthly_amount !== undefined && category.default_monthly_amount > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Default</span>
+                  <span style={{ opacity: 0.7 }}>
+                    {category.default_monthly_type === 'percentage'
+                      ? `${category.default_monthly_amount}%`
+                      : `${formatCurrency(category.default_monthly_amount)}/mo`}
+                  </span>
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Available Now</span>
+                <span style={{ color: getCategoryBalanceColor(balance.current), fontWeight: 600 }}>
+                  {loadingBalances ? '...' : formatBalanceCurrency(balance.current)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Total Allocated</span>
+                <span style={{ color: getCategoryBalanceColor(balance.total) }}>
+                  {loadingBalances ? '...' : formatBalanceCurrency(balance.total)}
+                </span>
+              </div>
+            </div>
           </div>
           {category.description && (
             <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 0 0.5rem 0' }}>
@@ -178,54 +199,63 @@ export function SettingsCategoryTableRow({
   // Desktop: Grid row using display: contents
   const isEvenRow = categoryIndex % 2 === 0
   const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+
+  // Base cell style - no background, it will come from the row wrapper
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem',
-    background: rowBg,
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
   }
 
   return (
-    <div style={{ display: 'contents' }}>
-      {/* Category name */}
-      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.name}</span>
-        {category.default_monthly_amount !== undefined && category.default_monthly_amount > 0 && (
-          <span style={{
-            marginLeft: '0.5rem',
-            fontSize: '0.7rem',
-            opacity: 0.7,
-            background: 'color-mix(in srgb, currentColor 10%, transparent)',
-            padding: '0.1rem 0.4rem',
-            borderRadius: '3px',
-            whiteSpace: 'nowrap',
-          }}>
-            {category.default_monthly_type === 'percentage'
-              ? `${category.default_monthly_amount}%`
-              : `${category.default_monthly_amount}/mo`}
-          </span>
-        )}
-      </div>
+    <div style={{
+      gridColumn: '1 / -1',
+      background: rowBg,
+      display: 'grid',
+      gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr 1fr', // Match parent grid columns
+    }}>
+        {/* Category name */}
+        <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.name}</span>
+        </div>
 
-      {/* Balance */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balance.current), fontWeight: 600 }}>
-        {loadingBalances ? '...' : formatBalanceCurrency(balance.current)}
-      </div>
+        {/* Default Allocation */}
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.7, fontSize: '0.85rem' }}>
+          {category.default_monthly_amount !== undefined && category.default_monthly_amount > 0 ? (
+            <span>
+              {category.default_monthly_type === 'percentage'
+                ? `${category.default_monthly_amount}%`
+                : `${formatBalanceCurrency(category.default_monthly_amount)}/mo`}
+            </span>
+          ) : (
+            <span style={{ opacity: 0.3, fontStyle: 'italic', color: '#9ca3af' }}>—</span>
+          )}
+        </div>
 
-      {/* Description */}
-      <div style={{ ...cellStyle, opacity: 0.7, fontSize: '0.85rem' }}>
-        {category.description ? (
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {category.description}
-          </span>
-        ) : (
-          <span style={{ opacity: 0.4, fontStyle: 'italic' }}>—</span>
-        )}
-      </div>
+        {/* Available Now */}
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balance.current), fontWeight: 600 }}>
+          {loadingBalances ? '...' : formatBalanceCurrency(balance.current)}
+        </div>
 
-      {/* Actions */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', gap: '0.25rem' }}>
+        {/* Total Allocated */}
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getCategoryBalanceColor(balance.total) }}>
+          {loadingBalances ? '...' : formatBalanceCurrency(balance.total)}
+        </div>
+
+        {/* Description */}
+        <div style={{ ...cellStyle, opacity: 0.7, fontSize: '0.85rem' }}>
+          {category.description ? (
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {category.description}
+            </span>
+          ) : (
+            <span style={{ opacity: 0.3, fontStyle: 'italic', color: '#9ca3af' }}>—</span>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', gap: '0.25rem' }}>
         <button
           onClick={(e) => {
             e.stopPropagation()

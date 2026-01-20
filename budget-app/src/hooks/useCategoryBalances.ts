@@ -7,7 +7,7 @@
  * Extracted from useCategoriesPage to reduce file size.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import type { CategoriesMap } from '@types'
 import { calculateCategoryBalances } from '@data'
 
@@ -32,21 +32,77 @@ export function useCategoryBalances({
   currentMonth,
   updateCategoriesWithBalances,
 }: UseCategoryBalancesParams) {
-  // Compute category balances from the balance field on each category
+  // State for calculated balances
+  const [calculatedBalances, setCalculatedBalances] = useState<Record<string, CategoryBalance>>({})
+  const [isCalculatingBalances, setIsCalculatingBalances] = useState(false)
+
+  // Calculate category balances from actual month data
+  useEffect(() => {
+    if (!budgetId || Object.keys(categories).length === 0) {
+      setCalculatedBalances({})
+      return
+    }
+
+    let cancelled = false
+    setIsCalculatingBalances(true)
+    const categoryIds = Object.keys(categories)
+
+    calculateCategoryBalances(budgetId, categoryIds, currentYear, currentMonth)
+      .then(({ current, total }) => {
+        if (cancelled) return
+        const balances: Record<string, CategoryBalance> = {}
+        categoryIds.forEach(catId => {
+          balances[catId] = {
+            current: current[catId] ?? 0,
+            total: total[catId] ?? 0,
+          }
+        })
+        setCalculatedBalances(balances)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('[useCategoryBalances] Error calculating balances:', error)
+        // Fallback to stored balances on error
+        const balances: Record<string, CategoryBalance> = {}
+        Object.entries(categories).forEach(([catId, cat]) => {
+          balances[catId] = {
+            current: cat.balance ?? 0,
+            total: cat.balance ?? 0,
+          }
+        })
+        setCalculatedBalances(balances)
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsCalculatingBalances(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [budgetId, currentYear, currentMonth, categories])
+
+  // Use calculated balances, fallback to stored balance if not yet calculated
   const categoryBalances = useMemo(() => {
     const balances: Record<string, CategoryBalance> = {}
     Object.entries(categories).forEach(([catId, cat]) => {
-      // For now, we treat the stored balance as "current" since we don't track future separately
-      // The balance field on the category is the running total
-      balances[catId] = {
-        current: cat.balance ?? 0,
-        total: cat.balance ?? 0,
+      if (calculatedBalances[catId]) {
+        balances[catId] = calculatedBalances[catId]
+      } else {
+        // Fallback to stored balance while calculating
+        balances[catId] = {
+          current: cat.balance ?? 0,
+          total: cat.balance ?? 0,
+        }
       }
     })
     return balances
-  }, [categories])
+  }, [categories, calculatedBalances])
 
   const [loadingBalances, setLoadingBalances] = useState(false)
+  // Combine calculating state with loading state
+  const isLoadingBalances = loadingBalances || isCalculatingBalances
   const [categoryBalanceMismatch, setCategoryBalanceMismatch] = useState<
     Record<string, { stored: number; calculated: number }> | null
   >(null)
@@ -115,7 +171,7 @@ export function useCategoryBalances({
 
   return {
     categoryBalances,
-    loadingBalances,
+    loadingBalances: isLoadingBalances,
     categoryBalanceMismatch,
     checkCategoryBalanceMismatch,
     recalculateAndSaveCategoryBalances,

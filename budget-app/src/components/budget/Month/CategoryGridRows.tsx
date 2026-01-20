@@ -34,6 +34,7 @@ export interface CategoryGroupRowsProps {
   isMobile: boolean
   isUngrouped?: boolean
   getAllocationAmount: (catId: string, cat: Category) => number
+  gridTemplateColumns: string // Grid columns from parent
 }
 
 export function CategoryGroupRows({
@@ -49,6 +50,7 @@ export function CategoryGroupRows({
   isMobile,
   isUngrouped,
   getAllocationAmount,
+  gridTemplateColumns, // Passed to CategoryGridRow
 }: CategoryGroupRowsProps) {
   // Group header cell style - matches accounts page
   const groupHeaderCellStyle: React.CSSProperties = {
@@ -192,6 +194,7 @@ export function CategoryGroupRows({
             onAllocationChange={(val) => onAllocationChange(catId, val)}
             allTimeBalance={allTimeBalance}
             isEvenRow={index % 2 === 0}
+            gridTemplateColumns={gridTemplateColumns}
           />
         )
       })}
@@ -212,6 +215,7 @@ interface CategoryGridRowProps {
   onAllocationChange: (value: string) => void
   allTimeBalance: number
   isEvenRow: boolean
+  gridTemplateColumns: string // Grid columns from parent
 }
 
 function CategoryGridRow({
@@ -223,6 +227,7 @@ function CategoryGridRow({
   onAllocationChange,
   allTimeBalance,
   isEvenRow,
+  gridTemplateColumns,
 }: CategoryGridRowProps) {
   const isPercentageBased = category.default_monthly_type === 'percentage' && category.default_monthly_amount !== undefined && category.default_monthly_amount > 0
   const calculatedAmount = isPercentageBased ? (category.default_monthly_amount! / 100) * previousMonthIncome : 0
@@ -245,7 +250,6 @@ function CategoryGridRow({
     paddingBottom: '0.6rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
-    background: rowBg,
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
@@ -257,14 +261,18 @@ function CategoryGridRow({
   const netChange = balance.allocated + balance.spent + balance.transfers + balance.adjustments
 
   return (
-    <div style={{ display: 'contents' }}>
+    <div style={{
+      gridColumn: '1 / -1',
+      background: rowBg,
+      display: 'grid',
+      gridTemplateColumns: gridTemplateColumns,
+    }}>
       {/* Category name */}
       <div style={{
         paddingTop: '0.6rem',
         paddingBottom: '0.6rem',
         paddingRight: '0.5rem',
         paddingLeft: '1.5rem',
-        background: rowBg,
         display: 'flex',
         alignItems: 'center',
         fontSize: '0.9rem',

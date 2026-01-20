@@ -20,7 +20,7 @@ import { RecalculateAllButton } from '@components/budget/Month'
 
 function Categories() {
   const { selectedBudgetId } = useBudget()
-  const { monthMap, isLoading: isBudgetLoading } = useBudgetData()
+  const { monthMap, isLoading: isBudgetLoading, isFetching: isBudgetFetching } = useBudgetData()
 
   const {
     // Data
@@ -48,21 +48,22 @@ function Categories() {
     handleMoveGroup,
   } = useCategoriesPage()
 
-  // Auto-trigger recalculation when navigating to Categories settings if ANY month needs recalc
-  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isBudgetLoading && !isLoading && !!currentBudget, logPrefix: '[Settings/Categories]' })
-
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
 
-  // Add loading hold while loading - keep it up until budget data is fully loaded
+  // Check fetching state BEFORE rendering to avoid flashing empty values
+  const isDataLoading = isBudgetLoading || isLoading || isBudgetFetching || !currentBudget
+  // Auto-trigger recalculation when navigating to Categories settings if ANY month needs recalc
+  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isDataLoading && !!currentBudget, logPrefix: '[Settings/Categories]' })
+  // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
   useEffect(() => {
-    if (isBudgetLoading || isLoading || !currentBudget) {
+    if (isDataLoading) {
       addLoadingHold('categories', 'Loading categories...')
     } else {
       removeLoadingHold('categories')
     }
     return () => removeLoadingHold('categories')
-  }, [isBudgetLoading, isLoading, currentBudget, addLoadingHold, removeLoadingHold])
+  }, [isDataLoading, addLoadingHold, removeLoadingHold])
 
   // UI state for editing
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
@@ -98,20 +99,14 @@ function Categories() {
     }
   }, [error, setError])
 
-  // Don't show "No budget found" while still loading
-  if (isBudgetLoading || isLoading) {
-    return null
+  // Don't render content if data is loading or fetching (cache invalid) - show loading overlay instead
+  if (isDataLoading || !currentBudget) {
+    return isDataLoading ? null : <p>No budget found. Please log in.</p>
   }
 
-  if (!currentBudget) {
-    return <p>No budget found. Please log in.</p>
-  }
-
-  // Calculate stats for header
-  const totalCurrentAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.current, 0)
-  const totalAllocated = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.total, 0)
-  const availableNow = getOnBudgetTotal() - totalCurrentAllocated
-  const hasFutureAllocations = Math.abs(totalAllocated - totalCurrentAllocated) > 0.01
+  // Calculate totals for display
+  const totalAvailableNow = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.current, 0)
+  const totalAllocatedAllTime = Object.values(categoryBalances).reduce((sum, bal) => sum + bal.total, 0)
 
   // Column header style - matches month pages
   const columnHeaderStyle: React.CSSProperties = {
@@ -126,7 +121,6 @@ function Categories() {
 
   return (
     <div>
-
       {/* Sticky header: title + stats + buttons */}
       <div style={{
         position: 'sticky',
@@ -156,13 +150,12 @@ function Categories() {
               <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatCurrency(getOnBudgetTotal())}</span>
             </span>
             <span>
-              <span style={{ opacity: 0.6 }}>Allocated: </span>
-              <span style={{ color: getAllocatedColor(totalCurrentAllocated), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalCurrentAllocated)}</span>
-              {hasFutureAllocations && <span style={{ opacity: 0.5, fontSize: '0.8rem' }}> ({formatCurrency(totalAllocated)} total)</span>}
+              <span style={{ opacity: 0.6 }}>Available Now: </span>
+              <span style={{ color: getBalanceColor(totalAvailableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAvailableNow)}</span>
             </span>
             <span>
-              <span style={{ opacity: 0.6 }}>Available: </span>
-              <span style={{ color: getBalanceColor(availableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(availableNow)}</span>
+              <span style={{ opacity: 0.6 }}>Total Allocated: </span>
+              <span style={{ color: getAllocatedColor(totalAllocatedAllTime), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAllocatedAllTime)}</span>
             </span>
             <span style={{ opacity: 0.6 }}>
               Use ▲▼ buttons to reorder categories.
@@ -177,8 +170,8 @@ function Categories() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Category, Balance, Description, Actions
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 2fr 1fr',
+        // Category, Default Allocation, Available Now, Total Allocated, Description, Actions
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 2fr 1fr',
         marginTop: '1rem',
         marginBottom: '1.5rem',
       }}>
@@ -196,7 +189,9 @@ function Categories() {
           {!isMobile && (
             <>
               <div style={columnHeaderStyle}>Category</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Balance</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Default</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Available Now</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Total Allocated</div>
               <div style={columnHeaderStyle}>Description</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Actions</div>
             </>
@@ -210,33 +205,78 @@ function Categories() {
           </p>
         )}
 
-        {/* Render groups */}
-        {sortedGroups.map((group, groupIndex) => {
-          const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
-          if (groupCategories.length === 0 && editingGroupId !== group.id && createForGroupId !== group.id) return null
+        {/* Calculate start row indices for each group */}
+        {(() => {
+          const groupStartIndices: Record<string, number> = {}
+          let currentIndex = 0
+          sortedGroups.forEach(group => {
+            const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
+            groupStartIndices[group.id] = currentIndex
+            currentIndex += groupCategories.length
+          })
 
-          // If editing group, show form outside grid
-          if (editingGroupId === group.id) {
+          return sortedGroups.map((group, groupIndex) => {
+            const groupCategories = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
+            if (groupCategories.length === 0 && editingGroupId !== group.id && createForGroupId !== group.id) return null
+
+            // If editing group, show form outside grid
+            if (editingGroupId === group.id) {
+              return (
+                <div key={group.id} style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
+                  <CategoryGroupForm
+                    initialData={{ name: group.name }}
+                    onSubmit={(data) => {
+                      handleUpdateGroup(group.id, data)
+                      setEditingGroupId(null)
+                    }}
+                    onCancel={() => setEditingGroupId(null)}
+                    submitLabel="Save"
+                  />
+                </div>
+              )
+            }
+
             return (
-              <div key={group.id} style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
-                <CategoryGroupForm
-                  initialData={{ name: group.name }}
-                  onSubmit={(data) => {
-                    handleUpdateGroup(group.id, data)
-                    setEditingGroupId(null)
-                  }}
-                  onCancel={() => setEditingGroupId(null)}
-                  submitLabel="Save"
-                />
-              </div>
+              <SettingsCategoryGroupRows
+                key={group.id}
+                group={group}
+                categories={groupCategories}
+                categoryGroups={categoryGroups}
+                categoryBalances={categoryBalances}
+                loadingBalances={loadingBalances}
+                editingCategoryId={editingCategoryId}
+                createForGroupId={createForGroupId}
+                setEditingCategoryId={setEditingCategoryId}
+                setCreateForGroupId={setCreateForGroupId}
+                handleUpdateCategory={handleUpdateCategory}
+                handleDeleteCategory={handleDeleteCategory}
+                handleMoveCategory={handleMoveCategory}
+                handleCreateCategory={handleCreateCategory}
+                isMobile={isMobile}
+                canMoveGroupUp={groupIndex > 0}
+                canMoveGroupDown={groupIndex < sortedGroups.length - 1}
+                onEditGroup={() => setEditingGroupId(group.id)}
+                onDeleteGroup={() => handleDeleteGroup(group.id)}
+                onMoveGroupUp={() => handleMoveGroup(group.id, 'up')}
+                onMoveGroupDown={() => handleMoveGroup(group.id, 'down')}
+                startRowIndex={groupStartIndices[group.id] ?? 0}
+              />
             )
-          }
+          })
+        })()}
+
+        {/* Uncategorized section - always rendered last, after all groups */}
+        {(ungroupedCategories.length > 0 || createForGroupId === 'ungrouped') && (() => {
+          // Calculate startRowIndex for ungrouped by counting all categories in sorted groups
+          const startRowIndex = sortedGroups.reduce((sum, group) => {
+            const groupCats = (categoriesByGroup[group.id] || []).sort((a, b) => a[1].sort_order - b[1].sort_order)
+            return sum + groupCats.length
+          }, 0)
 
           return (
             <SettingsCategoryGroupRows
-              key={group.id}
-              group={group}
-              categories={groupCategories}
+              group={ungroupedGroup}
+              categories={ungroupedCategories}
               categoryGroups={categoryGroups}
               categoryBalances={categoryBalances}
               loadingBalances={loadingBalances}
@@ -249,42 +289,17 @@ function Categories() {
               handleMoveCategory={handleMoveCategory}
               handleCreateCategory={handleCreateCategory}
               isMobile={isMobile}
-              canMoveGroupUp={groupIndex > 0}
-              canMoveGroupDown={groupIndex < sortedGroups.length - 1}
-              onEditGroup={() => setEditingGroupId(group.id)}
-              onDeleteGroup={() => handleDeleteGroup(group.id)}
-              onMoveGroupUp={() => handleMoveGroup(group.id, 'up')}
-              onMoveGroupDown={() => handleMoveGroup(group.id, 'down')}
+              isUngrouped
+              canMoveGroupUp={false}
+              canMoveGroupDown={false}
+              onEditGroup={() => {}} // Uncategorized can't be edited
+              onDeleteGroup={() => {}} // Uncategorized can't be deleted
+              onMoveGroupUp={() => {}}
+              onMoveGroupDown={() => {}}
+              startRowIndex={startRowIndex}
             />
           )
-        })}
-
-        {/* Uncategorized section - always rendered last, after all groups */}
-        {(ungroupedCategories.length > 0 || createForGroupId === 'ungrouped') && (
-          <SettingsCategoryGroupRows
-            group={ungroupedGroup}
-            categories={ungroupedCategories}
-            categoryGroups={categoryGroups}
-            categoryBalances={categoryBalances}
-            loadingBalances={loadingBalances}
-            editingCategoryId={editingCategoryId}
-            createForGroupId={createForGroupId}
-            setEditingCategoryId={setEditingCategoryId}
-            setCreateForGroupId={setCreateForGroupId}
-            handleUpdateCategory={handleUpdateCategory}
-            handleDeleteCategory={handleDeleteCategory}
-            handleMoveCategory={handleMoveCategory}
-            handleCreateCategory={handleCreateCategory}
-            isMobile={isMobile}
-            isUngrouped
-            canMoveGroupUp={false}
-            canMoveGroupDown={false}
-            onEditGroup={() => {}} // Uncategorized can't be edited
-            onDeleteGroup={() => {}} // Uncategorized can't be deleted
-            onMoveGroupUp={() => {}}
-            onMoveGroupDown={() => {}}
-          />
-        )}
+        })()}
 
         {/* Bottom padding */}
         <div style={{ gridColumn: '1 / -1', height: '1rem' }} />

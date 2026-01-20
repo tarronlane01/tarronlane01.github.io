@@ -12,6 +12,7 @@ import { formatCurrency, getBalanceColor } from '../../ui'
 import { AccountFlags } from './AccountFlags'
 import { AccountForm } from './AccountForm'
 import { logUserAction } from '@utils'
+import type { AccountClearedBalance } from '@calculations'
 
 interface SettingsAccountTableRowProps {
   account: AccountWithId
@@ -19,6 +20,7 @@ interface SettingsAccountTableRowProps {
   totalAccounts: number
   allGroups: GroupWithId[]
   allAccounts: AccountsMap
+  clearedBalance?: AccountClearedBalance
   onEdit: (accountId: string) => void
   onDelete: (accountId: string) => void
   onMoveUp: () => void
@@ -36,6 +38,7 @@ export function SettingsAccountTableRow({
   accountIndex,
   allGroups,
   allAccounts,
+  clearedBalance,
   onEdit,
   onDelete,
   onMoveUp,
@@ -98,9 +101,51 @@ export function SettingsAccountTableRow({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 500 }}>{account.nickname}</span>
-            <span style={{ color: getBalanceColor(account.balance), fontWeight: 600 }}>
-              {formatCurrency(account.balance)}
-            </span>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
+              {clearedBalance ? (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Total</span>
+                    <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
+                      {formatCurrency(clearedBalance.uncleared_balance)}
+                    </span>
+                  </div>
+                  {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
+                        <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>
+                          {formatCurrency(clearedBalance.cleared_balance)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
+                        <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
+                          {formatCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
+                        <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
+                        <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <span style={{ color: getBalanceColor(account.balance), fontWeight: 600 }}>
+                    {formatCurrency(account.balance)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
             <AccountFlags account={account} accountGroups={allGroups} />
@@ -166,28 +211,60 @@ export function SettingsAccountTableRow({
     )
   }
 
-  // Desktop: Grid row using display: contents
+  // Desktop: Grid row using wrapper div for consistent striping
   const isEvenRow = accountIndex % 2 === 0
   const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem',
-    background: rowBg,
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
   }
 
   return (
-    <div style={{ display: 'contents' }}>
+    <div style={{
+      gridColumn: '1 / -1',
+      background: rowBg,
+      display: 'grid',
+      gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 1fr', // Match parent grid columns
+    }}>
       {/* Account name */}
       <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
 
-      {/* Balance */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(account.balance), fontWeight: 600 }}>
-        {formatCurrency(account.balance)}
-      </div>
+      {/* Total balance (uncleared_balance) */}
+      {clearedBalance ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
+          {formatCurrency(clearedBalance.uncleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(account.balance), fontWeight: 600 }}>
+          {formatCurrency(account.balance)}
+        </div>
+      )}
+      {/* Cleared balance - show dash if same as total */}
+      {clearedBalance ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
+          {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
+            ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+            : formatCurrency(clearedBalance.cleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(account.balance), fontWeight: 600 }}>
+          {formatCurrency(account.balance)}
+        </div>
+      )}
+      {/* Uncleared portion (difference) - show dash if same as cleared */}
+      {clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
+          {formatCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
+        </div>
+      ) : (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+          —
+        </div>
+      )}
 
       {/* Flags */}
       <div style={{ ...cellStyle, gap: '0.25rem', flexWrap: 'wrap' }}>

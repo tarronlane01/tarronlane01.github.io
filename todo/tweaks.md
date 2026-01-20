@@ -1,4 +1,4 @@
-
+Should we not save balances and things on the firestore documents that we can re-calculate locally?
 
 Make the budget settings account/category edit/create forms full-page instead of inline
 
