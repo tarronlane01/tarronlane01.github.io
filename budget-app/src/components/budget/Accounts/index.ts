@@ -18,4 +18,5 @@ export { AccountGroupCard } from './AccountGroupCard'
 export { UngroupedAccountsSection } from './UngroupedAccountsSection'
 export { SettingsAccountGroupRows } from './SettingsAccountGroupRows'
 export { SettingsAccountTableRow } from './SettingsAccountTableRow'
+export { SettingsHiddenAccounts } from './SettingsHiddenAccounts'
 

@@ -182,16 +182,31 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
         onClick={handleOpenModal}
         disabled={isDisabled || isRecomputing}
         style={{
-          background: 'color-mix(in srgb, currentColor 10%, transparent)',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '0.5rem',
+          background: 'color-mix(in srgb, currentColor 15%, transparent)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: '6px',
+          padding: '0.4rem 0.75rem', // Reduced vertical padding to make button less tall
           cursor: isDisabled || isRecomputing ? 'not-allowed' : 'pointer',
           opacity: isDisabled || isRecomputing ? 0.5 : 1,
-          fontSize: '1rem',
+          fontSize: '0.9rem',
+          fontWeight: 500,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '0.4rem',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseEnter={(e) => {
+          if (!isDisabled && !isRecomputing) {
+            e.currentTarget.style.background = 'color-mix(in srgb, currentColor 20%, transparent)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isDisabled && !isRecomputing) {
+            e.currentTarget.style.background = 'color-mix(in srgb, currentColor 15%, transparent)'
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+          }
         }}
         title="Recalculate balances from this month forward"
       >

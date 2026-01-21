@@ -10,9 +10,11 @@
 
 import { queryClient, queryKeys, STALE_TIME } from './queryClient'
 import { readDocByPath } from '@firestore'
-import type { FirestoreData } from '@types'
+import type { FirestoreData, MonthMap } from '@types'
 import { readMonth } from './queries/month'
-import { getPreviousMonth, getNextMonth } from '@utils'
+import { getPreviousMonth, getNextMonth, getYearMonthOrdinal } from '@utils'
+import { MAX_FUTURE_MONTHS } from '@constants'
+import type { BudgetData } from './queries/budget'
 
 /**
  * Fetch a budget document - uses React Query cache
@@ -267,15 +269,44 @@ export async function calculateTotalBalances(
   // Start with current balances
   const balances: Record<string, number> = { ...currentBalances }
 
-  // Walk forward through future months
+  // Get monthMap from cache to check which months exist
+  const budgetData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  const monthMap: MonthMap = budgetData?.monthMap || {}
+
+  // Calculate max future ordinal based on MAX_FUTURE_MONTHS
+  const now = new Date()
+  const currentYearNow = now.getFullYear()
+  const currentMonthNow = now.getMonth() + 1
+  let maxFutureYear = currentYearNow
+  let maxFutureMonth = currentMonthNow + MAX_FUTURE_MONTHS
+  while (maxFutureMonth > 12) {
+    maxFutureMonth -= 12
+    maxFutureYear += 1
+  }
+  const maxFutureOrdinal = getYearMonthOrdinal(maxFutureYear, maxFutureMonth)
+
+  // Walk forward through future months (limited by MAX_FUTURE_MONTHS and monthMap)
   let walkYear = currentYear
   let walkMonth = currentMonth
-  const maxWalkForward = 24 // Look at most 2 years ahead
+  const maxWalkForward = MAX_FUTURE_MONTHS * 2 // Safety limit, but we'll check monthMap and maxFutureOrdinal
 
   for (let i = 0; i < maxWalkForward; i++) {
     const next = getNextMonth(walkYear, walkMonth)
     walkYear = next.year
     walkMonth = next.month
+
+    const monthOrdinal = getYearMonthOrdinal(walkYear, walkMonth)
+
+    // Stop if we've exceeded MAX_FUTURE_MONTHS
+    if (monthOrdinal > maxFutureOrdinal) {
+      break
+    }
+
+    // Only read months that exist in the monthMap
+    if (!(monthOrdinal in monthMap)) {
+      // Month not in monthMap - stop walking forward
+      break
+    }
 
     const nextMonthData = await fetchMonthForBalances(budgetId, walkYear, walkMonth)
 

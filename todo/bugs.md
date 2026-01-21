@@ -1,9 +1,10 @@
 # This Session
 
-Sticky header settings/account has a gap above it that shows background content when you scroll down. Due to the gap between the column headers and the stats row above it. Let's leave the spacing, do it in a way that doesn't leave a gap to see behind content.
-
+Available now on the settings/categories page is not right. On budget should equal total allocated plus available now.
 
 When clicking between settings/accounts and settings/categories, there is aplit second on categories where all the values aren't populated yet (looks like maybe three dots). Why is this happening? Also, sometimes it looks like they are different values, and then they change a split second after the page loads. Why?
+
+Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
 
 # Other
 

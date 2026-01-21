@@ -115,77 +115,77 @@ function Categories() {
     opacity: 0.6,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    padding: '0.5rem',
+    paddingTop: '0.75rem', // More space above to match visual spacing below
+    paddingBottom: '0.5rem',
+    paddingLeft: '0.5rem',
+    paddingRight: '0.5rem',
     borderBottom: '2px solid rgba(255,255,255,0.2)',
   }
 
   return (
     <div>
-      {/* Sticky header: title + stats + buttons */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        backgroundColor: '#242424',
-        marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
-        marginRight: 'calc(-1 * var(--page-padding, 2rem))',
-        paddingLeft: 'var(--page-padding, 2rem)',
-        paddingRight: 'var(--page-padding, 2rem)',
-        paddingTop: '0.5rem',
-        paddingBottom: '0.5rem',
-        borderBottom: '1px solid rgba(255,255,255,0.15)',
-      }}>
-        {/* Title + Stats + Buttons row */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: '0.5rem 1rem',
-          fontSize: '0.85rem',
-        }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
-            <span style={{ fontWeight: 600 }}>Categories:</span>
-            <span>
-              <span style={{ opacity: 0.6 }}>On-Budget: </span>
-              <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatCurrency(getOnBudgetTotal())}</span>
-            </span>
-            <span>
-              <span style={{ opacity: 0.6 }}>Available Now: </span>
-              <span style={{ color: getBalanceColor(totalAvailableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAvailableNow)}</span>
-            </span>
-            <span>
-              <span style={{ opacity: 0.6 }}>Total Allocated: </span>
-              <span style={{ color: getAllocatedColor(totalAllocatedAllTime), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAllocatedAllTime)}</span>
-            </span>
-            <span style={{ opacity: 0.6 }}>
-              Use ▲▼ buttons to reorder categories.
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-            <RecalculateAllButton />
-          </div>
-        </div>
-      </div>
-
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
         // Category, Default Allocation, Available Now, Total Allocated, Description, Actions
         gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 2fr 1fr',
-        marginTop: '1rem',
         marginBottom: '1.5rem',
       }}>
-        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
+        {/* Sticky wrapper using subgrid - contains both stats header and column headers as subgrid rows */}
         <div style={{
           gridColumn: '1 / -1',
           position: 'sticky',
-          top: '3.5rem', // Below the stats header
-          zIndex: 49,
+          top: 0, // Sticky at top, stats header will be first row inside
+          zIndex: 50,
           backgroundColor: '#242424',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
-          {/* Column headers row - desktop only */}
+          {/* First subgrid row: stats header */}
+          <div style={{
+            gridColumn: '1 / -1',
+            marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
+            marginRight: 'calc(-1 * var(--page-padding, 2rem))',
+            paddingLeft: 'var(--page-padding, 2rem)',
+            paddingRight: 'var(--page-padding, 2rem)',
+            paddingTop: '0.5rem',
+            paddingBottom: '0.5rem', // Reduced spacing before column headers
+          }}>
+            {/* Title + Stats + Buttons row */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem 1rem',
+              fontSize: '0.85rem',
+              paddingBottom: '0.5rem', // Spacing above border to separate button
+              borderBottom: '1px solid rgba(255,255,255,0.15)', // Border on inner element to respect page container
+            }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+                <span style={{ fontWeight: 600 }}>Categories:</span>
+                <span>
+                  <span style={{ opacity: 0.6 }}>On-Budget: </span>
+                  <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatCurrency(getOnBudgetTotal())}</span>
+                </span>
+                <span>
+                  <span style={{ opacity: 0.6 }}>Available Now: </span>
+                  <span style={{ color: getBalanceColor(totalAvailableNow), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAvailableNow)}</span>
+                </span>
+                <span>
+                  <span style={{ opacity: 0.6 }}>Total Allocated: </span>
+                  <span style={{ color: getAllocatedColor(totalAllocatedAllTime), fontWeight: 600 }}>{loadingBalances ? '...' : formatCurrency(totalAllocatedAllTime)}</span>
+                </span>
+                <span style={{ opacity: 0.6 }}>
+                  Use ▲▼ buttons to reorder categories.
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                <RecalculateAllButton />
+              </div>
+            </div>
+          </div>
+
+          {/* Second subgrid row: column headers */}
           {!isMobile && (
             <>
               <div style={columnHeaderStyle}>Category</div>

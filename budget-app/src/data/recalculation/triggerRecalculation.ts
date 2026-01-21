@@ -7,7 +7,8 @@
 
 import type { FirestoreData, MonthDocument } from '@types'
 import { readDocByPath, batchWriteDocs, type BatchWriteDoc } from '@firestore'
-import { getMonthDocId } from '@utils'
+import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { MAX_FUTURE_MONTHS } from '@constants'
 import {
   recalculateMonth,
   extractSnapshotFromMonth,
@@ -128,9 +129,21 @@ async function executeRecalculation(
   const hasStartingMonth = firstStaleOrdinalIndex > 0
 
   // Step 3: Only fetch months we actually need
-  const ordinalsToFetch = hasStartingMonth
+  let ordinalsToFetch = hasStartingMonth
     ? allOrdinals.slice(firstStaleOrdinalIndex - 1)
     : allOrdinals.slice(firstStaleOrdinalIndex)
+
+  // Filter out months that are too far in the future (beyond MAX_FUTURE_MONTHS)
+  // These months may be in the monthMap but don't exist in Firestore yet
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const maxFutureOrdinal = getYearMonthOrdinal(
+    currentYear + Math.floor((currentMonth + MAX_FUTURE_MONTHS - 1) / 12),
+    ((currentMonth + MAX_FUTURE_MONTHS - 1) % 12) + 1
+  )
+  
+  ordinalsToFetch = ordinalsToFetch.filter(ordinal => ordinal <= maxFutureOrdinal)
 
   const estimatedToRecalculate = hasStartingMonth ? ordinalsToFetch.length - 1 : ordinalsToFetch.length
 
