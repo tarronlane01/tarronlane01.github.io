@@ -25,22 +25,46 @@ import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { useBudget } from '@contexts'
+import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
+import { calculatePreviousMonthIncome } from './calculatePreviousMonthIncome'
 
 /**
  * Parse raw Firestore month data into typed MonthDocument.
  * Duplicated from readMonth.ts to avoid importing the function that uses fetchQuery.
+ * Calculates total_income, total_expenses, and previous_month_income from arrays (not stored in Firestore).
  */
-function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
-  return {
+import type { QueryClient } from '@tanstack/react-query'
+
+async function parseMonthData(
+  data: FirestoreData,
+  budgetId: string,
+  year: number,
+  month: number,
+  queryClient?: QueryClient
+): Promise<MonthDocument> {
+  const income = data.income || []
+  const expenses = data.expenses || []
+  
+  // Calculate totals from arrays (not stored in Firestore - calculated on-the-fly)
+  const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
+  const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
+  
+  // Calculate previous_month_income from previous month's income array (not stored in Firestore)
+  // Falls back to stored value for backward compatibility during migration
+  const previousMonthIncome = data.previous_month_income !== undefined
+    ? data.previous_month_income as number // Use stored value if present (backward compatibility)
+    : await calculatePreviousMonthIncome(budgetId, year, month, queryClient)
+  
+  const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
     year: data.year ?? year,
     month: data.month ?? month,
-    income: data.income || [],
-    total_income: data.total_income ?? 0,
-    previous_month_income: data.previous_month_income ?? 0,
-    expenses: data.expenses || [],
-    total_expenses: data.total_expenses ?? 0,
+    income,
+    total_income: totalIncome, // Calculated from income array
+    previous_month_income: previousMonthIncome, // Calculated from previous month's income array
+    expenses,
+    total_expenses: totalExpenses, // Calculated from expenses array
     transfers: data.transfers || [],
     adjustments: data.adjustments || [],
     account_balances: data.account_balances || [],
@@ -49,6 +73,9 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
+
+  // Convert stored balances to calculated balances
+  return convertMonthBalancesFromStored(monthDoc)
 }
 
 /**
@@ -80,7 +107,7 @@ export async function readMonthDirect(
       return null
     }
 
-    return parseMonthData(data, budgetId, year, month)
+    return await parseMonthData(data, budgetId, year, month)
   } catch (error) {
     // Treat permission errors as "not found" - this allows month creation to proceed
     // This handles non-admin users reading non-existent months where the security

@@ -9,6 +9,7 @@
  */
 
 import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance, MonthMap } from '@types'
+import { isMonthAtOrBeforeWindow } from '@utils/window'
 import { readDocByPath, writeDocByPath, updateDocByPath } from '@firestore'
 import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
 import { MAX_FUTURE_MONTHS, MAX_PAST_MONTHS } from '@constants'
@@ -158,29 +159,35 @@ export async function createMonth(
   }
 
   // Build category_balances with start_balance from previous month
+  // Only include stored fields - calculated fields will be computed on-the-fly
+  // Only save start_balance if month is at/before first window month
+  const isAtOrBeforeWindow = isMonthAtOrBeforeWindow(year, month)
   const categoryBalances: CategoryMonthBalance[] = Object.entries(categoryStartBalances).map(
     ([categoryId, startBalance]) => ({
       category_id: categoryId,
-      start_balance: startBalance,
+      start_balance: isAtOrBeforeWindow ? startBalance : 0, // Only save if at/before window
       allocated: 0,
+      // Calculated fields will be computed on-the-fly (spent, transfers, adjustments, end_balance)
       spent: 0,
       transfers: 0,
       adjustments: 0,
-      end_balance: startBalance,
+      end_balance: startBalance, // Calculated, but needed for in-memory use
     })
   )
 
   // Build account_balances with start_balance from previous month
+  // Only include stored fields - calculated fields will be computed on-the-fly
   const accountBalances: AccountMonthBalance[] = Object.entries(accountStartBalances).map(
     ([accountId, startBalance]) => ({
       account_id: accountId,
-      start_balance: startBalance,
+      start_balance: isAtOrBeforeWindow ? startBalance : 0, // Only save if at/before window
+      // Calculated fields will be computed on-the-fly (income, expenses, transfers, adjustments, net_change, end_balance)
       income: 0,
       expenses: 0,
       transfers: 0,
       adjustments: 0,
       net_change: 0,
-      end_balance: startBalance,
+      end_balance: startBalance, // Calculated, but needed for in-memory use
     })
   )
 
@@ -204,16 +211,14 @@ export async function createMonth(
   }
 
   // Build clean document for Firestore
+  // Don't save total_income, total_expenses, or previous_month_income - they're calculated on-the-fly
   const docToWrite: FirestoreData = {
     budget_id: budgetId,
     year_month_ordinal: getYearMonthOrdinal(year, month),
     year,
     month,
     income: [],
-    total_income: 0,
-    previous_month_income: previousMonthIncome,
     expenses: [],
-    total_expenses: 0,
     transfers: [],
     adjustments: [],
     account_balances: accountBalances,
@@ -240,7 +245,8 @@ export async function createMonth(
   // We already have the budget data from our initial read, so no need to read again
   const monthOrdinal = getYearMonthOrdinal(year, month)
   const existingMonthMap: MonthMap = budgetData.month_map || {}
-  const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: { needs_recalculation: false } }
+  // month_map entries are just empty objects (no flags)
+  const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: {} }
   const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
 
   // Update cache immediately (instant UI feedback)

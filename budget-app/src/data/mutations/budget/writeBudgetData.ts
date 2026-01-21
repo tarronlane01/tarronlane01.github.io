@@ -81,9 +81,17 @@ export async function readBudgetForEdit(
 export async function writeBudgetData(params: WriteBudgetParams): Promise<void> {
   const { budgetId, updates, description } = params
 
+  // Strip fields that shouldn't be saved to Firestore (calculated/managed locally)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove fields
+  const { total_available: _total_available, is_needs_recalculation: _is_needs_recalculation, ...updatesWithoutCalculatedFields } = updates as {
+    total_available?: number
+    is_needs_recalculation?: boolean
+    [key: string]: unknown
+  }
+
   // Add timestamp to updates
   const dataToWrite: FirestoreData = {
-    ...updates,
+    ...updatesWithoutCalculatedFields,
     updated_at: new Date().toISOString(),
   }
 

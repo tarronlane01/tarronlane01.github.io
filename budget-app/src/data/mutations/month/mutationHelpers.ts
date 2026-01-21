@@ -13,9 +13,13 @@ import type { MonthDocument } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { getYearMonthOrdinal } from '@utils'
 import type { MonthMap } from '@types'
+import type { BudgetData } from '@data/queries/budget'
 import { useSync } from '@contexts/sync_context'
-import { recalculateBudgetAccountBalancesFromCache } from '@data/mutations/budget/accounts/recalculateBudgetAccountBalances'
 import { retotalMonth } from './retotalMonth'
+import { getFirstWindowMonth } from '@utils/window'
+import { writeMonthData } from './useWriteMonthData'
+import { convertMonthBalancesToStored } from '@data/firestore/converters/monthBalances'
+import { ensureMonthsFreshAndRecalculateBalances } from './ensureMonthsFresh'
 
 /**
  * Recalculate the current month and all future months locally.
@@ -136,7 +140,7 @@ export function useMonthMutationHelpers() {
    * 2. Fully recalculates the edited month (updates start_balance from previous month)
    * 3. Fully recalculates all future months (cascading from the edited month)
    * 4. Recalculates budget account balances from all months in cache
-   * 5. Tracks all changes for background save
+   * 5. If editing before window, saves start_balance for months at/before window
    *
    * ALL retotalling and recalculation happens here - mutations should NOT call
    * retotalMonth or recalculateMonth directly. This ensures:
@@ -147,7 +151,8 @@ export function useMonthMutationHelpers() {
   const recalculateMonthAndCascade = async (
     budgetId: string,
     year: number,
-    month: number
+    month: number,
+    onLoadingChange?: (isLoading: boolean, message: string) => void
   ): Promise<void> => {
     // Step 1: Retotal the edited month first for instant UI feedback
     // This updates totals from current transactions without changing start_balance
@@ -158,22 +163,75 @@ export function useMonthMutationHelpers() {
       queryClient.setQueryData<MonthQueryData>(monthKey, { month: retotaledMonth })
     }
 
-    // Step 2: Fully recalculate the edited month and all future months
+    // Step 2: Check if editing before first window month
+    const firstWindowMonth = getFirstWindowMonth()
+    const firstWindowOrdinal = getYearMonthOrdinal(firstWindowMonth.year, firstWindowMonth.month)
+    const editedOrdinal = getYearMonthOrdinal(year, month)
+    const isEditingBeforeWindow = editedOrdinal < firstWindowOrdinal
+
+    // Step 3: Fully recalculate the edited month and all future months
     // This updates start_balance from previous month and ensures cascading is correct
     await recalculateFutureMonthsLocally(budgetId, year, month, trackChange)
 
-    // Step 3: Recalculate budget account balances from all months in cache
-    // This provides instant UI feedback and ensures accuracy
-    try {
-      recalculateBudgetAccountBalancesFromCache(budgetId)
-      // Track budget change
-      trackChange({ type: 'budget', budgetId })
-    } catch (error) {
-      console.warn('[mutationHelpers] Failed to recalculate budget account balances from cache:', error)
-      // Continue even if this fails - it will be recalculated on save
-      // Still track budget change since months were recalculated
-      trackChange({ type: 'budget', budgetId })
+    // Step 4: If editing before window, save start_balance for months at/before window
+    if (isEditingBeforeWindow) {
+      onLoadingChange?.(true, 'Saving start balances...')
+      try {
+        // Get all months from edited month to first window month
+        const budgetData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+        if (!budgetData) {
+          console.warn('[mutationHelpers] Budget not in cache, skipping start_balance save')
+          return
+        }
+
+        const monthMap = budgetData.monthMap || {}
+        const monthsToSave: Array<{ year: number; month: number }> = []
+        
+        for (const [ordinal] of Object.entries(monthMap)) {
+          if (ordinal >= editedOrdinal && ordinal <= firstWindowOrdinal) {
+            const y = parseInt(ordinal.substring(0, 4), 10)
+            const m = parseInt(ordinal.substring(4, 6), 10)
+            monthsToSave.push({ year: y, month: m })
+          }
+        }
+
+        // Sort chronologically
+        monthsToSave.sort((a, b) => {
+          if (a.year !== b.year) return a.year - b.year
+          return a.month - b.month
+        })
+
+        // Save each month (converter will only save start_balance for months at/before window)
+        for (const { year: saveYear, month: saveMonth } of monthsToSave) {
+          const saveMonthKey = queryKeys.month(budgetId, saveYear, saveMonth)
+          const saveMonthData = queryClient.getQueryData<MonthQueryData>(saveMonthKey)
+          if (saveMonthData?.month) {
+            const storedMonth = convertMonthBalancesToStored(saveMonthData.month)
+            await writeMonthData({
+              budgetId,
+              month: storedMonth,
+              description: `recalculation: saving start_balance for ${saveYear}/${saveMonth}`,
+              cascadeRecalculation: false, // Don't cascade - we're already recalculating
+            })
+          }
+        }
+      } catch (error) {
+        console.error('[mutationHelpers] Failed to save start_balance for months at/before window:', error)
+      } finally {
+        onLoadingChange?.(false, '')
+      }
     }
+
+    // Step 5: Ensure required months are in cache and fresh, then recalculate balances
+    // This checks cache freshness and refetches if needed before recalculating
+    try {
+      await ensureMonthsFreshAndRecalculateBalances(budgetId)
+    } catch (error) {
+      console.warn('[mutationHelpers] Failed to ensure months fresh and recalculate balances:', error)
+    }
+
+    // Track budget change (after both account and category balances are updated)
+    trackChange({ type: 'budget', budgetId })
   }
 
   return {
@@ -182,4 +240,5 @@ export function useMonthMutationHelpers() {
     trackChange, // Expose trackChange so mutations can use it for other changes
   }
 }
+
 

@@ -1,0 +1,1 @@
+Make sure tithing allocations work as intended. Make sure we don't always have to re-pull previous month income, to make it easier when going through old months. Also, when budgeting and about to save allocaitons, make sure we are doing the 10% off the right values we want to be calculating it off of.

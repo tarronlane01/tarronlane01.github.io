@@ -16,6 +16,7 @@ import { queryCollection } from '@firestore'
 import type { FirestoreData, MonthDocument } from '@types'
 import { getYearMonthOrdinal } from '@utils'
 import { bannerQueue } from '@components/ui'
+import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 
 const SYNC_CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -23,7 +24,7 @@ const SYNC_CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
  * Parse month data from Firestore
  */
 function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
-  return {
+  const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
     year: data.year ?? year,
@@ -41,6 +42,9 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
+
+  // Convert stored balances to calculated balances
+  return convertMonthBalancesFromStored(monthDoc)
 }
 
 /**

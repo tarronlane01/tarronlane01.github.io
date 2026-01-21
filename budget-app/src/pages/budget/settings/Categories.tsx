@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useCategoriesPage, useBudgetData, useAutoRecalculation, useCategoryValidation } from '@hooks'
-import { useApp, useBudget } from '@contexts'
+import { useCategoriesPage, useBudgetData, useCategoryValidation, useEnsureBalancesFresh } from '@hooks'
+import { useApp } from '@contexts'
 import {
   Button,
   CollapsibleSection,
@@ -19,8 +19,7 @@ import { SettingsCategoryGroupRows } from '@components/budget/Categories/Setting
 import { RecalculateAllButton } from '@components/budget/Month'
 
 function Categories() {
-  const { selectedBudgetId } = useBudget()
-  const { monthMap, isLoading: isBudgetLoading, isFetching: isBudgetFetching, totalAvailable } = useBudgetData()
+  const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, totalAvailable } = useBudgetData()
 
   const {
     // Data
@@ -53,8 +52,8 @@ function Categories() {
 
   // Check fetching state BEFORE rendering to avoid flashing empty values
   const isDataLoading = isBudgetLoading || isLoading || isBudgetFetching || !currentBudget
-  // Auto-trigger recalculation when navigating to Categories settings if ANY month needs recalc
-  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isDataLoading && !!currentBudget, logPrefix: '[Settings/Categories]' })
+  // Ensure months are fresh in cache before calculating balances (refetches if stale)
+  useEnsureBalancesFresh(!isDataLoading && !!currentBudget)
   // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
   useEffect(() => {
     if (isDataLoading) {
@@ -101,7 +100,12 @@ function Categories() {
 
   // Calculate totals for display using pre-calculated values from budget document
   // These must be calculated before any early returns (rules of hooks)
-  const onBudgetTotal = useMemo(() => getOnBudgetTotal(), [getOnBudgetTotal])
+  // Note: getOnBudgetTotal is a callback that depends on accounts, so we need to call it
+  // to get the current value, not just depend on the function reference
+  const onBudgetTotal = useMemo(() => {
+    const total = getOnBudgetTotal()
+    return total
+  }, [getOnBudgetTotal])
 
   // Use validation hook to calculate and validate category balances
   const {

@@ -16,7 +16,6 @@ import { queryKeys, queryClient } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { MonthQueryData } from '@data/queries/month'
 import { roundCurrency } from '@utils'
-import { calculateTotalAvailable } from '@data/recalculation/triggerRecalculationHelpers'
 import { isNoAccount } from '@data/constants'
 
 /**
@@ -145,21 +144,14 @@ export function recalculateBudgetAccountBalancesFromCache(budgetId: string): voi
     }
   }
 
-  // Recalculate total_available
-  const totalAvailable = calculateTotalAvailable(
-    updatedAccounts,
-    cachedBudget.categories,
-    cachedBudget.accountGroups
-  )
-
-  // Update budget cache
+  // Update budget cache (don't save total_available to Firestore - it's calculated on-the-fly)
   queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
     ...cachedBudget,
     accounts: updatedAccounts,
     budget: {
       ...cachedBudget.budget,
       accounts: updatedAccounts,
-      total_available: totalAvailable,
+      // Don't save total_available - it's calculated on-the-fly
     },
   })
 }

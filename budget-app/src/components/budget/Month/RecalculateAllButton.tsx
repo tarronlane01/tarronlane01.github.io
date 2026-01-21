@@ -13,7 +13,7 @@ import { useBudgetData } from '@hooks'
 import { queryClient, queryKeys } from '@data'
 import type { BudgetData } from '@data/queries/budget'
 // eslint-disable-next-line no-restricted-imports -- Recalculation needs direct Firestore access
-import { queryCollection, batchWriteDocs, type BatchWriteDoc, readDocByPath } from '@firestore'
+import { queryCollection, batchWriteDocs, type BatchWriteDoc } from '@firestore'
 import { getMonthDocId, logUserAction, roundCurrency, cleanForFirestore } from '@utils'
 import { isNoCategory, isNoAccount } from '@data/constants'
 import { bannerQueue } from '@components/ui'
@@ -27,10 +27,8 @@ import {
   type PreviousMonthSnapshot,
 } from '@data/recalculation/recalculateMonth'
 import { updateBudgetBalances } from '@data/recalculation/triggerRecalculationHelpers'
-import { runRecalculationAssertions, logAssertionResults } from '@data/recalculation/assertions'
 import { calculateTotalBalances } from '@data/cachedReads'
 import type { MonthQueryData } from '@data/queries/month'
-import type { BudgetDocument } from '@data/recalculation/triggerRecalculationTypes'
 
 interface RecalculateAllButtonProps {
   isDisabled?: boolean
@@ -214,28 +212,6 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
         finalCategoryBalances,
         monthMap
       )
-
-      // Run assertions to validate the recalculation
-      const { data: updatedBudgetData } = await readDocByPath<BudgetDocument>(
-        'budgets',
-        selectedBudgetId,
-        '[recalculate all] reading budget for assertions'
-      )
-
-      if (updatedBudgetData && recalculatedMonths.length > 0) {
-        const lastMonth = recalculatedMonths[recalculatedMonths.length - 1]
-        const assertionResults = await runRecalculationAssertions({
-          budgetId: selectedBudgetId,
-          categories: updatedBudgetData.categories || {},
-          totalAvailable: updatedBudgetData.total_available ?? 0,
-          currentYear: lastMonth.year,
-          currentMonth: lastMonth.month,
-        })
-
-        // Log results and show banners for failures
-        const banners = logAssertionResults(assertionResults, '[Recalculate All]')
-        banners.forEach(banner => bannerQueue.add(banner))
-      }
 
       setResults({
         status: 'done',

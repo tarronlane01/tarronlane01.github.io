@@ -48,13 +48,12 @@ interface UseBudgetDataReturn {
   budgetUserIds: string[]
   acceptedUserIds: string[]
   /**
-   * Pre-calculated total available from the budget document.
-   * This value is calculated during recalculation and persists across month views.
-   * Use this value when the budget doesn't need recalculation.
+   * Total available amount (calculated on-the-fly from accounts and categories).
+   * This is the "Ready to Assign" amount: on-budget account balances - positive category balances.
    */
   totalAvailable: number
   /**
-   * Index of recent months with their recalculation status.
+   * Index of months in the budget (just tracks which months exist).
    * Key is YYYYMM ordinal format.
    */
   monthMap: MonthMap
@@ -89,7 +88,22 @@ export function useBudgetData(): UseBudgetDataReturn {
   const isOwner = budget?.owner_id === currentUserId
   const budgetUserIds = useMemo(() => budget?.user_ids || [], [budget?.user_ids])
   const acceptedUserIds = useMemo(() => budget?.accepted_user_ids || [], [budget?.accepted_user_ids])
-  const totalAvailable = budget?.total_available ?? 0
+  // Calculate total_available on-the-fly (not stored in Firestore)
+  const totalAvailable = useMemo(() => {
+    if (!budget) return 0
+    // Sum of on-budget, active account balances
+    const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, acc]) => {
+      const group = acc.account_group_id ? accountGroups[acc.account_group_id] : undefined
+      const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (acc.on_budget !== false)
+      const effectiveActive = (group && group.is_active !== null) ? group.is_active : (acc.is_active !== false)
+      return (effectiveOnBudget && effectiveActive) ? sum + acc.balance : sum
+    }, 0)
+    // Sum of positive category balances
+    const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {
+      return sum + (cat.balance > 0 ? cat.balance : 0)
+    }, 0)
+    return onBudgetAccountTotal - totalPositiveCategoryBalances
+  }, [budget, accounts, accountGroups, categories])
   const monthMap = useMemo(() => budgetData?.monthMap || {}, [budgetData?.monthMap])
 
   // ==========================================================================

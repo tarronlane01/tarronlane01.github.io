@@ -16,20 +16,19 @@ import { useApp } from '@contexts'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import { recalculateMonth, extractSnapshotFromMonth, EMPTY_SNAPSHOT, type PreviousMonthSnapshot } from '@data/recalculation'
-import { updateBudgetBalances } from '@data/recalculation/triggerRecalculationHelpers'
-import { runRecalculationAssertions, logAssertionResults } from '@data/recalculation/assertions'
-// eslint-disable-next-line no-restricted-imports -- Initial balance calculation needs direct Firestore access for batch writes
-import { batchWriteDocs, type BatchWriteDoc } from '@firestore'
-// eslint-disable-next-line no-restricted-imports -- Initial balance calculation needs direct Firestore access for reading budget
-import { readDocByPath } from '@firestore'
+// Removed updateBudgetBalances import - we don't save budget balances to Firestore
+// Removed batchWriteDocs import - no longer doing batch writes on initial load
 import { useUpdateAccounts, useUpdateCategories } from '@data/mutations/budget'
-import { getYearMonthOrdinal, getMonthDocId, cleanForFirestore, roundCurrency } from '@utils'
+import { getYearMonthOrdinal, roundCurrency, getPreviousMonth } from '@utils'
 import { isNoCategory, isNoAccount } from '@data/constants'
 import { calculateTotalBalances } from '@data/cachedReads'
 import { bannerQueue } from '@components/ui'
-import type { MonthDocument, AccountsMap, CategoriesMap, MonthMap, FirestoreData } from '@types'
-import type { BudgetDocument } from '@data/recalculation/triggerRecalculationTypes'
+import type { MonthDocument, AccountsMap, CategoriesMap, MonthMap } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
+import { getFirstWindowMonth, isMonthAtOrBeforeWindow } from '@utils/window'
+import { readMonthDirect } from '@data/queries/month/useMonthQuery'
+import { writeMonthData } from '@data/mutations/month/useWriteMonthData'
+import { convertMonthBalancesToStored } from '@data/firestore/converters/monthBalances'
 
 interface UseInitialBalanceCalculationParams {
   budgetId: string | null
@@ -38,86 +37,9 @@ interface UseInitialBalanceCalculationParams {
   months: MonthDocument[]
 }
 
-/**
- * Compare two balance arrays to see if they're equal.
- * Arrays are compared by converting to maps keyed by id for efficient comparison.
- */
-function balancesEqual<T extends { account_id?: string; category_id?: string }>(
-  a: T[],
-  b: T[]
-): boolean {
-  if (a.length !== b.length) return false
-
-  // Convert to maps for easier comparison
-  const mapA = new Map<string, T>()
-  const mapB = new Map<string, T>()
-
-  for (const item of a) {
-    const id = 'account_id' in item ? item.account_id : item.category_id
-    if (id) mapA.set(id, item)
-  }
-
-  for (const item of b) {
-    const id = 'account_id' in item ? item.account_id : item.category_id
-    if (id) mapB.set(id, item)
-  }
-
-  if (mapA.size !== mapB.size) return false
-
-  for (const [id, itemA] of mapA) {
-    const itemB = mapB.get(id)
-    if (!itemB) return false
-
-    // Compare all fields (balance objects should have the same structure)
-    const keys = Object.keys(itemA) as Array<keyof T>
-    for (const key of keys) {
-      if (itemA[key] !== itemB[key]) return false
-    }
-  }
-
-  return true
-}
-
-/**
- * Check if a recalculated month has changed from the original.
- * Compares only the fields that can change during recalculation.
- */
-function monthHasChanged(original: MonthDocument, recalculated: MonthDocument): boolean {
-  // Compare totals
-  if (original.total_income !== recalculated.total_income) return true
-  if (original.total_expenses !== recalculated.total_expenses) return true
-  if (original.previous_month_income !== recalculated.previous_month_income) return true
-
-  // Compare balance arrays
-  if (!balancesEqual(original.account_balances, recalculated.account_balances)) return true
-  if (!balancesEqual(original.category_balances, recalculated.category_balances)) return true
-
-  return false
-}
-
-/**
- * Check if budget balances have changed.
- */
-function budgetBalancesHaveChanged(
-  originalAccounts: AccountsMap,
-  originalCategories: CategoriesMap,
-  updatedAccounts: AccountsMap,
-  updatedCategories: CategoriesMap
-): boolean {
-  // Check if any account balance changed
-  for (const [accId, acc] of Object.entries(updatedAccounts)) {
-    const original = originalAccounts[accId]
-    if (!original || original.balance !== acc.balance) return true
-  }
-
-  // Check if any category balance changed
-  for (const [catId, cat] of Object.entries(updatedCategories)) {
-    const original = originalCategories[catId]
-    if (!original || original.balance !== cat.balance) return true
-  }
-
-  return false
-}
+// Removed monthHasChanged, balancesEqual, and budgetBalancesHaveChanged functions
+// No longer needed - we don't track changes to calculated fields since they're not saved to Firestore
+// Months will recalculate on-demand when missing from cache
 
 /**
  * Hook to calculate and sync balances after initial data load
@@ -163,26 +85,131 @@ export function useInitialBalanceCalculation({
           return a.month - b.month
         })
 
-        // For the earliest month, use its existing start_balances as the initial snapshot
-        // This preserves the historical balances that summarize everything before the downloaded months
-        // For subsequent months, we'll use end_balances from the previous month
-        const earliestMonth = sortedMonths[0]
-        let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
+        // Get first window month (earliest month that should have start_balance saved)
+        const firstWindowMonth = getFirstWindowMonth()
+        const firstWindowOrdinal = getYearMonthOrdinal(firstWindowMonth.year, firstWindowMonth.month)
         
-        if (earliestMonth) {
-          // Extract start balances from the earliest month to preserve historical data
+        // Find the earliest month in our loaded months
+        const earliestLoadedMonth = sortedMonths[0]
+        const earliestLoadedOrdinal = earliestLoadedMonth 
+          ? getYearMonthOrdinal(earliestLoadedMonth.year, earliestLoadedMonth.month)
+          : null
+
+        // Check if first window month is in our loaded months and has start_balance
+        let firstWindowMonthData: MonthDocument | null = null
+        if (earliestLoadedOrdinal && earliestLoadedOrdinal <= firstWindowOrdinal) {
+          // First window month is in our loaded months (or before)
+          firstWindowMonthData = sortedMonths.find(m => {
+            const ordinal = getYearMonthOrdinal(m.year, m.month)
+            return ordinal === firstWindowOrdinal
+          }) || null
+        } else {
+          // First window month is before our loaded months - need to fetch it
+          firstWindowMonthData = await readMonthDirect(budgetId, firstWindowMonth.year, firstWindowMonth.month)
+        }
+
+        // Check if first window month has start_balance saved
+        let hasStartBalance = false
+        if (firstWindowMonthData) {
+          // Check if any category/account has non-zero start_balance (indicating it was saved)
+          hasStartBalance = (firstWindowMonthData.category_balances || []).some(cb => 
+            !isNoCategory(cb.category_id) && cb.start_balance !== 0
+          ) || (firstWindowMonthData.account_balances || []).some(ab => 
+            !isNoAccount(ab.account_id) && ab.start_balance !== 0
+          )
+        }
+
+        // If first window month doesn't have start_balance, walk backward to find one
+        let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
+        const monthsToCalculateBackward: MonthDocument[] = []
+        
+        if (!hasStartBalance && firstWindowMonthData) {
+          // Walk backward from first window month to find a month with start_balance
+          let walkYear = firstWindowMonth.year
+          let walkMonth = firstWindowMonth.month
+          let foundStart = false
+          const maxWalkBack = 120 // Don't walk back more than 10 years
+
+          for (let i = 0; i < maxWalkBack && !foundStart; i++) {
+            const prev = getPreviousMonth(walkYear, walkMonth)
+            walkYear = prev.year
+            walkMonth = prev.month
+
+            const prevMonthData = await readMonthDirect(budgetId, walkYear, walkMonth)
+
+            if (!prevMonthData) {
+              // No more months - start from zero
+              foundStart = true
+            } else {
+              // Check if this month has start_balance saved
+              const hasPrevStartBalance = (prevMonthData.category_balances || []).some(cb => 
+                !isNoCategory(cb.category_id) && cb.start_balance !== 0
+              ) || (prevMonthData.account_balances || []).some(ab => 
+                !isNoAccount(ab.account_id) && ab.start_balance !== 0
+              )
+
+              if (hasPrevStartBalance) {
+                // Found a month with start_balance - use its end_balance as starting point
+                foundStart = true
+                const categoryStartBalances: Record<string, number> = {}
+                const accountStartBalances: Record<string, number> = {}
+
+                for (const cb of prevMonthData.category_balances || []) {
+                  if (!isNoCategory(cb.category_id)) {
+                    categoryStartBalances[cb.category_id] = roundCurrency(cb.end_balance ?? 0)
+                  }
+                }
+
+                for (const ab of prevMonthData.account_balances || []) {
+                  if (!isNoAccount(ab.account_id)) {
+                    accountStartBalances[ab.account_id] = roundCurrency(ab.end_balance ?? 0)
+                  }
+                }
+
+                prevSnapshot = {
+                  categoryEndBalances: categoryStartBalances,
+                  accountEndBalances: accountStartBalances,
+                  totalIncome: roundCurrency(prevMonthData.total_income ?? 0),
+                }
+              } else {
+                // This month doesn't have start_balance - add to list and keep walking
+                monthsToCalculateBackward.push(prevMonthData)
+              }
+            }
+          }
+
+          // Reverse the list so we process oldest first, then walk forward to first window month
+          monthsToCalculateBackward.reverse()
+          
+          // Calculate forward from the starting point to the first window month
+          for (const monthData of monthsToCalculateBackward) {
+            const recalculated = recalculateMonth(monthData, prevSnapshot)
+            prevSnapshot = extractSnapshotFromMonth(recalculated)
+            
+            // Save this month if it's at/before the first window month
+            if (isMonthAtOrBeforeWindow(monthData.year, monthData.month)) {
+              // Convert to stored format and save (only saves start_balance for months at/before window)
+              const storedMonth = convertMonthBalancesToStored(recalculated)
+              await writeMonthData({
+                budgetId,
+                month: storedMonth,
+                description: `initial balance calculation: ensuring start_balance for ${monthData.year}/${monthData.month}`,
+                cascadeRecalculation: false,
+              })
+            }
+          }
+        } else if (earliestLoadedMonth) {
+          // First window month (or earlier) has start_balance - use earliest loaded month's start_balances
           const categoryStartBalances: Record<string, number> = {}
           const accountStartBalances: Record<string, number> = {}
           
-          // Use existing start_balances from the earliest month (these represent pre-download history)
-          // These start_balances summarize everything before the downloaded months
-          for (const cb of earliestMonth.category_balances || []) {
+          for (const cb of earliestLoadedMonth.category_balances || []) {
             if (!isNoCategory(cb.category_id)) {
               categoryStartBalances[cb.category_id] = roundCurrency(cb.start_balance ?? 0)
             }
           }
           
-          for (const ab of earliestMonth.account_balances || []) {
+          for (const ab of earliestLoadedMonth.account_balances || []) {
             if (!isNoAccount(ab.account_id)) {
               accountStartBalances[ab.account_id] = roundCurrency(ab.start_balance ?? 0)
             }
@@ -191,14 +218,14 @@ export function useInitialBalanceCalculation({
           prevSnapshot = {
             categoryEndBalances: categoryStartBalances,
             accountEndBalances: accountStartBalances,
-            totalIncome: roundCurrency(earliestMonth.previous_month_income ?? 0),
+            totalIncome: roundCurrency(earliestLoadedMonth.previous_month_income ?? 0),
           }
         }
         
         const updatedMonths: MonthDocument[] = []
-        const monthsToSave: MonthDocument[] = []
 
         // Process each month to calculate balances using recalculateMonth (pure function)
+        // Just recalculate and update cache - don't save to Firestore (months recalculate on-demand when missing)
         for (const month of sortedMonths) {
           // Recalculate month using previous month's snapshot
           // For the earliest month, this uses its preserved start_balances
@@ -206,29 +233,40 @@ export function useInitialBalanceCalculation({
           const recalculated = recalculateMonth(month, prevSnapshot)
           updatedMonths.push(recalculated)
 
-          // Only include in save list if it actually changed
-          if (monthHasChanged(month, recalculated)) {
-            monthsToSave.push(recalculated)
-          }
-
           // Extract snapshot for next month (end_balances become next month's start_balances)
           prevSnapshot = extractSnapshotFromMonth(recalculated)
         }
 
-        // Get final balances from last month's snapshot
+        // Get final balances from last processed month's snapshot
         const runningAccountBalances = prevSnapshot.accountEndBalances
         const currentCategoryBalances = prevSnapshot.categoryEndBalances
 
         // Calculate total category balances (including future allocations) to match what's stored in budget document
         // The budget document stores total balances (all-time including future), not just current month's end_balance
-        const lastMonth = updatedMonths[updatedMonths.length - 1]
-        const runningCategoryBalances = await calculateTotalBalances(
-          budgetId,
-          categoryIds,
-          currentCategoryBalances,
-          lastMonth.year,
-          lastMonth.month
-        )
+        // Start from the first window month (which has start_balance) and walk forward through all future months
+        const lastProcessedMonth = updatedMonths.length > 0 
+          ? updatedMonths[updatedMonths.length - 1]
+          : sortedMonths.length > 0 
+            ? sortedMonths[sortedMonths.length - 1]
+            : null
+
+        let runningCategoryBalances: Record<string, number>
+        
+        if (!lastProcessedMonth) {
+          // No months processed - use empty balances
+          runningCategoryBalances = {}
+          categoryIds.forEach(id => { runningCategoryBalances[id] = 0 })
+        } else {
+          // Continue from the last processed month forward through all future months in the budget
+          // This adds future allocations and expenses to get the all-time total
+          runningCategoryBalances = await calculateTotalBalances(
+            budgetId,
+            categoryIds,
+            currentCategoryBalances,
+            lastProcessedMonth.year,
+            lastProcessedMonth.month
+          )
+        }
 
         // Update account balances in budget document
         const updatedAccounts: AccountsMap = {}
@@ -242,35 +280,27 @@ export function useInitialBalanceCalculation({
           updatedCategories[catId] = { ...cat, balance: runningCategoryBalances[catId] ?? 0 }
         })
 
-        // Get month map from budget
+        // Get month map from budget (just track which months exist, no flags)
         const monthMap: MonthMap = budget.month_map || {}
         const monthOrdinals = new Set(sortedMonths.map(m => getYearMonthOrdinal(m.year, m.month)))
         const updatedMonthMap: MonthMap = {}
         for (const ordinal of Object.keys(monthMap)) {
           if (monthOrdinals.has(ordinal)) {
-            updatedMonthMap[ordinal] = { needs_recalculation: false }
+            updatedMonthMap[ordinal] = {} // Just track presence, no flags
           } else {
             updatedMonthMap[ordinal] = monthMap[ordinal]
           }
         }
-
-        // Save only months that actually changed in a batch for better performance
-        if (monthsToSave.length > 0) {
-          addLoadingHold('initial-balance-calculation', 'Saving month balances...')
-          
-          // Prepare batch write documents
-          const batchDocs: BatchWriteDoc[] = monthsToSave.map(month => ({
-            collectionPath: 'months',
-            docId: getMonthDocId(budgetId, month.year, month.month),
-            data: cleanForFirestore({
-              ...month,
-              updated_at: new Date().toISOString(),
-            }) as FirestoreData,
-          }))
-
-          // Write all changed months in a single batch operation
-          await batchWriteDocs(batchDocs, 'initial balance calculation: batch write months')
+        // Add any new months that weren't in the map
+        for (const month of sortedMonths) {
+          const ordinal = getYearMonthOrdinal(month.year, month.month)
+          if (!(ordinal in updatedMonthMap)) {
+            updatedMonthMap[ordinal] = {}
+          }
         }
+
+        // Removed batch write - months will recalculate on-demand when missing from cache
+        // start_balance will be saved when months are actually edited (via writeMonthData)
 
         // Update all month caches (both changed and unchanged) to reflect recalculated values
         // This ensures the UI shows the correct calculated values even if nothing was saved
@@ -281,50 +311,36 @@ export function useInitialBalanceCalculation({
           )
         }
 
-        // Update budget document with calculated balances (only if changed)
-        const budgetNeedsUpdate =
-          budgetBalancesHaveChanged(accounts, categories, updatedAccounts, updatedCategories) ||
-          JSON.stringify(budget.month_map) !== JSON.stringify(updatedMonthMap)
+        // Update budget cache with calculated balances (don't save to Firestore - balances are calculated on-the-fly)
+        // Only update month_map if it changed (this is the only thing we save to Firestore for budget)
+        const monthMapChanged = JSON.stringify(budget.month_map) !== JSON.stringify(updatedMonthMap)
 
-        if (budgetNeedsUpdate) {
-          addLoadingHold('initial-balance-calculation', 'Saving budget balances...')
-          await updateBudgetBalances(budgetId, runningAccountBalances, runningCategoryBalances, updatedMonthMap)
-
-          // Also update via mutations to ensure cache is updated
-          await updateAccounts.mutateAsync({ budgetId, accounts: updatedAccounts })
-          await updateCategories.mutateAsync({ budgetId, categories: updatedCategories })
-
-          // Run assertions to validate the recalculation
-          const { data: updatedBudgetData } = await readDocByPath<BudgetDocument>(
-            'budgets',
+        if (monthMapChanged) {
+          // Only save month_map to Firestore (not balances - those are calculated)
+          addLoadingHold('initial-balance-calculation', 'Saving month map...')
+          const { writeBudgetData } = await import('@data/mutations/budget/writeBudgetData')
+          await writeBudgetData({
             budgetId,
-            '[initial balance calculation] reading budget for assertions'
-          )
-
-          if (updatedBudgetData && updatedMonths.length > 0) {
-            // Use the last month's year/month for assertions
-            const lastMonth = updatedMonths[updatedMonths.length - 1]
-            const assertionResults = await runRecalculationAssertions({
-              budgetId,
-              categories: updatedBudgetData.categories || {},
-              totalAvailable: updatedBudgetData.total_available ?? 0,
-              currentYear: lastMonth.year,
-              currentMonth: lastMonth.month,
-            })
-
-            // Log results and show banners for failures
-            const banners = logAssertionResults(assertionResults, '[Initial Balance Calculation]')
-            banners.forEach(banner => bannerQueue.add(banner))
-          }
-        } else {
-          // Still update cache even if we don't save, to ensure UI is in sync
-          queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-            ...budgetData,
-            budget: { ...budget, month_map: updatedMonthMap },
-            accounts: updatedAccounts,
-            categories: updatedCategories,
+            updates: {
+              month_map: updatedMonthMap,
+            },
+            description: 'initial balance calculation: updating month_map',
           })
         }
+
+        // Always update cache with calculated balances (even if nothing was saved)
+        // This ensures the UI shows the correct calculated values
+        // Note: total_available is calculated on-the-fly in useBudgetData, not stored in cache
+        queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+          ...budgetData,
+          budget: { 
+            ...budget, 
+            month_map: updatedMonthMap,
+          },
+          accounts: updatedAccounts,
+          categories: updatedCategories,
+        })
+
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to calculate initial balances'

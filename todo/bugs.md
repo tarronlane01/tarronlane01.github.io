@@ -1,8 +1,16 @@
+
+
 # This Session
 
-When clicking between settings/accounts and settings/categories, there is aplit second on categories where all the values aren't populated yet (looks like maybe three dots). Why is this happening? Also, sometimes it looks like they are different values, and then they change a split second after the page loads. Why?
+Getting an access denied message when going to the settings/budget page, because user was stale. We should either keep the user from getting stale, or show a loading screen if the user is stale while we're refetching so we don't show the access denied error. Apply this fix anywhere else this scenario could happen.
 
 Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
+
+Catch if we ever get a firebase quota error when trying to read/write to firebase, and show that error in the common error banner.
+
+---
+
+Maybe we take all the totals and balances and never save those to firebase, instead always recalculating them on inital app load, storing them elsewhere for just the app session. That would save us having to do periodic saves and reconcilliations and manage cache for balances and cascading tracking of what needs resaved because the balance is new, right? Any issues in this plan? Don't make any changes yet, just let me know what this plan misses.
 
 # Other
 

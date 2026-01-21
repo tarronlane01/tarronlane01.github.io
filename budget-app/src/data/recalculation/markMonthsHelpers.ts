@@ -57,8 +57,8 @@ export function cleanupMonthMap(monthMap: MonthMap): MonthMap {
 }
 
 /**
- * Check if the edited month AND all months after are already marked in cache.
- * Returns true only if the cache exists AND all relevant months are already marked.
+ * Check if all future months are already in the month_map.
+ * Returns true only if the cache exists AND all relevant months are in the map.
  *
  * This optimization prevents unnecessary Firestore writes when the user
  * makes multiple edits to the same month in quick succession.
@@ -68,18 +68,19 @@ export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, editedM
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (!cachedBudget?.monthMap) return false
 
-  // Check if the edited month or any future month in the cache is NOT marked
-  for (const [ordinal, info] of Object.entries(cachedBudget.monthMap)) {
-    if (ordinal >= editedMonthOrdinal && !info.needs_recalculation) {
-      return false // Found a month that needs marking
+  // Check if the edited month or any future month in the cache is NOT in the map
+  const windowOrdinals = getMonthWindowOrdinals()
+  for (const ordinal of windowOrdinals) {
+    if (ordinal >= editedMonthOrdinal && !(ordinal in cachedBudget.monthMap)) {
+      return false // Found a month that needs to be added
     }
   }
 
-  return true // Edited month and all future months are already marked
+  return true // Edited month and all future months are already in the map
 }
 
 /**
- * Update the cache to mark the budget and months as needing recalculation.
+ * Update the cache with updated month_map.
  */
 export function updateCacheWithMarking(
   budgetId: string,
@@ -92,11 +93,9 @@ export function updateCacheWithMarking(
   if (cachedBudget) {
     queryClient.setQueryData<BudgetData>(budgetKey, {
       ...cachedBudget,
-      isNeedsRecalculation: true,
       monthMap: updatedMonthMap,
       budget: {
         ...cachedBudget.budget,
-        is_needs_recalculation: true,
         month_map: updatedMonthMap,
       },
     })
@@ -140,11 +139,9 @@ export function updateCacheWithAllMonthsMarked(budgetId: string, updatedMonthMap
   if (cachedBudget) {
     queryClient.setQueryData<BudgetData>(budgetKey, {
       ...cachedBudget,
-      isNeedsRecalculation: true,
       monthMap: updatedMonthMap,
       budget: {
         ...cachedBudget.budget,
-        is_needs_recalculation: true,
         month_map: updatedMonthMap,
       },
     })

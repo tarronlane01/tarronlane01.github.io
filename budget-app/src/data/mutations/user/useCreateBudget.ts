@@ -52,9 +52,7 @@ export function useCreateBudget() {
             sort_order: 0,
           },
         ],
-        // Initialize calculated fields
-        total_available: 0,
-        is_needs_recalculation: false,
+        // Initialize month_map (empty for new budgets)
         month_map: {},
         created_at: now,
         updated_at: now,

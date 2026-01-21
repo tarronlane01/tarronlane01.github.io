@@ -37,8 +37,7 @@ interface BudgetDocument {
   account_groups: FirestoreData
   categories: FirestoreData
   category_groups: FirestoreData[]
-  total_available?: number
-  is_needs_recalculation?: boolean
+  // Removed total_available and is_needs_recalculation - calculated/managed locally
   month_map?: FirestoreData
   created_at?: string
   updated_at?: string
@@ -51,9 +50,7 @@ export interface BudgetData {
   accountGroups: AccountGroupsMap
   categories: CategoriesMap
   categoryGroups: CategoryGroupWithId[]
-  /** Flag indicating balances need recalculation from transaction data */
-  isNeedsRecalculation: boolean
-  /** Index of recent months with their recalculation status */
+  /** Index of months in the budget (just tracks which months exist) */
   monthMap: MonthMap
 }
 
@@ -167,13 +164,12 @@ function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): Category
 
 /**
  * Parse raw Firestore month_map data into typed MonthMap
+ * month_map is just a set of ordinals - values are empty objects
  */
 function parseMonthMap(monthMapData: FirestoreData = {}): MonthMap {
   const monthMap: MonthMap = {}
-  Object.entries(monthMapData).forEach(([ordinal, info]) => {
-    monthMap[ordinal] = {
-      needs_recalculation: info?.needs_recalculation ?? false,
-    }
+  Object.keys(monthMapData).forEach((ordinal) => {
+    monthMap[ordinal] = {}
   })
   return monthMap
 }
@@ -205,9 +201,7 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
   const accountGroups = parseAccountGroups(data.account_groups)
   const categories = parseCategories(data.categories)
   const categoryGroups = parseCategoryGroups(data.category_groups)
-  const totalAvailable = data.total_available ?? 0
   const monthMap = parseMonthMap(data.month_map)
-  const isNeedsRecalculation = data.is_needs_recalculation ?? false
 
   return {
     budget: {
@@ -221,15 +215,13 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
       account_groups: accountGroups,
       categories,
       category_groups: categoryGroups,
-      total_available: totalAvailable,
-      is_needs_recalculation: isNeedsRecalculation,
+      // Removed total_available and is_needs_recalculation - calculated/managed locally
       month_map: monthMap,
     },
     accounts,
     accountGroups,
     categories,
     categoryGroups,
-    isNeedsRecalculation,
     monthMap,
   }
 }

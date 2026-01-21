@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useAccountsPage, useBudgetData, useAutoRecalculation, useMonthData } from '@hooks'
+import { useAccountsPage, useBudgetData, useMonthData, useEnsureBalancesFresh } from '@hooks'
 import { useBudget, useApp } from '@contexts'
 import { calculateAccountClearedBalances } from '@calculations'
 import {
@@ -19,7 +19,7 @@ import { RecalculateAllButton } from '@components/budget/Month'
 
 function Accounts() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
-  const { monthMap, isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts } = useBudgetData()
+  const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   const {
@@ -45,8 +45,8 @@ function Accounts() {
 
   // Check fetching state BEFORE rendering to avoid flashing empty values
   const isDataLoading = isBudgetLoading || isBudgetFetching || !currentBudget
-  // Auto-trigger recalculation when navigating to Accounts settings if ANY month needs recalc
-  useAutoRecalculation({ budgetId: selectedBudgetId, monthMap, checkAnyMonth: true, additionalCondition: !isDataLoading && !!currentBudget, logPrefix: '[Settings/Accounts]' })
+  // Ensure months are fresh in cache before calculating balances (refetches if stale)
+  useEnsureBalancesFresh(!isDataLoading && !!currentBudget)
   // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
   useEffect(() => {
     if (isDataLoading) {

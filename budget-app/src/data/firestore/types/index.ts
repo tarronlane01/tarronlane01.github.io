@@ -28,7 +28,6 @@ export type {
   CategoryGroupsMap,
   CategoryGroupWithId,
   Budget,
-  MonthInfo,
   MonthMap,
 } from '@firestore/types/budget/index'
 
@@ -39,6 +38,8 @@ export type {
   TransferTransaction,
   AdjustmentTransaction,
   CategoryMonthBalance,
+  CategoryMonthBalanceStored,
   AccountMonthBalance,
+  AccountMonthBalanceStored,
   MonthDocument,
 } from '@firestore/types/month/index'

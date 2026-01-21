@@ -3,48 +3,54 @@
  *
  * Contains migrations that should typically only be run once.
  * Each displays as a compact row with check/apply buttons.
- *
- * To add a new migration:
- * 1. Create a migration hook in hooks/migrations/ (see useEnsureUngroupedGroups.ts as example)
- * 2. Create a migration row component in this folder (see EnsureUngroupedGroupsRow.tsx as example)
- * 3. Add the migration hook to hooks/migrations/index.ts
- * 4. Add the migration hook to hooks/index.ts
- * 5. Import and use the migration row component below
- * 6. Add the migration hook usage in pages/budget/admin/Migration.tsx
- * 7. Pass the migration props to this OnetimeSection component
  */
 
 import { MigrationSection } from '../common'
-// Import migration row components here when adding new migrations
-// Example: import { MyNewMigrationRow } from './MyNewMigrationRow'
+import { RemoveTotalFieldsRow } from './RemoveTotalFieldsRow'
+import { RemovePreviousMonthIncomeRow } from './RemovePreviousMonthIncomeRow'
+
+import type { RemoveTotalFieldsMigrationStatus, RemoveTotalFieldsMigrationResult } from '@hooks/migrations/useRemoveTotalFieldsMigration'
+import type { RemovePreviousMonthIncomeMigrationStatus, RemovePreviousMonthIncomeMigrationResult } from '@hooks/migrations/useRemovePreviousMonthIncomeMigration'
 
 interface OnetimeSectionProps {
   disabled: boolean
   onDownloadBackup: () => Promise<void>
   isDownloadingBackup: boolean
-  // Add migration props here when adding new migrations
-  // Example: myNewMigration: { ... }
+  removeTotalFieldsMigration: {
+    status: RemoveTotalFieldsMigrationStatus | null
+    hasData: boolean
+    needsMigration: boolean
+    totalItemsToFix: number
+    isScanning: boolean
+    isRunning: boolean
+    result: RemoveTotalFieldsMigrationResult | null
+    scanStatus: () => void
+    runMigration: () => void
+  }
+  removePreviousMonthIncomeMigration: {
+    status: RemovePreviousMonthIncomeMigrationStatus | null
+    hasData: boolean
+    needsMigration: boolean
+    totalItemsToFix: number
+    isScanning: boolean
+    isRunning: boolean
+    result: RemovePreviousMonthIncomeMigrationResult | null
+    scanStatus: () => void
+    runMigration: () => void
+  }
 }
 
 export function OnetimeSection({
-  // These props are part of the interface and will be used when migrations are added
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  disabled: _disabled,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  disabled,
   onDownloadBackup: _onDownloadBackup,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isDownloadingBackup: _isDownloadingBackup,
+  removeTotalFieldsMigration,
+  removePreviousMonthIncomeMigration,
 }: OnetimeSectionProps) {
-  // Track if any migration is running
-  const isAnyRunning = false // Set to true when migrations are running
-
-  // Add backup prompts for migrations here
-  // Example:
-  // const myNewMigrationBackup = useBackupPrompt({
-  //   migrationName: 'My New Migration',
-  //   isDestructive: false,
-  //   onDownloadBackup,
-  // })
+  // Props onDownloadBackup and isDownloadingBackup are kept for API compatibility but not used
+  void _onDownloadBackup
+  void _isDownloadingBackup
+  const isAnyRunning = removeTotalFieldsMigration.isRunning || removePreviousMonthIncomeMigration.isRunning
 
   return (
     <>
@@ -55,27 +61,34 @@ export function OnetimeSection({
         type="onetime"
         isAnyRunning={isAnyRunning}
       >
-        {/* Add migration rows here */}
-        {/* Example:
-        <MyNewMigrationRow
-          status={myNewMigration.status}
-          hasData={myNewMigration.hasData}
-          needsMigration={myNewMigration.needsMigration}
-          totalBudgetsToUpdate={myNewMigration.totalBudgetsToUpdate}
-          isChecking={myNewMigration.isScanning}
-          isRunning={myNewMigration.isRunning}
-          result={myNewMigration.result}
-          onCheck={myNewMigration.scanStatus}
-          onRun={() => myNewMigrationBackup.promptBeforeAction(myNewMigration.runMigration)}
-          disabled={_disabled}
+        {/* Remove Total Fields Migration */}
+        <RemoveTotalFieldsRow
+          status={removeTotalFieldsMigration.status}
+          hasData={removeTotalFieldsMigration.hasData}
+          needsMigration={removeTotalFieldsMigration.needsMigration}
+          totalItemsToFix={removeTotalFieldsMigration.totalItemsToFix}
+          isChecking={removeTotalFieldsMigration.isScanning}
+          isRunning={removeTotalFieldsMigration.isRunning}
+          result={removeTotalFieldsMigration.result}
+          onCheck={removeTotalFieldsMigration.scanStatus}
+          onRun={removeTotalFieldsMigration.runMigration}
+          disabled={disabled}
         />
-        */}
-        {null}
-      </MigrationSection>
 
-      {/* Add backup prompts here */}
-      {/* Example: <BackupPrompt {...myNewMigrationBackup.promptProps} isDownloading={isDownloadingBackup} /> */}
+        {/* Remove Previous Month Income Migration */}
+        <RemovePreviousMonthIncomeRow
+          status={removePreviousMonthIncomeMigration.status}
+          hasData={removePreviousMonthIncomeMigration.hasData}
+          needsMigration={removePreviousMonthIncomeMigration.needsMigration}
+          totalItemsToFix={removePreviousMonthIncomeMigration.totalItemsToFix}
+          isChecking={removePreviousMonthIncomeMigration.isScanning}
+          isRunning={removePreviousMonthIncomeMigration.isRunning}
+          result={removePreviousMonthIncomeMigration.result}
+          onCheck={removePreviousMonthIncomeMigration.scanStatus}
+          onRun={removePreviousMonthIncomeMigration.runMigration}
+          disabled={disabled}
+        />
+      </MigrationSection>
     </>
   )
 }
-

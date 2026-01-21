@@ -38,10 +38,11 @@ export function useDeleteAllocations() {
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Clear allocations from category_balances
+    // Don't manually set end_balance - let recalculation handle it from transactions
     const clearedCategoryBalances = monthData.category_balances.map(cb => ({
       ...cb,
       allocated: 0,
-      end_balance: cb.start_balance - cb.spent,
+      // end_balance will be recalculated by recalculateMonthAndCascade
     }))
 
     const updatedMonth: MonthDocument = {

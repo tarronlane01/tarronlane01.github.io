@@ -1,8 +1,8 @@
 /**
  * Trigger Recalculation - Main entry point for the recalculation process.
- * Called when readBudget detects is_needs_recalculation = true.
- * Uses month_map to determine which months need recalculation, then walks forward
- * from the first stale month recalculating each and updating balances.
+ * Called manually or on-demand when recalculation is needed.
+ * Uses month_map to determine which months to recalculate, then walks forward
+ * from the first month recalculating each and updating balances.
  */
 
 import type { FirestoreData, MonthDocument } from '@types'
@@ -18,8 +18,6 @@ import {
 import { queryClient, queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/month'
 import { calculateTotalBalances } from '../cachedReads'
-import { runRecalculationAssertions, logAssertionResults } from './assertions'
-import { bannerQueue } from '@components/ui'
 
 // Import types
 import type {
@@ -33,10 +31,8 @@ import { MONTH_NAMES } from './triggerRecalculationTypes'
 // Import helpers
 import {
   parseMonthMap,
-  getMonthsNeedingRecalc,
   getAllMonthOrdinals,
   fetchMonthsByOrdinals,
-  clearBudgetRecalcFlag,
   updateBudgetBalances,
 } from './triggerRecalculationHelpers'
 
@@ -110,31 +106,34 @@ async function executeRecalculation(
   }
 
   const monthMap = parseMonthMap(budgetData.month_map)
-  const monthsNeedingRecalc = getMonthsNeedingRecalc(monthMap)
-
-  if (monthsNeedingRecalc.length === 0 && !budgetData.is_needs_recalculation) {
+  
+  // Step 2: Determine which months to fetch (all months in the window)
+  // Since we don't track flags, we recalculate all months in the window when called
+  const allOrdinals = getAllMonthOrdinals(monthMap)
+  
+  // If no months in map, nothing to recalculate
+  if (allOrdinals.length === 0) {
     onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
     return { monthsRecalculated: 0, budgetUpdated: false }
   }
 
-  // Step 2: Determine which months to fetch (optimization: don't fetch months we don't need)
-  const allOrdinals = getAllMonthOrdinals(monthMap)
-  const firstStaleOrdinal = monthsNeedingRecalc.length > 0 ? monthsNeedingRecalc[0] : null
-
-  if (!firstStaleOrdinal) {
-    await clearBudgetRecalcFlag(budgetId, monthMap)
-    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
-    return { monthsRecalculated: 0, budgetUpdated: true }
+  // Step 3: Fetch all months in the map (or use triggering month if specified)
+  const triggeringOrdinal = options.triggeringMonthOrdinal
+  let ordinalsToFetch: string[]
+  
+  if (triggeringOrdinal) {
+    // Recalculate from triggering month onwards
+    const triggeringIndex = allOrdinals.indexOf(triggeringOrdinal)
+    const hasStartingMonth = triggeringIndex > 0
+    ordinalsToFetch = hasStartingMonth
+      ? allOrdinals.slice(triggeringIndex - 1)
+      : allOrdinals.slice(triggeringIndex)
+  } else {
+    // Recalculate all months in the map
+    ordinalsToFetch = allOrdinals
   }
-
-  // Find the ordinal before the first stale month (for starting snapshot)
-  const firstStaleOrdinalIndex = allOrdinals.indexOf(firstStaleOrdinal)
-  const hasStartingMonth = firstStaleOrdinalIndex > 0
-
-  // Step 3: Only fetch months we actually need
-  let ordinalsToFetch = hasStartingMonth
-    ? allOrdinals.slice(firstStaleOrdinalIndex - 1)
-    : allOrdinals.slice(firstStaleOrdinalIndex)
+  
+  const hasStartingMonth = ordinalsToFetch.length > 0 && allOrdinals.indexOf(ordinalsToFetch[0]) > 0
 
   // Filter out months that are too far in the future (beyond MAX_FUTURE_MONTHS)
   // These months may be in the monthMap but don't exist in Firestore yet
@@ -172,9 +171,8 @@ async function executeRecalculation(
   })
 
   if (months.length === 0) {
-    await clearBudgetRecalcFlag(budgetId, monthMap)
     onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
-    return { monthsRecalculated: 0, budgetUpdated: true }
+    return { monthsRecalculated: 0, budgetUpdated: false }
   }
 
   // Step 4: Determine recalculation bounds
@@ -212,6 +210,7 @@ async function executeRecalculation(
   }
 
   // Step 6: Batch write all recalculated months to Firestore
+  // Convert to stored format before writing (only saves start_balance for months at/before window)
   onProgress?.({
     phase: 'saving',
     monthsProcessed: monthsRecalculated,
@@ -219,7 +218,10 @@ async function executeRecalculation(
     percentComplete: 75,
   })
 
-  const batchDocs: BatchWriteDoc[] = recalculatedMonths.map(month => ({
+  const { convertMonthBalancesToStored } = await import('@data/firestore/converters/monthBalances')
+  const storedMonths = recalculatedMonths.map(month => convertMonthBalancesToStored(month))
+
+  const batchDocs: BatchWriteDoc[] = storedMonths.map(month => ({
     collectionPath: 'months',
     docId: getMonthDocId(budgetId, month.year, month.month),
     data: month as unknown as FirestoreData,
@@ -272,26 +274,12 @@ async function executeRecalculation(
     percentComplete: 95,
   })
 
-  // Read updated budget data for assertions
-  const { data: updatedBudgetData } = await readDocByPath<BudgetDocument>(
-    'budgets',
-    budgetId,
-    '[recalc] reading budget for assertions'
-  )
-
-  if (updatedBudgetData) {
-    const assertionResults = await runRecalculationAssertions({
-      budgetId,
-      categories: updatedBudgetData.categories || {},
-      totalAvailable: updatedBudgetData.total_available ?? 0,
-      currentYear,
-      currentMonth,
-    })
-
-    // Log results and show banners for failures
-    const banners = logAssertionResults(assertionResults, '[Recalculation]')
-    banners.forEach(banner => bannerQueue.add(banner))
-  }
+  // Assertions removed - no longer needed with new calculation approach
+  // if (updatedBudgetData) {
+  //   const assertionResults = await runRecalculationAssertions({...})
+  //   const banners = logAssertionResults(assertionResults, '[Recalculation]')
+  //   banners.forEach(banner => bannerQueue.add(banner))
+  // }
 
   onProgress?.({
     phase: 'complete',

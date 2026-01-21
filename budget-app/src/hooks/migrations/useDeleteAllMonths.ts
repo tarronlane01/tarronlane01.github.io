@@ -41,32 +41,38 @@ async function resetBudgetBalances(budgetId: string): Promise<void> {
     return
   }
 
-  // Reset all account balances to 0
-  const resetAccounts = { ...data.accounts }
-  for (const accountId of Object.keys(resetAccounts)) {
-    if (resetAccounts[accountId] && typeof resetAccounts[accountId] === 'object') {
-      resetAccounts[accountId] = { ...resetAccounts[accountId], balance: 0 }
-    }
-  }
+  // Strip balance fields from accounts and categories (don't save balances - they're calculated on-the-fly)
+  // This is a reset operation, so we remove balances rather than setting them to 0
+  const accountsWithoutBalances = Object.fromEntries(
+    Object.entries(data.accounts || {}).map(([id, acc]) => {
+      if (acc && typeof acc === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+        const { balance: _balance, ...accWithoutBalance } = acc as { balance?: number; [key: string]: unknown }
+        return [id, accWithoutBalance]
+      }
+      return [id, acc]
+    })
+  )
+  const categoriesWithoutBalances = Object.fromEntries(
+    Object.entries(data.categories || {}).map(([id, cat]) => {
+      if (cat && typeof cat === 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+        const { balance: _balance, ...catWithoutBalance } = cat as { balance?: number; [key: string]: unknown }
+        return [id, catWithoutBalance]
+      }
+      return [id, cat]
+    })
+  )
 
-  // Reset all category balances to 0
-  const resetCategories = { ...data.categories }
-  for (const categoryId of Object.keys(resetCategories)) {
-    if (resetCategories[categoryId] && typeof resetCategories[categoryId] === 'object') {
-      resetCategories[categoryId] = { ...resetCategories[categoryId], balance: 0 }
-    }
-  }
-
-  // Write the reset budget
+  // Write the reset budget (without balances - they'll be calculated as 0 on-the-fly since no months exist)
+  // Don't save total_available or is_needs_recalculation - they're calculated/managed locally
   await writeDocByPath('budgets', budgetId, {
     ...data,
-    accounts: resetAccounts,
-    categories: resetCategories,
+    accounts: accountsWithoutBalances,
+    categories: categoriesWithoutBalances,
     month_map: {}, // Clear all month entries
-    total_available: 0,
-    is_needs_recalculation: false,
     updated_at: new Date().toISOString(),
-  }, `[delete all months] resetting budget ${budgetId} balances to zero`)
+  }, `[delete all months] resetting budget ${budgetId} (removing balances)`)
 }
 
 export interface MonthInfo {

@@ -51,12 +51,12 @@ async function buildCompleteMonthMapForBudget(budgetId: string): Promise<MonthMa
     [{ field: 'budget_id', op: '==', value: budgetId }]
   )
 
-  // Add ALL existing months to the map
+  // Add ALL existing months to the map (just empty objects - no flags)
   for (const monthDoc of monthsResult.docs) {
     const data = monthDoc.data
     if (data.year && data.month) {
       const ordinal = getYearMonthOrdinal(data.year as number, data.month as number)
-      monthMap[ordinal] = { needs_recalculation: false }
+      monthMap[ordinal] = {}
     }
   }
 
@@ -208,7 +208,7 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
       delete (updates as { category_balances?: unknown }).category_balances
       delete (updates as { allocations?: unknown }).allocations
       delete (updates as { allocations_finalized?: unknown }).allocations_finalized
-      delete (updates as { is_needs_recalculation?: unknown }).is_needs_recalculation
+      // Removed is_needs_recalculation deletion - field no longer exists
       delete (updates as { earliest_month?: unknown }).earliest_month
 
       if (needsUpdate) {

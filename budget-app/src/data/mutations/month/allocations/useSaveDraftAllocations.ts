@@ -27,11 +27,23 @@ export function useSaveDraftAllocations() {
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
     // Update category_balances with draft allocations
-    // Note: allocated amounts are stored but end_balance doesn't change until finalized
-    const updatedCategoryBalances = monthData.category_balances.map(cb => ({
-      ...cb,
+    // Recalculate all calculated fields (spent, transfers, adjustments, end_balance) from transactions
+    // to ensure they're fresh, even though end_balance doesn't affect balances until finalized
+    const { calculateCategoryBalances } = await import('@utils/calculations/balances/calculateCategoryBalancesFromTransactions')
+    
+    // Get stored balances (start_balance, allocated) and recalculate calculated fields
+    const storedBalances = monthData.category_balances.map(cb => ({
+      category_id: cb.category_id,
+      start_balance: cb.start_balance,
       allocated: allocations[cb.category_id] ?? cb.allocated,
     }))
+    
+    const updatedCategoryBalances = calculateCategoryBalances(
+      storedBalances,
+      monthData.expenses || [],
+      monthData.transfers || [],
+      monthData.adjustments || []
+    )
 
     const updatedMonth: MonthDocument = {
       ...monthData,

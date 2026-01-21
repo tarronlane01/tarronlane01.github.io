@@ -13,13 +13,13 @@ export { useAllocationsPage } from './useAllocationsPage'
 export { useCategoriesPage, type CategoryEntry, type CategoryWithId, type CategoryBalance } from './useCategoriesPage'
 export { useCategoryValidation } from './useCategoryValidation'
 export { useMonthNavigationError } from './useMonthNavigationError'
-export { useAutoRecalculation } from './useAutoRecalculation'
 export { useInitialDataLoad } from './useInitialDataLoad'
 export { useLocalRecalculation, recalculateMonthLocally, recalculateMonthsLocally } from './useLocalRecalculation'
 export { useBackgroundSave } from './useBackgroundSave'
 export { useNavigationSave } from './useNavigationSave'
 export { useSyncCheck } from './useSyncCheck'
 export { useMonthPrefetch } from './useMonthPrefetch'
+export { useEnsureBalancesFresh } from './useEnsureBalancesFresh'
 
 // Migration hooks
 export {
@@ -51,6 +51,12 @@ export {
   useAccountCategoryValidation,
   type ValidationStatus,
   type TransactionViolation,
+  useRemoveTotalFieldsMigration,
+  type RemoveTotalFieldsMigrationStatus,
+  type RemoveTotalFieldsMigrationResult,
+  useRemovePreviousMonthIncomeMigration,
+  type RemovePreviousMonthIncomeMigrationStatus,
+  type RemovePreviousMonthIncomeMigrationResult,
   useDiagnosticDownload,
   type DownloadProgress,
   useDownloadBudget,

@@ -5,10 +5,10 @@
  * Uses CSS Grid with sticky subgrid header for column alignment.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useMonthData, useAutoRecalculation } from '@hooks'
+import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { FinancialAccount } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
@@ -16,8 +16,6 @@ import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import { colors } from '@styles/shared'
 import { AccountStatsRow } from './MonthBalances'
 import { AccountGroupRows } from './AccountGridRows'
-import type { RecalculationProgress } from '@data/recalculation'
-import { LoadingOverlay, ProgressBar, StatItem, PercentLabel } from '../../app/LoadingOverlay'
 import {
   calculateAccountBalances,
   calculateAccountBalanceTotals,
@@ -55,22 +53,10 @@ function getNetChangeColor(value: number): string {
 
 export function MonthAccounts() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
-  const { accounts, accountGroups, monthMap } = useBudgetData()
+  const { accounts, accountGroups } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
-  // Auto-trigger recalculation when navigating to this month's balances page and it needs recalc
-  const [recalcProgress, setRecalcProgress] = useState<RecalculationProgress | null>(null)
-  useAutoRecalculation({
-    budgetId: selectedBudgetId,
-    year: currentYear,
-    month: currentMonthNumber,
-    monthMap,
-    requireMonthLoaded: true,
-    currentMonth,
-    onProgress: (progress) => setRecalcProgress(progress),
-    logPrefix: '[MonthAccounts]',
-  })
 
   // Sort account groups by sort_order
   const sortedGroups = useMemo(() => {
@@ -137,49 +123,8 @@ export function MonthAccounts() {
     fontWeight: 600,
   }
 
-  // Get phase label for progress overlay
-  const getRecalcPhaseLabel = () => {
-    if (!recalcProgress) return ''
-    switch (recalcProgress.phase) {
-      case 'reading-budget': return 'Reading budget data...'
-      case 'fetching-months': return 'Fetching months...'
-      case 'recalculating':
-        return recalcProgress.currentMonth ? `Recalculating ${recalcProgress.currentMonth}...` : 'Recalculating...'
-      case 'saving': return 'Saving results...'
-      case 'complete': return 'Recalculation complete!'
-      default: return 'Recalculating balances...'
-    }
-  }
-
   return (
     <>
-      {/* Recalculation Progress Overlay */}
-      {recalcProgress && (
-        <LoadingOverlay message={getRecalcPhaseLabel()} spinnerColor="#22c55e">
-          <ProgressBar
-            percent={recalcProgress.percentComplete}
-            gradient="linear-gradient(90deg, #22c55e, #10b981)"
-          />
-          <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {(recalcProgress.totalMonthsToFetch ?? 0) > 0 && (
-              <StatItem
-                value={`${recalcProgress.monthsFetched || 0}/${recalcProgress.totalMonthsToFetch}`}
-                label="Months Loaded"
-                color={recalcProgress.phase === 'fetching-months' ? '#22c55e' : '#6b7280'}
-              />
-            )}
-            {(recalcProgress.totalMonths ?? 0) > 0 && (
-              <StatItem
-                value={`${recalcProgress.monthsProcessed}/${recalcProgress.totalMonths}`}
-                label="Months Recalculated"
-                color={recalcProgress.phase === 'recalculating' ? '#22c55e' : '#6b7280'}
-              />
-            )}
-          </div>
-          <PercentLabel percent={recalcProgress.percentComplete} />
-        </LoadingOverlay>
-      )}
-
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',

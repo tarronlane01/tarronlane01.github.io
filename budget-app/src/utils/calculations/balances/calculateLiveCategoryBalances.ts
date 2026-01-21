@@ -25,7 +25,6 @@ export function calculateLiveCategoryBalances(
   Object.entries(categories).forEach(([catId, cat]) => {
     const existing = existingBalances[catId]
     const startBalance = existing?.start_balance ?? 0
-    const spent = existing?.spent ?? 0
 
     // Use live draft allocation when in draft mode, otherwise use finalized
     let allocated = 0
@@ -33,6 +32,15 @@ export function calculateLiveCategoryBalances(
       allocated = getAllocationAmount(catId, cat)
     } else if (allocationsFinalized && existing) {
       allocated = existing.allocated
+    }
+
+    // Calculate spent from expenses array (not from stored values)
+    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
+    let spent = 0
+    if (currentMonth?.expenses) {
+      spent = currentMonth.expenses
+        .filter(e => e.category_id === catId)
+        .reduce((sum, e) => sum + e.amount, 0)
     }
 
     // Calculate transfers for this category

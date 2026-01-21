@@ -22,6 +22,8 @@ import {
   useOrphanedIdCleanup,
   useAdjustmentsToTransfersMigration,
   useAccountCategoryValidation,
+  useRemoveTotalFieldsMigration,
+  useRemovePreviousMonthIncomeMigration,
   useDownloadBudget,
   useUploadBudget,
 } from '@hooks'
@@ -48,8 +50,8 @@ function Migration() {
   // =========================================================================
 
   // One-time migrations
-  // Add migration hooks here when adding new migrations
-  // Example: const myNewMigration = useMyNewMigration()
+  const removeTotalFieldsMigration = useRemoveTotalFieldsMigration({ currentUser: current_user })
+  const removePreviousMonthIncomeMigration = useRemovePreviousMonthIncomeMigration({ currentUser: current_user })
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -69,8 +71,10 @@ function Migration() {
   // =========================================================================
 
   const isAnyScanning =
-    // Add migration scanning states here
-    // Example: myNewMigration.isScanning ||
+    // One-time migrations
+    removeTotalFieldsMigration.isScanning ||
+    removePreviousMonthIncomeMigration.isScanning ||
+    // Maintenance migrations
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
     expenseToAdjustment.isScanning ||
@@ -80,8 +84,10 @@ function Migration() {
     deleteSampleUserBudget.isScanning
 
   const isAnyRunning =
-    // Add migration running states here
-    // Example: myNewMigration.isRunning ||
+    // One-time migrations
+    removeTotalFieldsMigration.isRunning ||
+    removePreviousMonthIncomeMigration.isRunning ||
+    // Maintenance migrations
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
     adjustmentsToTransfers.isRunning ||
@@ -99,9 +105,9 @@ function Migration() {
     logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
       // One-time migrations
-      // Add migration scanStatus calls here
-      // Example: myNewMigration.scanStatus(),
-      // Maintenance
+      removeTotalFieldsMigration.scanStatus(),
+      removePreviousMonthIncomeMigration.scanStatus(),
+      // Maintenance migrations
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
       expenseToAdjustment.scanStatus(),
@@ -158,19 +164,28 @@ function Migration() {
         disabled={!current_user}
         onDownloadBackup={budgetDownload.downloadBudget}
         isDownloadingBackup={budgetDownload.isDownloading}
-        // Add migration props here when adding new migrations
-        // Example:
-        // myNewMigration={{
-        //   status: myNewMigration.status,
-        //   hasData: !!myNewMigration.status,
-        //   needsMigration: myNewMigration.status ? myNewMigration.status.budgetsNeedingUpdate > 0 : false,
-        //   totalBudgetsToUpdate: myNewMigration.status?.budgetsNeedingUpdate ?? 0,
-        //   isScanning: myNewMigration.isScanning,
-        //   isRunning: myNewMigration.isRunning,
-        //   result: myNewMigration.result,
-        //   scanStatus: myNewMigration.scanStatus,
-        //   runMigration: myNewMigration.runMigration,
-        // }}
+        removeTotalFieldsMigration={{
+          status: removeTotalFieldsMigration.status,
+          hasData: !!removeTotalFieldsMigration.status,
+          needsMigration: removeTotalFieldsMigration.needsMigration,
+          totalItemsToFix: removeTotalFieldsMigration.totalItemsToFix,
+          isScanning: removeTotalFieldsMigration.isScanning,
+          isRunning: removeTotalFieldsMigration.isRunning,
+          result: removeTotalFieldsMigration.result,
+          scanStatus: removeTotalFieldsMigration.scanStatus,
+          runMigration: removeTotalFieldsMigration.runMigration,
+        }}
+        removePreviousMonthIncomeMigration={{
+          status: removePreviousMonthIncomeMigration.status,
+          hasData: !!removePreviousMonthIncomeMigration.status,
+          needsMigration: removePreviousMonthIncomeMigration.needsMigration,
+          totalItemsToFix: removePreviousMonthIncomeMigration.totalItemsToFix,
+          isScanning: removePreviousMonthIncomeMigration.isScanning,
+          isRunning: removePreviousMonthIncomeMigration.isRunning,
+          result: removePreviousMonthIncomeMigration.result,
+          scanStatus: removePreviousMonthIncomeMigration.scanStatus,
+          runMigration: removePreviousMonthIncomeMigration.runMigration,
+        }}
       />
 
       {/* Maintenance Section */}

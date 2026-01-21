@@ -17,7 +17,7 @@ When pointed to this file, AI should do the following:
    - Run `bash scripts/check-file-length.sh` from the budget-app directory to check for files over 400 lines
    - Fix all violations before proceeding
 7. Make sure that the lint and build completes successfully without errors and that all warnings are resolved
-   - Run `npm run lint` in the budget-app directory to catch ESLint errors (not just TypeScript diagnostics)
+   - Run `npm run lint` in the budget-app directory to catch ESLint errors or warnings (not just TypeScript diagnostics)
    - The `read_lints` tool may miss some ESLint rules, so always verify with the actual lint command
    - Run `npm run build` to catch anything from the build process that should be addressed
    - Fix all warnings, even if they weren't introduced in this session. This includes `@typescript-eslint/no-explicit-any` warnings - properly type the code or add eslint-disable comments with justification.

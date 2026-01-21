@@ -20,7 +20,6 @@ import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton, Banner, bannerQueue } from './components/ui'
 import { LoadingOverlay } from './components/app/LoadingOverlay'
 import { useBackgroundSave } from './hooks/useBackgroundSave'
-import { useNavigationSave } from './hooks/useNavigationSave'
 import { useSyncCheck } from './hooks/useSyncCheck'
 import type { type_user_context } from '@types'
 
@@ -68,11 +67,12 @@ function BudgetAppContent() {
     ? queryClient.getQueryState(initialDataLoadKey)?.status === 'success'
     : false
 
-  // Set up background save
+  // Background save - only saves current document immediately (no periodic/navigation saves)
+  // Transactions are saved immediately after optimistic updates
   useBackgroundSave()
 
-  // Set up navigation save
-  useNavigationSave()
+  // Navigation saves removed - transactions are saved immediately, no need to save on navigation
+  // useNavigationSave() // Removed - transactions save immediately
 
   // Set up sync check - only after initial load completes (we're already synced on initial load)
   useSyncCheck(selectedBudgetId, initialDataLoadComplete && isInitialized)

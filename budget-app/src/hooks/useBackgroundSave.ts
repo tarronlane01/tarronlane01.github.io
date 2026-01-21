@@ -6,7 +6,7 @@
  * - Saves all modified documents on navigation or every 5 minutes
  */
 
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef } from 'react'
 import { useSync } from '@contexts'
 import { bannerQueue } from '@components/ui'
 import { writeMonthData } from '@data/mutations/month/useWriteMonthData'
@@ -19,7 +19,7 @@ import type { MonthQueryData } from '@data/queries/month'
 import { retotalMonth } from '@data/mutations/month/retotalMonth'
 import { recalculateBudgetAccountBalancesFromCache } from '@data/mutations/budget/accounts/recalculateBudgetAccountBalances'
 
-const SAVE_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+// Periodic saves removed - transactions are saved immediately
 
 /**
  * Hook for background saving functionality
@@ -34,7 +34,6 @@ export function useBackgroundSave() {
     setLastSaveTime,
     setSaveError,
   } = useSync()
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isSavingRef = useRef(false)
 
   /**
@@ -73,7 +72,23 @@ export function useBackgroundSave() {
     }
 
     // Extract only the fields that should be saved to Firestore
-    // (exclude computed/derived fields)
+    // (exclude computed/derived fields like balances)
+    // Strip balance fields from accounts and categories - they're calculated on-the-fly
+    const accountsWithoutBalances = Object.fromEntries(
+      Object.entries(budgetData.budget.accounts || {}).map(([id, acc]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+        const { balance: _balance, ...accWithoutBalance } = acc as unknown as { balance?: number; [key: string]: unknown }
+        return [id, accWithoutBalance]
+      })
+    )
+    const categoriesWithoutBalances = Object.fromEntries(
+      Object.entries(budgetData.budget.categories || {}).map(([id, cat]) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+        const { balance: _balance, ...catWithoutBalance } = cat as unknown as { balance?: number; [key: string]: unknown }
+        return [id, catWithoutBalance]
+      })
+    )
+
     await writeBudgetData({
       budgetId,
       updates: {
@@ -82,12 +97,12 @@ export function useBackgroundSave() {
         accepted_user_ids: budgetData.budget.accepted_user_ids,
         owner_id: budgetData.budget.owner_id,
         owner_email: budgetData.budget.owner_email,
-        accounts: budgetData.budget.accounts,
+        accounts: accountsWithoutBalances,
         account_groups: budgetData.budget.account_groups,
-        categories: budgetData.budget.categories,
+        categories: categoriesWithoutBalances,
         category_groups: budgetData.budget.category_groups,
-        total_available: budgetData.budget.total_available,
-        is_needs_recalculation: budgetData.budget.is_needs_recalculation,
+        // Don't save total_available, is_needs_recalculation, or category/account balances - they're calculated/managed locally
+        // Only save month_map and other non-derived fields
         month_map: budgetData.budget.month_map,
       },
       description: `${context}: budget`,
@@ -274,32 +289,9 @@ export function useBackgroundSave() {
     }
   }, [saveMonth, saveBudget, removeChange, setIsSaving, setLastSaveTime, setSaveError])
 
-  /**
-   * Set up periodic save timer
-   */
-  useEffect(() => {
-    const startTimer = () => {
-      if (saveTimerRef.current) {
-        clearInterval(saveTimerRef.current)
-      }
-      saveTimerRef.current = setInterval(() => {
-        if (hasChanges()) {
-          saveAllChanges('periodic save (5-minute timer)').catch(error => {
-            console.error('[useBackgroundSave] Periodic save failed:', error)
-            // Error will be shown via banner system
-          })
-        }
-      }, SAVE_INTERVAL_MS)
-    }
-
-    startTimer()
-
-    return () => {
-      if (saveTimerRef.current) {
-        clearInterval(saveTimerRef.current)
-      }
-    }
-  }, [hasChanges, saveAllChanges])
+  // Periodic saves removed - transactions are saved immediately after optimistic updates
+  // No need for periodic saves since balances are calculated on-the-fly and only start_balance
+  // is saved for months at/before window (handled automatically by converters)
 
   return {
     saveAllChanges,

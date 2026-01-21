@@ -297,7 +297,7 @@ function CategoryGridRow({
 
       {/* Allocated - input in draft mode, display in finalized mode */}
       {isDraftMode ? (
-        <div style={{ ...cellStyle, justifyContent: 'center', flexDirection: 'column', gap: '0.1rem', paddingTop: '0.35rem', paddingBottom: '0.35rem' }}>
+        <div style={{ ...cellStyle, justifyContent: 'center', flexDirection: 'column', gap: '0.1rem' }}>
           {isPercentageBased ? (
             <span style={{ fontSize: '0.85rem' }}>
               <span style={{ color: colors.success }}>{category.default_monthly_amount}%</span>

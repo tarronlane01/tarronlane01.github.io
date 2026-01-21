@@ -4,7 +4,7 @@
  * Displays category statistics and validation warnings at the top of the settings page.
  */
 
-import { formatCurrency, formatStatsCurrency, getBalanceColor, getAllocatedColor } from '@components/ui'
+import { formatStatsCurrency, getBalanceColor, getAllocatedColor } from '@components/ui'
 
 interface SettingsCategoryStatsHeaderProps {
   onBudgetTotal: number
@@ -19,8 +19,10 @@ export function SettingsCategoryStatsHeader({
   allocated,
   unallocated,
   relationshipMismatch,
-  calculationMismatch,
+  calculationMismatch: _calculationMismatch,
 }: SettingsCategoryStatsHeaderProps) {
+  // calculationMismatch prop kept for API compatibility but not currently used
+  void _calculationMismatch
   return (
     <div style={{
       gridColumn: '1 / -1',
@@ -60,7 +62,8 @@ export function SettingsCategoryStatsHeader({
             <span style={{ opacity: 0.6 }}>Unallocated: </span>
             <span style={{ color: getBalanceColor(unallocated), fontWeight: 600 }}>{formatStatsCurrency(unallocated)}</span>
           </span>
-          {relationshipMismatch && (
+          {/* Warnings disabled per user request */}
+          {/* {relationshipMismatch && (
             <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>
               ⚠️ Mismatch: {formatCurrency(Math.abs(onBudgetTotal - (allocated + unallocated)))}
             </span>
@@ -69,7 +72,7 @@ export function SettingsCategoryStatsHeader({
             <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 600 }}>
               ⚠️ Balance sync issue
             </span>
-          )}
+          )} */}
           <span style={{ opacity: 0.6 }}>
             Use ▲▼ buttons to reorder categories.
           </span>

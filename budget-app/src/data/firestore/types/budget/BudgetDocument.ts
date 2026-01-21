@@ -4,18 +4,12 @@ import type { CategoriesMap } from './Category'
 import type { CategoryGroup } from './CategoryGroup'
 
 /**
- * Information about a month stored in the budget's month_map.
- * This acts as an index for the recent months (3 past to 3 future).
+ * Map of month ordinals (YYYYMM) to empty objects.
+ * The budget maintains this map to track which months exist in the budget.
+ * Keys are YYYYMM ordinal format (e.g., "202401" for January 2024).
+ * Values are empty objects (just used to track presence).
  */
-export interface MonthInfo {
-  needs_recalculation: boolean
-}
-
-/**
- * Map of month ordinals (YYYYMM) to their MonthInfo.
- * The budget maintains this map for the current month, 3 past months, and 3 future months.
- */
-export type MonthMap = Record<string, MonthInfo>
+export type MonthMap = Record<string, Record<string, never>>
 
 // Budget document structure (full Firestore document)
 export interface Budget {
@@ -33,19 +27,9 @@ export interface Budget {
   category_groups: CategoryGroup[]
 
   /**
-   * Pre-calculated total available amount (on-budget account balances - category balances).
-   * Updated during recalculation. Use this value for display when budget doesn't need recalculation.
-   * When editing (is_needs_recalculation = true), adjust locally based on pending changes.
-   */
-  total_available: number
-
-  is_needs_recalculation: boolean
-
-  /**
-   * Index of ALL months in the budget.
-   * Each entry tracks whether that month needs recalculation.
-   * Key is YYYYMM ordinal format.
-   *
+   * Index of months in the budget.
+   * Key is YYYYMM ordinal format (e.g., "202401" for January 2024).
+   * Values are empty objects (just used to track which months exist).
    * This allows deriving earliest/latest month from the map keys.
    */
   month_map: MonthMap

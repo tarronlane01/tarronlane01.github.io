@@ -18,6 +18,7 @@ import { getMonthDocId } from '@utils'
 import { queryClient, queryKeys } from '@data/queryClient'
 import { markMonthsNeedRecalculation } from '@data/recalculation'
 import type { MonthQueryData } from '@data/queries/month'
+import { convertMonthBalancesToStored } from '@data/firestore/converters/monthBalances'
 
 // ============================================================================
 // TYPES
@@ -41,6 +42,7 @@ export interface WriteMonthParams {
 
 /**
  * Core function that writes month data to Firestore.
+ * Converts calculated balances to stored format before writing.
  * Does NOT update cache or mark future months - callers handle that.
  */
 async function writeMonthToFirestore(
@@ -49,10 +51,14 @@ async function writeMonthToFirestore(
   description: string
 ): Promise<void> {
   const monthDocId = getMonthDocId(budgetId, month.year, month.month)
+  
+  // Convert calculated balances to stored format before writing
+  const storedMonth = convertMonthBalancesToStored(month)
+  
   await writeDocByPath(
     'months',
     monthDocId,
-    month,
+    storedMonth,
     `writeMonthData: ${description}`
   )
 }

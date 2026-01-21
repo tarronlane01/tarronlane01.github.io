@@ -16,6 +16,7 @@ import { fetchPayees } from '@data/queries/payees/fetchPayees'
 import { queryCollection } from '@firestore'
 import { getYearMonthOrdinal } from '@utils'
 import type { MonthDocument, FirestoreData } from '@types'
+import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 
 // ============================================================================
 // TYPES
@@ -35,7 +36,7 @@ interface InitialDataLoadResult {
  * Parse raw Firestore month data into typed MonthDocument.
  */
 function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
-  return {
+  const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
     year: data.year ?? year,
@@ -53,6 +54,9 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
+
+  // Convert stored balances to calculated balances
+  return convertMonthBalancesFromStored(monthDoc)
 }
 
 /**

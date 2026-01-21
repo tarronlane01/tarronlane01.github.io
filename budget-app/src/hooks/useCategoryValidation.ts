@@ -6,7 +6,6 @@
  */
 
 import { useEffect, useMemo } from 'react'
-import { bannerQueue, formatCurrency } from '@components/ui'
 import type { CategoriesMap } from '@types'
 import type { CategoryBalance } from './useCategoriesPage'
 
@@ -85,54 +84,59 @@ export function useCategoryValidation({
   useEffect(() => {
     if (isDataLoading || loadingBalances || !currentBudget) return // Don't check while loading
 
-    if (calculationMismatch) {
-      const diff = Math.abs(allocatedFromStored - allocatedFromCalculated)
-      console.error('[Settings/Categories] Calculation Mismatch:', {
-        allocatedFromStored,
-        allocatedFromCalculated,
-        difference: diff,
-        message: 'Stored category balances do not match calculated balances. Budget may need recalculation.',
-      })
-      bannerQueue.add({
-        type: 'error',
-        message: `Balance calculation mismatch: ${formatCurrency(diff)} difference between stored and calculated balances. Budget may need recalculation.`,
-        autoDismissMs: 10000,
-      })
-    }
+    // Warnings disabled per user request
+    // if (calculationMismatch) {
+    //   const diff = Math.abs(allocatedFromStored - allocatedFromCalculated)
+    //   console.error('[Settings/Categories] Calculation Mismatch:', {
+    //     allocatedFromStored,
+    //     allocatedFromCalculated,
+    //     difference: diff,
+    //     message: 'Stored category balances do not match calculated balances. Budget may need recalculation.',
+    //   })
+    //   bannerQueue.add({
+    //     type: 'error',
+    //     message: `Balance calculation mismatch: ${formatCurrency(diff)} difference between stored and calculated balances. Budget may need recalculation.`,
+    //     autoDismissMs: 10000,
+    //   })
+    // }
 
-    if (relationshipMismatch) {
-      const expectedSum = allocated + unallocated
-      const diff = Math.abs(onBudgetTotal - expectedSum)
-      console.error('[Settings/Categories] Relationship Mismatch:', {
-        onBudgetTotal,
-        allocated,
-        unallocated,
-        expectedSum,
-        actualSum: allocated + unallocated,
-        difference: diff,
-        message: 'On Budget ≠ Allocated + Unallocated',
-      })
-      bannerQueue.add({
-        type: 'error',
-        message: `Accounting relationship broken: On Budget (${formatCurrency(onBudgetTotal)}) ≠ Allocated (${formatCurrency(allocated)}) + Unallocated (${formatCurrency(unallocated)}). Difference: ${formatCurrency(diff)}. Budget may need recalculation.`,
-        autoDismissMs: 0, // Don't auto-dismiss - this is important
-      })
-    }
+    // Warnings disabled per user request
+    // if (relationshipMismatch) {
+    //   const expectedSum = allocated + unallocated
+    //   const diff = Math.abs(onBudgetTotal - expectedSum)
+    //   console.error('[Settings/Categories] Relationship Mismatch:', {
+    //     onBudgetTotal,
+    //     allocated,
+    //     unallocated,
+    //     expectedSum,
+    //     actualSum: allocated + unallocated,
+    //     difference: diff,
+    //     message: 'On Budget ≠ Allocated + Unallocated',
+    //   })
+    //   // Show both the actual on-budget total and what it should be (allocated + unallocated)
+    //   // This helps identify if onBudgetTotal is stale or incorrect
+    //   bannerQueue.add({
+    //     type: 'error',
+    //     message: `Accounting relationship broken: On Budget (${formatCurrency(onBudgetTotal)}) ≠ Allocated (${formatCurrency(allocated)}) + Unallocated (${formatCurrency(unallocated)}) = ${formatCurrency(expectedSum)}. Difference: ${formatCurrency(diff)}. Budget may need recalculation.`,
+    //     autoDismissMs: 0, // Don't auto-dismiss - this is important
+    //   })
+    // }
 
-    if (monthViewMismatch) {
-      const diff = Math.abs(allocatedFromStored - monthViewAllTime)
-      console.error('[Settings/Categories] Month View Mismatch:', {
-        allocatedFromStored,
-        monthViewAllTime,
-        difference: diff,
-        message: 'Settings page "Allocated" does not match month view "ALL-TIME" total. These should always match.',
-      })
-      bannerQueue.add({
-        type: 'error',
-        message: `Balance display mismatch: Settings "Allocated" (${formatCurrency(allocatedFromStored)}) ≠ Month view "ALL-TIME" (${formatCurrency(monthViewAllTime)}). Difference: ${formatCurrency(diff)}. Budget may need recalculation.`,
-        autoDismissMs: 10000,
-      })
-    }
+    // Warnings disabled per user request
+    // if (monthViewMismatch) {
+    //   const diff = Math.abs(allocatedFromStored - monthViewAllTime)
+    //   console.error('[Settings/Categories] Month View Mismatch:', {
+    //     allocatedFromStored,
+    //     monthViewAllTime,
+    //     difference: diff,
+    //     message: 'Settings page "Allocated" does not match month view "ALL-TIME" total. These should always match.',
+    //   })
+    //   bannerQueue.add({
+    //     type: 'error',
+    //     message: `Balance display mismatch: Settings "Allocated" (${formatCurrency(allocatedFromStored)}) ≠ Month view "ALL-TIME" (${formatCurrency(monthViewAllTime)}). Difference: ${formatCurrency(diff)}. Budget may need recalculation.`,
+    //     autoDismissMs: 10000,
+    //   })
+    // }
   }, [calculationMismatch, relationshipMismatch, monthViewMismatch, allocatedFromStored, allocatedFromCalculated, allocated, unallocated, onBudgetTotal, monthViewAllTime, isDataLoading, loadingBalances, currentBudget])
 
   return {

@@ -50,31 +50,7 @@ interface BudgetDocument {
 // HELPERS
 // =============================================================================
 
-/**
- * Calculate total_available from accounts and categories.
- * This is the "Ready to Assign" amount.
- */
-function calculateTotalAvailable(
-  accounts: FirestoreData,
-  categories: FirestoreData,
-  accountGroups: FirestoreData
-): number {
-  // Sum of on-budget, active account balances
-  const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
-    const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
-    return (effectiveOnBudget && effectiveActive) ? sum + (account.balance ?? 0) : sum
-  }, 0)
-
-  // Sum of positive category balances
-  const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {
-    const balance = (cat as { balance?: number }).balance ?? 0
-    return sum + (balance > 0 ? balance : 0)
-  }, 0)
-
-  return onBudgetAccountTotal - totalPositiveCategoryBalances
-}
+// Removed calculateTotalAvailable function - total_available is calculated on-the-fly in useBudgetData
 
 // =============================================================================
 // MAIN FUNCTION
@@ -116,35 +92,44 @@ export async function updateBudgetWithFinalBalances(
     }
   }
 
-  // Build month_map with all processed months marked as NOT needing recalculation
+  // Build month_map with all processed months (just empty objects, no flags)
   const existingMonthMap: MonthMap = (budgetData.month_map as MonthMap) || {}
   const updatedMonthMap: MonthMap = { ...existingMonthMap }
 
   for (const { info } of processedMonths) {
-    updatedMonthMap[info.ordinal] = { needs_recalculation: false }
+    updatedMonthMap[info.ordinal] = {} // Just track presence, no flags
   }
 
-  // Calculate total_available
-  const totalAvailable = calculateTotalAvailable(
-    updatedAccounts,
-    updatedCategories,
-    budgetData.account_groups || {}
+  // Strip balance fields from accounts and categories before saving
+  // Balances are calculated on-the-fly, not stored in Firestore
+  const accountsWithoutBalances = Object.fromEntries(
+    Object.entries(updatedAccounts).map(([id, acc]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+      const { balance: _balance, ...accWithoutBalance } = acc as { balance?: number; [key: string]: unknown }
+      return [id, accWithoutBalance]
+    })
+  )
+  const categoriesWithoutBalances = Object.fromEntries(
+    Object.entries(updatedCategories).map(([id, cat]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
+      const { balance: _balance, ...catWithoutBalance } = cat as { balance?: number; [key: string]: unknown }
+      return [id, catWithoutBalance]
+    })
   )
 
-  // Write updated budget
+  // Write updated budget (without balances - they're calculated on-the-fly)
   await writeDocByPath(
     'budgets',
     budgetId,
     {
       ...budgetData,
-      accounts: updatedAccounts,
-      categories: updatedCategories,
-      total_available: totalAvailable,
-      is_needs_recalculation: false,
+      accounts: accountsWithoutBalances,
+      categories: categoriesWithoutBalances,
+      // Don't save total_available or is_needs_recalculation - they're calculated/managed locally
       month_map: updatedMonthMap,
       updated_at: new Date().toISOString(),
     },
-    '[seed import] saving final balances'
+    '[seed import] saving final budget (without balances)'
   )
 
   // Update cache with the new balances
@@ -168,14 +153,12 @@ export async function updateBudgetWithFinalBalances(
       ...cachedBudget,
       accounts: newAccounts,
       categories: newCategories,
-      isNeedsRecalculation: false,
       monthMap: updatedMonthMap,
       budget: {
         ...cachedBudget.budget,
         accounts: updatedAccounts,
         categories: updatedCategories,
-        total_available: totalAvailable,
-        is_needs_recalculation: false,
+        // Don't save total_available or is_needs_recalculation - they're calculated/managed locally
         month_map: updatedMonthMap,
       },
     })

@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
-import { useBudgetData, useMonthData, useAutoRecalculation, useMonthPrefetch } from '@hooks'
+import { useBudgetData, useMonthData, useMonthPrefetch } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -63,7 +63,6 @@ function Budget() {
   const {
     budget: currentBudget,
     isLoading: isBudgetLoading,
-    monthMap,
   } = useBudgetData()
 
   // Budget data is loaded when not loading (monthMap might be empty if no months exist)
@@ -230,16 +229,6 @@ function Budget() {
 
   // Prefetch next month in navigation direction for smooth navigation
   useMonthPrefetch(selectedBudgetId, currentYear, currentMonthNumber)
-
-  // Auto-trigger recalculation when navigating to budget page if current month needs recalc
-  useAutoRecalculation({
-    budgetId: selectedBudgetId,
-    year: currentYear,
-    month: currentMonthNumber,
-    monthMap,
-    additionalCondition: isBudgetDataLoaded && !!currentBudget,
-    logPrefix: '[Budget]',
-  })
 
   // Don't render content while budget data is loading, initial data load is incomplete, or redirecting
   // This ensures the cache is populated before any queries run

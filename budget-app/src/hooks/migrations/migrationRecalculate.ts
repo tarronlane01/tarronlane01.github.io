@@ -13,7 +13,7 @@ import {
   EMPTY_SNAPSHOT,
   type PreviousMonthSnapshot,
 } from '@data/recalculation/recalculateMonth'
-import { updateBudgetBalances, parseMonthMap, clearMonthMapFlags } from '@data/recalculation/triggerRecalculationHelpers'
+import { updateBudgetBalances, parseMonthMap } from '@data/recalculation/triggerRecalculationHelpers'
 import { batchWriteMonths, type MonthUpdate } from './migrationBatchWrite'
 import { readAllMonthsForBudget } from './migrationBatchRead'
 
@@ -71,7 +71,6 @@ export async function recalculateAndWriteBudget(
 
   if (exists && data) {
     const monthMap = parseMonthMap(data.month_map || {})
-    const clearedMonthMap = clearMonthMapFlags(monthMap)
 
     // Ensure ALL categories from the budget are included in final balances
     // Categories not in the snapshot should have balance 0 (they had no activity)
@@ -83,8 +82,8 @@ export async function recalculateAndWriteBudget(
       }
     }
 
-    // This writes the budget with cleared flags
-    await updateBudgetBalances(budgetId, finalAccountBalances, allCategoryBalances, clearedMonthMap)
+    // Update budget cache with balances (not saved to Firestore - calculated on-the-fly)
+    await updateBudgetBalances(budgetId, finalAccountBalances, allCategoryBalances, monthMap)
   }
 }
 

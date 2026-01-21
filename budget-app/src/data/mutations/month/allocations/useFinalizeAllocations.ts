@@ -12,7 +12,7 @@
 
 import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
-import { calculateCategoryBalancesForMonth, type AllocationData } from '.'
+import type { AllocationData } from '.'
 import type { RecalculationProgress } from '../../../recalculation'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
@@ -53,21 +53,39 @@ export function useFinalizeAllocations() {
     const monthData = await readMonth(budgetId, year, month)
     if (!monthData) throw new Error(`Month not found: ${year}/${month}`)
 
+    // Update only source values (allocated) - let recalculation handle calculated fields
     // Get category IDs from existing balances or allocations
-    // Use allocation keys when month has no category_balances (fresh month after reset)
-    // Note: empty array [] doesn't trigger ?? fallback, so we must check .length explicitly
     const existingCategoryIds = monthData.category_balances?.map(cb => cb.category_id) ?? []
-    const categoryIds = existingCategoryIds.length > 0
-      ? existingCategoryIds
-      : Object.keys(allocations)
 
-    const categoryBalances = categoryIds.length > 0
-      ? calculateCategoryBalancesForMonth(monthData, categoryIds, allocations, true)
-      : monthData.category_balances
+    // Update only allocated (source value) - calculated fields will be recalculated
+    const updatedCategoryBalances = monthData.category_balances.map(cb => {
+      const newAllocated = allocations[cb.category_id] ?? cb.allocated
+      return {
+        ...cb,
+        allocated: newAllocated,
+        // Don't set calculated fields - they'll be recalculated by recalculateMonthAndCascade
+      }
+    })
+
+    // Add any categories that weren't in existing balances
+    for (const [catId, allocated] of Object.entries(allocations)) {
+      if (!existingCategoryIds.includes(catId)) {
+        updatedCategoryBalances.push({
+          category_id: catId,
+          start_balance: 0,
+          allocated,
+          // Calculated fields will be recalculated
+          spent: 0,
+          transfers: 0,
+          adjustments: 0,
+          end_balance: 0,
+        })
+      }
+    }
 
     const updatedMonth: MonthDocument = {
       ...monthData,
-      category_balances: categoryBalances,
+      category_balances: updatedCategoryBalances,
       are_allocations_finalized: true,
       updated_at: new Date().toISOString(),
     }

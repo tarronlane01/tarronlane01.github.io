@@ -8,7 +8,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
-import { useBudgetData, useAllocationsPage, useMonthData, useAutoRecalculation } from '@hooks'
+import { useBudgetData, useAllocationsPage, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
 import { ErrorAlert, bannerQueue, formatCurrency } from '../../ui'
@@ -16,30 +16,16 @@ import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
 import { CategoryGroupRows } from './CategoryGridRows'
-import type { RecalculationProgress } from '@data/recalculation'
-import { LoadingOverlay, ProgressBar, StatItem, PercentLabel } from '../../app/LoadingOverlay'
 import { calculateCategoriesByGroup, calculateLiveCategoryBalances, calculateBalanceTotals } from '@calculations'
 import { GrandTotalsRow, MobileGrandTotals } from './MonthCategoriesHeader'
-import { columnHeaderStyle, getRecalcPhaseLabel } from './MonthCategoriesStyles'
+import { columnHeaderStyle } from './MonthCategoriesStyles'
 
 export function MonthCategories() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
-  const { categories, categoryGroups, monthMap } = useBudgetData()
+  const { categories, categoryGroups } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
 
-  // Auto-trigger recalculation when navigating to this month's balances page and it needs recalc
-  const [recalcProgress, setRecalcProgress] = useState<RecalculationProgress | null>(null)
-  useAutoRecalculation({
-    budgetId: selectedBudgetId,
-    year: currentYear,
-    month: currentMonthNumber,
-    monthMap,
-    requireMonthLoaded: true,
-    currentMonth,
-    onProgress: (progress) => setRecalcProgress(progress),
-    logPrefix: '[MonthCategories]',
-  })
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -135,24 +121,6 @@ export function MonthCategories() {
 
   return (
     <>
-      {/* Recalculation Progress Overlay */}
-      {recalcProgress && (
-        <LoadingOverlay message={getRecalcPhaseLabel(recalcProgress)} spinnerColor="#22c55e">
-          <ProgressBar percent={recalcProgress.percentComplete} gradient="linear-gradient(90deg, #22c55e, #10b981)" />
-          <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            {(recalcProgress.totalMonthsToFetch ?? 0) > 0 && (
-              <StatItem value={`${recalcProgress.monthsFetched || 0}/${recalcProgress.totalMonthsToFetch}`} label="Months Loaded"
-                color={recalcProgress.phase === 'fetching-months' ? '#22c55e' : '#6b7280'} />
-            )}
-            {(recalcProgress.totalMonths ?? 0) > 0 && (
-              <StatItem value={`${recalcProgress.monthsProcessed}/${recalcProgress.totalMonths}`} label="Months Recalculated"
-                color={recalcProgress.phase === 'recalculating' ? '#22c55e' : '#6b7280'} />
-            )}
-          </div>
-          <PercentLabel percent={recalcProgress.percentComplete} />
-        </LoadingOverlay>
-      )}
-
       {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
 
       {/* CSS Grid container */}

@@ -74,50 +74,37 @@ export async function markMonthsNeedRecalculation(
   const updatedMonthMap: MonthMap = { ...existingMonthMap }
   const windowOrdinals = getMonthWindowOrdinals()
 
-  // Ensure all window months exist in the map
+  // Ensure all window months exist in the map (just add them if missing)
+  let addedCount = 0
   for (const ordinal of windowOrdinals) {
-    if (!updatedMonthMap[ordinal]) {
-      updatedMonthMap[ordinal] = { needs_recalculation: false }
+    if (ordinal >= editedMonthOrdinal && !(ordinal in updatedMonthMap)) {
+      updatedMonthMap[ordinal] = {}
+      addedCount++
     }
   }
 
-  // Mark current month AND all months AFTER as needing recalculation
-  let markedCount = 0
-  for (const ordinal of windowOrdinals) {
-    if (ordinal >= editedMonthOrdinal) {
-      if (!updatedMonthMap[ordinal]?.needs_recalculation) {
-        updatedMonthMap[ordinal] = { needs_recalculation: true }
-        markedCount++
-      }
-    }
-  }
-
-  // Check if budget is already marked as needing recalculation
-  const budgetAlreadyMarked = budgetData.is_needs_recalculation === true
-
-  // If nothing changed AND budget is already marked, skip the write
-  if (markedCount === 0 && budgetAlreadyMarked) {
+  // If nothing changed, skip the write
+  if (addedCount === 0) {
     return { markedCount: 0, budgetUpdated: false }
   }
 
-  // Clean up old months outside the window
+  // Clean up old months outside the window (if needed)
   const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
 
   // Update cache before writing to Firestore
   updateCacheWithMarking(budgetId, editedMonthOrdinal, cleanedMonthMap)
 
-  // Write to Firestore in a single operation
+  // Write to Firestore - only update month_map (no flags)
   await updateDocByPath('budgets', budgetId, {
-    is_needs_recalculation: true,
     month_map: cleanedMonthMap,
     updated_at: new Date().toISOString(),
-  }, `marking budget and ${markedCount} future months as needing recalculation`)
+  }, `adding ${addedCount} month(s) to budget month_map`)
 
   // Note: updateCacheWithMarking (called above) updates the React Query cache via setQueryData,
   // which should trigger re-renders in components using useBudgetData/useBudgetQuery.
   // No invalidation needed - the cache update is sufficient.
 
-  return { markedCount, budgetUpdated: true }
+  return { markedCount: addedCount, budgetUpdated: true }
 }
 
 /**
@@ -128,7 +115,8 @@ export async function setMonthInBudgetMap(
   budgetId: string,
   year: number,
   month: number,
-  needsRecalculation: boolean = false
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Parameter kept for API compatibility
+  _needsRecalculation: boolean = false
 ): Promise<void> {
   const monthOrdinal = getYearMonthOrdinal(year, month)
 
@@ -142,7 +130,12 @@ export async function setMonthInBudgetMap(
   }
 
   const existingMonthMap: MonthMap = budgetData.month_map || {}
-  const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: { needs_recalculation: needsRecalculation } }
+  // Only add if not already present
+  if (monthOrdinal in existingMonthMap) {
+    return // Already in map
+  }
+
+  const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: {} }
   const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
 
   updateCacheWithMonth(budgetId, cleanedMonthMap)
@@ -158,8 +151,8 @@ export async function setMonthInBudgetMap(
 // ============================================================================
 
 /**
- * Mark all existing months from a starting point onwards as needing recalculation.
- * Used after seed data import to ensure balances cascade correctly.
+ * Add all existing months from a starting point onwards to the month_map.
+ * Used after seed data import to ensure month_map is up to date.
  */
 export async function markAllMonthsFromOrdinal(
   budgetId: string,
@@ -172,7 +165,7 @@ export async function markAllMonthsFromOrdinal(
   const { queryCollection } = await import('@firestore')
   const monthsResult = await queryCollection<FirestoreData>(
     'months',
-    `marking months for recalc: querying all months for budget ${budgetId}`,
+    `adding months to map: querying all months for budget ${budgetId}`,
     [{ field: 'budget_id', op: '==', value: budgetId }]
   )
 
@@ -187,7 +180,7 @@ export async function markAllMonthsFromOrdinal(
   existingOrdinals.sort()
 
   const { exists, data: budgetData } = await readDocByPath<FirestoreData>(
-    'budgets', budgetId, 'reading budget for historical month marking'
+    'budgets', budgetId, 'reading budget for historical month map update'
   )
 
   if (!exists || !budgetData) {
@@ -198,32 +191,25 @@ export async function markAllMonthsFromOrdinal(
   const existingMonthMap: MonthMap = budgetData.month_map || {}
   const updatedMonthMap: MonthMap = { ...existingMonthMap }
 
-  // Mark all months >= startingOrdinal as needing recalculation
-  let markedCount = 0
+  // Add all months >= startingOrdinal to the map
+  let addedCount = 0
   for (const ordinal of existingOrdinals) {
-    if (ordinal >= startingOrdinal) {
-      updatedMonthMap[ordinal] = { needs_recalculation: true }
-      markedCount++
-    } else if (!updatedMonthMap[ordinal]) {
-      updatedMonthMap[ordinal] = { needs_recalculation: false }
+    if (ordinal >= startingOrdinal && !(ordinal in updatedMonthMap)) {
+      updatedMonthMap[ordinal] = {}
+      addedCount++
     }
   }
 
-  if (markedCount === 0) {
+  if (addedCount === 0) {
     return { markedCount: 0, budgetUpdated: false }
   }
 
   updateCacheWithAllMonthsMarked(budgetId, updatedMonthMap)
 
   await updateDocByPath('budgets', budgetId, {
-    is_needs_recalculation: true,
     month_map: updatedMonthMap,
     updated_at: new Date().toISOString(),
-  }, `marking ${markedCount} months from ${startingYear}/${startingMonth} as needing recalculation`)
+  }, `adding ${addedCount} months from ${startingYear}/${startingMonth} to month_map`)
 
-  // Note: updateCacheWithAllMonthsMarked (called above) updates the React Query cache via setQueryData,
-  // which should trigger re-renders in components using useBudgetData/useBudgetQuery.
-  // No invalidation needed - the cache update is sufficient.
-
-  return { markedCount, budgetUpdated: true }
+  return { markedCount: addedCount, budgetUpdated: true }
 }

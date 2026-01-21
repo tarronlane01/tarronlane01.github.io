@@ -21,14 +21,15 @@ export type {
   CategoryGroupsMap,
   CategoryGroupWithId,
   Budget,
-  MonthInfo,
   MonthMap,
   IncomeTransaction,
   ExpenseTransaction,
   TransferTransaction,
   AdjustmentTransaction,
   CategoryMonthBalance,
+  CategoryMonthBalanceStored,
   AccountMonthBalance,
+  AccountMonthBalanceStored,
   MonthDocument,
 } from '../data/firestore/types'
 

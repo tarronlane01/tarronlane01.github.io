@@ -3,13 +3,16 @@
  *
  * Handles category balance loading and reconciliation.
  * Uses the balance field directly from each category in the budget document.
+ * Caches calculated balances in React Query to avoid recalculating on every navigation.
  *
  * Extracted from useCategoriesPage to reduce file size.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { CategoriesMap } from '@types'
 import { calculateCategoryBalances } from '@data'
+import { queryClient, STALE_TIME } from '@data/queryClient'
 
 // Balance object for each category showing current (spendable now) and total (including future)
 export interface CategoryBalance {
@@ -32,73 +35,66 @@ export function useCategoryBalances({
   currentMonth,
   updateCategoriesWithBalances,
 }: UseCategoryBalancesParams) {
-  // State for calculated balances
-  const [calculatedBalances, setCalculatedBalances] = useState<Record<string, CategoryBalance>>({})
-  const [isCalculatingBalances, setIsCalculatingBalances] = useState(false)
+  const categoryIds = Object.keys(categories)
+  const hasCategories = categoryIds.length > 0
 
-  // Calculate category balances from actual month data
-  useEffect(() => {
-    if (!budgetId || Object.keys(categories).length === 0) {
-      setCalculatedBalances({})
-      return
-    }
+  // Use React Query to cache calculated balances - only recalculate when needed
+  // The query key includes budgetId, year, month, and a hash of category IDs to detect changes
+  const categoryIdsHash = useMemo(() => {
+    return categoryIds.sort().join(',')
+  }, [categoryIds])
 
-    let cancelled = false
-    setIsCalculatingBalances(true)
-    const categoryIds = Object.keys(categories)
-
-    calculateCategoryBalances(budgetId, categoryIds, currentYear, currentMonth)
-      .then(({ current, total }) => {
-        if (cancelled) return
-        const balances: Record<string, CategoryBalance> = {}
-        categoryIds.forEach(catId => {
-          balances[catId] = {
-            current: current[catId] ?? 0,
-            total: total[catId] ?? 0,
-          }
-        })
-        setCalculatedBalances(balances)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error('[useCategoryBalances] Error calculating balances:', error)
-        // Fallback to stored balances on error
-        const balances: Record<string, CategoryBalance> = {}
-        Object.entries(categories).forEach(([catId, cat]) => {
-          balances[catId] = {
-            current: cat.balance ?? 0,
-            total: cat.balance ?? 0,
-          }
-        })
-        setCalculatedBalances(balances)
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsCalculatingBalances(false)
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [budgetId, currentYear, currentMonth, categories])
-
-  // Use calculated balances, fallback to stored balance if not yet calculated
-  const categoryBalances = useMemo(() => {
+  // Build stored balances from categories (always available, already calculated and saved)
+  // These are the source of truth - they're updated during recalculation
+  const storedBalances = useMemo(() => {
     const balances: Record<string, CategoryBalance> = {}
     Object.entries(categories).forEach(([catId, cat]) => {
-      if (calculatedBalances[catId]) {
-        balances[catId] = calculatedBalances[catId]
-      } else {
-        // Fallback to stored balance while calculating
-        balances[catId] = {
-          current: cat.balance ?? 0,
-          total: cat.balance ?? 0,
-        }
+      balances[catId] = {
+        current: cat.balance ?? 0,
+        total: cat.balance ?? 0,
       }
     })
     return balances
-  }, [categories, calculatedBalances])
+  }, [categories])
+
+  // Cache calculated balances in React Query - only recalculates when cache is stale
+  // This prevents recalculating every time we navigate to the page
+  const calculatedBalancesQuery = useQuery({
+    queryKey: ['categoryBalances', budgetId, currentYear, currentMonth, categoryIdsHash] as const,
+    queryFn: async () => {
+      if (!budgetId || !hasCategories) {
+        return {} as Record<string, CategoryBalance>
+      }
+      const { current, total } = await calculateCategoryBalances(budgetId, categoryIds, currentYear, currentMonth)
+      const balances: Record<string, CategoryBalance> = {}
+      categoryIds.forEach(catId => {
+        balances[catId] = {
+          current: current[catId] ?? 0,
+          total: total[catId] ?? 0,
+        }
+      })
+      return balances
+    },
+    enabled: !!budgetId && hasCategories,
+    staleTime: STALE_TIME, // Use same stale time as other queries (5 minutes)
+    // Use stored balances as placeholder - they're accurate and available immediately
+    placeholderData: storedBalances,
+    // Don't refetch on mount if we have cached data - stored balances are good enough
+    refetchOnMount: false,
+  })
+
+  // Use calculated balances from cache if available, otherwise use stored balances
+  // Stored balances are always available and accurate (updated during recalculation)
+  const calculatedBalances = calculatedBalancesQuery.data || storedBalances
+  // Don't show loading state - stored balances are always available and accurate
+  // Only show loading during manual recalculation (handled by loadingBalances state)
+  const isCalculatingBalances = false
+
+  // Use calculated balances from cache if available, otherwise use stored balances
+  // Stored balances are always available and accurate (updated during recalculation)
+  const categoryBalances = useMemo(() => {
+    return calculatedBalances
+  }, [calculatedBalances])
 
   const [loadingBalances, setLoadingBalances] = useState(false)
   // Combine calculating state with loading state
@@ -138,11 +134,10 @@ export function useCategoryBalances({
 
   // Recalculate and save category balances (also updates the categories on the budget)
   const recalculateAndSaveCategoryBalances = useCallback(async (): Promise<void> => {
-    if (!budgetId || Object.keys(categories).length === 0) return
+    if (!budgetId || !hasCategories) return
 
     setLoadingBalances(true)
     try {
-      const categoryIds = Object.keys(categories)
       // Use optimized calculation for full recalculation
       const { total } = await calculateCategoryBalances(
         budgetId,
@@ -163,11 +158,16 @@ export function useCategoryBalances({
       // Save updated categories to Firestore
       await updateCategoriesWithBalances(updatedCategories)
 
+      // Invalidate the cache so it recalculates with new data
+      queryClient.invalidateQueries({
+        queryKey: ['categoryBalances', budgetId, currentYear, currentMonth],
+      })
+
       setCategoryBalanceMismatch(null)
     } finally {
       setLoadingBalances(false)
     }
-  }, [budgetId, categories, updateCategoriesWithBalances, currentYear, currentMonth])
+  }, [budgetId, categories, updateCategoriesWithBalances, currentYear, currentMonth, categoryIds, hasCategories])
 
   return {
     categoryBalances,
