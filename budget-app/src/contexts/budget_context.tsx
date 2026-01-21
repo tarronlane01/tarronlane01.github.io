@@ -24,6 +24,7 @@ import {
 } from '@data'
 import { queryClient, queryKeys } from '@data/queryClient'
 import { useInitialDataLoad } from '@hooks/useInitialDataLoad'
+import { useInitialBalanceCalculation } from '@hooks/useInitialBalanceCalculation'
 
 // Import types from centralized types file
 import type {
@@ -228,6 +229,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     setInitialDataLoadComplete(true) // Mark initial data load as complete after cache is populated
   }, [initialDataLoad.data, selectedBudgetId]) // queryClient is stable, no need to include
 
+  // Calculate and sync balances after initial data load (before removing loading overlay)
+  useInitialBalanceCalculation({
+    budgetId: selectedBudgetId,
+    enabled: !!selectedBudgetId && isInitialized && initialDataLoadComplete,
+    initialDataLoadComplete,
+    months: initialDataLoad.data?.months || [],
+  })
+
   // Reset initialDataLoadComplete when budget changes
   useEffect(() => {
     if (!selectedBudgetId) {
@@ -377,7 +386,6 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     </BudgetContext.Provider>
   )
 }
-
 // =============================================================================
 // HOOK
 // =============================================================================
@@ -389,4 +397,4 @@ export function useBudget() {
   }
   return context
 }
-export default BudgetContext
+export { BudgetContext as default }

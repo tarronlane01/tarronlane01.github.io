@@ -3,6 +3,19 @@
 
 import { colors } from '@styles/shared'
 
+/**
+ * Currency Formatting Functions
+ *
+ * All currency formatting functions are centralized here for easy reference.
+ * Choose the appropriate function based on your display needs:
+ *
+ * - formatCurrency: Absolute value only (no sign) - use when sign is handled separately
+ * - formatBalanceCurrency: Negative sign for negative, no sign for positive - use for balances
+ * - formatStatsCurrency: Negative sign for negative, no sign for positive - use for stats displays
+ * - formatSignedCurrency: + for positive, - for negative, no sign for zero
+ * - formatSignedCurrencyAlways: Always shows sign (+ or -)
+ */
+
 // Helper for formatting currency
 // Formats a currency amount. Always uses absolute value - callers should handle sign display.
 export function formatCurrency(amount: number): string {
@@ -14,6 +27,21 @@ export function formatCurrency(amount: number): string {
 
 // Formats a balance with negative sign for debt: -$100.00 for negative, $100.00 for positive
 export function formatBalanceCurrency(amount: number): string {
+  if (amount < 0) {
+    return `-$${Math.abs(amount).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
+  }
+  return `$${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+// Formats currency for stats displays: shows negative sign if negative, no positive sign
+// Use this for category/account stats on month and settings pages
+export function formatStatsCurrency(amount: number): string {
   if (amount < 0) {
     return `-$${Math.abs(amount).toLocaleString('en-US', {
       minimumFractionDigits: 2,

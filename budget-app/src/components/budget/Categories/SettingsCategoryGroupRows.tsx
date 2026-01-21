@@ -72,9 +72,11 @@ export function SettingsCategoryGroupRows({
     return sum + (bal?.current || 0)
   }, 0)
 
+  // Remove top margin for first group to eliminate empty row after column headers
+  const isFirstGroup = startRowIndex === 0
   const groupHeaderCellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
-    marginTop: '1.25rem',
+    marginTop: isFirstGroup ? 0 : '1.25rem',
     borderTop: '1px solid rgba(255,255,255,0.2)',
     borderBottom: groupTotalRowBorder,
     background: 'rgba(255,255,255,0.04)',
@@ -174,7 +176,7 @@ export function SettingsCategoryGroupRows({
         <div style={{
           gridColumn: '1 / -1',
           padding: '0.6rem 0.5rem',
-          marginTop: '1.25rem',
+          marginTop: isFirstGroup ? 0 : '1.25rem',
           borderTop: '1px solid rgba(255,255,255,0.2)',
           borderBottom: groupTotalRowBorder,
           background: 'rgba(255,255,255,0.04)',

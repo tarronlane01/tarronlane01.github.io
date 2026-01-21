@@ -71,16 +71,19 @@ export function CategoryGroupRows({
   // Net change = allocated + spent + transfers + adjustments (spent is negative for money out)
   const groupNetChange = groupTotals.allocated + groupTotals.spent + groupTotals.transfers + groupTotals.adjustments
 
-  // Calculate group all-time total
+  // Calculate group all-time total (sum of positive category balances only)
+  // This matches the settings page "Allocated" calculation: sum of all positive category.balance values
   const groupAllTime = categories.reduce((sum, [catId, cat]) => {
     const storedBalance = cat.balance ?? 0
+    let balance = storedBalance
     if (isDraftMode) {
       const draftAllocation = getAllocationAmount(catId, cat)
       const savedAllocation = savedAllocations[catId] ?? 0
       const allocationChange = draftAllocation - savedAllocation
-      return sum + storedBalance + allocationChange
+      balance = storedBalance + allocationChange
     }
-    return sum + storedBalance
+    // Only sum positive balances to match settings page "Allocated" calculation
+    return sum + Math.max(0, balance)
   }, 0)
 
   return (

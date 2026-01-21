@@ -10,7 +10,7 @@ import type { FirestoreData, MonthDocument } from '@types'
  */
 export interface RecalculationProgress {
   /** Current phase of recalculation */
-  phase: 'reading-budget' | 'fetching-months' | 'recalculating' | 'saving' | 'complete'
+  phase: 'reading-budget' | 'fetching-months' | 'recalculating' | 'saving' | 'validating' | 'complete'
   /** Human-readable label for current month being processed */
   currentMonth?: string
   /** Number of months fetched so far (during fetching-months phase) */

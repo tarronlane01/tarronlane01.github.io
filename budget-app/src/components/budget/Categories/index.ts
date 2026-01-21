@@ -12,6 +12,7 @@ export { CategoryEndDropZone } from './CategoryEndDropZone'
 export { CategoryGroupCard, CategoryCardContent } from './CategoryGroupCard'
 export { UncategorizedSection } from './UncategorizedSection'
 export { SettingsCategoryGroupRows } from './SettingsCategoryGroupRows'
+export { SettingsCategoryStatsHeader } from './SettingsCategoryStatsHeader'
 export { SettingsCategoryTableRow } from './SettingsCategoryTableRow'
 export { CategoryGroupHeader } from './CategoryGroupHeader'
 

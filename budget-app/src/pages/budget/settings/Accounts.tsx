@@ -4,7 +4,7 @@ import { useBudget, useApp } from '@contexts'
 import { calculateAccountClearedBalances } from '@calculations'
 import {
   Button,
-  formatSignedCurrency,
+  formatStatsCurrency,
   getBalanceColor,
   bannerQueue,
 } from '@components/ui'
@@ -193,17 +193,17 @@ function Accounts() {
                 <span style={{ fontWeight: 600 }}>Accounts:</span>
                 <span>
                   <span style={{ opacity: 0.6 }}>On-Budget: </span>
-                  <span style={{ color: getBalanceColor(stats.onBudgetTotal), fontWeight: 600 }}>{formatSignedCurrency(stats.onBudgetTotal)}</span>
+                  <span style={{ color: getBalanceColor(stats.onBudgetTotal), fontWeight: 600 }}>{formatStatsCurrency(stats.onBudgetTotal)}</span>
                 </span>
                 {stats.offBudgetTotal !== 0 && (
                   <span>
                     <span style={{ opacity: 0.6 }}>Off-Budget: </span>
-                    <span style={{ fontWeight: 600, opacity: 0.7 }}>{formatSignedCurrency(stats.offBudgetTotal)}</span>
+                    <span style={{ fontWeight: 600, opacity: 0.7 }}>{formatStatsCurrency(stats.offBudgetTotal)}</span>
                   </span>
                 )}
                 <span>
                   <span style={{ opacity: 0.6 }}>Total: </span>
-                  <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatSignedCurrency(stats.totalBalance)}</span>
+                  <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatStatsCurrency(stats.totalBalance)}</span>
                 </span>
                 <span style={{ opacity: 0.5, fontSize: '0.8rem' }}>
                   Use ▲▼ buttons to reorder accounts.

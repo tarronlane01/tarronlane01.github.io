@@ -5,13 +5,13 @@
  * Uses CSS Grid with sticky subgrid header for column alignment.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useAllocationsPage, useMonthData, useAutoRecalculation } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
-import { ErrorAlert } from '../../ui'
+import { ErrorAlert, bannerQueue, formatCurrency } from '../../ui'
 import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
@@ -77,19 +77,53 @@ export function MonthCategories() {
     return map
   }, [currentMonth])
 
-  // Calculate grand all-time balance
+  // Calculate grand all-time balance (sum of positive category balances only)
+  // This matches the settings page "Allocated" calculation: sum of all positive category.balance values
   const grandAllTime = useMemo(() => {
     return Object.entries(categories).reduce((sum, [catId, cat]) => {
       const storedBalance = cat.balance ?? 0
+      let balance = storedBalance
       if (isDraftMode) {
         const draftAllocation = getAllocationAmount(catId, cat)
         const savedAllocation = savedAllocations[catId] ?? 0
         const allocationChange = draftAllocation - savedAllocation
-        return sum + storedBalance + allocationChange
+        balance = storedBalance + allocationChange
       }
-      return sum + storedBalance
+      // Only sum positive balances to match settings page "Allocated" calculation
+      return sum + Math.max(0, balance)
     }, 0)
   }, [categories, isDraftMode, getAllocationAmount, savedAllocations])
+
+  // Calculate what the settings page "Allocated" would show (sum of positive category.balance, no draft changes)
+  // This should match grandAllTime when not in draft mode
+  const settingsPageAllocated = useMemo(() =>
+    Object.values(categories).reduce(
+      (sum, cat) => sum + Math.max(0, cat.balance ?? 0),
+      0
+    ),
+    [categories]
+  )
+
+  // Check if month view ALL-TIME matches settings page Allocated (they should always match when not in draft mode)
+  useEffect(() => {
+    if (!selectedBudgetId || isDraftMode) return // Skip check in draft mode or when no budget
+
+    const mismatch = Math.abs(grandAllTime - settingsPageAllocated) > 0.01
+    if (mismatch) {
+      const diff = Math.abs(grandAllTime - settingsPageAllocated)
+      console.error('[MonthCategories] Month View vs Settings Mismatch:', {
+        grandAllTime,
+        settingsPageAllocated,
+        difference: diff,
+        message: 'Month view "ALL-TIME" does not match settings page "Allocated" total. These should always match.',
+      })
+      bannerQueue.add({
+        type: 'error',
+        message: `Balance display mismatch: Month view "ALL-TIME" (${formatCurrency(grandAllTime)}) ≠ Settings "Allocated" (${formatCurrency(settingsPageAllocated)}). Difference: ${formatCurrency(diff)}. Budget may need recalculation.`,
+        autoDismissMs: 10000,
+      })
+    }
+  }, [grandAllTime, settingsPageAllocated, isDraftMode, selectedBudgetId])
 
   const actionButtonHandlers = {
     onSave: handleSaveAllocations,

@@ -17,6 +17,9 @@ import {
 } from './recalculateMonth'
 import { queryClient, queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/month'
+import { calculateTotalBalances } from '../cachedReads'
+import { runRecalculationAssertions, logAssertionResults } from './assertions'
+import { bannerQueue } from '@components/ui'
 
 // Import types
 import type {
@@ -241,7 +244,18 @@ async function executeRecalculation(
   })
 
   const finalAccountBalances = prevSnapshot.accountEndBalances
-  const finalCategoryBalances = prevSnapshot.categoryEndBalances
+  
+  // Calculate total category balances (including future allocations) to match what's stored in budget document
+  // The budget document stores total balances (all-time including future), not just current month's end_balance
+  const currentCategoryBalances = prevSnapshot.categoryEndBalances
+  const categoryIds = Object.keys(budgetData.categories || {})
+  const finalCategoryBalances = await calculateTotalBalances(
+    budgetId,
+    categoryIds,
+    currentCategoryBalances,
+    currentYear,
+    currentMonth
+  )
 
   await updateBudgetBalances(
     budgetId,
@@ -249,6 +263,35 @@ async function executeRecalculation(
     finalCategoryBalances,
     monthMap
   )
+
+  // Step 8: Run assertions to validate recalculation
+  onProgress?.({
+    phase: 'validating',
+    monthsProcessed: monthsRecalculated,
+    totalMonths: totalToRecalculate,
+    percentComplete: 95,
+  })
+
+  // Read updated budget data for assertions
+  const { data: updatedBudgetData } = await readDocByPath<BudgetDocument>(
+    'budgets',
+    budgetId,
+    '[recalc] reading budget for assertions'
+  )
+
+  if (updatedBudgetData) {
+    const assertionResults = await runRecalculationAssertions({
+      budgetId,
+      categories: updatedBudgetData.categories || {},
+      totalAvailable: updatedBudgetData.total_available ?? 0,
+      currentYear,
+      currentMonth,
+    })
+
+    // Log results and show banners for failures
+    const banners = logAssertionResults(assertionResults, '[Recalculation]')
+    banners.forEach(banner => bannerQueue.add(banner))
+  }
 
   onProgress?.({
     phase: 'complete',

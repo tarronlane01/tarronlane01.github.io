@@ -13,10 +13,14 @@
  * INTERNAL (used by triggerRecalculation):
  * - recalculateMonth - Pure calculation for a single month
  *
+ * VALIDATION:
+ * - runRecalculationAssertions - Run validation checks after recalculation
+ *
  * The pattern is:
  * 1. User edits data → writeMonthData → marks budget + updates month_map in single write
  * 2. User views month/budget → read function detects stale flag → triggerRecalculation
  * 3. triggerRecalculation uses month_map to find which months need recalculation
+ * 4. After recalculation, assertions are run to validate data integrity
  */
 
 // ============================================================================
@@ -24,6 +28,12 @@
 // ============================================================================
 
 export { triggerRecalculation, type RecalculationProgress } from './triggerRecalculation'
+
+// ============================================================================
+// VALIDATION
+// ============================================================================
+
+export { runRecalculationAssertions, logAssertionResults, type AssertionResults } from './assertions'
 
 // ============================================================================
 // MARKING AS STALE
