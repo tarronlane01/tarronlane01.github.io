@@ -1,5 +1,5 @@
 /**
- * Helper functions for Mark Months Need Recalculation
+ * Helper functions for Month Map Management
  */
 
 import type { MonthMap } from '@types'
@@ -47,28 +47,24 @@ export function getMonthWindowOrdinals(): string[] {
 }
 
 /**
- * The month_map now contains ALL months in the budget, not just the navigation window.
- * This allows us to derive earliest_month, latest_month, etc. from the map.
- * No cleanup is needed - all months are preserved.
- */
-export function cleanupMonthMap(monthMap: MonthMap): MonthMap {
-  // Return as-is - we now keep all months in the map
-  return monthMap
-}
-
-/**
  * Check if all future months are already in the month_map.
  * Returns true only if the cache exists AND all relevant months are in the map.
  *
  * This optimization prevents unnecessary Firestore writes when the user
  * makes multiple edits to the same month in quick succession.
  */
-export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, editedMonthOrdinal: string): boolean {
+export function areAllFutureMonthsInCache(budgetId: string, editedMonthOrdinal: string): boolean {
   const budgetKey = queryKeys.budget(budgetId)
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (!cachedBudget?.monthMap) return false
 
-  // Check if the edited month or any future month in the cache is NOT in the map
+  // CRITICAL: Always check if the edited month itself is in the map
+  // This prevents gaps when writing months outside the window
+  if (!(editedMonthOrdinal in cachedBudget.monthMap)) {
+    return false // Edited month is missing
+  }
+
+  // Check if any future month in the cache is NOT in the map
   const windowOrdinals = getMonthWindowOrdinals()
   for (const ordinal of windowOrdinals) {
     if (ordinal >= editedMonthOrdinal && !(ordinal in cachedBudget.monthMap)) {
@@ -82,9 +78,9 @@ export function areAllFutureMonthsAlreadyMarkedInCache(budgetId: string, editedM
 /**
  * Update the cache with updated month_map.
  */
-export function updateCacheWithMarking(
+export function updateCacheWithMonthMap(
   budgetId: string,
-  _monthOrdinalToMark: string,
+  _monthOrdinal: string,
   updatedMonthMap: MonthMap
 ): void {
   const budgetKey = queryKeys.budget(budgetId)
@@ -103,12 +99,12 @@ export function updateCacheWithMarking(
 }
 
 /**
- * Update cache for setMonthInBudgetMap
+ * Update cache for addMonthToMap
  * Optionally tracks the budget change for background save.
  */
-export function updateCacheWithMonth(
+export function updateCacheWithSingleMonth(
   budgetId: string,
-  cleanedMonthMap: MonthMap,
+  updatedMonthMap: MonthMap,
   trackChange?: (change: { type: 'budget'; budgetId: string }) => void
 ): void {
   const budgetKey = queryKeys.budget(budgetId)
@@ -116,10 +112,10 @@ export function updateCacheWithMonth(
   if (cachedBudget) {
     queryClient.setQueryData<BudgetData>(budgetKey, {
       ...cachedBudget,
-      monthMap: cleanedMonthMap,
+      monthMap: updatedMonthMap,
       budget: {
         ...cachedBudget.budget,
-        month_map: cleanedMonthMap,
+        month_map: updatedMonthMap,
       },
     })
 
@@ -131,9 +127,9 @@ export function updateCacheWithMonth(
 }
 
 /**
- * Update cache for markAllMonthsFromOrdinal
+ * Update cache for addAllMonthsFromOrdinal
  */
-export function updateCacheWithAllMonthsMarked(budgetId: string, updatedMonthMap: MonthMap): void {
+export function updateCacheWithAllMonths(budgetId: string, updatedMonthMap: MonthMap): void {
   const budgetKey = queryKeys.budget(budgetId)
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
   if (cachedBudget) {
@@ -170,15 +166,14 @@ export function removeMonthFromMap(
   const existingMonthMap: MonthMap = cachedBudget.monthMap || {}
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { [monthOrdinal]: _removed, ...updatedMonthMap } = existingMonthMap
-  const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
 
   // Update cache immediately
   queryClient.setQueryData<BudgetData>(budgetKey, {
     ...cachedBudget,
-    monthMap: cleanedMonthMap,
+    monthMap: updatedMonthMap,
     budget: {
       ...cachedBudget.budget,
-      month_map: cleanedMonthMap,
+      month_map: updatedMonthMap,
     },
   })
 
@@ -187,6 +182,5 @@ export function removeMonthFromMap(
     trackChange({ type: 'budget', budgetId })
   }
 
-  return cleanedMonthMap
+  return updatedMonthMap
 }
-

@@ -2,7 +2,7 @@
  * Update Adjustment Hook
  *
  * Updates an existing adjustment transaction.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Uses writeMonthData which handles optimistic updates and updates the month_map.
  * Includes no-op detection to avoid unnecessary Firestore writes.
  */
 
@@ -11,6 +11,7 @@ import { readMonth } from '@data/queries/month'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 /**
  * Check if adjustment values have actually changed (no-op detection)
@@ -77,7 +78,8 @@ export function useUpdateAdjustment() {
 
     const updatedAdjustment: AdjustmentTransaction = {
       id: adjustmentId,
-      amount,
+      // Round amount to ensure 2 decimal precision before storing
+      amount: roundCurrency(amount),
       account_id: accountId,
       category_id: categoryId,
       date,

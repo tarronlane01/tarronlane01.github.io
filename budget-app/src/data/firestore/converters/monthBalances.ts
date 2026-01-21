@@ -11,6 +11,7 @@ import { calculateCategoryBalances } from '@utils/calculations/balances/calculat
 import { calculateAccountBalances } from '@utils/calculations/balances/calculateAccountBalancesFromTransactions'
 import type { MonthDocument } from '@types'
 import { isMonthAtOrBeforeWindow } from '@utils/window'
+import { roundCurrency } from '@utils'
 
 /**
  * Convert stored category balance to calculated (adds computed fields).
@@ -69,8 +70,10 @@ export function calculatedToStoredCategoryBalance(
   
   return {
     category_id: calculated.category_id,
-    start_balance: isAtOrBeforeWindow ? calculated.start_balance : 0, // Only save if at/before window
-    allocated: calculated.allocated, // Always save allocated
+    // Round start_balance to ensure 2 decimal precision before saving to Firestore
+    start_balance: isAtOrBeforeWindow ? roundCurrency(calculated.start_balance) : 0, // Only save if at/before window
+    // Round allocated to ensure 2 decimal precision before saving to Firestore
+    allocated: roundCurrency(calculated.allocated), // Always save allocated
   }
 }
 
@@ -91,7 +94,8 @@ export function calculatedToStoredAccountBalance(
   
   return {
     account_id: calculated.account_id,
-    start_balance: isAtOrBeforeWindow ? calculated.start_balance : 0, // Only save if at/before window
+    // Round start_balance to ensure 2 decimal precision before saving to Firestore
+    start_balance: isAtOrBeforeWindow ? roundCurrency(calculated.start_balance) : 0, // Only save if at/before window
   }
 }
 

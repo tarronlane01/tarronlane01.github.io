@@ -18,6 +18,7 @@ import type { MonthQueryData } from '@data/queries/month'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -58,7 +59,8 @@ function createTransferObject(
 ): TransferTransaction {
   const newTransfer: TransferTransaction = {
     id: transferId,
-    amount: params.amount,
+    // Round amount to ensure 2 decimal precision before storing
+    amount: roundCurrency(params.amount),
     from_account_id: params.fromAccountId,
     to_account_id: params.toAccountId,
     from_category_id: params.fromCategoryId,

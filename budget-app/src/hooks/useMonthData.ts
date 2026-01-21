@@ -15,7 +15,7 @@ import { useEffect, useMemo } from 'react'
 import { useApp } from '@contexts'
 import { useMonthQuery } from '@data'
 import { useQueryClient } from '@tanstack/react-query'
-import { queryKeys } from '@data/queryClient'
+import { queryKeys, STALE_TIME } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month'
 import type {
   MonthDocument,
@@ -60,23 +60,39 @@ export function useMonthData(
   // Query
   const monthQuery = useMonthQuery(budgetId, year, month, { enabled: !!budgetId })
 
-  // Show loading overlay only if month is not in cache and is loading
-  // This allows smooth navigation when prefetched months are already cached
+  // Show loading overlay if month is not in cache, is stale, or is being refetched
+  // This ensures we always show loading when fetching stale or missing data
   useEffect(() => {
-    // Check if month is already in cache
     const monthKey = budgetId ? queryKeys.month(budgetId, year, month) : null
-    const cachedData = monthKey ? queryClient.getQueryData<MonthQueryData>(monthKey) : null
+    if (!monthKey) {
+      removeLoadingHold('month-query')
+      return
+    }
 
-    // Only show loading overlay if:
-    // 1. Month is not in cache (not prefetched)
-    // 2. Query is actually loading (fetching from Firestore)
-    if (!cachedData && monthQuery.isLoading) {
+    const queryState = queryClient.getQueryState<MonthQueryData>(monthKey)
+    const cachedData = queryClient.getQueryData<MonthQueryData>(monthKey)
+
+    // Check if data is missing
+    const isMissing = !cachedData
+
+    // Check if data is stale (older than STALE_TIME)
+    const isStale = queryState?.dataUpdatedAt
+      ? Date.now() - queryState.dataUpdatedAt > STALE_TIME
+      : false
+
+    // Show loading overlay if:
+    // 1. Month is not in cache (missing)
+    // 2. Month is stale and being refetched (isFetching)
+    // 3. Query is loading (initial fetch)
+    const shouldShowLoading = isMissing || (isStale && monthQuery.isFetching) || monthQuery.isLoading
+
+    if (shouldShowLoading) {
       addLoadingHold('month-query', 'Loading month data...')
     } else {
       removeLoadingHold('month-query')
     }
     return () => removeLoadingHold('month-query')
-  }, [monthQuery.isLoading, budgetId, year, month, queryClient, addLoadingHold, removeLoadingHold])
+  }, [monthQuery.isLoading, monthQuery.isFetching, budgetId, year, month, queryClient, addLoadingHold, removeLoadingHold])
 
   // Extract data with stable references
   const monthData = monthQuery.data?.month || null

@@ -56,7 +56,7 @@ export function useBackgroundSave() {
       budgetId,
       month: monthQueryData.month,
       description: `${context}: ${year}/${month}`,
-      cascadeRecalculation: false, // Don't mark for recalculation on background saves
+      updateMonthMap: false, // Don't update month_map on background saves
     })
   }, [])
 
@@ -166,7 +166,7 @@ export function useBackgroundSave() {
         }
       }
 
-      // Before saving, retotal all changed months to ensure accuracy
+      // Before saving, retotal all months to ensure accuracy
       // This ensures we're saving the most up-to-date totals even if some
       // local recalculations failed
       for (const { budgetId, year, month } of monthChanges) {

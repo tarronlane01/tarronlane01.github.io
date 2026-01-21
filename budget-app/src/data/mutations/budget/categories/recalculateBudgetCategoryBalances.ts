@@ -205,7 +205,7 @@ export async function recalculateBudgetCategoryBalancesFromCache(
   for (const [categoryId, category] of Object.entries(cachedBudget.categories)) {
     updatedCategories[categoryId] = {
       ...category,
-      balance: totalBalances[categoryId] ?? category.balance,
+      balance: roundCurrency(totalBalances[categoryId] ?? category.balance),
     }
   }
 

@@ -18,6 +18,7 @@ import { savePayeeIfNew } from '../../payees'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -55,7 +56,8 @@ function createIncomeObject(
 ): IncomeTransaction {
   const newIncome: IncomeTransaction = {
     id: incomeId,
-    amount: params.amount,
+    // Round amount to ensure 2 decimal precision before storing
+    amount: roundCurrency(params.amount),
     account_id: params.accountId,
     date: params.date,
     created_at: new Date().toISOString(),

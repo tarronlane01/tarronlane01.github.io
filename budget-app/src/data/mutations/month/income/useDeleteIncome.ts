@@ -2,7 +2,7 @@
  * Delete Income Hook
  *
  * Deletes an income transaction from the month.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Uses writeMonthData which handles optimistic updates and updates the month_map.
  */
 
 import type { MonthDocument } from '@types'

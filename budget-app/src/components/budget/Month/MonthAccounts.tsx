@@ -243,7 +243,7 @@ export function MonthAccounts() {
         )}
 
         {/* Account Groups */}
-        {sortedGroups.map(group => {
+        {sortedGroups.map((group, groupIndex) => {
           const groupAccounts = accountsByGroup[group.id] || []
           if (groupAccounts.length === 0) return null
 
@@ -270,6 +270,7 @@ export function MonthAccounts() {
               accountBalances={accountBalances}
               accountClearedBalances={accountClearedBalances}
               isMobile={isMobile}
+              isFirstGroup={groupIndex === 0}
             />
           )
         })}
@@ -291,6 +292,9 @@ export function MonthAccounts() {
             }
           }, { start: 0, income: 0, expenses: 0, transfers: 0, adjustments: 0, netChange: 0, end: 0 })
 
+          // Ungrouped accounts are first only if there are no groups before them
+          const isFirstGroup = sortedGroups.length === 0
+
           return (
             <AccountGroupRows
               key={UNGROUPED_ACCOUNT_GROUP_ID}
@@ -301,6 +305,7 @@ export function MonthAccounts() {
               accountClearedBalances={accountClearedBalances}
               isMobile={isMobile}
               isUngrouped
+              isFirstGroup={isFirstGroup}
             />
           )
         })()}

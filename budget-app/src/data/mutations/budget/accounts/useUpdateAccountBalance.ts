@@ -19,6 +19,7 @@ import type { BudgetData } from '@data/queries/budget'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useBudgetMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -65,9 +66,10 @@ export function useUpdateAccountBalance() {
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
 
       // Optimistically update the cache and track change automatically
+      // Round balance to ensure 2 decimal precision
       let newBalance = 0
       if (previousData?.accounts?.[accountId]) {
-        newBalance = previousData.accounts[accountId].balance + delta
+        newBalance = roundCurrency(previousData.accounts[accountId].balance + delta)
         const updatedAccounts = {
           ...previousData.accounts,
           [accountId]: {

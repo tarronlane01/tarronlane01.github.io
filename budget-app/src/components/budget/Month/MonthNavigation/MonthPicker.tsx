@@ -5,6 +5,7 @@
 import { MONTH_NAMES } from '@constants'
 import { colors } from '@styles/shared'
 import { getYearMonthOrdinal } from '@utils'
+import type { MonthMap } from '@types'
 
 interface MonthPickerProps {
   pickerYear: number
@@ -15,6 +16,7 @@ interface MonthPickerProps {
   maxOrdinal: number
   minAllowed: { year: number; month: number }
   maxAllowed: { year: number; month: number }
+  monthMap: MonthMap | undefined
   onYearChange: (year: number) => void
   onMonthChange: (month: number) => void
   onGo: () => void
@@ -29,6 +31,7 @@ export function MonthPicker({
   maxOrdinal,
   minAllowed,
   maxAllowed,
+  monthMap,
   onYearChange,
   onMonthChange,
   onGo,
@@ -36,7 +39,10 @@ export function MonthPicker({
   const canGoPrevYear = pickerYear > minAllowed.year
   const canGoNextYear = pickerYear < maxAllowed.year
   const selectedOrdinal = Number(getYearMonthOrdinal(pickerYear, pickerMonth))
-  const isSelectedValid = selectedOrdinal >= minOrdinal && selectedOrdinal <= maxOrdinal
+  // Only allow selecting months that exist in month_map (for past months) or are within max range (for future months)
+  const selectedMonthExistsInMap = monthMap ? getYearMonthOrdinal(pickerYear, pickerMonth) in monthMap : false
+  const isSelectedInFutureRange = selectedOrdinal <= maxOrdinal
+  const isSelectedValid = (selectedMonthExistsInMap || isSelectedInFutureRange) && selectedOrdinal >= minOrdinal
 
   return (
     <div style={{
@@ -95,13 +101,18 @@ export function MonthPicker({
           const isSelected = monthNum === pickerMonth
           const isCurrent = pickerYear === currentYear && monthNum === currentMonthNumber
           const monthOrdinal = Number(getYearMonthOrdinal(pickerYear, monthNum))
+          const monthOrdinalStr = getYearMonthOrdinal(pickerYear, monthNum)
           const isBeforeMin = monthOrdinal < minOrdinal
           const isAfterMax = monthOrdinal > maxOrdinal
-          const isDisabled = isBeforeMin || isAfterMax
+          // For past months, only allow if they exist in month_map
+          const isPastMonth = monthOrdinal < Number(getYearMonthOrdinal(currentYear, currentMonthNumber))
+          const monthExistsInMap = monthMap ? monthOrdinalStr in monthMap : false
+          const isDisabled = isBeforeMin || isAfterMax || (isPastMonth && !monthExistsInMap)
 
           let title: string = name
           if (isBeforeMin) title = 'Too far in the past'
           else if (isAfterMax) title = 'Too far in the future'
+          else if (isPastMonth && !monthExistsInMap) title = 'Month not in budget'
 
           return (
             <button

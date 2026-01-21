@@ -1,5 +1,6 @@
 import type { FinancialAccount } from '@contexts/budget_context'
 import type { AccountMonthBalance, MonthDocument } from '@types'
+import { roundCurrency } from '@utils'
 
 /**
  * Account balance breakdown showing cleared and uncleared amounts
@@ -31,10 +32,11 @@ export function calculateAccountClearedBalances(
   // If no current month, return empty balances
   if (!currentMonth) {
     Object.entries(accounts).forEach(([accountId, account]) => {
+      const balance = roundCurrency(account.balance ?? 0)
       balances[accountId] = {
         account_id: accountId,
-        cleared_balance: account.balance ?? 0,
-        uncleared_balance: account.balance ?? 0,
+        cleared_balance: balance,
+        uncleared_balance: balance,
       }
     })
     return balances
@@ -43,7 +45,8 @@ export function calculateAccountClearedBalances(
   Object.entries(accounts).forEach(([accountId, account]) => {
     const existing = existingBalances[accountId]
     // Start balance from existing or account's current balance if first month
-    const startBalance = existing?.start_balance ?? account.balance
+    // Round to ensure 2 decimal precision
+    const startBalance = roundCurrency(existing?.start_balance ?? account.balance)
 
     // Calculate cleared and uncleared income
     let clearedIncome = 0
@@ -107,14 +110,14 @@ export function calculateAccountClearedBalances(
         })
     }
 
-    // Calculate balances
-    const clearedNetChange = clearedIncome + clearedExpenses + clearedTransfers + clearedAdjustments
-    const unclearedNetChange = unclearedIncome + unclearedExpenses + unclearedTransfers + unclearedAdjustments
+    // Calculate balances - round all values to ensure 2 decimal precision
+    const clearedNetChange = roundCurrency(clearedIncome + clearedExpenses + clearedTransfers + clearedAdjustments)
+    const unclearedNetChange = roundCurrency(unclearedIncome + unclearedExpenses + unclearedTransfers + unclearedAdjustments)
 
     balances[accountId] = {
       account_id: accountId,
-      cleared_balance: startBalance + clearedNetChange,
-      uncleared_balance: startBalance + unclearedNetChange,
+      cleared_balance: roundCurrency(startBalance + clearedNetChange),
+      uncleared_balance: roundCurrency(startBalance + unclearedNetChange),
     }
   })
 

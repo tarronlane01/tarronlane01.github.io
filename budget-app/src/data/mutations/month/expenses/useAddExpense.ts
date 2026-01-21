@@ -18,6 +18,7 @@ import { savePayeeIfNew } from '../../payees'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -57,7 +58,8 @@ function createExpenseObject(
 ): ExpenseTransaction {
   const newExpense: ExpenseTransaction = {
     id: expenseId,
-    amount: params.amount,
+    // Round amount to ensure 2 decimal precision before storing
+    amount: roundCurrency(params.amount),
     category_id: params.categoryId,
     account_id: params.accountId,
     date: params.date,

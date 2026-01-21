@@ -1,5 +1,11 @@
 import type { Category } from '@contexts/budget_context'
 import type { CategoryMonthBalance, MonthDocument } from '@types'
+import { roundCurrency } from '@utils'
+import {
+  calculateCategorySpent,
+  calculateCategoryTransfers,
+  calculateCategoryAdjustments,
+} from './calculateCategoryTransactionAmounts'
 
 /**
  * Calculates live category balances that update as allocations change
@@ -24,49 +30,25 @@ export function calculateLiveCategoryBalances(
   const balances: Record<string, CategoryMonthBalance> = {}
   Object.entries(categories).forEach(([catId, cat]) => {
     const existing = existingBalances[catId]
-    const startBalance = existing?.start_balance ?? 0
+    // Round start_balance to ensure 2 decimal precision
+    const startBalance = roundCurrency(existing?.start_balance ?? 0)
 
     // Use live draft allocation when in draft mode, otherwise use finalized
+    // Round allocated to ensure 2 decimal precision
     let allocated = 0
     if (isDraftMode) {
-      allocated = getAllocationAmount(catId, cat)
+      allocated = roundCurrency(getAllocationAmount(catId, cat))
     } else if (allocationsFinalized && existing) {
-      allocated = existing.allocated
+      allocated = roundCurrency(existing.allocated)
     }
 
-    // Calculate spent from expenses array (not from stored values)
-    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-    let spent = 0
-    if (currentMonth?.expenses) {
-      spent = currentMonth.expenses
-        .filter(e => e.category_id === catId)
-        .reduce((sum, e) => sum + e.amount, 0)
-    }
-
-    // Calculate transfers for this category
-    // Transfers TO this category add money (positive), transfers FROM subtract (negative)
-    let transfers = 0
-    if (currentMonth?.transfers) {
-      currentMonth.transfers.forEach(t => {
-        if (t.to_category_id === catId) {
-          transfers += t.amount // Money coming in
-        }
-        if (t.from_category_id === catId) {
-          transfers -= t.amount // Money going out
-        }
-      })
-    }
-
-    // Calculate adjustments for this category
-    // Adjustment amount is applied directly (positive = add, negative = subtract)
-    let adjustments = 0
-    if (currentMonth?.adjustments) {
-      adjustments = currentMonth.adjustments
-        .filter(a => a.category_id === catId)
-        .reduce((sum, a) => sum + a.amount, 0)
-    }
+    // Calculate spent, transfers, and adjustments using shared utilities (already rounded)
+    const spent = calculateCategorySpent(catId, currentMonth?.expenses || [])
+    const transfers = calculateCategoryTransfers(catId, currentMonth?.transfers || [])
+    const adjustments = calculateCategoryAdjustments(catId, currentMonth?.adjustments || [])
 
     // end_balance = start + allocated + spent + transfers + adjustments
+    // Round final end_balance to ensure 2 decimal precision
     balances[catId] = {
       category_id: catId,
       start_balance: startBalance,
@@ -74,7 +56,7 @@ export function calculateLiveCategoryBalances(
       spent,
       transfers,
       adjustments,
-      end_balance: startBalance + allocated + spent + transfers + adjustments,
+      end_balance: roundCurrency(startBalance + allocated + spent + transfers + adjustments),
     }
   })
 

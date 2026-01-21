@@ -16,7 +16,6 @@ import {
   SettingsCategoryStatsHeader,
 } from '@components/budget/Categories'
 import { SettingsCategoryGroupRows } from '@components/budget/Categories/SettingsCategoryGroupRows'
-import { RecalculateAllButton } from '@components/budget/Month'
 
 function Categories() {
   const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, totalAvailable } = useBudgetData()
@@ -169,9 +168,6 @@ function Categories() {
             relationshipMismatch={relationshipMismatch}
             calculationMismatch={calculationMismatch}
           />
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem', flexShrink: 0, justifyContent: 'flex-end', paddingRight: 'var(--page-padding, 2rem)', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
-            <RecalculateAllButton />
-          </div>
 
           {/* Second subgrid row: column headers */}
           {!isMobile && (

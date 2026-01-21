@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { queryKeys } from '@data/queryClient'
 import { recalculateMonth, extractSnapshotFromMonth, type PreviousMonthSnapshot, EMPTY_SNAPSHOT } from '@data/recalculation'
-import { readMonthDirect } from '@data/queries/month/useMonthQuery'
+import { readMonth } from '@data/queries/month'
 import type { MonthDocument } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { getPreviousMonth } from '@utils'
@@ -97,12 +97,13 @@ async function getPreviousMonthSnapshot(
     return extractSnapshotFromMonth(prevMonthQueryData.month)
   }
 
-  // Previous month not in cache - try to fetch it
+  // Previous month not in cache - try to fetch it using readMonth (respects cache freshness)
   try {
-    const prevMonthDoc = await readMonthDirect(budgetId, prevYear, prevMonth)
+    const prevMonthDoc = await readMonth(budgetId, prevYear, prevMonth, {
+      description: `fetching previous month ${prevYear}/${prevMonth} for recalculation`,
+    })
     if (prevMonthDoc) {
-      // Cache it for future use
-      queryClient.setQueryData<MonthQueryData>(prevMonthKey, { month: prevMonthDoc })
+      // readMonth already caches the data via fetchQuery, so we don't need to manually cache it
       return extractSnapshotFromMonth(prevMonthDoc)
     }
   } catch (error) {

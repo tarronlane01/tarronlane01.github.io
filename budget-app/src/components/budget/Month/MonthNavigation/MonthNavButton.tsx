@@ -15,7 +15,7 @@ interface MonthNavButtonProps {
   direction: NavDirection
   isDisabled: boolean
   isLoading: boolean
-  disabledReason: string
+  disabledReason?: string // Optional - only shown when disabled
   onNavigate: () => void
 }
 
@@ -64,7 +64,7 @@ export function MonthNavButton({
       >
         {arrow}
       </button>
-      {showTooltip && isDisabled && (
+      {showTooltip && isDisabled && disabledReason && (
         <div style={{
           position: 'absolute',
           top: '100%',

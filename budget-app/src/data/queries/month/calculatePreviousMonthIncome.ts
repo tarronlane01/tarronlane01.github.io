@@ -7,9 +7,7 @@
 
 import type { MonthQueryData } from './readMonth'
 import { queryKeys } from '@data/queryClient'
-import { getPreviousMonth, getMonthDocId, roundCurrency } from '@utils'
-import { readDocByPath } from '@firestore'
-import type { FirestoreData } from '@types'
+import { getPreviousMonth, roundCurrency } from '@utils'
 import type { QueryClient } from '@tanstack/react-query'
 
 /**
@@ -36,29 +34,23 @@ export async function calculatePreviousMonthIncome(
     }
   }
 
-  // Not in cache - try to fetch from Firestore
-  try {
-    const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
-    const { exists, data } = await readDocByPath<FirestoreData>(
-      'months',
-      prevMonthDocId,
-      `calculating previous_month_income for ${year}/${month}`
-    )
-
-    if (exists && data) {
-      // Cache it for future use
-      if (queryClient) {
-        // We could cache the full month, but for now just return the income
-        // The full month will be cached when it's actually read
+  // Not in cache - use readMonth which respects cache and staleTime
+  // This ensures we use cached data if available, or fetch fresh data if stale
+  if (queryClient) {
+    try {
+      const { readMonth } = await import('./readMonth')
+      const prevMonthDoc = await readMonth(budgetId, prevYear, prevMonth, {
+        description: `calculating previous_month_income for ${year}/${month}`,
+      })
+      if (prevMonthDoc) {
+        // Calculate from income array
+        const prevIncome = prevMonthDoc.income || []
+        return roundCurrency(prevIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
       }
-
-      // Calculate from income array
-      const income = data.income || []
-      return roundCurrency(income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0))
+    } catch (error) {
+      // If we can't fetch previous month, default to 0
+      console.warn(`[calculatePreviousMonthIncome] Could not fetch previous month ${prevYear}/${prevMonth}:`, error)
     }
-  } catch (error) {
-    // If we can't fetch previous month, default to 0
-    console.warn(`[calculatePreviousMonthIncome] Could not fetch previous month ${prevYear}/${prevMonth}:`, error)
   }
 
   // No previous month found - return 0

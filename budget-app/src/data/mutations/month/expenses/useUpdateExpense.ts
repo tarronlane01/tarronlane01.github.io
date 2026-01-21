@@ -2,7 +2,7 @@
  * Update Expense Hook
  *
  * Updates an existing expense transaction.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Uses writeMonthData which handles optimistic updates and updates the month_map.
  * Includes no-op detection to avoid unnecessary Firestore writes.
  */
 
@@ -14,6 +14,7 @@ import { savePayeeIfNew } from '../../payees'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 /**
  * Check if expense values have actually changed (no-op detection)
@@ -80,7 +81,8 @@ export function useUpdateExpense() {
 
     const updatedExpense: ExpenseTransaction = {
       id: expenseId,
-      amount,
+      // Round amount to ensure 2 decimal precision before storing
+      amount: roundCurrency(amount),
       category_id: categoryId,
       account_id: accountId,
       date,

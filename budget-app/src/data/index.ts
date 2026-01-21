@@ -46,11 +46,11 @@ export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type F
 // RECALCULATION
 // ============================================================================
 export {
-  // Main entry point - called when is_needs_recalculation is detected
+  // Main entry point - called on-demand
   triggerRecalculation,
-  // Marking as stale (when data changes) - used by writeMonthData
-  markMonthsNeedRecalculation,
-  setMonthInBudgetMap,
+  // Month map management (when data changes) - used by writeMonthData
+  ensureMonthsInMap,
+  addMonthToMap,
 } from './recalculation'
 
 // ============================================================================

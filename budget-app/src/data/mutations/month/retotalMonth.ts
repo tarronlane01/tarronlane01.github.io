@@ -16,6 +16,7 @@
 import type { MonthDocument, AccountMonthBalance, CategoryMonthBalance } from '@types'
 import { isNoCategory, isNoAccount } from '../../constants'
 import { roundCurrency } from '@utils'
+import { calculateCategoryTransactionMaps } from '@utils/calculations/balances/calculateCategoryTransactionAmounts'
 
 /**
  * Re-total a month document based on current transactions.
@@ -167,37 +168,8 @@ function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
     balanceMap.set(cb.category_id, cb)
   }
 
-  // Calculate spent per category from expenses (excluding "No Category")
-  // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-  // Values are rounded when used, not during accumulation to avoid compound rounding errors
-  const spentByCategory = new Map<string, number>()
-  for (const exp of expenses) {
-    if (isNoCategory(exp.category_id)) continue
-    const current = spentByCategory.get(exp.category_id) || 0
-    spentByCategory.set(exp.category_id, current + exp.amount)
-  }
-
-  // Calculate transfers per category (from_category subtracts, to_category adds)
-  const transfersByCategory = new Map<string, number>()
-  for (const transfer of transfers) {
-    if (!isNoCategory(transfer.from_category_id)) {
-      const current = transfersByCategory.get(transfer.from_category_id) || 0
-      transfersByCategory.set(transfer.from_category_id, current - transfer.amount)
-    }
-    if (!isNoCategory(transfer.to_category_id)) {
-      const current = transfersByCategory.get(transfer.to_category_id) || 0
-      transfersByCategory.set(transfer.to_category_id, current + transfer.amount)
-    }
-  }
-
-  // Calculate adjustments per category (adds/subtracts based on amount sign)
-  const adjustmentsByCategory = new Map<string, number>()
-  for (const adjustment of adjustments) {
-    if (!isNoCategory(adjustment.category_id)) {
-      const current = adjustmentsByCategory.get(adjustment.category_id) || 0
-      adjustmentsByCategory.set(adjustment.category_id, current + adjustment.amount)
-    }
-  }
+  // Calculate spent, transfers, and adjustments maps using shared utility
+  const { spentMap, transfersMap, adjustmentsMap } = calculateCategoryTransactionMaps(expenses, transfers, adjustments)
 
   // Collect all category IDs (from existing balances, expenses, transfers, and adjustments)
   const allCategoryIds = new Set<string>()
@@ -221,9 +193,9 @@ function retotalCategorySpent(month: MonthDocument): CategoryMonthBalance[] {
   const balances: CategoryMonthBalance[] = []
   for (const categoryId of allCategoryIds) {
     const existing = balanceMap.get(categoryId)
-    const spent = roundCurrency(spentByCategory.get(categoryId) ?? 0)
-    const categoryTransfers = roundCurrency(transfersByCategory.get(categoryId) ?? 0)
-    const categoryAdjustments = roundCurrency(adjustmentsByCategory.get(categoryId) ?? 0)
+    const spent = spentMap[categoryId] ?? 0 // Already rounded by calculateCategoryTransactionMaps
+    const categoryTransfers = transfersMap[categoryId] ?? 0 // Already rounded
+    const categoryAdjustments = adjustmentsMap[categoryId] ?? 0 // Already rounded
 
     if (existing) {
       // Update existing balance with new spent amount, transfers, and adjustments

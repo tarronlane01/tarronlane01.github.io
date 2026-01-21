@@ -33,6 +33,7 @@ export interface CategoryGroupRowsProps {
   onAllocationChange: (categoryId: string, value: string) => void
   isMobile: boolean
   isUngrouped?: boolean
+  isFirstGroup?: boolean // Remove top margin for first group to eliminate gap after Grand Totals
   getAllocationAmount: (catId: string, cat: Category) => number
   gridTemplateColumns: string // Grid columns from parent
 }
@@ -49,6 +50,7 @@ export function CategoryGroupRows({
   onAllocationChange,
   isMobile,
   isUngrouped,
+  isFirstGroup = false, // Remove top margin for first group to eliminate gap after Grand Totals
   getAllocationAmount,
   gridTemplateColumns, // Passed to CategoryGridRow
 }: CategoryGroupRowsProps) {
@@ -58,7 +60,7 @@ export function CategoryGroupRows({
     paddingBottom: '0.6rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
-    marginTop: '1.25rem',
+    marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
     borderTop: '1px solid rgba(255,255,255,0.2)',
     borderBottom: groupTotalRowBorder,
     background: 'rgba(255,255,255,0.04)',
@@ -136,7 +138,7 @@ export function CategoryGroupRows({
           paddingBottom: '0.6rem',
           paddingLeft: '0.5rem',
           paddingRight: '0.5rem',
-          marginTop: '1.25rem',
+          marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
           borderTop: '1px solid rgba(255,255,255,0.2)',
           borderBottom: groupTotalRowBorder,
           background: 'rgba(255,255,255,0.04)',

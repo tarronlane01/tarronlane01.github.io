@@ -2,7 +2,7 @@
  * Delete Allocations Hook
  *
  * Deletes all allocations (clears allocations and sets unfinalized).
- * Now triggers immediate recalculation instead of just marking months as needing recalc.
+ * Triggers immediate recalculation when allocations are deleted.
  *
  * Progress callback allows the UI to show detailed status during the operation.
  */

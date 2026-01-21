@@ -37,6 +37,19 @@ export function getAllMonthOrdinals(monthMap: MonthMap): string[] {
 
 export async function fetchMonth(budgetId: string, ordinal: string): Promise<MonthWithId | null> {
   const { year, month } = parseOrdinal(ordinal)
+  const monthKey = queryKeys.month(budgetId, year, month)
+  
+  // CRITICAL: Check React Query cache first to use cached data
+  // This prevents duplicate reads when months are already in cache
+  const cachedData = queryClient.getQueryData<{ month: MonthDocument }>(monthKey)
+  if (cachedData?.month) {
+    return {
+      id: getMonthDocId(budgetId, year, month),
+      ...cachedData.month,
+    }
+  }
+  
+  // Not in cache - read from Firestore
   const monthDocId = getMonthDocId(budgetId, year, month)
   const { exists, data } = await readDocByPath<FirestoreData>('months', monthDocId, `[recalc] fetching month ${year}/${month}`)
   if (!exists || !data) return null
@@ -103,28 +116,31 @@ export async function fetchMonthsByOrdinals(
 // Removed clearMonthMapFlags - we don't track recalculation flags anymore
 // month_map is just a set of ordinals (empty objects)
 
-export function calculateTotalAvailable(accounts: FirestoreData, categories: FirestoreData, accountGroups: FirestoreData): number {
-  const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
-    const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
-    return (effectiveOnBudget && effectiveActive) ? sum + (account.balance ?? 0) : sum
-  }, 0)
-  const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {
-    const balance = (cat as { balance?: number }).balance ?? 0
-    return sum + (balance > 0 ? balance : 0)
-  }, 0)
-  return roundCurrency(onBudgetAccountTotal - totalPositiveCategoryBalances)
-}
+// Re-export from shared utility for consistency
+export { calculateTotalAvailable } from '@utils/calculations/balances/calculateTotalAvailable'
 
 /**
- * Update budget cache with calculated balances (don't save to Firestore).
- * Balances are calculated on-the-fly and only stored in cache.
- * Only saves month_map and is_needs_recalculation flag to Firestore.
+ * Update budget cache with calculated balances and save month_map to Firestore.
+ * Balances are calculated on-the-fly and only stored in cache (not saved to Firestore).
+ * Only the month_map is saved to Firestore.
  */
 export async function updateBudgetBalances(budgetId: string, accountBalances: Record<string, number>, categoryBalances: Record<string, number>, monthMap: MonthMap): Promise<void> {
-  const { exists, data } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget for cache update')
-  if (!exists || !data) return
+  // CRITICAL: Check React Query cache first to use cached budget data
+  // This prevents duplicate reads when budget is already in cache
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  let data: BudgetDocument | null = null
+  
+  if (cachedBudget?.budget) {
+    // Use cached budget data
+    data = cachedBudget.budget as unknown as BudgetDocument
+  } else {
+    // Not in cache - read from Firestore
+    const { exists, data: budgetData } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget for cache update')
+    if (!exists || !budgetData) return
+    data = budgetData
+  }
+
+  if (!data) return // Type guard
 
   // Round all balances to 2 decimal places
   const updatedAccounts = { ...data.accounts }
@@ -136,6 +152,7 @@ export async function updateBudgetBalances(budgetId: string, accountBalances: Re
     if (updatedCategories[categoryId]) updatedCategories[categoryId] = { ...updatedCategories[categoryId], balance: roundCurrency(balance) }
   }
 
+  const { calculateTotalAvailable } = await import('@utils/calculations/balances/calculateTotalAvailable')
   const totalAvailable = calculateTotalAvailable(updatedAccounts, updatedCategories, data.account_groups || {})
 
   // Only save month_map to Firestore (not balances or flags - those are calculated/managed locally)
@@ -163,7 +180,7 @@ export function updateBudgetCacheWithBalances(
   updatedAccounts: FirestoreData,
   updatedCategories: FirestoreData,
   _totalAvailable: number,
-  clearedMonthMap: MonthMap
+  updatedMonthMap: MonthMap
 ): void {
   const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   if (cachedBudget) {
@@ -205,7 +222,7 @@ export function updateBudgetCacheWithBalances(
       categories: newCategories,
       accountGroups: cachedBudget.accountGroups, // Preserve account groups
       categoryGroups: cachedBudget.categoryGroups, // Preserve category groups
-      monthMap: clearedMonthMap,
+      monthMap: updatedMonthMap,
       budget: {
         ...cachedBudget.budget,
         accounts: newAccounts, // Use properly typed accounts, not FirestoreData
@@ -213,7 +230,7 @@ export function updateBudgetCacheWithBalances(
         account_groups: cachedBudget.budget.account_groups,
         category_groups: cachedBudget.budget.category_groups,
         // Don't save total_available - it's calculated on-the-fly
-        month_map: clearedMonthMap,
+        month_map: updatedMonthMap,
       },
     })
   }

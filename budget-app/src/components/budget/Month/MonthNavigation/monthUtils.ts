@@ -67,30 +67,26 @@ function parseOrdinal(ordinal: string): { year: number; month: number } {
 
 /**
  * Get the effective minimum month, considering the month_map from budget.
- * If there are months earlier than MAX_PAST_MONTHS ago in the map, use the earliest.
+ * Always uses the earliest month in month_map if available, allowing navigation
+ * to any month in the budget's history regardless of MAX_PAST_MONTHS.
  *
  * @param monthMap - The month_map from the budget
  * @returns The effective minimum year/month
  */
 export function getEffectiveMinMonth(monthMap: MonthMap): { year: number; month: number } {
-  const defaultMin = getMinAllowedMonth()
   const earliestOrdinal = getEarliestMonthFromMap(monthMap)
 
-  if (!earliestOrdinal) {
-    return defaultMin
-  }
-
-  // Return the earlier of the two
-  const defaultOrdinal = getYearMonthOrdinal(defaultMin.year, defaultMin.month)
-  if (earliestOrdinal < defaultOrdinal) {
+  // If month_map has months, use the earliest one (allows navigation beyond window)
+  if (earliestOrdinal) {
     return parseOrdinal(earliestOrdinal)
   }
 
-  return defaultMin
+  // Fallback to MAX_PAST_MONTHS only if month_map is empty (new budget)
+  return getMinAllowedMonth()
 }
 
 /**
- * Check if a month is too far in the past (more than MAX_PAST_MONTHS, unless month_map has earlier months)
+ * Check if a month is too far in the past (before the earliest month in month_map)
  *
  * @param year - Target year
  * @param month - Target month (1-12)

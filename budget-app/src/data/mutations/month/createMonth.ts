@@ -12,11 +12,11 @@ import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBa
 import { isMonthAtOrBeforeWindow } from '@utils/window'
 import { readDocByPath, writeDocByPath, updateDocByPath } from '@firestore'
 import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
-import { MAX_FUTURE_MONTHS, MAX_PAST_MONTHS } from '@constants'
+import { MAX_FUTURE_MONTHS } from '@constants'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
-import { updateCacheWithMonth, cleanupMonthMap } from '@data/recalculation/markMonthsHelpers'
+import { updateCacheWithSingleMonth } from '@data/recalculation/monthMapHelpers'
 
 /** Options for createMonth */
 export interface CreateMonthOptions {
@@ -60,6 +60,8 @@ export async function createMonth(
   // Calculate months from now (positive = future, negative = past)
   const monthsFromNow = (year - currentYear) * 12 + (month - currentMonth)
 
+  // Only restrict future months (past months are allowed if they exist in month_map)
+  // fetchMonth already checks month_map before calling createMonth, so we can safely allow past months
   if (!bypassDateLimit && monthsFromNow > MAX_FUTURE_MONTHS) {
     const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
       `it's ${monthsFromNow} months in the future (max allowed: ${MAX_FUTURE_MONTHS}). ` +
@@ -68,13 +70,7 @@ export async function createMonth(
     throw new Error(errorMsg)
   }
 
-  if (!bypassDateLimit && monthsFromNow < -MAX_PAST_MONTHS) {
-    const errorMsg = `[createMonth] Refusing to create month ${year}/${month} - ` +
-      `it's ${Math.abs(monthsFromNow)} months in the past (max allowed: ${MAX_PAST_MONTHS}). ` +
-      `Existing months can still be viewed, but new months cannot be created this far back.`
-    console.error(errorMsg)
-    throw new Error(errorMsg)
-  }
+  // Past months are allowed - fetchMonth already validates they exist in month_map before calling createMonth
 
   // FIRST: Validate that the budget exists before creating the month
   // This prevents orphaned month documents if the budget was deleted from another browser
@@ -103,6 +99,7 @@ export async function createMonth(
   let accountStartBalances: Record<string, number> = {}
 
   // For months after January, get previous month data
+  // Check cache first, then use direct Firestore read if not in cache
   // IMPORTANT: Use direct Firestore read (not readMonth) to avoid caching null results.
   // If we cached null for a non-existent previous month, navigating to that month later
   // would return the cached null instead of triggering month creation.
@@ -110,14 +107,59 @@ export async function createMonth(
     const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month)
     const prevMonthDocId = getMonthDocId(budgetId, prevYear, prevMonth)
 
-    try {
-      const { exists, data: prevData } = await readDocByPath<FirestoreData>(
-        'months',
-        prevMonthDocId,
-        'fetching previous month to create start balances for new month'
-      )
+    // CRITICAL: Check React Query cache first to use cached previous month data
+    // This prevents duplicate reads when previous month is already in cache
+    const prevMonthKey = queryKeys.month(budgetId, prevYear, prevMonth)
+    const cachedPrevMonth = queryClient.getQueryData<{ month: MonthDocument }>(prevMonthKey)
+    
+    let prevData: FirestoreData | null = null
+    
+    if (cachedPrevMonth?.month) {
+      // Previous month is in cache - use it
+      // Convert MonthDocument back to FirestoreData format for compatibility
+      const monthDoc = cachedPrevMonth.month
+      prevData = {
+        budget_id: monthDoc.budget_id,
+        year_month_ordinal: monthDoc.year_month_ordinal,
+        year: monthDoc.year,
+        month: monthDoc.month,
+        income: monthDoc.income,
+        expenses: monthDoc.expenses,
+        transfers: monthDoc.transfers,
+        adjustments: monthDoc.adjustments,
+        account_balances: monthDoc.account_balances,
+        category_balances: monthDoc.category_balances,
+        are_allocations_finalized: monthDoc.are_allocations_finalized,
+        created_at: monthDoc.created_at,
+        updated_at: monthDoc.updated_at,
+      } as FirestoreData
+    } else {
+      // Not in cache - read directly from Firestore (to avoid caching null results)
+      try {
+        const { exists, data } = await readDocByPath<FirestoreData>(
+          'months',
+          prevMonthDocId,
+          'fetching previous month to create start balances for new month'
+        )
+        if (exists) {
+          prevData = data
+        }
+      } catch (error) {
+        // Treat permission errors as "previous month doesn't exist" - start with zero balances
+        // This handles non-admin users where the security rule fails for non-existent months
+        const isPermissionError = error instanceof Error &&
+          error.message.includes('Missing or insufficient permissions')
 
-      if (exists && prevData) {
+        if (isPermissionError) {
+          console.warn(`[createMonth] Permission error reading previous month ${prevYear}/${prevMonth}, starting with zero balances`)
+        } else {
+          // Re-throw other errors
+          throw error
+        }
+      }
+    }
+
+    if (prevData) {
         // Parse the previous month data to extract balances
         const prevMonthData: MonthDocument = {
           budget_id: budgetId,
@@ -143,20 +185,7 @@ export async function createMonth(
         categoryStartBalances = categoryEndBalances
         accountStartBalances = accountEndBalances
       }
-    } catch (error) {
-      // Treat permission errors as "previous month doesn't exist" - start with zero balances
-      // This handles non-admin users where the security rule fails for non-existent months
-      const isPermissionError = error instanceof Error &&
-        error.message.includes('Missing or insufficient permissions')
-
-      if (isPermissionError) {
-        console.warn(`[createMonth] Permission error reading previous month ${prevYear}/${prevMonth}, starting with zero balances`)
-      } else {
-        // Re-throw other errors
-        throw error
-      }
     }
-  }
 
   // Build category_balances with start_balance from previous month
   // Only include stored fields - calculated fields will be computed on-the-fly
@@ -247,16 +276,15 @@ export async function createMonth(
   const existingMonthMap: MonthMap = budgetData.month_map || {}
   // month_map entries are just empty objects (no flags)
   const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: {} }
-  const cleanedMonthMap = cleanupMonthMap(updatedMonthMap)
 
   // Update cache immediately (instant UI feedback)
   // Track change for background save if callback provided
-  updateCacheWithMonth(budgetId, cleanedMonthMap, options?.trackBudgetChange)
+  updateCacheWithSingleMonth(budgetId, updatedMonthMap, options?.trackBudgetChange)
 
   // Write month_map to Firestore immediately (month creation is a special case - we need it persisted)
   // The change is also tracked for background save to ensure sync system picks it up
   await updateDocByPath('budgets', budgetId, {
-    month_map: cleanedMonthMap,
+    month_map: updatedMonthMap,
     updated_at: nowIso,
   }, `adding month ${year}/${month} to budget month_map`)
 

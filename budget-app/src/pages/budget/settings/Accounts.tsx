@@ -15,7 +15,6 @@ import {
   SettingsHiddenAccounts,
 } from '@components/budget/Accounts'
 import { SettingsAccountGroupRows } from '@components/budget/Accounts/SettingsAccountGroupRows'
-import { RecalculateAllButton } from '@components/budget/Month'
 
 function Accounts() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
@@ -208,9 +207,6 @@ function Accounts() {
                 <span style={{ opacity: 0.5, fontSize: '0.8rem' }}>
                   Use ▲▼ buttons to reorder accounts.
                 </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                <RecalculateAllButton />
               </div>
             </div>
           </div>

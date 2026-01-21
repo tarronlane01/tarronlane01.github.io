@@ -237,7 +237,7 @@ function processBudgetForPrecision(
  * 1. BATCH READ: Reads all budgets and months in 2 queries
  * 2. PROCESS IN MEMORY: Fixes precision issues without database calls
  * 3. BATCH WRITE: Writes all updates in batches
- * 4. RECALCULATE: Properly recalculates and clears needs_recalculation flags
+ * 4. RECALCULATE: Properly recalculates all months
  */
 export async function runPrecisionCleanup(): Promise<PrecisionCleanupResult> {
   const result: PrecisionCleanupResult = {
@@ -295,7 +295,6 @@ export async function runPrecisionCleanup(): Promise<PrecisionCleanupResult> {
 
   // ========================================
   // STEP 4: BATCH WRITE months and RECALCULATE each budget
-  // This properly handles needs_recalculation flags
   // ========================================
   for (const { budgetId, months } of budgetsWithMonthFixes) {
     try {
@@ -303,7 +302,6 @@ export async function runPrecisionCleanup(): Promise<PrecisionCleanupResult> {
       // 1. Batch writing all months
       // 2. Recalculating running balances
       // 3. Updating budget with final balances
-      // 4. Clearing all needs_recalculation flags
       await recalculateAndWriteBudget(budgetId, months, 'precision cleanup')
     } catch (err) {
       result.errors.push(`Budget ${budgetId} recalc: ${err instanceof Error ? err.message : String(err)}`)

@@ -12,6 +12,7 @@ import type { MonthDocument } from '@types'
 import { readMonth } from '@data/queries/month'
 import { useWriteMonthData } from '..'
 import type { AllocationData } from '.'
+import { roundCurrency } from '@utils'
 
 export function useSaveDraftAllocations() {
   const { writeData } = useWriteMonthData()
@@ -35,7 +36,8 @@ export function useSaveDraftAllocations() {
     const storedBalances = monthData.category_balances.map(cb => ({
       category_id: cb.category_id,
       start_balance: cb.start_balance,
-      allocated: allocations[cb.category_id] ?? cb.allocated,
+      // Round allocated to ensure 2 decimal precision
+      allocated: roundCurrency(allocations[cb.category_id] ?? cb.allocated),
     }))
     
     const updatedCategoryBalances = calculateCategoryBalances(
@@ -52,7 +54,7 @@ export function useSaveDraftAllocations() {
     }
 
     // Draft allocations don't affect balances, skip cascade
-    await writeData.mutateAsync({ budgetId, month: updatedMonth, cascadeRecalculation: false })
+    await writeData.mutateAsync({ budgetId, month: updatedMonth, updateMonthMap: false })
 
     return { updatedMonth }
   }

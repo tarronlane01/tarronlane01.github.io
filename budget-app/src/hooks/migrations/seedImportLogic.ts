@@ -6,12 +6,11 @@
  */
 
 import type { CategoriesMap, AccountsMap } from '@contexts'
-// eslint-disable-next-line no-restricted-imports -- Migration utility needs direct Firestore access
-import { batchWriteDocs, type BatchWriteDoc } from '@firestore'
-import type { FirestoreData, MonthDocument } from '@types'
+import type { MonthDocument } from '@types'
 import { readMonthForEdit } from '@data'
 import { createMonth } from '@data/mutations/month/createMonth'
-import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { getYearMonthOrdinal } from '@utils'
+import { batchWriteMonths, type MonthUpdate } from './migrationBatchWrite'
 import {
   recalculateMonth,
   extractSnapshotFromMonth,
@@ -245,6 +244,7 @@ export async function importSeedData(
   }
 
   // PHASE 4: Save all months in batches (Firestore batch write)
+  // Use batchWriteMonths which applies convertMonthBalancesToStored to strip calculated fields
   onProgress({
     phase: 'saving-months', currentMonth: null, monthsProcessed: processedMonths.length,
     totalMonths: processedMonths.length, recordsImported: imported, totalRecords: rows.length,
@@ -252,14 +252,15 @@ export async function importSeedData(
     incomeImported, spendImported, allocationsImported,
   })
 
-  const batchDocs: BatchWriteDoc[] = processedMonths.map(({ info, data }) => ({
-    collectionPath: 'months',
-    docId: getMonthDocId(budgetId, info.year, info.month),
-    data: data as unknown as FirestoreData,
+  const monthUpdates: MonthUpdate[] = processedMonths.map(({ info, data }) => ({
+    budgetId,
+    year: info.year,
+    month: info.month,
+    data,
   }))
 
   try {
-    await batchWriteDocs(batchDocs, `seed import combined (${processedMonths.length} months)`)
+    await batchWriteMonths(monthUpdates, `seed import combined (${processedMonths.length} months)`)
   } catch (err) {
     errors.push(`Error batch saving months: ${err instanceof Error ? err.message : 'Unknown error'}`)
   }

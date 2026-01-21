@@ -192,7 +192,7 @@ export function MonthCategories() {
           </p>
         )}
 
-        {sortedCategoryGroups.map(group => {
+        {sortedCategoryGroups.map((group, groupIndex) => {
           const groupCats = categoriesByGroup[group.id] || []
           if (groupCats.length === 0) return null
 
@@ -206,7 +206,7 @@ export function MonthCategories() {
             <CategoryGroupRows key={group.id} name={group.name} categories={groupCats} groupTotals={groupTotals}
               getCategoryBalance={getCategoryBalance} localAllocations={localAllocations} savedAllocations={savedAllocations}
               previousMonthIncome={previousMonthIncome} isDraftMode={isDraftMode} onAllocationChange={handleAllocationChange}
-              isMobile={isMobile} getAllocationAmount={getAllocationAmount}
+              isMobile={isMobile} isFirstGroup={groupIndex === 0} getAllocationAmount={getAllocationAmount}
               gridTemplateColumns={isDraftMode ? '2fr 1fr 200px 1fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 120px'} />
           )
         })}
@@ -220,11 +220,14 @@ export function MonthCategories() {
             return { start: acc.start + bal.start_balance, allocated: acc.allocated + bal.allocated, spent: acc.spent + bal.spent, transfers: acc.transfers + bal.transfers, adjustments: acc.adjustments + bal.adjustments, end: acc.end + bal.end_balance }
           }, { start: 0, allocated: 0, spent: 0, transfers: 0, adjustments: 0, end: 0 })
 
+          // Ungrouped categories are first only if there are no groups before them
+          const isFirstGroup = sortedCategoryGroups.length === 0
+
           return (
             <CategoryGroupRows key={UNGROUPED_CATEGORY_GROUP_ID} name="Uncategorized" categories={ungroupedCats} groupTotals={ungroupedTotals}
               getCategoryBalance={getCategoryBalance} localAllocations={localAllocations} savedAllocations={savedAllocations}
               previousMonthIncome={previousMonthIncome} isDraftMode={isDraftMode} onAllocationChange={handleAllocationChange}
-              isMobile={isMobile} isUngrouped getAllocationAmount={getAllocationAmount}
+              isMobile={isMobile} isUngrouped isFirstGroup={isFirstGroup} getAllocationAmount={getAllocationAmount}
               gridTemplateColumns={isDraftMode ? '2fr 1fr 200px 1fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 120px'} />
           )
         })()}

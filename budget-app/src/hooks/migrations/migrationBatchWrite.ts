@@ -40,6 +40,9 @@ export interface MonthUpdate {
  * IMPORTANT: This is a DESTRUCTIVE operation.
  * Each month document completely replaces any existing data for that month.
  * Uses Firestore's setDoc (via batch.set) which overwrites the entire document.
+ *
+ * CRITICAL: After writing months, ensures all written months are in month_map.
+ * This prevents gaps in month_map when months are created or updated via batch writes.
  */
 export async function batchWriteMonths(
   updates: MonthUpdate[],
@@ -62,6 +65,27 @@ export async function batchWriteMonths(
   })
 
   await batchWriteDocs(batchDocs, `${source}: batch writing ${updates.length} months`)
+
+  // CRITICAL: Ensure all written months are in month_map to prevent gaps
+  // Group by budget to update each budget's month_map efficiently
+  const updatesByBudget = new Map<string, Array<{ year: number; month: number }>>()
+  for (const update of updates) {
+    if (!updatesByBudget.has(update.budgetId)) {
+      updatesByBudget.set(update.budgetId, [])
+    }
+    updatesByBudget.get(update.budgetId)!.push({ year: update.year, month: update.month })
+  }
+
+  // Update month_map for each budget
+  const { ensureMonthsInMapBatch } = await import('@data/recalculation/monthMap')
+  for (const [budgetId, months] of updatesByBudget) {
+    try {
+      await ensureMonthsInMapBatch(budgetId, months)
+    } catch (error) {
+      // Log but don't throw - month_map update is important but shouldn't fail the batch write
+      console.warn(`[batchWriteMonths] Failed to update month_map for budget ${budgetId}:`, error)
+    }
+  }
 }
 
 /**

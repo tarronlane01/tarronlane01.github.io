@@ -8,6 +8,8 @@
 import { MigrationSection } from '../common'
 import { TransactionTypeAuditRow } from './TransactionTypeAuditRow'
 import { CurrencyPrecisionRow } from './CurrencyPrecisionRow'
+import { RecalculateStartBalancesRow } from './RecalculateStartBalancesRow'
+import { RepairMonthMapRow } from './RepairMonthMapRow'
 import { BackupPrompt, useBackupPrompt } from '../common'
 
 // Import types
@@ -16,6 +18,8 @@ import type { OrphanedIdCleanupStatus, OrphanedIdCleanupResult } from '@hooks/mi
 import type { ExpenseToAdjustmentStatus, ExpenseToAdjustmentResult } from '@hooks/migrations/useExpenseToAdjustmentMigration'
 import type { AdjustmentsToTransfersStatus, AdjustmentsToTransfersResult } from '@hooks/migrations/useAdjustmentsToTransfersMigration'
 import type { PrecisionCleanupStatus, PrecisionCleanupResult } from '@hooks/migrations/usePrecisionCleanup'
+import type { RecalculateStartBalancesMigrationStatus, RecalculateStartBalancesMigrationResult } from '@hooks/migrations/useRecalculateStartBalancesMigration'
+import type { RepairMonthMapMigrationStatus, RepairMonthMapMigrationResult } from '@hooks/migrations/useRepairMonthMapMigration'
 
 interface MaintenanceSectionProps {
   disabled: boolean
@@ -84,6 +88,32 @@ interface MaintenanceSectionProps {
     scan: () => void
     runCleanup: () => void
   }
+
+  // Recalculate Start Balances
+  recalculateStartBalances: {
+    status: RecalculateStartBalancesMigrationStatus | null
+    hasData: boolean
+    needsMigration: boolean
+    totalItemsToFix: number
+    isScanning: boolean
+    isRunning: boolean
+    result: RecalculateStartBalancesMigrationResult | null
+    scanStatus: () => void
+    runMigration: () => void
+  }
+
+  // Repair Month Map
+  repairMonthMap: {
+    status: RepairMonthMapMigrationStatus | null
+    hasData: boolean
+    needsMigration: boolean
+    totalItemsToFix: number
+    isScanning: boolean
+    isRunning: boolean
+    result: RepairMonthMapMigrationResult | null
+    scanStatus: () => void
+    runMigration: () => void
+  }
 }
 
 export function MaintenanceSection({
@@ -95,19 +125,25 @@ export function MaintenanceSection({
   expenseToAdjustment,
   adjustmentsToTransfers,
   precisionCleanup,
+  recalculateStartBalances,
+  repairMonthMap,
 }: MaintenanceSectionProps) {
   const isAnyScanning =
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
     expenseToAdjustment.isScanning ||
     adjustmentsToTransfers.isScanning ||
-    precisionCleanup.isScanning
+    precisionCleanup.isScanning ||
+    recalculateStartBalances.isScanning ||
+    repairMonthMap.isScanning
 
   const isAnyRunning =
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
     adjustmentsToTransfers.isRunning ||
-    precisionCleanup.isRunning
+    precisionCleanup.isRunning ||
+    recalculateStartBalances.isRunning ||
+    repairMonthMap.isRunning
 
   // Validate all maintenance checks at once
   const handleValidateAll = async () => {
@@ -117,6 +153,8 @@ export function MaintenanceSection({
       expenseToAdjustment.scanStatus(),
       adjustmentsToTransfers.scanStatus(),
       precisionCleanup.scan(),
+      recalculateStartBalances.scanStatus(),
+      repairMonthMap.scanStatus(),
     ])
   }
 
@@ -141,6 +179,18 @@ export function MaintenanceSection({
 
   const precisionBackup = useBackupPrompt({
     migrationName: 'Currency Precision Cleanup',
+    isDestructive: true,
+    onDownloadBackup,
+  })
+
+  const recalculateStartBalancesBackup = useBackupPrompt({
+    migrationName: 'Recalculate Start Balances Migration',
+    isDestructive: true,
+    onDownloadBackup,
+  })
+
+  const repairMonthMapBackup = useBackupPrompt({
+    migrationName: 'Repair Month Map Migration',
     isDestructive: true,
     onDownloadBackup,
   })
@@ -205,6 +255,32 @@ export function MaintenanceSection({
           onRun={() => precisionBackup.promptBeforeAction(precisionCleanup.runCleanup)}
           disabled={disabled}
         />
+
+        <RecalculateStartBalancesRow
+          status={recalculateStartBalances.status}
+          hasData={recalculateStartBalances.hasData}
+          needsMigration={recalculateStartBalances.needsMigration}
+          totalItemsToFix={recalculateStartBalances.totalItemsToFix}
+          isChecking={recalculateStartBalances.isScanning}
+          isRunning={recalculateStartBalances.isRunning}
+          result={recalculateStartBalances.result}
+          onCheck={recalculateStartBalances.scanStatus}
+          onRun={() => recalculateStartBalancesBackup.promptBeforeAction(recalculateStartBalances.runMigration)}
+          disabled={disabled}
+        />
+
+        <RepairMonthMapRow
+          status={repairMonthMap.status}
+          hasData={repairMonthMap.hasData}
+          needsMigration={repairMonthMap.needsMigration}
+          totalItemsToFix={repairMonthMap.totalItemsToFix}
+          isChecking={repairMonthMap.isScanning}
+          isRunning={repairMonthMap.isRunning}
+          result={repairMonthMap.result}
+          onCheck={repairMonthMap.scanStatus}
+          onRun={() => repairMonthMapBackup.promptBeforeAction(repairMonthMap.runMigration)}
+          disabled={disabled}
+        />
       </MigrationSection>
 
       {/* Backup Prompts */}
@@ -212,6 +288,8 @@ export function MaintenanceSection({
       <BackupPrompt {...expenseBackup.promptProps} isDownloading={isDownloadingBackup} />
       <BackupPrompt {...transfersBackup.promptProps} isDownloading={isDownloadingBackup} />
       <BackupPrompt {...precisionBackup.promptProps} isDownloading={isDownloadingBackup} />
+      <BackupPrompt {...recalculateStartBalancesBackup.promptProps} isDownloading={isDownloadingBackup} />
+      <BackupPrompt {...repairMonthMapBackup.promptProps} isDownloading={isDownloadingBackup} />
     </>
   )
 }

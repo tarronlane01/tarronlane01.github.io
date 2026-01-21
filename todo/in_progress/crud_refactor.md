@@ -40,25 +40,7 @@ For calculated balances, use react query cache only to manage those. Meaning we 
 
 # Review
 
-- [.] Any parts of the code we can remove now that we are using this new system?
-
-- [ ] Any thing we can consolidate so that things in this new system are all working in the same way, using the same calculation methods, etc?
-
-- [ ] Also, let's make sure for all the calculations we're doing, we are rounding the final displayed values, so we don't have situations where things start getting off by one cent. We should never store in cache or firestore any values beyond two decimals of precision.
-
-- [ ] make sure we've removed all the month changed tracking, since we don't need it anymore
-
-- [ ] Final check to make sure we conform to the instructions above.
-
-- [ ] Double check that the import/export processes work with the new structure and processes we've built here. Remove any parts of that we don't need anymore, now that most of the balances are not saved.
-
-- [ ] Make sure the cache system is set up so we always pull data if we don't have cache or cache in expired.
-
-- [ ] Validate what happens when I move back in time via the month arrows, into months before the window, when I have them neither cached nor have the previous month yet.
-
-- [ ] Let's rip out the assertions piece. We can always re-add it later if we end up needing it
-
-- [ ] Remove the settings recalculate buttons, and remove the month dropdown recalculate. Then just have a maintenance migration on the migrations page that will recalculate starting balances up to the earliest month in the window, in case we ever need to do that.
+- [ ] Going back load past
 
 # Testing
 

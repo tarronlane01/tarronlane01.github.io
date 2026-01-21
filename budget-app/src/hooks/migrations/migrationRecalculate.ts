@@ -25,7 +25,6 @@ import { readAllMonthsForBudget } from './migrationBatchRead'
  * 1. Recalculates all months from first to last (in memory)
  * 2. Batch writes all recalculated months
  * 3. Updates budget with final account/category balances
- * 4. Clears all needs_recalculation flags
  *
  * @param budgetId - The budget to recalculate
  * @param months - All months for the budget (must be sorted chronologically)
@@ -58,7 +57,7 @@ export async function recalculateAndWriteBudget(
 
   await batchWriteMonths(monthUpdates, source)
 
-  // Step 3: Update budget with final balances and clear flags
+  // Step 3: Update budget with final balances
   const finalAccountBalances = prevSnapshot.accountEndBalances
   const finalCategoryBalances = prevSnapshot.categoryEndBalances
 
@@ -96,7 +95,7 @@ export async function recalculateAndWriteBudget(
  * 2. For each budget:
  *    a. Batch writes all month updates
  *    b. Recalculates all months from the beginning
- *    c. Updates budget balances and clears needs_recalculation flags
+ *    c. Updates budget balances
  *
  * @param monthUpdates - All month updates to apply
  * @param source - Source identifier for logging

@@ -2,7 +2,7 @@
  * Delete Expense Hook
  *
  * Deletes an expense transaction from the month.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Uses writeMonthData which handles optimistic updates and updates the month_map.
  */
 
 import type { MonthDocument } from '@types'

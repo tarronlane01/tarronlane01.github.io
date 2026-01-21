@@ -2,7 +2,7 @@
  * Update Transfer Hook
  *
  * Updates an existing transfer transaction.
- * Uses writeMonthData which handles optimistic updates and marks budget for recalculation.
+ * Uses writeMonthData which handles optimistic updates and updates the month_map.
  * Includes no-op detection to avoid unnecessary Firestore writes.
  */
 
@@ -11,6 +11,7 @@ import { readMonth } from '@data/queries/month'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 /**
  * Check if transfer values have actually changed (no-op detection)
@@ -76,7 +77,8 @@ export function useUpdateTransfer() {
 
     const updatedTransfer: TransferTransaction = {
       id: transferId,
-      amount,
+      // Round amount to ensure 2 decimal precision before storing
+      amount: roundCurrency(amount),
       from_account_id: fromAccountId,
       to_account_id: toAccountId,
       from_category_id: fromCategoryId,

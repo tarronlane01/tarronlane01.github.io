@@ -7,6 +7,8 @@
 
 import type { FirestoreData, MonthDocument } from '@types'
 import { readDocByPath, batchWriteDocs, type BatchWriteDoc } from '@firestore'
+import { queryClient, queryKeys } from '@data/queryClient'
+import type { BudgetData } from '@data/queries/budget'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { MAX_FUTURE_MONTHS } from '@constants'
 import {
@@ -15,7 +17,6 @@ import {
   EMPTY_SNAPSHOT,
   type PreviousMonthSnapshot,
 } from './recalculateMonth'
-import { queryClient, queryKeys } from '../queryClient'
 import type { MonthQueryData } from '../queries/month'
 import { calculateTotalBalances } from '../cachedReads'
 
@@ -94,15 +95,26 @@ async function executeRecalculation(
     percentComplete: 5,
   })
 
-  const { exists: budgetExists, data: budgetData } = await readDocByPath<BudgetDocument>(
-    'budgets',
-    budgetId,
-    '[recalc] reading budget for month_map'
-  )
-
-  if (!budgetExists || !budgetData) {
-    onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
-    return { monthsRecalculated: 0, budgetUpdated: false }
+  // CRITICAL: Check React Query cache first to use cached budget data
+  // This prevents duplicate reads when budget is already in cache
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  let budgetData: BudgetDocument | null = null
+  
+  if (cachedBudget?.budget) {
+    // Use cached budget data
+    budgetData = cachedBudget.budget as unknown as BudgetDocument
+  } else {
+    // Not in cache - read from Firestore
+    const { exists, data } = await readDocByPath<BudgetDocument>(
+      'budgets',
+      budgetId,
+      '[recalc] reading budget for month_map'
+    )
+    if (!exists || !data) {
+      onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
+      return { monthsRecalculated: 0, budgetUpdated: false }
+    }
+    budgetData = data
   }
 
   const monthMap = parseMonthMap(budgetData.month_map)
@@ -229,6 +241,16 @@ async function executeRecalculation(
 
   await batchWriteDocs(batchDocs, `[recalc] batch write ${recalculatedMonths.length} months`)
 
+  // CRITICAL: Ensure all recalculated months are in month_map to prevent gaps
+  const { ensureMonthsInMapBatch } = await import('./monthMap')
+  const monthsToEnsure = recalculatedMonths.map(m => ({ year: m.year, month: m.month }))
+  try {
+    await ensureMonthsInMapBatch(budgetId, monthsToEnsure)
+  } catch (error) {
+    // Log but don't throw - month_map update is important but shouldn't fail the recalculation
+    console.warn(`[triggerRecalculation] Failed to update month_map:`, error)
+  }
+
   // Update query cache for each recalculated month
   for (const month of recalculatedMonths) {
     queryClient.setQueryData<MonthQueryData>(
@@ -237,7 +259,7 @@ async function executeRecalculation(
     )
   }
 
-  // Step 7: Update budget with final balances and clear all recalc flags
+  // Step 7: Update budget with final balances
   onProgress?.({
     phase: 'saving',
     monthsProcessed: monthsRecalculated,
@@ -266,7 +288,6 @@ async function executeRecalculation(
     monthMap
   )
 
-  // Step 8: Run assertions to validate recalculation
   onProgress?.({
     phase: 'validating',
     monthsProcessed: monthsRecalculated,

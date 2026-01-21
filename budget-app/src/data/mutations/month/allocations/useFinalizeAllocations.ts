@@ -4,7 +4,7 @@
  * Finalizes allocations (applies to category balances).
  * Sets `are_allocations_finalized = true` and recalculates category balances.
  *
- * Now triggers immediate recalculation instead of just marking months as needing recalc.
+ * Triggers immediate recalculation when allocations are finalized.
  * This ensures all balances (account, category, available now) are updated immediately.
  *
  * Progress callback allows the UI to show detailed status during the operation.
@@ -17,6 +17,7 @@ import type { RecalculationProgress } from '../../../recalculation'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 export interface FinalizeAllocationsParams {
   budgetId: string
@@ -58,8 +59,9 @@ export function useFinalizeAllocations() {
     const existingCategoryIds = monthData.category_balances?.map(cb => cb.category_id) ?? []
 
     // Update only allocated (source value) - calculated fields will be recalculated
+    // Round allocated values to ensure 2 decimal precision
     const updatedCategoryBalances = monthData.category_balances.map(cb => {
-      const newAllocated = allocations[cb.category_id] ?? cb.allocated
+      const newAllocated = roundCurrency(allocations[cb.category_id] ?? cb.allocated)
       return {
         ...cb,
         allocated: newAllocated,
@@ -73,7 +75,8 @@ export function useFinalizeAllocations() {
         updatedCategoryBalances.push({
           category_id: catId,
           start_balance: 0,
-          allocated,
+          // Round allocated to ensure 2 decimal precision
+          allocated: roundCurrency(allocated),
           // Calculated fields will be recalculated
           spent: 0,
           transfers: 0,

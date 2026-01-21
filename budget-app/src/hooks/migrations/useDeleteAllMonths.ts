@@ -28,7 +28,7 @@ interface BudgetDocument {
 /**
  * Reset a budget's balances to zero after all months have been deleted.
  * Sets all account balances, category balances, and total_available to 0.
- * Clears the month_map and is_needs_recalculation flag.
+ * Clears the month_map.
  */
 async function resetBudgetBalances(budgetId: string): Promise<void> {
   const { exists, data } = await readDocByPath<BudgetDocument>(

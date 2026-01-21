@@ -26,7 +26,6 @@ import { bannerQueue } from '@components/ui'
 import type { MonthDocument, AccountsMap, CategoriesMap, MonthMap } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
 import { getFirstWindowMonth, isMonthAtOrBeforeWindow } from '@utils/window'
-import { readMonthDirect } from '@data/queries/month/useMonthQuery'
 import { writeMonthData } from '@data/mutations/month/useWriteMonthData'
 import { convertMonthBalancesToStored } from '@data/firestore/converters/monthBalances'
 
@@ -104,8 +103,11 @@ export function useInitialBalanceCalculation({
             return ordinal === firstWindowOrdinal
           }) || null
         } else {
-          // First window month is before our loaded months - need to fetch it
-          firstWindowMonthData = await readMonthDirect(budgetId, firstWindowMonth.year, firstWindowMonth.month)
+          // First window month is before our loaded months - use readMonth to respect cache
+          const { readMonth } = await import('@data/queries/month')
+          firstWindowMonthData = await readMonth(budgetId, firstWindowMonth.year, firstWindowMonth.month, {
+            description: 'initial balance calculation: fetching first window month',
+          })
         }
 
         // Check if first window month has start_balance saved
@@ -135,7 +137,11 @@ export function useInitialBalanceCalculation({
             walkYear = prev.year
             walkMonth = prev.month
 
-            const prevMonthData = await readMonthDirect(budgetId, walkYear, walkMonth)
+            // Use readMonth to respect cache - prevents duplicate reads
+            const { readMonth } = await import('@data/queries/month')
+            const prevMonthData = await readMonth(budgetId, walkYear, walkMonth, {
+              description: `initial balance calculation: walking backward to find start_balance`,
+            })
 
             if (!prevMonthData) {
               // No more months - start from zero
@@ -194,7 +200,7 @@ export function useInitialBalanceCalculation({
                 budgetId,
                 month: storedMonth,
                 description: `initial balance calculation: ensuring start_balance for ${monthData.year}/${monthData.month}`,
-                cascadeRecalculation: false,
+                updateMonthMap: false,
               })
             }
           }
@@ -269,15 +275,17 @@ export function useInitialBalanceCalculation({
         }
 
         // Update account balances in budget document
+        // Round all balances to ensure 2 decimal precision
         const updatedAccounts: AccountsMap = {}
         Object.entries(accounts).forEach(([accId, acc]) => {
-          updatedAccounts[accId] = { ...acc, balance: runningAccountBalances[accId] ?? 0 }
+          updatedAccounts[accId] = { ...acc, balance: roundCurrency(runningAccountBalances[accId] ?? 0) }
         })
 
         // Update category balances in budget document
+        // Round all balances to ensure 2 decimal precision
         const updatedCategories: CategoriesMap = {}
         Object.entries(categories).forEach(([catId, cat]) => {
-          updatedCategories[catId] = { ...cat, balance: runningCategoryBalances[catId] ?? 0 }
+          updatedCategories[catId] = { ...cat, balance: roundCurrency(runningCategoryBalances[catId] ?? 0) }
         })
 
         // Get month map from budget (just track which months exist, no flags)
@@ -302,7 +310,7 @@ export function useInitialBalanceCalculation({
         // Removed batch write - months will recalculate on-demand when missing from cache
         // start_balance will be saved when months are actually edited (via writeMonthData)
 
-        // Update all month caches (both changed and unchanged) to reflect recalculated values
+        // Update all month caches to reflect recalculated values
         // This ensures the UI shows the correct calculated values even if nothing was saved
         for (const month of updatedMonths) {
           queryClient.setQueryData<MonthQueryData>(

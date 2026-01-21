@@ -136,11 +136,12 @@ export function recalculateBudgetAccountBalancesFromCache(budgetId: string): voi
   const newAccountBalances = calculateAccountBalancesFromCache(budgetId, cachedBudget.accounts)
 
   // Update accounts in cache
+  // Round all balances to ensure 2 decimal precision
   const updatedAccounts: Record<string, BudgetData['accounts'][string]> = {}
   for (const [accountId, account] of Object.entries(cachedBudget.accounts)) {
     updatedAccounts[accountId] = {
       ...account,
-      balance: newAccountBalances[accountId] ?? account.balance,
+      balance: roundCurrency(newAccountBalances[accountId] ?? account.balance),
     }
   }
 

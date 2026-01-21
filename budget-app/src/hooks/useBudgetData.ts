@@ -28,7 +28,9 @@ import type {
   CategoryGroupWithId,
   Budget,
   MonthMap,
+  FirestoreData,
 } from '@types'
+import { calculateTotalAvailable, isAccountOnBudget } from '@utils/calculations/balances/calculateTotalAvailable'
 
 interface UseBudgetDataReturn {
   // Query state
@@ -91,18 +93,8 @@ export function useBudgetData(): UseBudgetDataReturn {
   // Calculate total_available on-the-fly (not stored in Firestore)
   const totalAvailable = useMemo(() => {
     if (!budget) return 0
-    // Sum of on-budget, active account balances
-    const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, acc]) => {
-      const group = acc.account_group_id ? accountGroups[acc.account_group_id] : undefined
-      const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (acc.on_budget !== false)
-      const effectiveActive = (group && group.is_active !== null) ? group.is_active : (acc.is_active !== false)
-      return (effectiveOnBudget && effectiveActive) ? sum + acc.balance : sum
-    }, 0)
-    // Sum of positive category balances
-    const totalPositiveCategoryBalances = Object.values(categories).reduce((sum, cat) => {
-      return sum + (cat.balance > 0 ? cat.balance : 0)
-    }, 0)
-    return onBudgetAccountTotal - totalPositiveCategoryBalances
+    // Use shared calculation function for consistency
+    return calculateTotalAvailable(accounts as unknown as FirestoreData, categories as unknown as FirestoreData, accountGroups as unknown as FirestoreData)
   }, [budget, accounts, accountGroups, categories])
   const monthMap = useMemo(() => budgetData?.monthMap || {}, [budgetData?.monthMap])
 
@@ -165,12 +157,7 @@ export function useBudgetData(): UseBudgetDataReturn {
 
   const getOnBudgetTotal = useCallback((): number => {
     return Object.entries(accounts)
-      .filter(([, acc]) => {
-        const group = acc.account_group_id ? accountGroups[acc.account_group_id] : undefined
-        const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (acc.on_budget !== false)
-        const effectiveActive = (group && group.is_active !== null) ? group.is_active : (acc.is_active !== false)
-        return effectiveOnBudget && effectiveActive
-      })
+      .filter(([, acc]) => isAccountOnBudget(acc, accountGroups as unknown as FirestoreData))
       .reduce((sum, [, acc]) => sum + acc.balance, 0)
   }, [accounts, accountGroups])
 

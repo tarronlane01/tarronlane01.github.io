@@ -24,6 +24,8 @@ import {
   useAccountCategoryValidation,
   useRemoveTotalFieldsMigration,
   useRemovePreviousMonthIncomeMigration,
+  useRecalculateStartBalancesMigration,
+  useRepairMonthMapMigration,
   useDownloadBudget,
   useUploadBudget,
 } from '@hooks'
@@ -59,6 +61,8 @@ function Migration() {
   const expenseToAdjustment = useExpenseToAdjustmentMigration({ currentUser: current_user })
   const adjustmentsToTransfers = useAdjustmentsToTransfersMigration({ currentUser: current_user })
   const precisionCleanup = usePrecisionCleanup({ currentUser: current_user })
+  const recalculateStartBalances = useRecalculateStartBalancesMigration({ currentUser: current_user })
+  const repairMonthMap = useRepairMonthMapMigration({ currentUser: current_user })
 
   // Utilities
   const budgetDownload = useDownloadBudget({ currentUser: current_user, budgetId: selectedBudgetId })
@@ -80,6 +84,8 @@ function Migration() {
     expenseToAdjustment.isScanning ||
     adjustmentsToTransfers.isScanning ||
     precisionCleanup.isScanning ||
+    recalculateStartBalances.isScanning ||
+    repairMonthMap.isScanning ||
     deleteAllMonths.isScanning ||
     deleteSampleUserBudget.isScanning
 
@@ -92,6 +98,8 @@ function Migration() {
     expenseToAdjustment.isRunning ||
     adjustmentsToTransfers.isRunning ||
     precisionCleanup.isRunning ||
+    recalculateStartBalances.isRunning ||
+    repairMonthMap.isRunning ||
     deleteAllMonths.isDeleting ||
     deleteSampleUserBudget.isDeleting ||
     budgetDownload.isDownloading ||
@@ -113,6 +121,8 @@ function Migration() {
       expenseToAdjustment.scanStatus(),
       adjustmentsToTransfers.scanStatus(),
       precisionCleanup.scan(),
+      recalculateStartBalances.scanStatus(),
+      repairMonthMap.scanStatus(),
       // Utilities (that have scan)
       deleteAllMonths.scanStatus(),
       deleteSampleUserBudget.scanStatus(),
@@ -247,6 +257,28 @@ function Migration() {
           result: precisionCleanup.result,
           scan: precisionCleanup.scan,
           runCleanup: precisionCleanup.runCleanup,
+        }}
+        recalculateStartBalances={{
+          status: recalculateStartBalances.status,
+          hasData: !!recalculateStartBalances.status,
+          needsMigration: recalculateStartBalances.needsMigration,
+          totalItemsToFix: recalculateStartBalances.totalItemsToFix,
+          isScanning: recalculateStartBalances.isScanning,
+          isRunning: recalculateStartBalances.isRunning,
+          result: recalculateStartBalances.result,
+          scanStatus: recalculateStartBalances.scanStatus,
+          runMigration: recalculateStartBalances.runMigration,
+        }}
+        repairMonthMap={{
+          status: repairMonthMap.status,
+          hasData: !!repairMonthMap.status,
+          needsMigration: repairMonthMap.needsMigration,
+          totalItemsToFix: repairMonthMap.totalItemsToFix,
+          isScanning: repairMonthMap.isScanning,
+          isRunning: repairMonthMap.isRunning,
+          result: repairMonthMap.result,
+          scanStatus: repairMonthMap.scanStatus,
+          runMigration: repairMonthMap.runMigration,
         }}
       />
 

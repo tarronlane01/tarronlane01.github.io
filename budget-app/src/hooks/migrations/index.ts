@@ -19,13 +19,13 @@
  * 3. BATCH READ/WRITE (migrationDataHelpers):
  *    - Use `readAllBudgetsAndMonths()` for batch reading
  *    - Use `batchWriteBudgets()` and `batchWriteMonths()` for batch writing
- *    - Use `recalculateAndWriteBudget()` to properly handle needs_recalculation flags
+ *    - Use `recalculateAndWriteBudget()` to properly recalculate months
  *
  * These ensure:
  * - Progress is ALWAYS shown to users during migrations
  * - Cache is always invalidated after migrations
  * - Data is read/written efficiently in batches
- * - Recalculation flags are properly set/cleared
+ * - Recalculations are properly performed
  */
 
 // Migration Progress System - REQUIRED for all migrations (shows progress modal)
@@ -49,7 +49,7 @@ export {
   // Batch write helpers
   batchWriteMonths,
   batchWriteBudgets,
-  // Recalculation helpers (handles needs_recalculation flags)
+  // Recalculation helpers
   recalculateAndWriteBudget,
   writeMonthUpdatesAndRecalculate,
   // High-level processing helper
@@ -85,6 +85,8 @@ export { useAdjustmentsToTransfersMigration, type AdjustmentsToTransfersStatus, 
 export { useAccountCategoryValidation, type ValidationStatus, type TransactionViolation } from './useAccountCategoryValidation'
 export { useRemoveTotalFieldsMigration, type RemoveTotalFieldsMigrationStatus, type RemoveTotalFieldsMigrationResult } from './useRemoveTotalFieldsMigration'
 export { useRemovePreviousMonthIncomeMigration, type RemovePreviousMonthIncomeMigrationStatus, type RemovePreviousMonthIncomeMigrationResult } from './useRemovePreviousMonthIncomeMigration'
+export { useRecalculateStartBalancesMigration, type RecalculateStartBalancesMigrationStatus, type RecalculateStartBalancesMigrationResult } from './useRecalculateStartBalancesMigration'
+export { useRepairMonthMapMigration, type RepairMonthMapMigrationStatus, type RepairMonthMapMigrationResult } from './useRepairMonthMapMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
 export { useRestoreFromDiagnostic, type RestoreStatus, type RestoreResult } from './useRestoreFromDiagnostic'
 export { useDownloadBudget, type DownloadBudgetProgress } from './useDownloadBudget'

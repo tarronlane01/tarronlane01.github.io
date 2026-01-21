@@ -126,7 +126,7 @@ export async function readMonthDirect(
 }
 
 /**
- * Fetch month document - reads directly from Firestore, creates new if needed.
+ * Fetch month document - checks cache first, then reads from Firestore, creates new if needed.
  *
  * NOTE: Recalculation is NOT triggered here. It's handled in the useMonthQuery
  * hook via useEffect to ensure it runs whether data came from cache or Firestore.
@@ -140,7 +140,17 @@ export async function fetchMonth(
   month: number,
   queryClient?: ReturnType<typeof useQueryClient>
 ): Promise<MonthDocument> {
-  // Read directly from Firestore (no fetchQuery to avoid deadlock)
+  // CRITICAL: Check React Query cache first to use prefetched data
+  // This prevents duplicate reads when navigating to a prefetched month
+  if (queryClient) {
+    const monthKey = queryKeys.month(budgetId, year, month)
+    const cachedData = queryClient.getQueryData<MonthQueryData>(monthKey)
+    if (cachedData?.month) {
+      return cachedData.month
+    }
+  }
+
+  // Not in cache - read directly from Firestore (no fetchQuery to avoid deadlock)
   const existingMonth = await readMonthDirect(budgetId, year, month)
 
   if (existingMonth) {
@@ -227,5 +237,6 @@ export function useMonthQuery(
     // The cache is populated by useInitialDataLoad with updatedAt timestamps
     // Setting staleTime ensures React Query knows when data is fresh (5 minutes)
     staleTime: STALE_TIME, // 5 minutes - matches queryClient default
+    // fetchMonth now checks cache first, so even if queryFn is called, it will use prefetched data
   })
 }

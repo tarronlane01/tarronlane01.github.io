@@ -24,6 +24,7 @@ import type {
 } from '@types'
 import { isNoCategory, isNoAccount } from '../constants'
 import { roundCurrency } from '@utils'
+import { calculateCategoryTransactionMaps } from '@utils/calculations/balances/calculateCategoryTransactionAmounts'
 
 // ============================================================================
 // TYPES
@@ -66,9 +67,6 @@ export const EMPTY_SNAPSHOT: PreviousMonthSnapshot = {
  * 5. Recalculates end_balance = start_balance + net_change (net_change = income + expenses)
  * 6. Sets previous_month_income
  *
- * Note: The needs_recalculation flag is stored in the budget's month_map,
- * not on the month document itself. The caller handles clearing that flag.
- *
  * @param month - The month document to recalculate
  * @param prevSnapshot - Snapshot of previous month's end balances
  * @returns Recalculated month document (not saved - caller must save)
@@ -83,19 +81,12 @@ export function recalculateMonth(
   const totalIncome = roundCurrency(income.reduce((sum, inc) => sum + inc.amount, 0))
   const totalExpenses = roundCurrency(expenses.reduce((sum, exp) => sum + exp.amount, 0))
 
-  // Calculate separate transfers and adjustments per category
-  const { transfersMap, adjustmentsMap } = calculateCategoryTransfersAndAdjustments(month)
-
-  // Calculate spent per category from expenses array
-  const spentMap: Record<string, number> = {}
-  for (const expense of expenses) {
-    if (isNoCategory(expense.category_id)) continue
-    spentMap[expense.category_id] = (spentMap[expense.category_id] || 0) + expense.amount
-  }
-  // Round all spent values
-  for (const catId of Object.keys(spentMap)) {
-    spentMap[catId] = roundCurrency(spentMap[catId])
-  }
+  // Calculate spent, transfers, and adjustments maps using shared utility
+  const { spentMap, transfersMap, adjustmentsMap } = calculateCategoryTransactionMaps(
+    expenses,
+    month.transfers || [],
+    month.adjustments || []
+  )
 
   // Recalculate category balances (including transfers and adjustments)
   const categoryBalances = recalculateCategoryBalances(
@@ -127,46 +118,6 @@ export function recalculateMonth(
 // HELPER FUNCTIONS
 // ============================================================================
 
-/**
- * Calculate separate transfers and adjustments per category.
- * Returns maps of category_id -> transfer amount and category_id -> adjustment amount.
- */
-function calculateCategoryTransfersAndAdjustments(month: MonthDocument): {
-  transfersMap: Record<string, number>
-  adjustmentsMap: Record<string, number>
-} {
-  const transfersMap: Record<string, number> = {}
-  const adjustmentsMap: Record<string, number> = {}
-
-  // Process transfers
-  for (const transfer of month.transfers || []) {
-    // Subtract from source category (if real category)
-    if (!isNoCategory(transfer.from_category_id)) {
-      transfersMap[transfer.from_category_id] = (transfersMap[transfer.from_category_id] || 0) - transfer.amount
-    }
-    // Add to destination category (if real category)
-    if (!isNoCategory(transfer.to_category_id)) {
-      transfersMap[transfer.to_category_id] = (transfersMap[transfer.to_category_id] || 0) + transfer.amount
-    }
-  }
-
-  // Process adjustments
-  for (const adjustment of month.adjustments || []) {
-    if (!isNoCategory(adjustment.category_id)) {
-      adjustmentsMap[adjustment.category_id] = (adjustmentsMap[adjustment.category_id] || 0) + adjustment.amount
-    }
-  }
-
-  // Round all values
-  for (const catId of Object.keys(transfersMap)) {
-    transfersMap[catId] = roundCurrency(transfersMap[catId])
-  }
-  for (const catId of Object.keys(adjustmentsMap)) {
-    adjustmentsMap[catId] = roundCurrency(adjustmentsMap[catId])
-  }
-
-  return { transfersMap, adjustmentsMap }
-}
 
 /**
  * Recalculate category balances with correct start balances from previous month.

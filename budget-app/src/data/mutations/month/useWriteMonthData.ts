@@ -7,8 +7,8 @@
  *
  * Both share a core write function to avoid duplication.
  *
- * All month writes mark future months as needing recalculation. The cache-aware
- * logic in markFutureMonthsNeedRecalculation prevents redundant Firestore writes.
+ * All month writes ensure future months are in the month_map. The cache-aware
+ * logic in ensureMonthsInMap prevents redundant Firestore writes.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -16,7 +16,7 @@ import type { MonthDocument } from '@types'
 import { writeDocByPath } from '@firestore'
 import { getMonthDocId } from '@utils'
 import { queryClient, queryKeys } from '@data/queryClient'
-import { markMonthsNeedRecalculation } from '@data/recalculation'
+import { ensureMonthsInMap } from '@data/recalculation'
 import type { MonthQueryData } from '@data/queries/month'
 import { convertMonthBalancesToStored } from '@data/firestore/converters/monthBalances'
 
@@ -32,8 +32,8 @@ export interface WriteMonthParams {
   month: MonthDocument
   /** Optional description for logging */
   description?: string
-  /** If false, skip marking future months as needing recalculation (default: true) */
-  cascadeRecalculation?: boolean
+  /** If false, skip updating the month_map (default: true) */
+  updateMonthMap?: boolean
 }
 
 // ============================================================================
@@ -63,16 +63,6 @@ async function writeMonthToFirestore(
   )
 }
 
-/**
- * Mark future months and budget as needing recalculation in a single write.
- */
-async function cascadeRecalculationMarking(
-  budgetId: string,
-  year: number,
-  month: number
-): Promise<void> {
-  await markMonthsNeedRecalculation(budgetId, year, month)
-}
 
 // ============================================================================
 // UTILITY FUNCTION (for non-React contexts)
@@ -81,12 +71,12 @@ async function cascadeRecalculationMarking(
 /**
  * Write month data to Firestore for non-React contexts (e.g., recalculation).
  *
- * Updates cache after write and optionally marks future months as needing recalculation.
+ * Updates cache after write and optionally updates the month_map.
  *
  * @param params - Write parameters including budgetId, month, description, and cascade flag
  */
 export async function writeMonthData(params: WriteMonthParams): Promise<void> {
-  const { budgetId, month, description, cascadeRecalculation = true } = params
+  const { budgetId, month, description, updateMonthMap = true } = params
 
   // Write to Firestore
   await writeMonthToFirestore(budgetId, month, description || `${month.year}/${month.month}`)
@@ -97,10 +87,10 @@ export async function writeMonthData(params: WriteMonthParams): Promise<void> {
     { month }
   )
 
-  // Mark future months and budget as needing recalculation (unless disabled)
-  // Note: markMonthsNeedRecalculation internally updates the budget cache via updateCacheWithMarking
-  if (cascadeRecalculation) {
-    await cascadeRecalculationMarking(budgetId, month.year, month.month)
+  // Ensure future months are in the month_map (unless disabled)
+  // Note: ensureMonthsInMap internally updates the budget cache via updateCacheWithMonthMap
+  if (updateMonthMap) {
+    await ensureMonthsInMap(budgetId, month.year, month.month)
   }
 }
 
@@ -113,20 +103,20 @@ export async function writeMonthData(params: WriteMonthParams): Promise<void> {
  *
  * - onMutate: Optimistically updates cache before write
  * - mutationFn: Writes to Firestore
- * - onSuccess: Marks future months as needing recalculation
+ * - onSuccess: Updates the month_map if enabled
  * - onError: Rolls back optimistic update
  */
 export function useWriteMonthData() {
   const queryClient = useQueryClient()
 
   const writeData = useMutation({
-    mutationFn: async ({ budgetId, month, description, cascadeRecalculation = true }: WriteMonthParams) => {
+    mutationFn: async ({ budgetId, month, description, updateMonthMap = true }: WriteMonthParams) => {
       await writeMonthToFirestore(
         budgetId,
         month,
         description || `${month.year}/${month.month}`
       )
-      return { budgetId, year: month.year, month: month.month, cascadeRecalculation }
+      return { budgetId, year: month.year, month: month.month, updateMonthMap }
     },
 
     onMutate: async ({ budgetId, month }: WriteMonthParams) => {
@@ -137,10 +127,10 @@ export function useWriteMonthData() {
       return { oldMonthQueryData, monthKey }
     },
 
-    onSuccess: async ({ budgetId, year, month, cascadeRecalculation }) => {
-      if (!cascadeRecalculation) return
-      // markMonthsNeedRecalculation internally updates the budget cache via updateCacheWithMarking
-      await cascadeRecalculationMarking(budgetId, year, month)
+    onSuccess: async ({ budgetId, year, month, updateMonthMap }) => {
+      if (!updateMonthMap) return
+      // ensureMonthsInMap internally updates the budget cache via updateCacheWithMonthMap
+      await ensureMonthsInMap(budgetId, year, month)
     },
 
     onError: (_err, _variables, context) => {

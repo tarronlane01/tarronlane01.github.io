@@ -42,12 +42,13 @@ export interface AccountGroupRowsProps {
   accountClearedBalances?: Record<string, AccountClearedBalance>
   isMobile: boolean
   isUngrouped?: boolean
+  isFirstGroup?: boolean // Remove top margin for first group to eliminate gap after Grand Totals
 }
 
-export function AccountGroupRows({ name, accounts, groupTotals, accountBalances, accountClearedBalances, isMobile, isUngrouped }: AccountGroupRowsProps) {
+export function AccountGroupRows({ name, accounts, groupTotals, accountBalances, accountClearedBalances, isMobile, isUngrouped, isFirstGroup = false }: AccountGroupRowsProps) {
   const groupHeaderCellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
-    marginTop: '1.25rem',
+    marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
     borderTop: '1px solid rgba(255,255,255,0.2)',
     borderBottom: groupTotalRowBorder,
     background: 'rgba(255,255,255,0.04)',
@@ -145,7 +146,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
         <div style={{
           gridColumn: '1 / -1',
           padding: '0.6rem 0.5rem',
-          marginTop: '1.25rem',
+          marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
           borderTop: '1px solid rgba(255,255,255,0.2)',
           borderBottom: groupTotalRowBorder,
           background: 'rgba(255,255,255,0.04)',

@@ -19,6 +19,7 @@ import type { MonthQueryData } from '@data/queries/month'
 import { useBudget } from '@contexts'
 import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useMonthMutationHelpers } from '../mutationHelpers'
+import { roundCurrency } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -58,7 +59,8 @@ function createAdjustmentObject(
 ): AdjustmentTransaction {
   const newAdjustment: AdjustmentTransaction = {
     id: adjustmentId,
-    amount: params.amount,
+    // Round amount to ensure 2 decimal precision before storing
+    amount: roundCurrency(params.amount),
     account_id: params.accountId,
     category_id: params.categoryId,
     date: params.date,

@@ -6,9 +6,9 @@
  * MAIN ENTRY POINT:
  * - triggerRecalculation - Called manually or on-demand (no flags tracked)
  *
- * MARKING AS STALE (when data changes):
- * - markMonthsNeedRecalculation - Single write that marks budget and future months
- * - setMonthInBudgetMap - Add/update a single month in the budget's month_map
+ * MONTH MAP MANAGEMENT (when data changes):
+ * - ensureMonthsInMap - Ensures edited month and future months are in the month_map
+ * - addMonthToMap - Add a single month to the budget's month_map
  *
  * INTERNAL (used by triggerRecalculation):
  * - recalculateMonth - Pure calculation for a single month
@@ -27,14 +27,16 @@
 export { triggerRecalculation, type RecalculationProgress } from './triggerRecalculation'
 
 // ============================================================================
-// MARKING AS STALE
+// MONTH MAP MANAGEMENT
 // ============================================================================
 
 export {
-  markMonthsNeedRecalculation,
-  markAllMonthsFromOrdinal,
-  setMonthInBudgetMap,
-} from './markMonthsNeedRecalculation'
+  ensureMonthsInMap,
+  ensureMonthsInMapBatch,
+  addAllMonthsFromOrdinal,
+  addMonthToMap,
+  type AddMonthsResult,
+} from './monthMap'
 
 // ============================================================================
 // INTERNAL HELPERS (exported for testing/advanced use)

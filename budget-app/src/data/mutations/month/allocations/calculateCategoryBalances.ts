@@ -7,7 +7,7 @@
 
 import type { MonthDocument, CategoryMonthBalance } from '@types'
 import { roundCurrency } from '@utils'
-import { isNoCategory } from '../../../constants'
+import { calculateCategoryTransactionMaps, calculateCategorySpent } from '@utils/calculations/balances/calculateCategoryTransactionAmounts'
 
 /**
  * Calculate category balances for a month.
@@ -37,24 +37,12 @@ export function calculateCategoryBalancesForMonth(
 
   const expenses = monthData.expenses ?? []
 
-  // Calculate transfers per category
-  const transfersMap: Record<string, number> = {}
-  for (const transfer of monthData.transfers || []) {
-    if (!isNoCategory(transfer.from_category_id)) {
-      transfersMap[transfer.from_category_id] = (transfersMap[transfer.from_category_id] || 0) - transfer.amount
-    }
-    if (!isNoCategory(transfer.to_category_id)) {
-      transfersMap[transfer.to_category_id] = (transfersMap[transfer.to_category_id] || 0) + transfer.amount
-    }
-  }
-
-  // Calculate adjustments per category
-  const adjustmentsMap: Record<string, number> = {}
-  for (const adjustment of monthData.adjustments || []) {
-    if (!isNoCategory(adjustment.category_id)) {
-      adjustmentsMap[adjustment.category_id] = (adjustmentsMap[adjustment.category_id] || 0) + adjustment.amount
-    }
-  }
+  // Calculate transfers and adjustments maps using shared utility
+  const { transfersMap, adjustmentsMap } = calculateCategoryTransactionMaps(
+    expenses,
+    monthData.transfers || [],
+    monthData.adjustments || []
+  )
 
   return categoryIds.map(catId => {
     // Start balance comes from existing category balance (preserves previous month's end)
@@ -64,11 +52,8 @@ export function calculateCategoryBalancesForMonth(
     // Allocated amount (only if finalized) - round the allocation value
     const allocated = roundCurrency(allocationsFinalized ? (allocations[catId] ?? 0) : 0)
 
-    // Sum expenses for this category (round the total)
-    // Note: expense.amount follows CSV convention: negative = money out, positive = money in
-    const spent = roundCurrency(expenses
-      .filter(e => e.category_id === catId)
-      .reduce((sum, e) => sum + e.amount, 0))
+    // Calculate spent using shared utility
+    const spent = calculateCategorySpent(catId, expenses)
 
     // Get transfers and adjustments for this category
     const transfers = roundCurrency(transfersMap[catId] ?? 0)

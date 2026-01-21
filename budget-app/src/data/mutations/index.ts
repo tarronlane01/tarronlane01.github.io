@@ -24,6 +24,6 @@ export {
 
 // Recalculation helpers - re-exported from canonical location
 export {
-  markMonthsNeedRecalculation,
-  setMonthInBudgetMap,
+  ensureMonthsInMap,
+  addMonthToMap,
 } from '../recalculation'

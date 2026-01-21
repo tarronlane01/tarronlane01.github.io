@@ -3,7 +3,7 @@
  *
  * Shared helpers for month mutations to:
  * - Track changes in sync context automatically
- * - Recalculate locally instead of marking for recalculation
+ * - Recalculate locally when data changes
  * - Update cache immediately
  */
 
@@ -15,6 +15,7 @@ import { getYearMonthOrdinal } from '@utils'
 import type { MonthMap } from '@types'
 import type { BudgetData } from '@data/queries/budget'
 import { useSync } from '@contexts/sync_context'
+import { useApp } from '@contexts'
 import { retotalMonth } from './retotalMonth'
 import { getFirstWindowMonth } from '@utils/window'
 import { writeMonthData } from './useWriteMonthData'
@@ -23,7 +24,7 @@ import { ensureMonthsFreshAndRecalculateBalances } from './ensureMonthsFresh'
 
 /**
  * Recalculate the current month and all future months locally.
- * This replaces the old pattern of marking months as needing recalculation.
+ * This recalculates months locally when data changes.
  *
  * IMPORTANT: Also tracks all recalculated months for background save.
  * This ensures that when a month is changed, all months from that month onwards
@@ -107,6 +108,7 @@ async function recalculateFutureMonthsLocally(
  */
 export function useMonthMutationHelpers() {
   const { trackChange } = useSync()
+  const { addLoadingHold, removeLoadingHold } = useApp()
 
   /**
    * Update month cache and automatically track the change.
@@ -154,6 +156,15 @@ export function useMonthMutationHelpers() {
     month: number,
     onLoadingChange?: (isLoading: boolean, message: string) => void
   ): Promise<void> => {
+    // Create a loading callback that uses loading holds if no callback provided
+    const loadingKey = 'recalculate-month-cascade'
+    const handleLoadingChange = onLoadingChange || ((isLoading: boolean, message: string) => {
+      if (isLoading) {
+        addLoadingHold(loadingKey, message)
+      } else {
+        removeLoadingHold(loadingKey)
+      }
+    })
     // Step 1: Retotal the edited month first for instant UI feedback
     // This updates totals from current transactions without changing start_balance
     const monthKey = queryKeys.month(budgetId, year, month)
@@ -175,7 +186,7 @@ export function useMonthMutationHelpers() {
 
     // Step 4: If editing before window, save start_balance for months at/before window
     if (isEditingBeforeWindow) {
-      onLoadingChange?.(true, 'Saving start balances...')
+      handleLoadingChange(true, 'Saving start balances...')
       try {
         // Get all months from edited month to first window month
         const budgetData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
@@ -211,21 +222,22 @@ export function useMonthMutationHelpers() {
               budgetId,
               month: storedMonth,
               description: `recalculation: saving start_balance for ${saveYear}/${saveMonth}`,
-              cascadeRecalculation: false, // Don't cascade - we're already recalculating
+              updateMonthMap: false, // Don't update month_map - we're already recalculating
             })
           }
         }
       } catch (error) {
         console.error('[mutationHelpers] Failed to save start_balance for months at/before window:', error)
       } finally {
-        onLoadingChange?.(false, '')
+        handleLoadingChange(false, '')
       }
     }
 
     // Step 5: Ensure required months are in cache and fresh, then recalculate balances
     // This checks cache freshness and refetches if needed before recalculating
+    // Always show loading overlay when refetching stale data
     try {
-      await ensureMonthsFreshAndRecalculateBalances(budgetId)
+      await ensureMonthsFreshAndRecalculateBalances(budgetId, handleLoadingChange)
     } catch (error) {
       console.warn('[mutationHelpers] Failed to ensure months fresh and recalculate balances:', error)
     }
