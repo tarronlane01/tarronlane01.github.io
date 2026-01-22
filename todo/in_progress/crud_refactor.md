@@ -39,5 +39,4 @@ For calculated balances, use react query cache only to manage those. Meaning we 
 
 # Testing
 
-- [ ] test adding / removing transactions behavior
-- [ ] Test past month / future month prefetch loading behavior
+- [ ] test adding / removing transactions behavior, to make sure correlated loading is instantaneous and not flickering

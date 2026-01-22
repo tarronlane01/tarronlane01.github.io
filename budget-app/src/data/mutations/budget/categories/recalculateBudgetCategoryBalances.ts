@@ -210,6 +210,7 @@ export async function recalculateBudgetCategoryBalancesFromCache(
   }
 
   // Update budget cache with new category balances (don't save total_available - it's calculated on-the-fly)
+  // This is the source of truth - useCategoryBalances reads directly from this cache.
   queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
     ...cachedBudget,
     categories: updatedCategories,
@@ -218,11 +219,6 @@ export async function recalculateBudgetCategoryBalancesFromCache(
       categories: updatedCategories,
       // Don't save total_available - it's calculated on-the-fly
     },
-  })
-
-  // Invalidate category balances query cache so it recalculates with new data
-  queryClient.invalidateQueries({
-    queryKey: ['categoryBalances', budgetId],
   })
 
   // Note: We don't save budget-level category balances to Firestore here.

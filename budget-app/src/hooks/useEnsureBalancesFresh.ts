@@ -38,6 +38,9 @@ export function useEnsureBalancesFresh(enabled: boolean = true) {
 
     let loadingKey: string | null = null
 
+    // Pass alwaysRecalculate: false so we only recalculate if months were actually refetched.
+    // If cache is fresh (just updated by a mutation), skip recalculation to avoid
+    // potentially overwriting correct cache data with values from stale Firestore data.
     ensureMonthsFreshAndRecalculateBalances(
       selectedBudgetId,
       (isLoading, message) => {
@@ -50,7 +53,8 @@ export function useEnsureBalancesFresh(enabled: boolean = true) {
             loadingKey = null
           }
         }
-      }
+      },
+      false // alwaysRecalculate = false for navigation
     ).catch((error) => {
       console.error('[useEnsureBalancesFresh] Failed to ensure balances fresh:', error)
       if (loadingKey) {

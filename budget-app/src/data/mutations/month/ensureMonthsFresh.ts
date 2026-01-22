@@ -79,10 +79,17 @@ function getMonthsNeedingRefetch(
  * Then recalculate both account and category balances from cache.
  * 
  * This function can be called from both mutation helpers and hooks.
+ * 
+ * @param budgetId - The budget ID
+ * @param onLoadingChange - Optional callback for loading state changes
+ * @param alwaysRecalculate - If true, always recalculate balances even if no months were refetched.
+ *                            Set to true when called from mutations (we just updated local cache).
+ *                            Set to false when called from navigation (don't overwrite correct cache).
  */
 export async function ensureMonthsFreshAndRecalculateBalances(
   budgetId: string,
-  onLoadingChange?: (isLoading: boolean, message: string) => void
+  onLoadingChange?: (isLoading: boolean, message: string) => void,
+  alwaysRecalculate: boolean = true
 ): Promise<void> {
   const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   if (!cachedBudget) {
@@ -92,6 +99,12 @@ export async function ensureMonthsFreshAndRecalculateBalances(
 
   const monthMap = cachedBudget.monthMap || {}
   const monthsNeedingRefetch = getMonthsNeedingRefetch(budgetId, monthMap)
+
+  // If no months need refetching and we're not forced to recalculate,
+  // skip everything - the cache is already fresh from the mutation.
+  if (monthsNeedingRefetch.length === 0 && !alwaysRecalculate) {
+    return
+  }
 
   // If months need refetching, do it with loading overlay
   if (monthsNeedingRefetch.length > 0) {
@@ -111,7 +124,8 @@ export async function ensureMonthsFreshAndRecalculateBalances(
     }
   }
 
-  // Now recalculate balances from cache (all months should be fresh now)
+  // Recalculate balances from cache
+  // This updates budget cache with balances calculated from month cache data
   recalculateBudgetAccountBalancesFromCache(budgetId)
   await recalculateBudgetCategoryBalancesFromCache(budgetId)
 }
