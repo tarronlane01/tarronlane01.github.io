@@ -35,18 +35,9 @@ Don't worry about backwards compatibiltiy. We'll require migraiton first.
 
 For calculated balances, use react query cache only to manage those. Meaning we redo them when we save something, or when we reload the page. But don't have to recalc them everytime the page re-renders.
 
-
 ---
-
-# Review
-
-- [ ] Going back load past
 
 # Testing
 
 - [ ] test adding / removing transactions behavior
-- [ ] Test past month loading behavior
-
-# Wrap
-
-- [ ] review / deploy
+- [ ] Test past month / future month prefetch loading behavior

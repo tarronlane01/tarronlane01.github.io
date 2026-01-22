@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
-import { useBudgetData, useMonthData, useMonthPrefetch } from '@hooks'
+import { useBudgetData, useMonthData, useMonthPrefetch, useStaleDataRefresh } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -124,13 +124,14 @@ function Budget() {
     }
   }, [currentYear, currentMonthNumber, activeTab, navigate, params])
 
-  // Load month data only after budget data is loaded - let it try to load/create, handle errors
+  // Load month data only after budget data AND initial data load are complete
+  // This ensures the cache is populated before useMonthData tries to access it
   const {
     month: currentMonth,
     error: monthError,
     isLoading: isMonthLoading,
   } = useMonthData(
-    isBudgetDataLoaded ? selectedBudgetId : null,
+    isBudgetDataLoaded && initialDataLoadComplete ? selectedBudgetId : null,
     currentYear,
     currentMonthNumber
   )
@@ -228,7 +229,22 @@ function Budget() {
   }, [isBudgetDataLoaded, isRedirecting, currentBudget, selectedBudgetId, hasPendingInvites, needsFirstBudget, navigate])
 
   // Prefetch next month in navigation direction for smooth navigation
-  useMonthPrefetch(selectedBudgetId, currentYear, currentMonthNumber)
+  // Only run after initial data load is complete to avoid race conditions
+  useMonthPrefetch(
+    initialDataLoadComplete ? selectedBudgetId : null,
+    currentYear,
+    currentMonthNumber
+  )
+
+  // Detect stale cache and trigger fresh load + fetch viewing month context if outside window
+  // Only run after initial data load is complete to avoid interfering with first load
+  useStaleDataRefresh({
+    budgetId: selectedBudgetId,
+    viewingYear: currentYear,
+    viewingMonth: currentMonthNumber,
+    initialDataLoadComplete,
+    enabled: !!selectedBudgetId && initialDataLoadComplete,
+  })
 
   // Don't render content while budget data is loading, initial data load is incomplete, or redirecting
   // This ensures the cache is populated before any queries run
