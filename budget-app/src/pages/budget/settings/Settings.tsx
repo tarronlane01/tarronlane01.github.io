@@ -28,17 +28,18 @@ function Settings() {
   const {
     isOwner,
     isLoading: loading,
+    isFetching,
   } = useBudgetData()
 
-  // Add loading hold while loading
+  // Add loading hold while loading or fetching stale data
   useEffect(() => {
-    if (loading) {
+    if (loading || isFetching) {
       addLoadingHold('settings', 'Loading settings...')
     } else {
       removeLoadingHold('settings')
     }
     return () => removeLoadingHold('settings')
-  }, [loading, addLoadingHold, removeLoadingHold])
+  }, [loading, isFetching, addLoadingHold, removeLoadingHold])
 
   const location = useLocation()
 
@@ -80,7 +81,8 @@ function Settings() {
     { id: 'users', label: 'Users', icon: '👥', hidden: !isOwner },
   ], [isOwner])
 
-  if (loading) return null
+  // Show loading if data is loading or being refetched (to avoid showing access denied with stale data)
+  if (loading || isFetching) return null
 
   // Owner-only pages (Users)
   const isOwnerOnlyPage = isUsersPage

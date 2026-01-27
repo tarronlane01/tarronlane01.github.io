@@ -171,6 +171,7 @@ export const buttonSmall: CSSProperties = {
   fontSize: '0.8rem',
   opacity: 0.8,
   transition: 'opacity 0.15s',
+  whiteSpace: 'nowrap',
 }
 
 export const buttonGroup: CSSProperties = {

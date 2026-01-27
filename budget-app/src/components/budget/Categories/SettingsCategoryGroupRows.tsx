@@ -4,6 +4,7 @@
  * Displays a group header and its categories in table format.
  */
 
+import { useMemo } from 'react'
 import type { Category, CategoryGroup } from '@contexts/budget_context'
 import type { CategoryFormData } from './CategoryForm'
 import { formatBalanceCurrency, getCategoryBalanceColor, Button } from '../../ui'
@@ -66,7 +67,10 @@ export function SettingsCategoryGroupRows({
   onMoveGroupUp,
   onMoveGroupDown,
 }: SettingsCategoryGroupRowsProps) {
-  const sortedCategories = [...categories].sort((a, b) => a[1].sort_order - b[1].sort_order)
+  // Memoize sorted categories to ensure re-sorting when categories change
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => a[1].sort_order - b[1].sort_order)
+  }, [categories])
   const groupTotal = sortedCategories.reduce((sum, [catId]) => {
     const bal = categoryBalances[catId]
     return sum + (bal?.current || 0)
@@ -84,6 +88,8 @@ export function SettingsCategoryGroupRows({
     alignItems: 'center',
     fontSize: '0.9rem',
     fontWeight: 600,
+    minWidth: 0,
+    overflow: 'visible',
   }
 
   return (
@@ -91,62 +97,11 @@ export function SettingsCategoryGroupRows({
       {/* Desktop: Group header row */}
       {!isMobile && (
         <>
-          <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1, justifyContent: 'space-between' }}>
-            <span>
+          <div style={{ ...groupHeaderCellStyle, opacity: isUngrouped ? 0.7 : 1 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>
               <span>{group.name}</span>
               <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({sortedCategories.length})</span>
             </span>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
-              {!isUngrouped && (
-                <>
-                  <Button variant="small" actionName={`Open Add Category Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
-                    + Category
-                  </Button>
-                  <button
-                    onClick={() => { logUserAction('CLICK', 'Edit Category Group', { details: group.name }); onEditGroup() }}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }}
-                    title="Edit group"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => { logUserAction('CLICK', 'Delete Category Group', { details: group.name }); onDeleteGroup() }}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }}
-                    title="Delete group"
-                  >
-                    🗑️
-                  </button>
-                  <div style={reorderButtonGroup}>
-                    <button
-                      onClick={onMoveGroupUp}
-                      disabled={!canMoveGroupUp}
-                      style={{
-                        ...reorderButton,
-                        opacity: canMoveGroupUp ? 0.6 : 0.2,
-                        cursor: canMoveGroupUp ? 'pointer' : 'default',
-                      }}
-                      title="Move group up"
-                      aria-label="Move group up"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      onClick={onMoveGroupDown}
-                      disabled={!canMoveGroupDown}
-                      style={{
-                        ...reorderButton,
-                        opacity: canMoveGroupDown ? 0.6 : 0.2,
-                        cursor: canMoveGroupDown ? 'pointer' : 'default',
-                      }}
-                      title="Move group down"
-                      aria-label="Move group down"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
           </div>
           {/* Default Allocation column - empty */}
           <div style={groupHeaderCellStyle}></div>
@@ -166,8 +121,58 @@ export function SettingsCategoryGroupRows({
           </div>
           {/* Description column - empty */}
           <div style={groupHeaderCellStyle}></div>
-          {/* Actions column - empty */}
-          <div style={groupHeaderCellStyle}></div>
+          {/* Actions column */}
+          <div style={{ ...groupHeaderCellStyle, justifyContent: 'flex-end', gap: '0.25rem' }}>
+            {!isUngrouped && (
+              <>
+                <Button variant="small" actionName={`Open Add Category Form (${group.name})`} onClick={() => setCreateForGroupId(group.id)} disabled={createForGroupId !== null}>
+                  + Category
+                </Button>
+                <button
+                  onClick={() => { logUserAction('CLICK', 'Edit Category Group', { details: group.name }); onEditGroup() }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }}
+                  title="Edit group"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => { logUserAction('CLICK', 'Delete Category Group', { details: group.name }); onDeleteGroup() }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.6, fontSize: '0.9rem', padding: '0.25rem' }}
+                  title="Delete group"
+                >
+                  🗑️
+                </button>
+                <div style={reorderButtonGroup}>
+                  <button
+                    onClick={onMoveGroupUp}
+                    disabled={!canMoveGroupUp}
+                    style={{
+                      ...reorderButton,
+                      opacity: canMoveGroupUp ? 0.6 : 0.2,
+                      cursor: canMoveGroupUp ? 'pointer' : 'default',
+                    }}
+                    title="Move group up"
+                    aria-label="Move group up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    onClick={onMoveGroupDown}
+                    disabled={!canMoveGroupDown}
+                    style={{
+                      ...reorderButton,
+                      opacity: canMoveGroupDown ? 0.6 : 0.2,
+                      cursor: canMoveGroupDown ? 'pointer' : 'default',
+                    }}
+                    title="Move group down"
+                    aria-label="Move group down"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </>
       )}
 
@@ -182,7 +187,7 @@ export function SettingsCategoryGroupRows({
           background: 'rgba(255,255,255,0.04)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1 }}>
+            <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1, whiteSpace: 'nowrap' }}>
               {group.name}
               <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400 }}>({sortedCategories.length})</span>
             </span>

@@ -11,7 +11,7 @@
  * - useCategoryDragDrop: Drag and drop state and handlers
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useBudget } from '@contexts'
 import { useUpdateCategories, useUpdateCategoryGroups } from '@data/mutations/budget'
 import type { Category, CategoriesMap, CategoryGroup } from '@types'
@@ -134,7 +134,9 @@ export function useCategoriesPage() {
       await saveCategories(newCategories)
     } catch (err) {
       setCategoriesOptimistic(categories)
-      setError(err instanceof Error ? err.message : 'Failed to create category')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create category'
+      setError(errorMessage)
+      throw err // Re-throw so form stays open on error
     }
   }
 
@@ -145,22 +147,11 @@ export function useCategoriesPage() {
       if (!category) return
 
       const oldGroupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
-      // Use ungrouped group ID if null is passed
       const newGroupId = formData.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
-
-      // If group changed, update sort_order for the new group
       let newSortOrder = category.sort_order
       if (oldGroupId !== newGroupId) {
-        const targetGroupCategories = Object.values(categories).filter(c => {
-          return c.category_group_id === newGroupId
-        }).filter((_, idx, arr) => {
-          // Exclude the current category from the count
-          const currentCat = categories[categoryId]
-          return currentCat !== arr[idx]
-        })
-        newSortOrder = targetGroupCategories.length > 0
-          ? Math.max(...targetGroupCategories.map(c => c.sort_order)) + 1
-          : 0
+        const targetGroupCategories = Object.values(categories).filter(c => c.category_group_id === newGroupId && c !== category)
+        newSortOrder = targetGroupCategories.length > 0 ? Math.max(...targetGroupCategories.map(c => c.sort_order)) + 1 : 0
       }
 
       const newCategories: CategoriesMap = {
@@ -242,16 +233,12 @@ export function useCategoriesPage() {
   async function handleCreateGroup(formData: { name: string }) {
     if (!currentBudget) return
     try {
-      const maxSortOrder = categoryGroups.length > 0
-        ? Math.max(...categoryGroups.map(g => g.sort_order))
-        : -1
-
+      const maxSortOrder = categoryGroups.length > 0 ? Math.max(...categoryGroups.map(g => g.sort_order)) : -1
       const newGroup: CategoryGroup = {
         id: `category_group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: formData.name,
         sort_order: maxSortOrder + 1,
       }
-
       const newGroups = [...categoryGroups, newGroup]
       setCategoryGroupsOptimistic(newGroups)
       await saveCategoryGroups(newGroups)
@@ -263,9 +250,7 @@ export function useCategoriesPage() {
   async function handleUpdateGroup(groupId: string, formData: { name: string }) {
     if (!currentBudget) return
     try {
-      const newGroups = categoryGroups.map(group =>
-        group.id === groupId ? { ...group, name: formData.name } : group
-      )
+      const newGroups = categoryGroups.map(group => group.id === groupId ? { ...group, name: formData.name } : group)
       setCategoryGroupsOptimistic(newGroups)
       await saveCategoryGroups(newGroups)
     } catch (err) {
@@ -301,24 +286,26 @@ export function useCategoriesPage() {
 
   // Move group up/down
   async function handleMoveGroup(groupId: string, direction: 'up' | 'down') {
-    const sortedGroupsCopy = [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
-    const currentIndex = sortedGroupsCopy.findIndex(g => g.id === groupId)
+    // Exclude ungrouped group from sorting - it always appears last
+    const sortableGroups = categoryGroups
+      .filter(g => g.id !== UNGROUPED_CATEGORY_GROUP_ID)
+      .sort((a, b) => a.sort_order - b.sort_order)
+    const ungroupedGroup = categoryGroups.find(g => g.id === UNGROUPED_CATEGORY_GROUP_ID)
+    const currentIndex = sortableGroups.findIndex(g => g.id === groupId)
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
 
-    if (targetIndex < 0 || targetIndex >= sortedGroupsCopy.length) return
+    if (targetIndex < 0 || targetIndex >= sortableGroups.length) return
 
-    // Swap positions in array
-    const [movedGroup] = sortedGroupsCopy.splice(currentIndex, 1)
-    sortedGroupsCopy.splice(targetIndex, 0, movedGroup)
-
-    // Update sort orders
-    const updatedGroups = sortedGroupsCopy.map((group, index) => ({
-      ...group,
-      sort_order: index,
-    }))
+    // Swap positions and update sort orders
+    const [movedGroup] = sortableGroups.splice(currentIndex, 1)
+    sortableGroups.splice(targetIndex, 0, movedGroup)
+    const updatedSortableGroups = sortableGroups.map((group, index) => ({ ...group, sort_order: index }))
+    const updatedGroups = [
+      ...updatedSortableGroups,
+      ...(ungroupedGroup ? [{ ...ungroupedGroup, sort_order: updatedSortableGroups.length }] : [])
+    ]
 
     setCategoryGroupsOptimistic(updatedGroups)
-
     if (!currentBudget) return
     try {
       await saveCategoryGroups(updatedGroups)
@@ -333,23 +320,30 @@ export function useCategoriesPage() {
   // ==========================================================================
 
   // Organize categories by group (excluding hidden categories)
-  const categoriesByGroup = Object.entries(categories)
-    .filter(([, category]) => !category.is_hidden)
-    .reduce((acc, [catId, category]) => {
-      const groupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
-      if (!acc[groupId]) acc[groupId] = []
-      acc[groupId].push([catId, category] as CategoryEntry)
-      return acc
-    }, {} as Record<string, CategoryEntry[]>)
+  // Memoize to ensure re-computation when categories change
+  const categoriesByGroup = useMemo(() => {
+    return Object.entries(categories)
+      .filter(([, category]) => !category.is_hidden)
+      .reduce((acc, [catId, category]) => {
+        const groupId = category.category_group_id || UNGROUPED_CATEGORY_GROUP_ID
+        if (!acc[groupId]) acc[groupId] = []
+        acc[groupId].push([catId, category] as CategoryEntry)
+        return acc
+      }, {} as Record<string, CategoryEntry[]>)
+  }, [categories])
 
   // Hidden categories list
-  const hiddenCategories = Object.entries(categories)
-    .filter(([, category]) => category.is_hidden)
-    .map(([catId, category]) => [catId, category] as CategoryEntry)
-    .sort((a, b) => a[1].sort_order - b[1].sort_order)
+  const hiddenCategories = useMemo(() => {
+    return Object.entries(categories)
+      .filter(([, category]) => category.is_hidden)
+      .map(([catId, category]) => [catId, category] as CategoryEntry)
+      .sort((a, b) => a[1].sort_order - b[1].sort_order)
+  }, [categories])
 
   // Sort groups by sort_order
-  const sortedGroups = [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
+  const sortedGroups = useMemo(() => {
+    return [...categoryGroups].sort((a, b) => a.sort_order - b.sort_order)
+  }, [categoryGroups])
 
   return {
     // Data

@@ -24,7 +24,7 @@ export interface CategoryFormData {
 
 interface CategoryFormProps {
   initialData?: CategoryFormData
-  onSubmit: (data: CategoryFormData) => void
+  onSubmit: (data: CategoryFormData) => void | Promise<void>
   onCancel: () => void
   submitLabel: string
   categoryGroups?: CategoryGroup[]
@@ -44,12 +44,23 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
     setIsSubmitting(true)
     const parsedAmount = parseFloat(defaultAmount)
     const hasValidAmount = !isNaN(parsedAmount) && parsedAmount > 0
-    onSubmit({
+    
+    // Call onSubmit and close form immediately (don't wait for async operation)
+    // The save happens optimistically in the background
+    Promise.resolve(onSubmit({
       ...formData,
       description: formData.description?.trim() || undefined,
       default_monthly_amount: hasValidAmount ? parsedAmount : undefined,
       default_monthly_type: hasValidAmount ? defaultType : undefined,
+    })).catch((err) => {
+      // Error handling is done in the handler
+      console.error('[CategoryForm] Error submitting form:', err)
+    }).finally(() => {
+      setIsSubmitting(false)
     })
+    
+    // Close form immediately after submission
+    onCancel()
   }
 
   return (

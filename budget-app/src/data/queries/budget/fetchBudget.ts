@@ -151,10 +151,12 @@ function parseCategoryGroups(categoryGroupsData: FirestoreData[] = []): Category
   // Ensure ungrouped category group always exists
   const hasUngrouped = groups.some(g => g.id === UNGROUPED_CATEGORY_GROUP_ID)
   if (!hasUngrouped) {
+    // If ungrouped doesn't exist, add it with a sort_order higher than all existing groups
+    const maxSortOrder = groups.length > 0 ? Math.max(...groups.map(g => g.sort_order)) : -1
     groups.push({
       id: UNGROUPED_CATEGORY_GROUP_ID,
       name: 'Uncategorized',
-      sort_order: 0,
+      sort_order: maxSortOrder + 1,
     })
   }
 

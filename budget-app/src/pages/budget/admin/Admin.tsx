@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { useBudget, type AdminTab } from '@contexts/budget_context'
+import { useUserQuery } from '@data'
+import useFirebaseAuth from '@hooks/useFirebaseAuth'
 import { TabNavigation, type Tab } from '../../../components/ui'
 
 const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests']
@@ -8,6 +10,11 @@ const VALID_ADMIN_TABS: AdminTab[] = ['budget', 'feedback', 'migration', 'tests'
 function Admin() {
   // Context: identifiers and UI flags
   const { isAdmin, isTest, lastAdminTab, setLastAdminTab, setPageTitle } = useBudget()
+  
+  // Check if user query is fetching to avoid showing access denied with stale data
+  const firebase_auth_hook = useFirebaseAuth()
+  const current_user = firebase_auth_hook.get_current_firebase_user()
+  const userQuery = useUserQuery(current_user?.uid || null, current_user?.email || null)
 
   // Set page title for layout header
   useLayoutEffect(() => { setPageTitle('Budget Admin') }, [setPageTitle])
@@ -53,6 +60,11 @@ function Admin() {
     { id: 'migration', label: 'Migration', icon: '🔄' },
     { id: 'tests', label: 'Tests', icon: '🧪', hidden: !isTest },
   ], [isTest])
+
+  // Show loading if user query is loading or fetching (to avoid showing access denied with stale data)
+  if (userQuery.isLoading || userQuery.isFetching) {
+    return null
+  }
 
   // Non-admins cannot access admin pages at all
   if (!isAdmin) {

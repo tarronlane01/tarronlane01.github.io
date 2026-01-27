@@ -2,8 +2,6 @@
 
 # This Session
 
-Getting an access denied message when going to the settings/budget page, because user was stale. We should either keep the user from getting stale, or show a loading screen if the user is stale while we're refetching so we don't show the access denied error. Apply this fix anywhere else this scenario could happen.
-
 Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
 
 Catch if we ever get a firebase quota error when trying to read/write to firebase, and show that error in the common error banner.

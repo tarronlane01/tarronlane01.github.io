@@ -84,7 +84,12 @@ export function useBudgetData(): UseBudgetDataReturn {
   const accounts = useMemo(() => budgetData?.accounts || {}, [budgetData?.accounts])
   const accountGroups = useMemo(() => budgetData?.accountGroups || {}, [budgetData?.accountGroups])
   const categories = useMemo(() => budgetData?.categories || {}, [budgetData?.categories])
-  const categoryGroups = useMemo(() => budgetData?.categoryGroups || [], [budgetData?.categoryGroups])
+  // Create a new array reference to ensure React detects changes when groups are reordered
+  const categoryGroups = useMemo(() => {
+    const groups = budgetData?.categoryGroups || []
+    // Return a new array reference to ensure memoization detects changes
+    return groups.length > 0 ? [...groups] : []
+  }, [budgetData?.categoryGroups])
 
   // Derived values
   const isOwner = budget?.owner_id === currentUserId
@@ -131,6 +136,10 @@ export function useBudgetData(): UseBudgetDataReturn {
       queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
         ...cachedData,
         categories: newCategories,
+        budget: {
+          ...cachedData.budget,
+          categories: newCategories,
+        },
       })
     }
   }, [budgetId])
@@ -139,9 +148,15 @@ export function useBudgetData(): UseBudgetDataReturn {
     if (!budgetId) return
     const cachedData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
     if (cachedData) {
+      // Create a new array reference to ensure React Query detects the change
+      const newCategoryGroups = [...newGroups]
       queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
         ...cachedData,
-        categoryGroups: newGroups,
+        categoryGroups: newCategoryGroups,
+        budget: {
+          ...cachedData.budget,
+          category_groups: newCategoryGroups,
+        },
       })
     }
   }, [budgetId])

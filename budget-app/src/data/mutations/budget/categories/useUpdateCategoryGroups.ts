@@ -55,6 +55,10 @@ export function useUpdateCategoryGroups() {
         const updatedBudget: BudgetData = {
           ...previousData,
           categoryGroups,
+          budget: {
+            ...previousData.budget,
+            category_groups: categoryGroups,
+          },
         }
         updateBudgetCacheAndTrack(budgetId, updatedBudget)
       }
