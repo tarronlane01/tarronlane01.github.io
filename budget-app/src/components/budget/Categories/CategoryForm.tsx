@@ -171,7 +171,7 @@ export function CategoryForm({ initialData, onSubmit, onCancel, submitLabel, cat
               e.preventDefault()
               onDelete()
             }}
-            style={{ color: '#ff6b6b', borderColor: '#ff6b6b' }}
+            style={{ color: 'var(--color-validation-error)', borderColor: 'var(--color-validation-error)' }}
           >
             🗑️ Delete
           </Button>

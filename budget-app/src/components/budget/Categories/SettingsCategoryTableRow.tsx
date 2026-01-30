@@ -198,7 +198,7 @@ export function SettingsCategoryTableRow({
 
   // Desktop: Grid row using display: contents
   const isEvenRow = categoryIndex % 2 === 0
-  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+  const rowBg = isEvenRow ? 'transparent' : 'var(--row-alt-bg)'
 
   // Base cell style - no background, it will come from the row wrapper
   const cellStyle: React.CSSProperties = {
@@ -216,7 +216,7 @@ export function SettingsCategoryTableRow({
       gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr 1fr', // Match parent grid columns
     }}>
         {/* Category name */}
-        <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border-subtle)' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category.name}</span>
         </div>
 
@@ -229,7 +229,7 @@ export function SettingsCategoryTableRow({
                 : `${formatBalanceCurrency(category.default_monthly_amount)}/mo`}
             </span>
           ) : (
-            <span style={{ opacity: 0.3, fontStyle: 'italic', color: '#9ca3af' }}>—</span>
+            <span style={{ opacity: 0.3, fontStyle: 'italic', color: 'var(--text-muted)' }}>—</span>
           )}
         </div>
 
@@ -250,7 +250,7 @@ export function SettingsCategoryTableRow({
               {category.description}
             </span>
           ) : (
-            <span style={{ opacity: 0.3, fontStyle: 'italic', color: '#9ca3af' }}>—</span>
+            <span style={{ opacity: 0.3, fontStyle: 'italic', color: 'var(--text-muted)' }}>—</span>
           )}
         </div>
 

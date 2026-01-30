@@ -32,22 +32,22 @@ interface BannerProps {
 
 const BANNER_STYLES: Record<BannerType, { bgColor: string; color: string; icon: string }> = {
   success: {
-    bgColor: 'rgba(46, 213, 115, 0.95)',
+    bgColor: 'var(--banner-success)',
     color: 'white',
     icon: '✓',
   },
   error: {
-    bgColor: 'rgba(255, 71, 87, 0.95)',
+    bgColor: 'var(--banner-error)',
     color: 'white',
     icon: '✕',
   },
   warning: {
-    bgColor: 'rgba(255, 165, 2, 0.95)',
+    bgColor: 'var(--banner-warning)',
     color: 'white',
     icon: '⚠',
   },
   info: {
-    bgColor: 'rgba(30, 144, 255, 0.95)',
+    bgColor: 'var(--banner-info)',
     color: 'white',
     icon: 'ℹ',
   },
@@ -97,7 +97,7 @@ export function Banner({ item, onDismiss }: BannerProps) {
         borderRadius: '0.5rem',
         fontSize: '0.9rem',
         fontWeight: 500,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 4px 12px var(--shadow-overlay)',
         zIndex: 1001,
         display: 'flex',
         alignItems: 'center',

@@ -63,18 +63,18 @@ export function BackupPrompt({
     >
       <div style={{
         background: isDestructive
-          ? 'color-mix(in srgb, #ef4444 15%, transparent)'
-          : 'color-mix(in srgb, #f59e0b 15%, transparent)',
+          ? 'color-mix(in srgb, var(--color-error) 15%, transparent)'
+          : 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
         border: `1px solid ${isDestructive
-          ? 'color-mix(in srgb, #ef4444 40%, transparent)'
-          : 'color-mix(in srgb, #f59e0b 40%, transparent)'}`,
+          ? 'color-mix(in srgb, var(--color-error) 40%, transparent)'
+          : 'color-mix(in srgb, var(--color-warning) 40%, transparent)'}`,
         borderRadius: '8px',
         padding: '1rem',
         marginBottom: '1rem',
       }}>
         <p style={{
           margin: 0,
-          color: isDestructive ? '#fca5a5' : '#fcd34d',
+          color: isDestructive ? 'var(--color-error-light)' : 'var(--color-warning-light)',
           fontWeight: 500,
           fontSize: '0.95rem',
         }}>

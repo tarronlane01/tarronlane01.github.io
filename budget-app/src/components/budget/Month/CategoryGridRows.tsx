@@ -61,9 +61,9 @@ export function CategoryGroupRows({
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
     marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
-    borderTop: '1px solid rgba(255,255,255,0.2)',
+    borderTop: '1px solid var(--border-medium)',
     borderBottom: groupTotalRowBorder,
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--row-alt-bg)',
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
@@ -120,7 +120,7 @@ export function CategoryGroupRows({
             justifyContent: 'flex-end',
             color: getCategoryBalanceColor(groupTotals.end),
             paddingRight: '1rem',
-            borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+            borderRight: '2px solid var(--border-muted)',
           }}>
             {featureFlags.showGroupTotals && <span style={{ ...groupTotalText, ...(isDraftMode ? tentativeValue : {}) }}>{formatBalanceCurrency(groupTotals.end)}</span>}
           </div>
@@ -139,9 +139,9 @@ export function CategoryGroupRows({
           paddingLeft: '0.5rem',
           paddingRight: '0.5rem',
           marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
-          borderTop: '1px solid rgba(255,255,255,0.2)',
+          borderTop: '1px solid var(--border-medium)',
           borderBottom: groupTotalRowBorder,
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--row-alt-bg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -248,7 +248,7 @@ function CategoryGridRow({
   const showBreakdown = hasDebt && allocationAmount > 0 && toBalanceAmount > 0
 
   // Keep normal row striping - don't shade based on debt
-  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+  const rowBg = isEvenRow ? 'transparent' : 'var(--row-alt-bg)'
 
   const cellStyle: React.CSSProperties = {
     paddingTop: '0.6rem',
@@ -283,7 +283,7 @@ function CategoryGridRow({
         fontSize: '0.9rem',
         fontWeight: 500,
         overflow: 'hidden',
-        borderLeft: '2px solid rgba(255,255,255,0.1)',
+        borderLeft: '2px solid var(--border-subtle)',
         minHeight: '2.4rem',
         boxSizing: 'border-box',
       }}>
@@ -385,7 +385,7 @@ function CategoryGridRow({
       </div>
 
       {/* End Balance (with border) */}
-      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getCategoryBalanceColor(balance.end_balance), paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)', ...(isDraftMode && !isPercentageBased ? tentativeValue : {}) }}>
+      <div style={{ ...cellStyle, justifyContent: 'flex-end', fontWeight: 600, color: getCategoryBalanceColor(balance.end_balance), paddingRight: '1rem', borderRight: '2px solid var(--border-muted)', ...(isDraftMode && !isPercentageBased ? tentativeValue : {}) }}>
         {formatBalanceCurrency(balance.end_balance)}
       </div>
 

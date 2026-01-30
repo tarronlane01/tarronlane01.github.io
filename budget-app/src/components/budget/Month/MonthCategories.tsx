@@ -130,7 +130,7 @@ export function MonthCategories() {
         gridTemplateColumns: isMobile ? '1fr' : isDraftMode ? '2fr 1fr 200px 1fr 1fr 1fr 1fr 1fr 120px' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 120px',
       }}>
         {/* Sticky wrapper using subgrid */}
-        <div style={{ gridColumn: '1 / -1', position: 'sticky', top: 0, zIndex: 49, backgroundColor: '#242424', display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : 'subgrid' }}>
+        <div style={{ gridColumn: '1 / -1', position: 'sticky', top: 0, zIndex: 49, backgroundColor: 'var(--sticky-header-bg)', display: isMobile ? 'block' : 'grid', gridTemplateColumns: isMobile ? undefined : 'subgrid' }}>
           {/* Draft mode: Stats + Buttons row */}
           {isDraftMode && (
             <div style={{
@@ -166,7 +166,7 @@ export function MonthCategories() {
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Transfers</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Adjust</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>End</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid var(--border-muted)' }}>End</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>All-Time</div>
             </>
           )}

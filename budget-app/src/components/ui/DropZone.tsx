@@ -27,7 +27,7 @@ export function DropZone({
         style={{
           ...dropZoneLine,
           opacity: isActive ? 1 : 0.3,
-          boxShadow: isActive ? '0 0 8px rgba(100, 108, 255, 0.6)' : 'none',
+          boxShadow: isActive ? '0 0 8px var(--shadow-primary)' : 'none',
         }}
       />
       {isActive && <span style={dropZoneLabel}>{label}</span>}

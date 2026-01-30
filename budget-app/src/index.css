@@ -1,11 +1,12 @@
+/* Theme variables must stay in sync with src/constants/colors.ts THEME_COLORS */
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--text-primary);
+  background-color: var(--page-background);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,10 +18,68 @@
   --page-padding: 2rem;
   --content-max-width: 80rem; /* ~1280px - content containers */
 
-  /* Tab colors for dark mode */
+  /* Theme colors (dark mode default) - see constants/colors.ts */
+  --page-background: #242424;
+  --text-primary: rgba(255, 255, 255, 0.87);
+  --text-muted: #9ca3af;
+  --link-hover: rgba(255, 255, 255, 0.8);
+  --surface-base: #1a1a1a;
+  --surface-raised: #2d2d2d;
+  --surface-overlay: #353535;
+  --sticky-header-bg: #242424;
   --tab-bg: #2d2d2d;
   --tab-bg-hover: #353535;
   --tab-bg-active: #3d3d3d;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.2);
+  --border-strong: rgba(255, 255, 255, 0.3);
+  --border-muted: rgba(128, 128, 128, 0.4);
+  --row-alt-bg: rgba(255, 255, 255, 0.04);
+  --button-bg: #1a1a1a;
+  --focus-ring: #007AFF;
+  --color-primary: #646cff;
+  --color-primary-light: #a5b4fc;
+  --color-primary-on-primary: #ffffff;
+  --color-error: #f87171;
+  --color-error-bg: rgba(220, 38, 38, 0.1);
+  --color-error-border: rgba(220, 38, 38, 0.3);
+  --color-success: #4ade80;
+  --color-success-bg: rgba(34, 197, 94, 0.1);
+  --color-success-border: rgba(34, 197, 94, 0.3);
+  --color-warning: #facc15;
+  --color-warning-on-warning: #000000;
+  --color-warning-bg: rgba(250, 204, 21, 0.15);
+  --color-warning-border: rgba(250, 204, 21, 0.4);
+  --color-danger: #f87171;
+  --color-debt: #fb923c;
+  --color-debt-bg: rgba(251, 146, 60, 0.1);
+  --color-debt-border: rgba(251, 146, 60, 0.5);
+  --color-zero: rgba(255, 255, 255, 0.4);
+  --color-validation-error: #ff6b6b;
+  --banner-success: rgba(46, 213, 115, 0.95);
+  --banner-error: rgba(255, 71, 87, 0.95);
+  --banner-warning: rgba(255, 165, 2, 0.95);
+  --banner-info: rgba(30, 144, 255, 0.95);
+  --shadow-overlay: rgba(0, 0, 0, 0.3);
+  --shadow-primary: rgba(100, 108, 255, 0.6);
+  --color-migration-purple: #a855f7;
+  --color-migration-purple-bg: rgba(165, 94, 234, 0.15);
+  --color-migration-blue: #3b82f6;
+  --color-migration-blue-bg: rgba(59, 130, 246, 0.15);
+  --color-migration-blue-light: #60a5fa;
+  --color-migration-green: #22c55e;
+  --modal-backdrop: rgba(0, 0, 0, 0.7);
+  --overlay-panel-bg: #1a1a2e;
+  --loading-overlay-bg: rgba(15, 15, 20, 0.95);
+  --loading-overlay-content-bg: rgba(255, 255, 255, 0.15);
+  --loading-overlay-content-border: rgba(255, 255, 255, 0.1);
+  --loading-overlay-text: rgba(255, 255, 255, 0.87);
+  --loading-overlay-text-muted: rgba(255, 255, 255, 0.5);
+  --loading-overlay-spinner-primary: #646cff;
+  --loading-overlay-spinner-secondary: #8b5cf6;
+  --color-error-light: #fca5a5;
+  --color-warning-light: #fcd34d;
+  --color-success-emerald: #10b981;
 }
 
 html {
@@ -54,7 +113,7 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--button-bg);
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -71,12 +130,12 @@ input:focus,
 select:focus,
 textarea:focus,
 [tabindex="0"]:focus {
-  outline: 2px solid #007AFF;
+  outline: 2px solid var(--focus-ring);
 }
 
 /* Currency input with sign toggle - outline surrounds the whole group */
 .currency-with-sign:focus-within {
-  outline: 2px solid #007AFF;
+  outline: 2px solid var(--focus-ring);
   border-radius: 4px;
 }
 .currency-with-sign input:focus {
@@ -85,19 +144,77 @@ textarea:focus,
 
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    color: var(--text-primary);
+    background-color: var(--page-background);
 
-    /* Tab colors for light mode */
+    /* Theme colors (light mode) - see constants/colors.ts */
+    --page-background: #ffffff;
+    --text-primary: #213547;
+    --text-muted: #6b7280;
+    --link-hover: #747bff;
+    --surface-base: #ffffff;
+    --surface-raised: #f9f9f9;
+    --surface-overlay: #f0f0f0;
+    --sticky-header-bg: #ffffff;
     --tab-bg: #e8e8e8;
     --tab-bg-hover: #e0e0e0;
     --tab-bg-active: #f0f0f0;
+    --border-subtle: rgba(0, 0, 0, 0.12);
+    --border-medium: rgba(0, 0, 0, 0.2);
+    --border-strong: rgba(0, 0, 0, 0.3);
+    --border-muted: rgba(128, 128, 128, 0.4);
+    --row-alt-bg: rgba(0, 0, 0, 0.03);
+    --button-bg: #f9f9f9;
+    --focus-ring: #007AFF;
+    --color-primary: #646cff;
+    --color-primary-light: #a5b4fc;
+    --color-primary-on-primary: #ffffff;
+    --color-error: #ef4444;
+    --color-error-bg: rgba(220, 38, 38, 0.1);
+    --color-error-border: rgba(220, 38, 38, 0.3);
+    --color-success: #16a34a;
+    --color-success-bg: rgba(34, 197, 94, 0.1);
+    --color-success-border: rgba(34, 197, 94, 0.3);
+    --color-warning: #f59e0b;
+    --color-warning-on-warning: #000000;
+    --color-warning-bg: rgba(245, 158, 11, 0.15);
+    --color-warning-border: rgba(245, 158, 11, 0.4);
+    --color-danger: #ef4444;
+    --color-debt: #fb923c;
+    --color-debt-bg: rgba(251, 146, 60, 0.1);
+    --color-debt-border: rgba(251, 146, 60, 0.5);
+    --color-zero: rgba(0, 0, 0, 0.4);
+    --color-validation-error: #ff6b6b;
+    --banner-success: rgba(46, 213, 115, 0.95);
+    --banner-error: rgba(255, 71, 87, 0.95);
+    --banner-warning: rgba(255, 165, 2, 0.95);
+    --banner-info: rgba(30, 144, 255, 0.95);
+    --shadow-overlay: rgba(0, 0, 0, 0.2);
+    --shadow-primary: rgba(100, 108, 255, 0.4);
+    --color-migration-purple: #a855f7;
+    --color-migration-purple-bg: rgba(165, 94, 234, 0.15);
+    --color-migration-blue: #3b82f6;
+    --color-migration-blue-bg: rgba(59, 130, 246, 0.15);
+    --color-migration-blue-light: #60a5fa;
+    --color-migration-green: #22c55e;
+    --modal-backdrop: rgba(0, 0, 0, 0.5);
+    --overlay-panel-bg: #f5f5f5;
+    --loading-overlay-bg: rgba(0, 0, 0, 0.6);
+    --loading-overlay-content-bg: rgba(255, 255, 255, 0.95);
+    --loading-overlay-content-border: rgba(0, 0, 0, 0.1);
+    --loading-overlay-text: #1a1a1a;
+    --loading-overlay-text-muted: rgba(0, 0, 0, 0.5);
+    --loading-overlay-spinner-primary: #646cff;
+    --loading-overlay-spinner-secondary: #8b5cf6;
+    --color-error-light: #fca5a5;
+    --color-warning-light: #fcd34d;
+    --color-success-emerald: #10b981;
   }
   a:hover {
-    color: #747bff;
+    color: var(--link-hover);
   }
   button {
-    background-color: #f9f9f9;
+    background-color: var(--button-bg);
   }
 }
 

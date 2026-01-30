@@ -29,7 +29,7 @@ export function FeedbackTypeSelector({ selectedType, onSelect }: FeedbackTypeSel
               border: `2px solid ${config.color}`,
               borderRadius: '0.5rem',
               background: isSelected ? config.bgColor : 'transparent',
-              color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+              color: isSelected ? config.color : 'var(--text-muted)',
               cursor: 'pointer',
               fontWeight: isSelected ? 600 : 400,
               fontSize: '0.85rem',

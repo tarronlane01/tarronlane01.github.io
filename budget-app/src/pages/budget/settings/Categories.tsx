@@ -138,7 +138,7 @@ function Categories() {
     paddingBottom: '0.5rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
-    borderBottom: '2px solid rgba(255,255,255,0.2)',
+    borderBottom: '2px solid var(--border-medium)',
   }
 
   return (
@@ -156,7 +156,7 @@ function Categories() {
           position: 'sticky',
           top: 0, // Sticky at top, stats header will be first row inside
           zIndex: 50,
-          backgroundColor: '#242424',
+          backgroundColor: 'var(--sticky-header-bg)',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>

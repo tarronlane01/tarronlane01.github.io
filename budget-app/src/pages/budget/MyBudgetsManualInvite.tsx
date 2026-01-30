@@ -65,7 +65,7 @@ export function ManualInviteSection({
             type="submit"
             disabled={isCheckingManual || !budgetIdInput.trim()}
             style={{
-              background: '#646cff',
+              background: 'var(--color-primary)',
               color: 'white',
               border: 'none',
               padding: '0.6rem 1.25rem',
@@ -81,8 +81,8 @@ export function ManualInviteSection({
         </form>
       ) : (
         <div style={{
-          background: 'color-mix(in srgb, #22c55e 10%, transparent)',
-          border: '1px solid color-mix(in srgb, #22c55e 30%, transparent)',
+          background: 'color-mix(in srgb, var(--color-success) 10%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
           padding: '1rem',
           borderRadius: '8px',
         }}>
@@ -109,7 +109,7 @@ export function ManualInviteSection({
               onClick={onAcceptInvite}
               disabled={isAccepting === manualInvite.budgetId}
               style={{
-                background: '#22c55e',
+                background: 'var(--color-success)',
                 color: 'white',
                 border: 'none',
                 padding: '0.6rem 1.25rem',

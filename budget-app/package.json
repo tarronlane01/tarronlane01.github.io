@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "lint:file-length": "bash scripts/check-file-length.sh",
+    "lint:colors": "node scripts/check-colors.cjs",
     "precommit": "npm run lint:file-length && npm run lint",
     "preview": "vite preview",
     "publish": "echo 'Use: ./scripts/publish.sh \"your message\"' && exit 1"

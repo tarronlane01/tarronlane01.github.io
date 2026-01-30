@@ -38,7 +38,7 @@ export function SeedImportRow({ disabled }: SeedImportRowProps) {
           width: '28px',
           height: '28px',
           borderRadius: '50%',
-          background: 'color-mix(in srgb, #22c55e 20%, transparent)',
+          background: 'color-mix(in srgb, var(--color-success) 20%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -72,7 +72,7 @@ export function SeedImportRow({ disabled }: SeedImportRowProps) {
 
         {/* Status */}
         <div style={{
-          color: '#9ca3af',
+          color: 'var(--text-muted)',
           fontSize: '0.8rem',
           fontWeight: 500,
           flexShrink: 0,

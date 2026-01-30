@@ -1,16 +1,27 @@
+# doing
 
+All text needs to be visible in both light and dark themes. Have common functions to get text and background colors that will work correctly in light and dark themes
+
+- [ ] confirm that the keeping-in-sync works
+
+- [ ] Refactor everything to use the new system
+- [ ] Check through app in light mode
+- [ ] check through app in dark mode
+
+
+# Critical
 
 # This Session
 
-Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
+Check draft save button on allocations, or have it automatically save on edit (every couple seconds if there's a difference)?
 
-Catch if we ever get a firebase quota error when trying to read/write to firebase, and show that error in the common error banner.
+Transfer cleared button not working as intended
 
 ---
 
 Maybe we take all the totals and balances and never save those to firebase, instead always recalculating them on inital app load, storing them elsewhere for just the app session. That would save us having to do periodic saves and reconcilliations and manage cache for balances and cascading tracking of what needs resaved because the balance is new, right? Any issues in this plan? Don't make any changes yet, just let me know what this plan misses.
 
-# Other
+# non-critical
 
 Click on account or category to edit
 
@@ -30,3 +41,6 @@ Logging out doesn't invalidate all local storage
 
 Only have expenses change the account balance if "cleared".
 
+Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
+
+Catch if we ever get a firebase quota error when trying to read/write to firebase, and show that error in the common error banner.

@@ -226,7 +226,7 @@ function MyBudgets() {
 
       {/* Pending Invitations */}
       {pendingBudgetsList.length > 0 && (
-        <div style={{ background: 'color-mix(in srgb, #f59e0b 10%, transparent)', border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
           <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>📨</span> Pending Invitations ({pendingBudgetsList.length})
           </h3>
@@ -260,8 +260,8 @@ function MyBudgets() {
 
       {/* Create New Budget */}
       <div style={{
-        background: 'color-mix(in srgb, #646cff 8%, transparent)',
-        border: '1px solid color-mix(in srgb, #646cff 25%, transparent)',
+        background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 25%, transparent)',
         padding: '1.5rem',
         borderRadius: '8px',
         marginBottom: '1.5rem',

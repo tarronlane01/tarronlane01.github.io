@@ -18,7 +18,7 @@ export function CategoryColumnHeaders({ isDraftMode }: CategoryColumnHeadersProp
       letterSpacing: '0.05em',
       paddingTop: '0.5rem',
       marginTop: '0.5rem',
-      borderTop: '1px solid rgba(255,255,255,0.1)',
+      borderTop: '1px solid var(--border-subtle)',
     }}>
       <div style={{ flex: 2, minWidth: 0 }}>Category</div>
       {isDraftMode ? (
@@ -33,7 +33,7 @@ export function CategoryColumnHeaders({ isDraftMode }: CategoryColumnHeadersProp
         </>
       )}
       <div style={{ flex: 1, textAlign: 'right' }}>Spent</div>
-      <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid rgba(128, 128, 128, 0.4)' }}>End</div>
+      <div style={{ flex: 1, textAlign: 'right', paddingRight: '1rem', borderRight: '2px solid var(--border-muted)' }}>End</div>
       <div style={{ width: '120px', textAlign: 'right' }}>{isDraftMode ? 'Proj. All-Time' : 'All-Time'}</div>
     </div>
   )
@@ -50,7 +50,7 @@ export function AccountColumnHeaders() {
       letterSpacing: '0.05em',
       paddingTop: '0.5rem',
       marginTop: '0.5rem',
-      borderTop: '1px solid rgba(255,255,255,0.1)',
+      borderTop: '1px solid var(--border-subtle)',
     }}>
       <div style={{ flex: 2, minWidth: 0 }}>Account</div>
       <div style={{ flex: 1, textAlign: 'right' }}>Start</div>

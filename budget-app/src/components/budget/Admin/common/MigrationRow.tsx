@@ -47,12 +47,12 @@ interface MigrationRowProps {
 }
 
 const statusConfig: Record<MigrationRowStatus, { color: string; icon: string; text: string }> = {
-  unknown: { color: '#9ca3af', icon: '❓', text: 'Unknown' },
-  clean: { color: '#22c55e', icon: '✓', text: 'Clean' },
-  'needs-action': { color: '#f59e0b', icon: '⚠️', text: 'Needs Action' },
-  running: { color: '#60a5fa', icon: '⏳', text: 'Running' },
-  complete: { color: '#22c55e', icon: '✅', text: 'Complete' },
-  error: { color: '#ef4444', icon: '❌', text: 'Error' },
+  unknown: { color: 'var(--text-muted)', icon: '❓', text: 'Unknown' },
+  clean: { color: 'var(--color-success)', icon: '✓', text: 'Clean' },
+  'needs-action': { color: 'var(--color-warning)', icon: '⚠️', text: 'Needs Action' },
+  running: { color: 'var(--color-migration-blue-light)', icon: '⏳', text: 'Running' },
+  complete: { color: 'var(--color-success)', icon: '✅', text: 'Complete' },
+  error: { color: 'var(--color-error)', icon: '❌', text: 'Error' },
 }
 
 export function MigrationRow({
@@ -197,7 +197,7 @@ export function MigrationRow({
               onClick={handleRun}
               disabled={isDisabled}
               style={{
-                background: isDestructive ? '#ef4444' : '#646cff',
+                background: isDestructive ? 'var(--color-error)' : 'var(--color-primary)',
                 color: 'white',
                 border: 'none',
                 padding: '0.35rem 0.75rem',
@@ -330,7 +330,7 @@ export function UtilityRow({
             {description}
           </div>
           {error && (
-            <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-error)', marginTop: '0.25rem' }}>
               {error}
             </div>
           )}
@@ -340,13 +340,13 @@ export function UtilityRow({
         {progress !== undefined && isRunning && (
           <div style={{ width: '100px', flexShrink: 0 }}>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.1)',
+              background: 'var(--border-subtle)',
               borderRadius: '4px',
               height: '6px',
               overflow: 'hidden',
             }}>
               <div style={{
-                background: isDestructive ? '#ef4444' : '#646cff',
+                background: isDestructive ? 'var(--color-error)' : 'var(--color-primary)',
                 height: '100%',
                 width: `${progress}%`,
                 transition: 'width 0.3s',
@@ -363,7 +363,7 @@ export function UtilityRow({
           onClick={handleAction}
           disabled={isDisabled}
           style={{
-            background: isDestructive ? '#ef4444' : '#646cff',
+            background: isDestructive ? 'var(--color-error)' : 'var(--color-primary)',
             color: 'white',
             border: 'none',
             padding: '0.5rem 1rem',

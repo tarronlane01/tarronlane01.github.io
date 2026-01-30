@@ -82,7 +82,7 @@ export function DatabaseCleanupRow({
             {result.dataMappingsFixed > 0 && <li>{result.dataMappingsFixed} data mapping(s) fixed</li>}
           </ul>
           {result.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({result.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {result.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -108,7 +108,7 @@ export function DatabaseCleanupRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#fbbf24' }}>Issues found:</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>Issues found:</div>
         <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
           {status!.budgetsWithArrays > 0 && <li>{status!.budgetsWithArrays} budget(s) using legacy array format</li>}
           {status!.accountsNeedingDefaults > 0 && <li>{status!.accountsNeedingDefaults} account(s) missing defaults</li>}

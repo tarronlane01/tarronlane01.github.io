@@ -22,7 +22,7 @@ export function Modal({ isOpen, onClose, title, children, width = '28rem' }: Mod
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
+        background: 'var(--modal-backdrop)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -33,15 +33,15 @@ export function Modal({ isOpen, onClose, title, children, width = '28rem' }: Mod
     >
       <div
         style={{
-          background: '#1a1a1a',
-          color: 'rgba(255, 255, 255, 0.87)',
+          background: 'var(--surface-base)',
+          color: 'var(--text-primary)',
           borderRadius: '12px',
           padding: '1.5rem',
           width: width,
           maxWidth: 'calc(100vw - 2rem)',
           flexShrink: 0,
           boxSizing: 'border-box',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 8px 32px var(--shadow-overlay)',
         }}
         onClick={(e) => e.stopPropagation()}
       >

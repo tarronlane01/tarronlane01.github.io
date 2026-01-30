@@ -20,7 +20,7 @@ const columnHeaderStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   padding: '0.5rem',
-  borderTop: '1px solid rgba(255,255,255,0.1)',
+  borderTop: '1px solid var(--border-subtle)',
 }
 
 export function MonthIncome() {
@@ -152,8 +152,8 @@ export function MonthIncome() {
           position: 'sticky',
           top: 0,
           zIndex: 49,
-          backgroundColor: '#242424',
-          borderBottom: '1px solid rgba(255,255,255,0.15)',
+          backgroundColor: 'var(--sticky-header-bg)',
+          borderBottom: '1px solid var(--border-medium)',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>

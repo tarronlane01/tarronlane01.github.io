@@ -52,7 +52,7 @@ function renderDetails(result: RemovePreviousMonthIncomeMigrationResult | null, 
           {result.monthsUpdated === 0 && result.monthsProcessed > 0 && <li>No months needed updates</li>}
         </ul>
         {result.errors.length > 0 && (
-          <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+          <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
             <div>Errors ({result.errors.length}):</div>
             <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
               {result.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}

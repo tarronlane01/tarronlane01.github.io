@@ -38,7 +38,7 @@ export function LoadingOverlay({
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'rgba(15, 15, 20, 0.95)',
+      background: 'var(--loading-overlay-bg)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -51,7 +51,7 @@ export function LoadingOverlay({
       <div style={{
         width: `${spinnerSize}rem`,
         height: `${spinnerSize}rem`,
-        border: '3px solid rgba(255, 255, 255, 0.15)',
+        border: '3px solid var(--loading-overlay-content-border)',
         borderTopColor: spinnerColor,
         borderRadius: '50%',
         animation: 'loadingOverlaySpin 0.8s linear infinite',
@@ -59,7 +59,7 @@ export function LoadingOverlay({
 
       {/* Message */}
       <p style={{
-        color: 'rgba(255, 255, 255, 0.95)',
+        color: 'var(--loading-overlay-text)',
         fontSize: '1.2rem',
         fontWeight: 600,
         letterSpacing: '0.02em',
@@ -95,14 +95,14 @@ interface ProgressBarProps {
 
 export function ProgressBar({
   percent,
-  gradient = 'linear-gradient(90deg, #646cff, #8b5cf6)',
+  gradient = 'linear-gradient(90deg, var(--loading-overlay-spinner-primary), var(--loading-overlay-spinner-secondary))',
   width = 300,
 }: ProgressBarProps) {
   return (
     <div style={{
       width: `${width}px`,
       height: '8px',
-      background: 'rgba(255, 255, 255, 0.1)',
+      background: 'var(--loading-overlay-content-border)',
       borderRadius: '4px',
       overflow: 'hidden',
     }}>
@@ -130,14 +130,14 @@ interface StatItemProps {
   color?: string
 }
 
-export function StatItem({ value, label, color = '#646cff' }: StatItemProps) {
+export function StatItem({ value, label, color = 'var(--loading-overlay-spinner-primary)' }: StatItemProps) {
   return (
     <div style={{ textAlign: 'center' }}>
       <p style={{ color, fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
         {value}
       </p>
       <p style={{
-        color: 'rgba(255, 255, 255, 0.6)',
+        color: 'var(--loading-overlay-text-muted)',
         fontSize: '0.8rem',
         margin: '0.25rem 0 0',
         textTransform: 'uppercase',
@@ -177,7 +177,7 @@ export function StatGrid({ children, columns = 3 }: StatGridProps) {
 
 export function PercentLabel({ percent }: { percent: number }) {
   return (
-    <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9rem', margin: 0 }}>
+    <p style={{ color: 'var(--loading-overlay-text-muted)', fontSize: '0.9rem', margin: 0 }}>
       {percent}% complete
     </p>
   )

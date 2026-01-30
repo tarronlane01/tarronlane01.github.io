@@ -32,19 +32,19 @@ interface MigrationSectionProps {
 
 const sectionStyles: Record<SectionType, { borderColor: string; iconBg: string; headerBg: string }> = {
   onetime: {
-    borderColor: 'color-mix(in srgb, #a855f7 30%, transparent)',
-    iconBg: 'color-mix(in srgb, #a855f7 15%, transparent)',
-    headerBg: 'color-mix(in srgb, #a855f7 8%, transparent)',
+    borderColor: 'color-mix(in srgb, var(--color-migration-purple) 30%, transparent)',
+    iconBg: 'color-mix(in srgb, var(--color-migration-purple) 15%, transparent)',
+    headerBg: 'color-mix(in srgb, var(--color-migration-purple) 8%, transparent)',
   },
   maintenance: {
-    borderColor: 'color-mix(in srgb, #3b82f6 30%, transparent)',
-    iconBg: 'color-mix(in srgb, #3b82f6 15%, transparent)',
-    headerBg: 'color-mix(in srgb, #3b82f6 8%, transparent)',
+    borderColor: 'color-mix(in srgb, var(--color-migration-blue) 30%, transparent)',
+    iconBg: 'color-mix(in srgb, var(--color-migration-blue) 15%, transparent)',
+    headerBg: 'color-mix(in srgb, var(--color-migration-blue) 8%, transparent)',
   },
   utility: {
-    borderColor: 'color-mix(in srgb, #22c55e 30%, transparent)',
-    iconBg: 'color-mix(in srgb, #22c55e 15%, transparent)',
-    headerBg: 'color-mix(in srgb, #22c55e 8%, transparent)',
+    borderColor: 'color-mix(in srgb, var(--color-migration-green) 30%, transparent)',
+    iconBg: 'color-mix(in srgb, var(--color-migration-green) 15%, transparent)',
+    headerBg: 'color-mix(in srgb, var(--color-migration-green) 8%, transparent)',
   },
 }
 
@@ -127,9 +127,9 @@ export function MigrationSection({
             onClick={handleValidateAll}
             disabled={isDisabled}
             style={{
-              background: 'color-mix(in srgb, #3b82f6 20%, transparent)',
-              color: '#60a5fa',
-              border: '1px solid color-mix(in srgb, #3b82f6 40%, transparent)',
+              background: 'color-mix(in srgb, var(--color-migration-blue) 20%, transparent)',
+              color: 'var(--color-migration-blue-light)',
+              border: '1px solid color-mix(in srgb, var(--color-migration-blue) 40%, transparent)',
               padding: '0.5rem 1rem',
               borderRadius: '6px',
               cursor: isDisabled ? 'not-allowed' : 'pointer',

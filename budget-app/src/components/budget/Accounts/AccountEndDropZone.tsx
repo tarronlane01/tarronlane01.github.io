@@ -32,7 +32,7 @@ export function AccountEndDropZone({ isActive, onDragOver, onDragLeave, onDrop }
           borderRadius: '2px',
           opacity: isActive ? 1 : 0.3,
           transition: 'opacity 0.15s',
-          boxShadow: isActive ? `0 0 8px rgba(100, 108, 255, 0.6)` : 'none',
+          boxShadow: isActive ? '0 0 8px var(--shadow-primary)' : 'none',
         }}
       />
       {isActive && (
@@ -43,7 +43,7 @@ export function AccountEndDropZone({ isActive, onDragOver, onDragLeave, onDrop }
           transform: 'translate(-50%, -50%)',
           fontSize: '0.75rem',
           opacity: 0.7,
-          background: 'var(--background, #1a1a1a)',
+          background: 'var(--surface-base)',
           padding: '0 0.5rem',
           whiteSpace: 'nowrap',
         }}>

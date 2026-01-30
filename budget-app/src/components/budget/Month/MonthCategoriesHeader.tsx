@@ -40,8 +40,8 @@ export function GrandTotalsRow({
     paddingBottom: '0.6rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
-    borderTop: '2px solid rgba(255,255,255,0.3)',
-    borderBottom: '2px solid rgba(255,255,255,0.3)',
+    borderTop: '2px solid var(--border-strong)',
+    borderBottom: '2px solid var(--border-strong)',
     fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
@@ -91,7 +91,7 @@ export function GrandTotalsRow({
         justifyContent: 'flex-end',
         color: getCategoryBalanceColor(balanceTotals.end),
         paddingRight: '1rem',
-        borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+        borderRight: '2px solid var(--border-muted)',
         ...(isDraftMode ? tentativeValue : {}),
       }}>
         {formatBalanceCurrency(balanceTotals.end)}
@@ -142,8 +142,8 @@ export function MobileGrandTotals({
       fontSize: '0.85rem',
       paddingTop: '0.5rem',
       paddingBottom: '0.5rem',
-      borderTop: '2px solid rgba(255,255,255,0.3)',
-      borderBottom: '2px solid rgba(255,255,255,0.3)',
+      borderTop: '2px solid var(--border-strong)',
+      borderBottom: '2px solid var(--border-strong)',
     }}>
       <span style={{ fontWeight: 600 }}>Grand Totals:</span>
       <CategoryStatsRow

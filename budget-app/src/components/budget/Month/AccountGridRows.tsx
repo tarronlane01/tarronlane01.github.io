@@ -49,9 +49,9 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
   const groupHeaderCellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
     marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
-    borderTop: '1px solid rgba(255,255,255,0.2)',
+    borderTop: '1px solid var(--border-medium)',
     borderBottom: groupTotalRowBorder,
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--row-alt-bg)',
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
@@ -114,7 +114,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
                     return sum + (bal?.uncleared_balance ?? 0)
                   }, 0)
                   return Math.abs(unclearedTotal - clearedTotal) < 0.01
-                    ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                    ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                     : formatSignedCurrency(clearedTotal)
                 })()}
               </span>
@@ -133,7 +133,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
                     return sum + (bal?.uncleared_balance ?? 0)
                   }, 0)
                   const difference = unclearedTotal - clearedTotal
-                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span> : formatSignedCurrencyAlways(difference)
+                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span> : formatSignedCurrencyAlways(difference)
                 })()}
               </span>
             )}
@@ -147,9 +147,9 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
           gridColumn: '1 / -1',
           padding: '0.6rem 0.5rem',
           marginTop: isFirstGroup ? 0 : '1.25rem', // Remove top margin for first group to eliminate gap after Grand Totals
-          borderTop: '1px solid rgba(255,255,255,0.2)',
+          borderTop: '1px solid var(--border-medium)',
           borderBottom: groupTotalRowBorder,
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--row-alt-bg)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -191,7 +191,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
 // =============================================================================
 
 function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { account: FinancialAccount; balance: AccountMonthBalance; clearedBalance?: AccountClearedBalance; isEvenRow: boolean }) {
-  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+  const rowBg = isEvenRow ? 'transparent' : 'var(--row-alt-bg)'
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem 0.5rem',
     display: 'flex',
@@ -206,7 +206,7 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
       display: 'grid',
       gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', // Match parent grid columns
     }}>
-      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border-subtle)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
       <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(balance.start_balance) }}>
@@ -236,7 +236,7 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
           {formatSignedCurrency(clearedBalance.uncleared_balance)}
         </div>
       ) : (
-        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>
           —
         </div>
       )}
@@ -244,11 +244,11 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
       {clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
-            ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+            ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
             : formatSignedCurrency(clearedBalance.cleared_balance)}
         </div>
       ) : (
-        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>
           —
         </div>
       )}
@@ -258,7 +258,7 @@ function AccountGridRow({ account, balance, clearedBalance, isEvenRow }: { accou
           {formatSignedCurrencyAlways(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
         </div>
       ) : (
-        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>
           —
         </div>
       )}
@@ -318,11 +318,11 @@ function MobileAccountRow({ account, balance, clearedBalance }: { account: Finan
               <>
                 <div>
                   <span style={{ opacity: 0.6, display: 'block' }}>Cleared</span>
-                  <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                 </div>
                 <div>
                   <span style={{ opacity: 0.6, display: 'block' }}>Uncleared</span>
-                  <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                 </div>
               </>
             )}

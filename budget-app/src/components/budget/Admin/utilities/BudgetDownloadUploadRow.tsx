@@ -63,12 +63,12 @@ export function BudgetDownloadUploadRow({
 
   // Determine status
   const statusColor = uploadResult?.success
-    ? '#22c55e'
+    ? 'var(--color-success)'
     : needsUpload
-      ? '#f59e0b'
+      ? 'var(--color-warning)'
       : hasUploadData
-        ? '#22c55e'
-        : '#9ca3af'
+        ? 'var(--color-success)'
+        : 'var(--text-muted)'
 
   const statusIcon = uploadResult?.success
     ? '✅'
@@ -221,7 +221,7 @@ export function BudgetDownloadUploadRow({
               }}
               disabled={isDisabled}
               style={{
-                background: '#646cff',
+                background: 'var(--color-primary)',
                 color: 'white',
                 border: 'none',
                 padding: '0.35rem 0.75rem',
@@ -275,7 +275,7 @@ export function BudgetDownloadUploadRow({
             <div style={{
               width: `${currentProgress}%`,
               height: '100%',
-              background: '#646cff',
+              background: 'var(--color-primary)',
               transition: 'width 0.3s ease',
             }} />
           </div>
@@ -299,13 +299,13 @@ export function BudgetDownloadUploadRow({
           fontSize: '0.85rem',
         }}>
           {currentError && (
-            <div style={{ marginBottom: '0.75rem', color: '#ef4444' }}>
+            <div style={{ marginBottom: '0.75rem', color: 'var(--color-error)' }}>
               ❌ Error: {currentError}
             </div>
           )}
 
           {uploadResult && (
-            <div style={{ marginBottom: uploadStatus ? '0.75rem' : 0, color: uploadResult.success ? '#22c55e' : '#ef4444' }}>
+            <div style={{ marginBottom: uploadStatus ? '0.75rem' : 0, color: uploadResult.success ? 'var(--color-success)' : 'var(--color-error)' }}>
               {uploadResult.success ? (
                 <>
                   ✅ Restored {uploadResult.budgetsRestored} budget(s), {uploadResult.monthsRestored} month(s), {uploadResult.payeesRestored} payee doc(s)

@@ -26,7 +26,7 @@ export function Spinner({ noMargin }: { noMargin?: boolean } = {}) {
       display: 'inline-block',
       width: '14px',
       height: '14px',
-      border: '2px solid rgba(255, 255, 255, 0.3)',
+      border: '2px solid var(--border-strong)',
       borderTopColor: 'white',
       borderRadius: '50%',
       animation: 'spin 0.8s linear infinite',
@@ -81,12 +81,12 @@ export function MigrationCard({
   const getStatusStyle = () => {
     switch (status) {
       case 'unknown':
-        return { color: '#9ca3af', text: statusText ?? 'Unknown' }
+        return { color: 'var(--text-muted)', text: statusText ?? 'Unknown' }
       case 'clean':
       case 'complete':
-        return { color: '#22c55e', text: statusText ?? '✓ Clean' }
+        return { color: 'var(--color-success)', text: statusText ?? '✓ Clean' }
       case 'needs-action':
-        return { color: '#f59e0b', text: statusText ?? 'Action Needed' }
+        return { color: 'var(--color-warning)', text: statusText ?? 'Action Needed' }
     }
   }
 
@@ -152,29 +152,29 @@ type StatusBoxType = 'unknown' | 'clean' | 'warning' | 'running' | 'success'
 
 const statusBoxStyles: Record<StatusBoxType, { bg: string; border: string; color: string }> = {
   unknown: {
-    bg: 'rgba(100, 100, 100, 0.1)',
-    border: 'rgba(100, 100, 100, 0.3)',
-    color: '#9ca3af',
+    bg: 'var(--color-error-bg)',
+    border: 'var(--color-error-border)',
+    color: 'var(--text-muted)',
   },
   clean: {
-    bg: 'rgba(34, 197, 94, 0.1)',
-    border: 'rgba(34, 197, 94, 0.3)',
-    color: '#4ade80',
+    bg: 'var(--color-success-bg)',
+    border: 'var(--color-success-border)',
+    color: 'var(--color-success)',
   },
   warning: {
-    bg: 'rgba(245, 158, 11, 0.1)',
-    border: 'rgba(245, 158, 11, 0.3)',
-    color: '#fbbf24',
+    bg: 'var(--color-warning-bg)',
+    border: 'var(--color-warning-border)',
+    color: 'var(--color-warning)',
   },
   running: {
-    bg: 'rgba(200, 200, 200, 0.1)',
-    border: 'rgba(200, 200, 200, 0.3)',
-    color: 'rgba(255, 255, 255, 0.7)',
+    bg: 'var(--row-alt-bg)',
+    border: 'var(--border-strong)',
+    color: 'var(--text-primary)',
   },
   success: {
-    bg: 'rgba(34, 197, 94, 0.1)',
-    border: 'rgba(34, 197, 94, 0.3)',
-    color: '#4ade80',
+    bg: 'var(--color-success-bg)',
+    border: 'var(--color-success-border)',
+    color: 'var(--color-success)',
   },
 }
 
@@ -225,7 +225,7 @@ export function ActionButton({
       disabled={isDisabled}
       style={{
         marginTop: '1rem',
-        background: '#646cff',
+        background: 'var(--color-primary)',
         color: 'white',
         border: 'none',
         padding: '0.75rem 1.5rem',

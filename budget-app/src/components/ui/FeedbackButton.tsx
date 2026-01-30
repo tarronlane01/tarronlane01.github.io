@@ -3,23 +3,14 @@ import { useLocation } from 'react-router-dom'
 import { UserContext } from '@contexts'
 import { useFirebaseAuth } from '@hooks'
 import { useSubmitFeedback } from '@data/mutations/feedback'
+import { feedbackTypeConfig, type FeedbackType } from '@components/budget/Admin/feedbackTypes'
 import { colors } from '@styles/shared'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import { TextAreaInput, FormButtonGroup } from './FormElements'
 import { logUserAction } from '@utils'
 
-type FeedbackType = 'critical_bug' | 'bug' | 'new_feature' | 'core_feature' | 'qol'
-
 const CONFIRMATION_TIMEOUT_MS = 2000
-
-const feedbackTypeConfig: Record<FeedbackType, { label: string; color: string; bgColor: string }> = {
-  critical_bug: { label: 'Critical Bug', color: '#ff4757', bgColor: 'rgba(255, 71, 87, 0.15)' },
-  bug: { label: 'Bug', color: '#ffa502', bgColor: 'rgba(255, 165, 2, 0.15)' },
-  new_feature: { label: 'New Feature', color: '#2ed573', bgColor: 'rgba(46, 213, 115, 0.15)' },
-  core_feature: { label: 'Core Feature', color: '#1e90ff', bgColor: 'rgba(30, 144, 255, 0.15)' },
-  qol: { label: 'QOL', color: '#a55eea', bgColor: 'rgba(165, 94, 234, 0.15)' },
-}
 
 export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false)
@@ -75,13 +66,13 @@ export function FeedbackButton() {
             position: 'fixed',
             bottom: '5rem',
             right: '1.5rem',
-            background: 'rgba(46, 213, 115, 0.95)',
+            background: 'var(--banner-success)',
             color: 'white',
             padding: '0.75rem 1rem',
             borderRadius: '0.5rem',
             fontSize: '0.9rem',
             fontWeight: 500,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 12px var(--shadow-overlay)',
             zIndex: 1001,
             display: 'flex',
             alignItems: 'center',
@@ -111,18 +102,18 @@ export function FeedbackButton() {
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: '1.25rem',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          boxShadow: '0 4px 12px var(--shadow-overlay)',
           transition: 'transform 0.15s, box-shadow 0.15s',
           zIndex: 1000,
         }}
         title="Send Feedback"
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = 'scale(1.1)'
-          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)'
+          e.currentTarget.style.boxShadow = '0 6px 16px var(--shadow-overlay)'
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'scale(1)'
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+          e.currentTarget.style.boxShadow = '0 4px 12px var(--shadow-overlay)'
         }}
       >
         💬
@@ -145,7 +136,7 @@ export function FeedbackButton() {
                     border: `2px solid ${config.color}`,
                     borderRadius: '0.5rem',
                     background: isSelected ? config.bgColor : 'transparent',
-                    color: isSelected ? config.color : 'rgba(255,255,255,0.5)',
+                    color: isSelected ? config.color : 'var(--text-muted)',
                     cursor: 'pointer',
                     fontWeight: isSelected ? 600 : 400,
                     fontSize: '0.8rem',

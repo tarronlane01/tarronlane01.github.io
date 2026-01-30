@@ -24,7 +24,7 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
     : '—'
 
   const accountDisplay = accountGroupName ? `${accountGroupName} / ${accountName}` : accountName
-  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+  const rowBg = isEvenRow ? 'transparent' : 'var(--row-alt-bg)'
 
   // Mobile: Card-like view (tappable)
   if (isMobile) {

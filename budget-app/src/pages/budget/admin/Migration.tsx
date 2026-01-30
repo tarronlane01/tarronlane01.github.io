@@ -144,7 +144,7 @@ function Migration() {
           onClick={handleRefreshAll}
           disabled={isAnyScanning || isAnyRunning}
           style={{
-            background: '#646cff',
+            background: 'var(--color-primary)',
             color: 'white',
             border: 'none',
             padding: '0.5rem 1rem',

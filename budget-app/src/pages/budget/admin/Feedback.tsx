@@ -313,7 +313,7 @@ function Feedback() {
 
       <Modal isOpen={confirmingItem !== null} onClose={() => setConfirmingItem(null)} title="Mark as Complete">
         <p style={{ margin: '0 0 1.5rem 0' }}>Are you sure you want to mark this feedback item as complete?</p>
-        {confirmingItem && <p style={{ margin: '0 0 1.5rem 0', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem', fontSize: '0.9rem' }}>"{confirmingItem.text}"</p>}
+        {confirmingItem && <p style={{ margin: '0 0 1.5rem 0', padding: '0.75rem', background: 'var(--row-alt-bg)', borderRadius: '0.5rem', fontSize: '0.9rem' }}>"{confirmingItem.text}"</p>}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <Button variant="secondary" actionName="Cancel Mark Complete" onClick={() => setConfirmingItem(null)}>Cancel</Button>
           <Button variant="primary" actionName="Confirm Mark Complete" onClick={confirmComplete}>Mark Complete</Button>

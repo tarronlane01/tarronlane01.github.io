@@ -73,7 +73,7 @@ export function DraggableCard({
         style={{
           ...dropIndicator,
           opacity: isDragOver ? 1 : 0,
-          boxShadow: isDragOver ? '0 0 8px rgba(100, 108, 255, 0.6)' : 'none',
+          boxShadow: isDragOver ? '0 0 8px var(--shadow-primary)' : 'none',
         }}
       />
       <div

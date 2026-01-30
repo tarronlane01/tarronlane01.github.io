@@ -80,7 +80,7 @@ export function HiddenFieldRow({
             {totalFixed === 0 && <li>No changes needed</li>}
           </ul>
           {result.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({result.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {result.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -109,7 +109,7 @@ export function HiddenFieldRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#fbbf24' }}>Items to migrate:</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>Items to migrate:</div>
         <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
           {status!.accountsNeedingField > 0 && <li>{status!.accountsNeedingField} account(s) need is_hidden field</li>}
           {status!.categoriesNeedingField > 0 && <li>{status!.categoriesNeedingField} categor(ies) need is_hidden field</li>}

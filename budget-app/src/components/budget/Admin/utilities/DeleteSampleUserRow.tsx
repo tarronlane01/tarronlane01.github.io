@@ -83,7 +83,7 @@ export function DeleteSampleUserRow({
             {deleteResult.payeesDeleted > 0 && <li>{deleteResult.payeesDeleted} payee doc(s) deleted</li>}
           </ul>
           {deleteResult.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({deleteResult.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {deleteResult.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -106,7 +106,7 @@ export function DeleteSampleUserRow({
     if (hasStaleRefs) {
       return (
         <div style={{ fontSize: '0.85rem' }}>
-          <div style={{ marginBottom: '0.5rem', color: '#f59e0b' }}>🔗 Found stale budget references:</div>
+          <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>🔗 Found stale budget references:</div>
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
             {staleBudgetIds.slice(0, 3).map((id) => (
               <li key={id} style={{ opacity: 0.8 }}>{id}</li>
@@ -119,7 +119,7 @@ export function DeleteSampleUserRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#f59e0b' }}>🧪 Sample user budget found:</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>🧪 Sample user budget found:</div>
         <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
           <li>{totalBudgets} budget(s)</li>
           <li>{totalMonths} month(s)</li>
@@ -158,27 +158,27 @@ export function DeleteSampleUserRow({
         title="🧪 Delete Sample User Budget?"
       >
         <div style={{
-          background: 'color-mix(in srgb, #f59e0b 15%, transparent)',
-          border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)',
+          background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)',
           borderRadius: '8px',
           padding: '1rem',
           marginBottom: '1rem',
         }}>
-          <p style={{ margin: 0, color: '#fcd34d', fontWeight: 500, fontSize: '0.95rem' }}>
+          <p style={{ margin: 0, color: 'var(--color-warning-light)', fontWeight: 500, fontSize: '0.95rem' }}>
             ⚠️ This will delete all data for sample@sample.com!
           </p>
         </div>
 
         {totalBudgets > 0 && (
           <p style={{ margin: '0 0 0.75rem', opacity: 0.9 }}>
-            This will permanently delete <strong style={{ color: '#f59e0b' }}>{totalBudgets} budget(s)</strong> and{' '}
-            <strong style={{ color: '#f59e0b' }}>{totalMonths} month(s)</strong>.
+            This will permanently delete <strong style={{ color: 'var(--color-warning)' }}>{totalBudgets} budget(s)</strong> and{' '}
+            <strong style={{ color: 'var(--color-warning)' }}>{totalMonths} month(s)</strong>.
           </p>
         )}
 
         {hasStaleRefs && (
           <p style={{ margin: '0 0 0.75rem', opacity: 0.9 }}>
-            This will remove <strong style={{ color: '#f59e0b' }}>{staleBudgetIds.length} stale reference(s)</strong> from the user document.
+            This will remove <strong style={{ color: 'var(--color-warning)' }}>{staleBudgetIds.length} stale reference(s)</strong> from the user document.
           </p>
         )}
 

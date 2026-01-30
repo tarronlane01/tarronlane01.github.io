@@ -104,9 +104,9 @@ function Users() {
 
       {error && (
         <div style={{
-          background: 'rgba(220, 38, 38, 0.1)',
-          border: '1px solid rgba(220, 38, 38, 0.3)',
-          color: '#f87171',
+          background: 'var(--color-error-bg)',
+          border: '1px solid var(--color-error-border)',
+          color: 'var(--color-error)',
           padding: '0.75rem 1rem',
           borderRadius: '8px',
           marginBottom: '1rem',
@@ -120,7 +120,7 @@ function Users() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#f87171',
+              color: 'var(--color-error)',
               cursor: 'pointer',
               fontSize: '1.2rem',
               padding: '0 0.25rem',
@@ -134,9 +134,9 @@ function Users() {
 
       {success && (
         <div style={{
-          background: 'rgba(34, 197, 94, 0.1)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          color: '#4ade80',
+          background: 'var(--color-success-bg)',
+          border: '1px solid var(--color-success-border)',
+          color: 'var(--color-success)',
           padding: '0.75rem 1rem',
           borderRadius: '8px',
           marginBottom: '1rem',
@@ -150,7 +150,7 @@ function Users() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#4ade80',
+              color: 'var(--color-success)',
               cursor: 'pointer',
               fontSize: '1.2rem',
               padding: '0 0.25rem',
@@ -219,8 +219,8 @@ function Users() {
                       )}
                       {isCurrentUser && (
                         <span style={{
-                          background: 'color-mix(in srgb, #22c55e 20%, transparent)',
-                          color: '#4ade80',
+                          background: 'color-mix(in srgb, var(--color-success) 20%, transparent)',
+                          color: 'var(--color-success)',
                           padding: '0.15rem 0.5rem',
                           borderRadius: '4px',
                           fontSize: '0.7rem',
@@ -238,8 +238,8 @@ function Users() {
                       onClick={() => handleRevokeUser(userId)}
                       style={{
                         background: 'transparent',
-                        border: '1px solid rgba(220, 38, 38, 0.4)',
-                        color: '#f87171',
+                        border: '1px solid var(--color-error-border)',
+                        color: 'var(--color-error)',
                         padding: '0.4rem 0.75rem',
                         borderRadius: '6px',
                         cursor: 'pointer',
@@ -274,8 +274,8 @@ function Users() {
               <div
                 key={userId}
                 style={{
-                  background: 'color-mix(in srgb, #f59e0b 10%, transparent)',
-                  border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)',
+                  background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
                   padding: '0.75rem 1rem',
                   borderRadius: '6px',
                   display: 'flex',
@@ -296,8 +296,8 @@ function Users() {
                       {userId}
                     </code>
                     <span style={{
-                      background: 'color-mix(in srgb, #f59e0b 20%, transparent)',
-                      color: '#fbbf24',
+                      background: 'color-mix(in srgb, var(--color-warning) 20%, transparent)',
+                      color: 'var(--color-warning)',
                       padding: '0.15rem 0.5rem',
                       borderRadius: '4px',
                       fontSize: '0.7rem',
@@ -359,7 +359,7 @@ function Users() {
             type="submit"
             disabled={isInviting || !newUserId.trim()}
             style={{
-              background: '#646cff',
+              background: 'var(--color-primary)',
               color: 'white',
               border: 'none',
               padding: '0.6rem 1.25rem',

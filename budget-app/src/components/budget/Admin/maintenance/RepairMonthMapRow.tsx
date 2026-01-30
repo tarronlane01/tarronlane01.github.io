@@ -64,7 +64,7 @@ export function RepairMonthMapRow({
             {result.monthsAdded === 0 && result.orphanedEntriesRemoved === 0 && <li>No changes needed</li>}
           </ul>
           {result.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({result.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {result.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -93,7 +93,7 @@ export function RepairMonthMapRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#fbbf24' }}>Month_map issues found:</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>Month_map issues found:</div>
         <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
           {status!.totalMissingMonths > 0 && (
             <li>{status!.totalMissingMonths} month(s) missing from month_map</li>

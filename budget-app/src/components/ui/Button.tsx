@@ -43,7 +43,7 @@ const tooltipStyle: CSSProperties = {
   left: '50%',
   transform: 'translateX(-50%)',
   background: colors.warning,
-  color: '#1a1a1a',
+  color: 'var(--text-primary)',
   padding: '0.5rem 0.75rem',
   borderRadius: '6px',
   fontSize: '0.8rem',
@@ -51,7 +51,7 @@ const tooltipStyle: CSSProperties = {
   whiteSpace: 'nowrap',
   marginBottom: '0.5rem',
   zIndex: 100,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  boxShadow: '0 2px 8px var(--shadow-overlay)',
   animation: 'tooltipFadeIn 0.15s ease-out',
 }
 

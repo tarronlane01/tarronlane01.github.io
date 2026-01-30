@@ -38,7 +38,7 @@ export function DebtBorder({ children, label, style }: DebtBorderProps) {
             position: 'absolute',
             top: '-0.6em',
             left: '0.75rem',
-            background: 'var(--background, #1a1a1a)',
+            background: 'var(--surface-base)',
             padding: '0 0.4rem',
             fontSize: '0.7rem',
             fontWeight: 600,

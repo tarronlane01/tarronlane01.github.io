@@ -249,7 +249,7 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
         disabled={isDisabled || isRecomputing}
         style={{
           background: 'color-mix(in srgb, currentColor 15%, transparent)',
-          border: '1px solid rgba(255,255,255,0.2)',
+          border: '1px solid var(--border-medium)',
           borderRadius: '6px',
           padding: '0.4rem 0.75rem', // Reduced vertical padding to make button less tall
           cursor: isDisabled || isRecomputing ? 'not-allowed' : 'pointer',
@@ -265,13 +265,13 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
         onMouseEnter={(e) => {
           if (!isDisabled && !isRecomputing) {
             e.currentTarget.style.background = 'color-mix(in srgb, currentColor 20%, transparent)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'
+            e.currentTarget.style.borderColor = 'var(--border-strong)'
           }
         }}
         onMouseLeave={(e) => {
           if (!isDisabled && !isRecomputing) {
             e.currentTarget.style.background = 'color-mix(in srgb, currentColor 15%, transparent)'
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+            e.currentTarget.style.borderColor = 'var(--border-medium)'
           }
         }}
         title="Recalculate all months from the beginning"

@@ -31,7 +31,7 @@ export default function BudgetLayout() {
     console.error('[BudgetLayout] Error:', error)
     return (
       <div style={pageContainer}>
-        <p style={{ color: '#ef4444' }}>Error: {error.message}</p>
+        <p style={{ color: 'var(--color-error)' }}>Error: {error.message}</p>
       </div>
     )
   }

@@ -67,10 +67,10 @@ export function MappingDropdown({
           padding: '0.4rem',
           borderRadius: '4px',
           border: currentMapping
-            ? '1px solid #22c55e'
+            ? '1px solid var(--color-success)'
             : '1px solid color-mix(in srgb, currentColor 30%, transparent)',
           background: currentMapping
-            ? 'color-mix(in srgb, #22c55e 10%, transparent)'
+            ? 'color-mix(in srgb, var(--color-success) 10%, transparent)'
             : 'color-mix(in srgb, currentColor 10%, transparent)',
           color: 'inherit',
           fontSize: '0.85rem',
@@ -110,8 +110,8 @@ export function ImportResults({ result }: ImportResultsProps) {
           </ul>
           {result.errors.length > 0 && (
             <>
-              <p style={{ margin: '0.75rem 0 0.25rem 0', fontWeight: 500, color: '#ef4444' }}>Errors:</p>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.85rem', color: '#ef4444' }}>
+              <p style={{ margin: '0.75rem 0 0.25rem 0', fontWeight: 500, color: 'var(--color-error)' }}>Errors:</p>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.85rem', color: 'var(--color-error)' }}>
                 {result.errors.slice(0, 5).map((err, i) => (
                   <li key={i}>{err}</li>
                 ))}
@@ -170,18 +170,18 @@ export function ImportConfirmationContent({
   return (
     <div>
       <div style={{
-        background: 'color-mix(in srgb, #ef4444 15%, transparent)',
-        border: '1px solid color-mix(in srgb, #ef4444 40%, transparent)',
+        background: 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-error) 40%, transparent)',
         borderRadius: '8px',
         padding: '1rem',
         marginBottom: '1rem',
       }}>
-        <p style={{ margin: 0, color: '#fca5a5', fontWeight: 500, fontSize: '0.95rem' }}>
+        <p style={{ margin: 0, color: 'var(--color-error-light)', fontWeight: 500, fontSize: '0.95rem' }}>
           ⚠️ Warning: Destructive Operation
         </p>
-        <p style={{ margin: '0.5rem 0 0', color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.9rem' }}>
+        <p style={{ margin: '0.5rem 0 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
           This will <strong>REPLACE</strong> all existing income, expenses, and allocations in{' '}
-          <strong style={{ color: '#fbbf24' }}>
+          <strong style={{ color: 'var(--color-warning)' }}>
             {monthRange?.count === 1 ? '1 month' : `${monthRange?.count} months`}
           </strong>{' '}
           ({getMonthRangeLabel()}).
@@ -198,7 +198,7 @@ export function ImportConfirmationContent({
       </ul>
 
       <p style={{ margin: '0 0 1.5rem', opacity: 0.8 }}>
-        Any existing data of these types in the affected months will be <strong style={{ color: '#fca5a5' }}>deleted and replaced</strong>.
+        Any existing data of these types in the affected months will be <strong style={{ color: 'var(--color-error-light)' }}>deleted and replaced</strong>.
         This cannot be undone.
       </p>
 
@@ -247,25 +247,25 @@ export function ImportProgressOverlay({ progress }: ImportProgressOverlayProps) 
   const showRecordProgress = progress.phase === 'processing-months' || progress.phase === 'saving-months' || progress.phase === 'updating-budget' || progress.phase === 'complete'
 
   return (
-    <LoadingOverlay message={getPhaseLabel()} spinnerColor="#646cff">
-      <ProgressBar percent={progress.percentComplete} gradient="linear-gradient(90deg, #646cff, #8b5cf6)" />
+    <LoadingOverlay message={getPhaseLabel()} spinnerColor="var(--color-primary)">
+      <ProgressBar percent={progress.percentComplete} gradient="linear-gradient(90deg, var(--color-primary), var(--loading-overlay-spinner-secondary))" />
 
       {/* Phase-specific stats */}
       {showCreationProgress && (
         <StatGrid columns={2}>
-          <StatItem value={`${progress.monthsCreated}/${progress.monthsToCreate}`} label="Months Created" color="#f59e0b" />
-          <StatItem value={progress.totalMonths} label="Total Months" color="#646cff" />
+          <StatItem value={`${progress.monthsCreated}/${progress.monthsToCreate}`} label="Months Created" color="var(--color-warning)" />
+          <StatItem value={progress.totalMonths} label="Total Months" color="var(--color-primary)" />
         </StatGrid>
       )}
 
       {!showCreationProgress && (
         <StatGrid columns={progress.gapMonths > 0 ? 3 : 2}>
-          <StatItem value={progress.totalMonths} label="Months" color="#646cff" />
+          <StatItem value={progress.totalMonths} label="Months" color="var(--color-primary)" />
           {progress.monthsCreated > 0 && (
-            <StatItem value={progress.monthsCreated} label="New" color="#f59e0b" />
+            <StatItem value={progress.monthsCreated} label="New" color="var(--color-warning)" />
           )}
           {progress.gapMonths > 0 && (
-            <StatItem value={progress.gapMonths} label="Gap Filled" color="#8b5cf6" />
+            <StatItem value={progress.gapMonths} label="Gap Filled" color="var(--loading-overlay-spinner-secondary)" />
           )}
         </StatGrid>
       )}
@@ -273,9 +273,9 @@ export function ImportProgressOverlay({ progress }: ImportProgressOverlayProps) 
       {/* Record breakdown - show when processing or later */}
       {showRecordProgress && (
         <StatGrid columns={3}>
-          <StatItem value={progress.incomeImported} label="Income" color="#22c55e" />
-          <StatItem value={progress.spendImported} label="Expenses" color="#ef4444" />
-          <StatItem value={progress.allocationsImported} label="Allocations" color="#3b82f6" />
+          <StatItem value={progress.incomeImported} label="Income" color="var(--color-success)" />
+          <StatItem value={progress.spendImported} label="Expenses" color="var(--color-error)" />
+          <StatItem value={progress.allocationsImported} label="Allocations" color="var(--color-migration-blue)" />
         </StatGrid>
       )}
 
@@ -313,21 +313,21 @@ export function RecalculationProgressOverlay({ progress }: RecalculationProgress
     }
   }
 
-  const greenGradient = 'linear-gradient(90deg, #22c55e, #10b981)'
+  const greenGradient = 'linear-gradient(90deg, var(--color-success), var(--color-success-emerald))'
 
   // Determine what stats to show based on phase
   const showFetchProgress = progress.phase === 'fetching-months' && progress.totalMonthsToFetch
   const showRecalcProgress = progress.phase === 'recalculating' || progress.phase === 'saving' || progress.phase === 'complete'
 
   return (
-    <LoadingOverlay message={getPhaseLabel()} spinnerColor="#22c55e">
+    <LoadingOverlay message={getPhaseLabel()} spinnerColor="var(--color-success)">
       <ProgressBar percent={progress.percentComplete} gradient={greenGradient} />
 
       {showFetchProgress && (
         <StatItem
           value={progress.totalMonthsToFetch ?? 0}
           label="Months to Fetch"
-          color="#22c55e"
+          color="var(--color-success)"
         />
       )}
 
@@ -336,10 +336,10 @@ export function RecalculationProgressOverlay({ progress }: RecalculationProgress
           <StatItem
             value={`${progress.monthsProcessed}/${progress.totalMonths}`}
             label="Recalculated"
-            color="#22c55e"
+            color="var(--color-success)"
           />
           {progress.phase === 'complete' && (
-            <StatItem value="✓" label="Saved" color="#10b981" />
+            <StatItem value="✓" label="Saved" color="var(--color-success-emerald)" />
           )}
         </StatGrid>
       )}

@@ -72,10 +72,10 @@ export function MappingRow({ oldName, currentMapping, options, onMap, placeholde
       marginBottom: '0.5rem',
       padding: '0.5rem',
       background: isAutoMapped
-        ? 'color-mix(in srgb, #22c55e 8%, transparent)'
+        ? 'color-mix(in srgb, var(--color-success) 8%, transparent)'
         : 'color-mix(in srgb, currentColor 5%, transparent)',
       borderRadius: '6px',
-      borderLeft: isAutoMapped ? '3px solid #22c55e' : 'none',
+      borderLeft: isAutoMapped ? '3px solid var(--color-success)' : 'none',
     }}>
       <span style={{
         flex: '0 0 40%',
@@ -100,10 +100,10 @@ export function MappingRow({ oldName, currentMapping, options, onMap, placeholde
           padding: '0.4rem',
           borderRadius: '4px',
           border: currentMapping
-            ? '1px solid #22c55e'
+            ? '1px solid var(--color-success)'
             : '1px solid color-mix(in srgb, currentColor 30%, transparent)',
           background: currentMapping
-            ? 'color-mix(in srgb, #22c55e 10%, transparent)'
+            ? 'color-mix(in srgb, var(--color-success) 10%, transparent)'
             : 'color-mix(in srgb, currentColor 10%, transparent)',
           color: 'inherit',
           fontSize: '0.85rem',
@@ -164,8 +164,8 @@ export function MappingSection({
 
   return (
     <div style={{
-      background: 'color-mix(in srgb, #f59e0b 10%, transparent)',
-      border: '1px solid color-mix(in srgb, #f59e0b 30%, transparent)',
+      background: 'color-mix(in srgb, var(--color-warning) 10%, transparent)',
+      border: '1px solid color-mix(in srgb, var(--color-warning) 30%, transparent)',
       borderRadius: '8px',
       padding: '1rem',
       marginBottom: '1rem',
@@ -183,7 +183,7 @@ export function MappingSection({
       {/* Unmapped Categories */}
       {unmappedCategories.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#ef4444' }}>
+          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-error)' }}>
             ⚠️ Unmapped Categories ({unmappedCategories.length})
           </h5>
           {unmappedCategories.map(oldName => (
@@ -202,7 +202,7 @@ export function MappingSection({
       {/* Custom Mapped Categories (from saved mappings doc) */}
       {customMappedCategories.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-migration-blue-light)' }}>
             📋 Saved Category Mappings ({customMappedCategories.length})
           </h5>
           {customMappedCategories.map(oldName => (
@@ -222,7 +222,7 @@ export function MappingSection({
       {/* Unmapped Accounts */}
       {unmappedAccounts.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#ef4444' }}>
+          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-error)' }}>
             ⚠️ Unmapped Accounts ({unmappedAccounts.length})
           </h5>
           {unmappedAccounts.map(oldName => (
@@ -241,7 +241,7 @@ export function MappingSection({
       {/* Custom Mapped Accounts (from saved mappings doc) */}
       {customMappedAccounts.length > 0 && (
         <div>
-          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#60a5fa' }}>
+          <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--color-migration-blue-light)' }}>
             📋 Saved Account Mappings ({customMappedAccounts.length})
           </h5>
           {customMappedAccounts.map(oldName => (

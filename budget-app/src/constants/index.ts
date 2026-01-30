@@ -1,5 +1,6 @@
 // Barrel file for all constants
 export * from './breakpoints'
+export * from './colors'
 export * from './date'
 export * from './settings'
 export * from './auth'

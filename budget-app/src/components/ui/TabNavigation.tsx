@@ -213,7 +213,7 @@ export function TabNavigation(props: TabNavigationProps) {
           transform: perspective(50px) rotateX(5deg);
           transform-origin: bottom center;
           transition: background 0.15s;
-          box-shadow: -1px 0 0 #242424, 1px 0 0 #242424;
+          box-shadow: -1px 0 0 var(--sticky-header-bg), 1px 0 0 var(--sticky-header-bg);
         }
         .${className} > button:nth-child(1),
         .${className} > a:nth-child(1) {

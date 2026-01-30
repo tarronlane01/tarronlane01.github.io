@@ -252,10 +252,10 @@ export function MonthNavigation({
         {showMonthMenu && (
           <div style={{
             position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-            marginTop: '0.5rem', background: 'var(--background, #242424)',
+            marginTop: '0.5rem', background: 'var(--sticky-header-bg)',
             border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
             borderRadius: '8px', padding: '0.25rem', zIndex: 100, minWidth: '160px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            boxShadow: '0 4px 12px var(--shadow-overlay)',
           }}>
             <button
               onClick={handleOpenPicker}
@@ -309,7 +309,7 @@ export function MonthNavigation({
                   display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
                   background: 'transparent', border: 'none', borderRadius: '6px',
                   padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
-                  color: '#ef4444', textAlign: 'left', transition: 'background 0.15s',
+                  color: 'var(--color-error)', textAlign: 'left', transition: 'background 0.15s',
                 }}
                 title="Delete this month (last month only)"
               >

@@ -246,9 +246,9 @@ function ModeOption({ selected, onClick, title, description, recommended }: Mode
         gap: '0.75rem',
         padding: '0.75rem 1rem',
         background: selected
-          ? 'color-mix(in srgb, #646cff 15%, transparent)'
+          ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
           : 'color-mix(in srgb, currentColor 5%, transparent)',
-        border: selected ? '2px solid #646cff' : '2px solid transparent',
+        border: selected ? '2px solid var(--color-primary)' : '2px solid transparent',
         borderRadius: '8px',
         cursor: 'pointer',
         textAlign: 'left',
@@ -260,7 +260,7 @@ function ModeOption({ selected, onClick, title, description, recommended }: Mode
         width: '20px',
         height: '20px',
         borderRadius: '50%',
-        border: selected ? '6px solid #646cff' : '2px solid rgba(128,128,128,0.5)',
+        border: selected ? '6px solid var(--color-primary)' : '2px solid var(--border-muted)',
         flexShrink: 0,
         marginTop: '2px',
         background: selected ? 'white' : 'transparent',

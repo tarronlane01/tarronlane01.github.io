@@ -73,7 +73,7 @@ export function MonthNavButton({
           marginTop: '0.5rem',
           padding: '0.5rem 0.75rem',
           background: colors.warning,
-          color: '#000',
+          color: 'var(--color-warning-on-warning)',
           borderRadius: '6px',
           fontSize: '0.75rem',
           fontWeight: 500,
@@ -81,7 +81,7 @@ export function MonthNavButton({
           maxWidth: 'min(300px, 50vw)',
           textAlign: 'center',
           zIndex: 20,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 8px var(--shadow-overlay)',
         }}>
           {disabledReason}
         </div>

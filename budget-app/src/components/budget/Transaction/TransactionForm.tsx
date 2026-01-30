@@ -79,7 +79,7 @@ const cancelBtnStyle = { ...btnBase, background: 'transparent', border: '1px sol
 const deleteBtnStyle = { ...btnBase, background: 'transparent', border: `1px solid ${colors.errorBorder}`, color: colors.error }
 
 // Sign toggle button styles
-const signToggleStyle = (isNegative: boolean): React.CSSProperties => ({ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.25rem', height: '100%', minHeight: '2.25rem', background: isNegative ? `color-mix(in srgb, ${colors.error} 15%, transparent)` : `color-mix(in srgb, ${colors.success} 15%, transparent)`, border: `1px solid ${isNegative ? colors.errorBorder : 'rgba(74, 222, 128, 0.4)'}`, borderRadius: '4px 0 0 4px', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, color: isNegative ? colors.error : colors.success, transition: 'all 0.15s ease', flexShrink: 0 })
+const signToggleStyle = (isNegative: boolean): React.CSSProperties => ({ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.25rem', height: '100%', minHeight: '2.25rem', background: isNegative ? `color-mix(in srgb, ${colors.error} 15%, transparent)` : `color-mix(in srgb, ${colors.success} 15%, transparent)`, border: `1px solid ${isNegative ? colors.errorBorder : 'var(--color-success-border)'}`, borderRadius: '4px 0 0 4px', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, color: isNegative ? colors.error : colors.success, transition: 'all 0.15s ease', flexShrink: 0 })
 
 export function TransactionForm({
   accounts, accountGroups, categories, categoryGroups, payees,

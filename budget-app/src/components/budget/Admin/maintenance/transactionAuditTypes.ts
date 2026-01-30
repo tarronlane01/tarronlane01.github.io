@@ -21,11 +21,11 @@ export interface SubCheck {
 }
 
 export const statusConfig: Record<SubCheckStatus, { color: string; icon: string }> = {
-  unknown: { color: '#9ca3af', icon: '❓' },
-  clean: { color: '#22c55e', icon: '✓' },
-  'needs-action': { color: '#f59e0b', icon: '⚠️' },
-  running: { color: '#60a5fa', icon: '⏳' },
-  complete: { color: '#22c55e', icon: '✅' },
-  error: { color: '#ef4444', icon: '❌' },
+  unknown: { color: 'var(--text-muted)', icon: '❓' },
+  clean: { color: 'var(--color-success)', icon: '✓' },
+  'needs-action': { color: 'var(--color-warning)', icon: '⚠️' },
+  running: { color: 'var(--color-migration-blue-light)', icon: '⏳' },
+  complete: { color: 'var(--color-success)', icon: '✅' },
+  error: { color: 'var(--color-error)', icon: '❌' },
 }
 

@@ -127,7 +127,7 @@ function Accounts() {
     paddingBottom: '0.5rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
-    borderBottom: '2px solid rgba(255,255,255,0.2)',
+    borderBottom: '2px solid var(--border-medium)',
   }
 
   // Show errors via banner system
@@ -164,7 +164,7 @@ function Accounts() {
           position: 'sticky',
           top: 0, // Sticky at top, stats header will be first row inside
           zIndex: 50,
-          backgroundColor: '#242424',
+          backgroundColor: 'var(--sticky-header-bg)',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
@@ -186,7 +186,7 @@ function Accounts() {
               gap: '0.5rem 1rem', 
               fontSize: '0.85rem',
               paddingBottom: '0.5rem', // Spacing above border to separate button
-              borderBottom: '1px solid rgba(255,255,255,0.15)', // Border on inner element to respect page container
+              borderBottom: '1px solid var(--border-medium)', // Border on inner element to respect page container
             }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
                 <span style={{ fontWeight: 600 }}>Accounts:</span>

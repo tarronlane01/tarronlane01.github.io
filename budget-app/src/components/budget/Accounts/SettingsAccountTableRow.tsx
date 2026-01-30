@@ -129,11 +129,11 @@ export function SettingsAccountTableRow({
                     <>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
-                        <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                        <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
-                        <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                        <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                       </div>
                     </>
                   )}
@@ -213,7 +213,7 @@ export function SettingsAccountTableRow({
 
   // Desktop: Grid row using wrapper div for consistent striping
   const isEvenRow = accountIndex % 2 === 0
-  const rowBg = isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)'
+  const rowBg = isEvenRow ? 'transparent' : 'var(--row-alt-bg)'
   const cellStyle: React.CSSProperties = {
     padding: '0.5rem',
     display: 'flex',
@@ -229,7 +229,7 @@ export function SettingsAccountTableRow({
       gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 1fr', // Match parent grid columns
     }}>
       {/* Account name */}
-      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border-subtle)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
 
@@ -247,7 +247,7 @@ export function SettingsAccountTableRow({
       {clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
-            ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+            ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
             : formatSignedCurrency(clearedBalance.cleared_balance)}
         </div>
       ) : (
@@ -261,7 +261,7 @@ export function SettingsAccountTableRow({
           {formatSignedCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
         </div>
       ) : (
-        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: '#9ca3af' }}>
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>
           —
         </div>
       )}

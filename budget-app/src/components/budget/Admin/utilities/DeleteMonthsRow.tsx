@@ -79,7 +79,7 @@ export function DeleteMonthsRow({
             )}
           </ul>
           {deleteResult.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({deleteResult.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {deleteResult.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -101,7 +101,7 @@ export function DeleteMonthsRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#ef4444' }}>⚠️ DESTRUCTIVE ACTION</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-error)' }}>⚠️ DESTRUCTIVE ACTION</div>
         <div>Found {monthsCount} month(s) across {budgetCount} budget(s).</div>
         <div style={{ marginTop: '0.5rem', opacity: 0.7 }}>
           This will permanently delete ALL month documents and reset all budgets.
@@ -135,20 +135,20 @@ export function DeleteMonthsRow({
         title="🚨 Delete All Months?"
       >
         <div style={{
-          background: 'color-mix(in srgb, #ef4444 15%, transparent)',
-          border: '1px solid color-mix(in srgb, #ef4444 40%, transparent)',
+          background: 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-error) 40%, transparent)',
           borderRadius: '8px',
           padding: '1rem',
           marginBottom: '1rem',
         }}>
-          <p style={{ margin: 0, color: '#fca5a5', fontWeight: 500, fontSize: '0.95rem' }}>
+          <p style={{ margin: 0, color: 'var(--color-error-light)', fontWeight: 500, fontSize: '0.95rem' }}>
             ⚠️ This is a destructive operation that cannot be undone!
           </p>
         </div>
 
         <p style={{ margin: '0 0 0.75rem', opacity: 0.9 }}>
-          This will permanently delete <strong style={{ color: '#ef4444' }}>{monthsCount} month(s)</strong> across{' '}
-          <strong style={{ color: '#ef4444' }}>{budgetCount} budget(s)</strong>.
+          This will permanently delete <strong style={{ color: 'var(--color-error)' }}>{monthsCount} month(s)</strong> across{' '}
+          <strong style={{ color: 'var(--color-error)' }}>{budgetCount} budget(s)</strong>.
         </p>
 
         <ul style={{ margin: '0 0 1.5rem', paddingLeft: '1.5rem', opacity: 0.8, fontSize: '0.9rem' }}>

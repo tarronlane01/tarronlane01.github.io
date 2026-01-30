@@ -46,12 +46,12 @@ export function RestoreFromDiagnosticRow({
 
   // Determine status color
   const statusColor = result?.success
-    ? '#22c55e'
+    ? 'var(--color-success)'
     : needsAction
-      ? '#f59e0b'
+      ? 'var(--color-warning)'
       : hasData
-        ? '#22c55e'
-        : '#9ca3af'
+        ? 'var(--color-success)'
+        : 'var(--text-muted)'
 
   const statusIcon = result?.success
     ? '✅'
@@ -171,7 +171,7 @@ export function RestoreFromDiagnosticRow({
               onClick={() => { logUserAction('CLICK', 'Run Restore from Diagnostic'); onRun() }}
               disabled={isDisabled}
               style={{
-                background: '#646cff',
+                background: 'var(--color-primary)',
                 color: 'white',
                 border: 'none',
                 padding: '0.35rem 0.75rem',
@@ -219,7 +219,7 @@ export function RestoreFromDiagnosticRow({
           fontSize: '0.85rem',
         }}>
           {result && (
-            <div style={{ marginBottom: status ? '0.75rem' : 0, color: result.success ? '#22c55e' : '#ef4444' }}>
+            <div style={{ marginBottom: status ? '0.75rem' : 0, color: result.success ? 'var(--color-success)' : 'var(--color-error)' }}>
               {result.success ? (
                 <>
                   ✅ Restored {result.monthsUpdated} month(s): {result.transfersRestored} transfers, {result.adjustmentsRestored} adjustments

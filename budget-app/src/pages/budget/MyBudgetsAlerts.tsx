@@ -10,9 +10,9 @@ interface AlertProps {
 export function ErrorAlertBox({ message, onDismiss }: AlertProps) {
   return (
     <div style={{
-      background: 'rgba(220, 38, 38, 0.1)',
-      border: '1px solid rgba(220, 38, 38, 0.3)',
-      color: '#f87171',
+      background: 'var(--color-error-bg)',
+      border: '1px solid var(--color-error-border)',
+      color: 'var(--color-error)',
       padding: '0.75rem 1rem',
       borderRadius: '8px',
       marginBottom: '1rem',
@@ -26,7 +26,7 @@ export function ErrorAlertBox({ message, onDismiss }: AlertProps) {
         style={{
           background: 'transparent',
           border: 'none',
-          color: '#f87171',
+          color: 'var(--color-error)',
           cursor: 'pointer',
           fontSize: '1.2rem',
           padding: '0 0.25rem',
@@ -42,9 +42,9 @@ export function ErrorAlertBox({ message, onDismiss }: AlertProps) {
 export function SuccessAlertBox({ message, onDismiss }: AlertProps) {
   return (
     <div style={{
-      background: 'rgba(34, 197, 94, 0.1)',
-      border: '1px solid rgba(34, 197, 94, 0.3)',
-      color: '#4ade80',
+      background: 'var(--color-success-bg)',
+      border: '1px solid var(--color-success-border)',
+      color: 'var(--color-success)',
       padding: '0.75rem 1rem',
       borderRadius: '8px',
       marginBottom: '1rem',
@@ -58,7 +58,7 @@ export function SuccessAlertBox({ message, onDismiss }: AlertProps) {
         style={{
           background: 'transparent',
           border: 'none',
-          color: '#4ade80',
+          color: 'var(--color-success)',
           cursor: 'pointer',
           fontSize: '1.2rem',
           padding: '0 0.25rem',

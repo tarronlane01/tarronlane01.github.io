@@ -9,12 +9,13 @@ When pointed to this file, AI should do the following:
 3. Restructure any code that should conform to newly created patterns or systems
 4. Make sure all changes have accounted for desktop vs mobile views
 5. Make sure all errors are shown via the common bottom banner system (abbreviated) with the full error message being shown in the console
-6. Run code quality checks and fix any issues:
-   - Run `bash budget-app/scripts/review-checks.sh` from the root directory to check for:
+6. Run review checks and fix any issues:
+   - Run `bash budget-app/scripts/review-checks.sh` from the repo root (or `bash scripts/review-checks.sh` from the budget-app directory). This runs:
+     - File length (no .ts/.tsx over 400 lines)
+     - Theme colors (no raw hex/rgba outside `src/constants/colors.ts` and `src/index.css`; every color in constants must have light and dark)
      - Rogue console.log statements (outside allowed files)
      - Deep relative imports (4+ levels - should use path aliases)
      - Imports bypassing barrel files (should use index.ts exports)
-   - Run `bash scripts/check-file-length.sh` from the budget-app directory to check for files over 400 lines
    - Fix all violations before proceeding
 7. Make sure that the lint and build completes successfully without errors and that all warnings are resolved
    - Run `npm run lint` in the budget-app directory to catch ESLint errors or warnings (not just TypeScript diagnostics)

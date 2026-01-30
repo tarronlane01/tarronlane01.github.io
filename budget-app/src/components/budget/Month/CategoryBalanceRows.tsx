@@ -223,7 +223,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
       display: 'flex',
       alignItems: 'stretch',
       padding: '0.6rem 0.75rem',
-      background: isEvenRow ? 'transparent' : 'rgba(255,255,255,0.04)',
+      background: isEvenRow ? 'transparent' : 'var(--row-alt-bg)',
     }}>
       {/* Category name */}
       <div style={{ ...fieldContainer, flex: 2, minWidth: 0, overflow: 'hidden' }}>
@@ -320,7 +320,7 @@ export function DesktopBalanceRow({ category, balance, localAllocation, previous
         marginBottom: '-0.6rem',
         paddingTop: '0.6rem',
         paddingBottom: '0.6rem',
-        borderRight: '2px solid rgba(128, 128, 128, 0.4)',
+        borderRight: '2px solid var(--border-muted)',
       }}>
         {formatBalanceCurrency(balance.end_balance)}
       </div>

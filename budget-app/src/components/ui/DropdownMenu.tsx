@@ -110,10 +110,10 @@ export function DropdownMenu({ items }: DropdownMenuProps) {
             right: 0,
             marginTop: '0.5rem',
             minWidth: '180px',
-            background: '#1a1a2e',
+            background: 'var(--overlay-panel-bg)',
             border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
             borderRadius: '8px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 20px var(--shadow-overlay)',
             zIndex: 1000,
             overflow: 'hidden',
           }}

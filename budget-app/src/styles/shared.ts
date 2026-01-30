@@ -1,21 +1,20 @@
 import type { CSSProperties } from 'react'
+import { COLOR_VARS } from '@constants'
 
-// Colors
+/** Theme-aware colors (use CSS variables from constants/colors.ts) */
 export const colors = {
-  primary: '#646cff',
-  primaryLight: '#a5b4fc',
-  error: '#f87171',
-  errorBg: 'rgba(220, 38, 38, 0.1)',
-  errorBorder: 'rgba(220, 38, 38, 0.3)',
-  success: '#4ade80',
-  danger: '#f87171',
-  warning: '#facc15',
-  // Debt color (orange) - used for negative category balances
-  debt: '#fb923c',
-  debtBg: 'rgba(251, 146, 60, 0.1)',
-  debtBorder: 'rgba(251, 146, 60, 0.5)',
-  // Neutral grey for zero values
-  zero: 'rgba(255, 255, 255, 0.4)',
+  primary: `var(${COLOR_VARS.primary})`,
+  primaryLight: `var(${COLOR_VARS.primaryLight})`,
+  error: `var(${COLOR_VARS.error})`,
+  errorBg: `var(${COLOR_VARS.errorBg})`,
+  errorBorder: `var(${COLOR_VARS.errorBorder})`,
+  success: `var(${COLOR_VARS.success})`,
+  danger: `var(${COLOR_VARS.danger})`,
+  warning: `var(${COLOR_VARS.warning})`,
+  debt: `var(${COLOR_VARS.debt})`,
+  debtBg: `var(${COLOR_VARS.debtBg})`,
+  debtBorder: `var(${COLOR_VARS.debtBorder})`,
+  zero: `var(${COLOR_VARS.zero})`,
 }
 
 // Tentative value styling - for unsaved/projected/draft values
@@ -277,7 +276,7 @@ export const dropZoneLabel: CSSProperties = {
   transform: 'translate(-50%, -50%)',
   fontSize: '0.75rem',
   opacity: 0.7,
-  background: 'var(--background, #1a1a1a)',
+  background: 'var(--surface-base)',
   padding: '0 0.5rem',
   whiteSpace: 'nowrap',
 }

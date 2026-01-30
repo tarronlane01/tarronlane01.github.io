@@ -81,9 +81,9 @@ export function SettingsCategoryGroupRows({
   const groupHeaderCellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
     marginTop: isFirstGroup ? 0 : '1.25rem',
-    borderTop: '1px solid rgba(255,255,255,0.2)',
+    borderTop: '1px solid var(--border-medium)',
     borderBottom: groupTotalRowBorder,
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--row-alt-bg)',
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.9rem',
@@ -182,9 +182,9 @@ export function SettingsCategoryGroupRows({
           gridColumn: '1 / -1',
           padding: '0.6rem 0.5rem',
           marginTop: isFirstGroup ? 0 : '1.25rem',
-          borderTop: '1px solid rgba(255,255,255,0.2)',
+          borderTop: '1px solid var(--border-medium)',
           borderBottom: groupTotalRowBorder,
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--row-alt-bg)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 600, opacity: isUngrouped ? 0.7 : 1, whiteSpace: 'nowrap' }}>

@@ -85,7 +85,7 @@ export function SubCheckRow({ check, disabled }: SubCheckRowProps) {
             onClick={() => { logUserAction('CLICK', `Fix ${check.name}`); check.onFix!() }}
             disabled={isDisabled}
             style={{
-              background: '#646cff',
+              background: 'var(--color-primary)',
               color: 'white',
               border: 'none',
               padding: '0.25rem 0.5rem',

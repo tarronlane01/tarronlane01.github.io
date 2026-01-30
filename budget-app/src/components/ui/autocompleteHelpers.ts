@@ -176,10 +176,10 @@ export const dropdownContainerStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   marginTop: '4px',
-  background: 'var(--background, #1a1a1a)',
+  background: 'var(--surface-base)',
   border: '1px solid color-mix(in srgb, currentColor 20%, transparent)',
   borderRadius: '6px',
-  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+  boxShadow: `0 4px 12px var(--shadow-overlay)`,
   zIndex: 1000,
 }
 

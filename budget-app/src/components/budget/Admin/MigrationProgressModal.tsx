@@ -25,7 +25,7 @@ export function MigrationProgressModal() {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
+        background: 'var(--modal-backdrop)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -36,13 +36,13 @@ export function MigrationProgressModal() {
     >
       <div
         style={{
-          background: '#1a1a1a',
-          color: 'rgba(255, 255, 255, 0.87)',
+          background: 'var(--surface-base)',
+          color: 'var(--text-primary)',
           borderRadius: '16px',
           padding: '2rem',
           width: '32rem',
           maxWidth: 'calc(100vw - 2rem)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+          boxShadow: '0 8px 32px var(--shadow-overlay)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -82,7 +82,7 @@ export function MigrationProgressModal() {
           fontSize: '1rem',
           fontWeight: 500,
           marginBottom: '1rem',
-          color: state.error ? '#ef4444' : state.isComplete ? '#22c55e' : 'inherit',
+          color: state.error ? 'var(--color-error)' : state.isComplete ? 'var(--color-success)' : 'inherit',
         }}>
           {state.error ? '❌ ' : state.isComplete ? '✅ ' : ''}
           {state.stage}
@@ -90,7 +90,7 @@ export function MigrationProgressModal() {
 
         {/* Progress Bar */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
+          background: 'var(--border-subtle)',
           borderRadius: '8px',
           height: '12px',
           overflow: 'hidden',
@@ -99,7 +99,7 @@ export function MigrationProgressModal() {
           {state.progress !== null ? (
             <div
               style={{
-                background: state.error ? '#ef4444' : state.isComplete ? '#22c55e' : '#646cff',
+                background: state.error ? 'var(--color-error)' : state.isComplete ? 'var(--color-success)' : 'var(--color-primary)',
                 height: '100%',
                 width: `${state.progress}%`,
                 transition: 'width 0.3s ease-out',
@@ -110,7 +110,7 @@ export function MigrationProgressModal() {
             // Indeterminate progress animation
             <div
               style={{
-                background: state.error ? '#ef4444' : '#646cff',
+                background: state.error ? 'var(--color-error)' : 'var(--color-primary)',
                 height: '100%',
                 width: '30%',
                 borderRadius: '8px',
@@ -148,12 +148,12 @@ export function MigrationProgressModal() {
         {/* Error Message */}
         {state.error && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            background: 'var(--color-error-bg)',
+            border: '1px solid var(--color-error-border)',
             borderRadius: '8px',
             padding: '0.75rem 1rem',
             fontSize: '0.9rem',
-            color: '#ef4444',
+            color: 'var(--color-error)',
           }}>
             {state.error}
           </div>
@@ -166,7 +166,7 @@ export function MigrationProgressModal() {
             style={{
               marginTop: '1.5rem',
               width: '100%',
-              background: state.error ? 'rgba(239, 68, 68, 0.2)' : '#646cff',
+              background: state.error ? 'var(--color-error-bg)' : 'var(--color-primary)',
               color: 'white',
               border: 'none',
               padding: '0.75rem 1.5rem',

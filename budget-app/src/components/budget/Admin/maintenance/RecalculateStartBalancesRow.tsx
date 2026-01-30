@@ -63,7 +63,7 @@ export function RecalculateStartBalancesRow({
             {result.monthsUpdated === 0 && <li>No changes needed</li>}
           </ul>
           {result.errors.length > 0 && (
-            <div style={{ marginTop: '0.5rem', color: '#ef4444' }}>
+            <div style={{ marginTop: '0.5rem', color: 'var(--color-error)' }}>
               <div>Errors ({result.errors.length}):</div>
               <ul style={{ margin: '0.25rem 0 0 0', paddingLeft: '1.25rem' }}>
                 {result.errors.slice(0, 3).map((err, i) => <li key={i}>{err}</li>)}
@@ -92,7 +92,7 @@ export function RecalculateStartBalancesRow({
 
     return (
       <div style={{ fontSize: '0.85rem' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#fbbf24' }}>Months needing recalculation:</div>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--color-warning)' }}>Months needing recalculation:</div>
         <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
           <li>{status!.monthsNeedingRecalculation} month(s) from first month up to earliest window month</li>
         </ul>

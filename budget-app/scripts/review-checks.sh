@@ -1,20 +1,41 @@
 #!/bin/bash
 
-# Code quality checks for review process
-# Validates code quality patterns before deployment
-# This script should be run during the review process (ai/review.md)
-
-set -e
+# Combined review checks for the budget-app
+# Run from budget-app directory: bash scripts/review-checks.sh
+# Referenced by ai/review.md and scripts/publish.sh
+#
+# Runs: file length, color constants, console.log, deep imports, barrel imports
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR="$SCRIPT_DIR/../src"
+BUDGET_APP_DIR="$(dirname "$SCRIPT_DIR")"
+SRC_DIR="$BUDGET_APP_DIR/src"
 EXIT_CODE=0
 
-echo "🔍 Running code quality checks..."
+echo "🔍 Running all review checks..."
 echo ""
 
 # =============================================================================
-# Check 1: Console.log statements outside allowed files
+# Check 1: File length (max 400 lines per .ts/.tsx)
+# =============================================================================
+echo "📋 Check 1: File length..."
+if bash "$SCRIPT_DIR/check-file-length.sh"; then
+  echo "✅ File length check passed"
+else
+  EXIT_CODE=1
+fi
+echo ""
+
+# =============================================================================
+# Check 2: Colors only in constants/colors.ts and index.css
+# =============================================================================
+echo "📋 Check 2: Theme colors (no raw hex/rgba outside constants/colors.ts and index.css)..."
+if ! node "$SCRIPT_DIR/check-colors.cjs"; then
+  EXIT_CODE=1
+fi
+echo ""
+
+# =============================================================================
+# Check 3: Console.log statements outside allowed files
 # =============================================================================
 # Note: console.error and console.warn are allowed everywhere for error handling
 # Only console.log is restricted to specific logging files:
@@ -54,9 +75,9 @@ fi
 echo ""
 
 # =============================================================================
-# Check 2: Deep relative imports (4+ levels should use aliases)
+# Check 4: Deep relative imports (4+ levels should use aliases)
 # =============================================================================
-echo "📋 Checking for deep relative imports..."
+echo "📋 Check 4: Deep relative imports..."
 
 # Find imports with 4+ parent directory traversals (../../../../)
 DEEP_IMPORTS=$(grep -rn "from '\.\./\.\./\.\./\.\./" "$SRC_DIR" \
@@ -77,9 +98,9 @@ fi
 echo ""
 
 # =============================================================================
-# Check 3: Direct imports that bypass barrel files
+# Check 5: Direct imports that bypass barrel files
 # =============================================================================
-echo "📋 Checking for imports bypassing barrel files..."
+echo "📋 Check 5: Imports bypassing barrel files..."
 
 # Check for direct imports to ui components (should use @components/ui or ../ui)
 BYPASS_VIOLATIONS=$(grep -rn "from '.*components/ui/[A-Z]" "$SRC_DIR" \
@@ -104,9 +125,9 @@ echo ""
 # Summary
 # =============================================================================
 if [ $EXIT_CODE -eq 0 ]; then
-  echo "✅ All code quality checks passed!"
+  echo "✅ All review checks passed!"
 else
-  echo "❌ Code quality checks failed. Please fix the issues above."
+  echo "❌ Some review checks failed. Please fix the issues above."
 fi
 
 exit $EXIT_CODE

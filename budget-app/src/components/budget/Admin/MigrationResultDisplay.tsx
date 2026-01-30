@@ -34,22 +34,22 @@ function MigrationResultItem({ result, isLast }: { result: BudgetMigrationResult
         marginBottom: isLast ? 0 : '0.5rem',
         borderRadius: '4px',
         background: hasError
-          ? 'rgba(220, 38, 38, 0.1)'
+          ? 'var(--color-error-bg)'
           : isSkipped
-            ? 'rgba(100, 100, 100, 0.1)'
-            : 'rgba(34, 197, 94, 0.1)',
+            ? 'var(--row-alt-bg)'
+            : 'var(--color-success-bg)',
         border: hasError
-          ? '1px solid rgba(220, 38, 38, 0.3)'
+          ? '1px solid var(--color-error-border)'
           : isSkipped
-            ? '1px solid rgba(100, 100, 100, 0.3)'
-            : '1px solid rgba(34, 197, 94, 0.3)',
+            ? '1px solid var(--border-strong)'
+            : '1px solid var(--color-success-border)',
       }}
     >
       <div style={{ fontWeight: 500 }}>
         {hasError ? '❌' : isSkipped ? '⏭️' : '✅'} {result.budgetName}
       </div>
       {hasError ? (
-        <div style={{ fontSize: '0.85rem', opacity: 0.8, color: '#f87171' }}>
+        <div style={{ fontSize: '0.85rem', opacity: 0.8, color: 'var(--color-error)' }}>
           Error: {result.error}
         </div>
       ) : isSkipped ? (

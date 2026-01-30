@@ -40,7 +40,7 @@ export function SettingsCategoryStatsHeader({
         gap: '0.5rem 1rem',
         fontSize: '0.85rem',
         paddingBottom: '0.5rem',
-        borderBottom: '1px solid rgba(255,255,255,0.15)',
+        borderBottom: '1px solid var(--border-medium)',
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
           <span style={{ fontWeight: 600 }}>Categories:</span>
@@ -48,14 +48,14 @@ export function SettingsCategoryStatsHeader({
             <span style={{ opacity: 0.6 }}>On Budget: </span>
             <span style={{ color: getBalanceColor(onBudgetTotal), fontWeight: 600 }}>{formatStatsCurrency(onBudgetTotal)}</span>
           </span>
-          <span style={{ opacity: relationshipMismatch ? 1 : 0.5, color: relationshipMismatch ? '#ef4444' : undefined, fontWeight: relationshipMismatch ? 700 : undefined }}>
+          <span style={{ opacity: relationshipMismatch ? 1 : 0.5, color: relationshipMismatch ? 'var(--color-error)' : undefined, fontWeight: relationshipMismatch ? 700 : undefined }}>
             {relationshipMismatch ? '≠' : '='}
           </span>
           <span>
             <span style={{ opacity: 0.6 }}>Allocated: </span>
             <span style={{ color: getAllocatedColor(allocated), fontWeight: 600 }}>{formatStatsCurrency(allocated)}</span>
           </span>
-          <span style={{ opacity: relationshipMismatch ? 1 : 0.5, color: relationshipMismatch ? '#ef4444' : undefined, fontWeight: relationshipMismatch ? 700 : undefined }}>
+          <span style={{ opacity: relationshipMismatch ? 1 : 0.5, color: relationshipMismatch ? 'var(--color-error)' : undefined, fontWeight: relationshipMismatch ? 700 : undefined }}>
             +
           </span>
           <span>
@@ -64,12 +64,12 @@ export function SettingsCategoryStatsHeader({
           </span>
           {/* Warnings disabled per user request */}
           {/* {relationshipMismatch && (
-            <span style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-error)', fontSize: '0.75rem', fontWeight: 600 }}>
               ⚠️ Mismatch: {formatCurrency(Math.abs(onBudgetTotal - (allocated + unallocated)))}
             </span>
           )}
           {calculationMismatch && !relationshipMismatch && (
-            <span style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 600 }}>
               ⚠️ Balance sync issue
             </span>
           )} */}

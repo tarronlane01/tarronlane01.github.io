@@ -126,7 +126,7 @@ export function MonthPicker({
                 padding: '0.35rem 0.25rem',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 fontSize: '0.7rem',
-                color: isSelected ? '#fff' : 'inherit',
+                color: isSelected ? 'var(--color-primary-on-primary)' : 'inherit',
                 opacity: isDisabled ? 0.3 : 1,
                 transition: 'background 0.15s',
               }}
@@ -150,7 +150,7 @@ export function MonthPicker({
           padding: '0.5rem',
           cursor: isSelectedValid ? 'pointer' : 'not-allowed',
           fontSize: '0.85rem',
-          color: isSelectedValid ? '#fff' : 'inherit',
+          color: isSelectedValid ? 'var(--color-primary-on-primary)' : 'inherit',
           fontWeight: 500,
           opacity: isSelectedValid ? 1 : 0.5,
         }}

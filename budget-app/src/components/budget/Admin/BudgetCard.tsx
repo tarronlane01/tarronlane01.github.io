@@ -37,10 +37,10 @@ export function BudgetCard({
   return (
     <div style={{
       background: isCurrent
-        ? 'color-mix(in srgb, #646cff 15%, transparent)'
+        ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
         : 'color-mix(in srgb, currentColor 8%, transparent)',
       border: isCurrent
-        ? '2px solid color-mix(in srgb, #646cff 50%, transparent)'
+        ? '2px solid color-mix(in srgb, var(--color-primary) 50%, transparent)'
         : '1px solid transparent',
       padding: '1rem',
       borderRadius: '8px',
@@ -71,7 +71,7 @@ export function BudgetCard({
               type="submit"
               disabled={isRenaming || !editName.trim()}
               style={{
-                background: '#22c55e',
+                background: 'var(--color-success)',
                 color: 'white',
                 border: 'none',
                 padding: '0.4rem 0.75rem',
@@ -129,8 +129,8 @@ export function BudgetCard({
               )}
               {isCurrent && (
                 <span style={{
-                  background: 'color-mix(in srgb, #22c55e 20%, transparent)',
-                  color: '#4ade80',
+                  background: 'color-mix(in srgb, var(--color-success) 20%, transparent)',
+                  color: 'var(--color-success)',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '4px',
                   fontSize: '0.65rem',
@@ -142,8 +142,8 @@ export function BudgetCard({
               )}
               {budget.isPending && (
                 <span style={{
-                  background: 'color-mix(in srgb, #f59e0b 20%, transparent)',
-                  color: '#fbbf24',
+                  background: 'color-mix(in srgb, var(--color-warning) 20%, transparent)',
+                  color: 'var(--color-warning)',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '4px',
                   fontSize: '0.65rem',
@@ -182,7 +182,7 @@ export function BudgetCard({
                 onClick={onAccept}
                 disabled={isAccepting}
                 style={{
-                  background: '#22c55e',
+                  background: 'var(--color-success)',
                   color: 'white',
                   border: 'none',
                   padding: '0.5rem 1rem',
@@ -200,7 +200,7 @@ export function BudgetCard({
                 onClick={onSwitch}
                 disabled={isSwitching}
                 style={{
-                  background: '#646cff',
+                  background: 'var(--color-primary)',
                   color: 'white',
                   border: 'none',
                   padding: '0.5rem 1rem',

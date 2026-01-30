@@ -30,7 +30,7 @@ const columnHeaderStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   padding: '0.5rem',
-  borderBottom: '2px solid rgba(255,255,255,0.2)',
+  borderBottom: '2px solid var(--border-medium)',
 }
 
 // Helper color functions
@@ -118,8 +118,8 @@ export function MonthAccounts() {
   // Grand totals row style - distinct outline
   const grandTotalsCellStyle: React.CSSProperties = {
     ...cellStyle,
-    borderTop: '2px solid rgba(255,255,255,0.3)',
-    borderBottom: '2px solid rgba(255,255,255,0.3)',
+    borderTop: '2px solid var(--border-strong)',
+    borderBottom: '2px solid var(--border-strong)',
     fontWeight: 600,
   }
 
@@ -137,7 +137,7 @@ export function MonthAccounts() {
           position: 'sticky',
           top: 0,
           zIndex: 49,
-          backgroundColor: '#242424',
+          backgroundColor: 'var(--sticky-header-bg)',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
@@ -189,27 +189,27 @@ export function MonthAccounts() {
                 {/* Total - sum of all uncleared balances */}
                 {Object.keys(accountClearedBalances).length > 0
                   ? formatSignedCurrency(Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0))
-                  : <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>}
+                  : <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
                 {/* Cleared total - show dash if same as total */}
                 {(() => {
-                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                   const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
                   const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
                   return Math.abs(unclearedTotal - clearedTotal) < 0.01
-                    ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                    ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                     : formatSignedCurrency(clearedTotal)
                 })()}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
                 {/* Uncleared total (difference) - show dash if same as cleared */}
                 {(() => {
-                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span>
+                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
                   const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
                   const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
                   const difference = unclearedTotal - clearedTotal
-                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: '#9ca3af' }}>—</span> : formatSignedCurrencyAlways(difference)
+                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span> : formatSignedCurrencyAlways(difference)
                 })()}
               </div>
             </>
@@ -223,8 +223,8 @@ export function MonthAccounts() {
               fontSize: '0.85rem',
               paddingTop: '0.5rem',
               paddingBottom: '0.5rem',
-              borderTop: '2px solid rgba(255,255,255,0.3)',
-              borderBottom: '2px solid rgba(255,255,255,0.3)',
+              borderTop: '2px solid var(--border-strong)',
+              borderBottom: '2px solid var(--border-strong)',
             }}>
               <span style={{ fontWeight: 600 }}>Grand Totals:</span>
               <AccountStatsRow totals={accountBalanceTotals} />

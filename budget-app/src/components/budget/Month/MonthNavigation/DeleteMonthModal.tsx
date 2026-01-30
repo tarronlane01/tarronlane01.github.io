@@ -29,13 +29,13 @@ export function DeleteMonthModal({
       title="🗑️ Delete Month?"
     >
       <div style={{
-        background: 'color-mix(in srgb, #ef4444 15%, transparent)',
-        border: '1px solid color-mix(in srgb, #ef4444 40%, transparent)',
+        background: 'color-mix(in srgb, var(--color-error) 15%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-error) 40%, transparent)',
         borderRadius: '8px',
         padding: '1rem',
         marginBottom: '1rem',
       }}>
-        <p style={{ margin: 0, color: '#fca5a5', fontWeight: 500, fontSize: '0.95rem' }}>
+        <p style={{ margin: 0, color: 'var(--color-error-light)', fontWeight: 500, fontSize: '0.95rem' }}>
           ⚠️ This will permanently delete {MONTH_NAMES[month - 1]} {year}!
         </p>
       </div>
