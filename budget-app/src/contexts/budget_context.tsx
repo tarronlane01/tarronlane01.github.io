@@ -75,6 +75,8 @@ interface BudgetContextType {
   currentYear: number
   currentMonthNumber: number
   lastActiveTab: BudgetTab
+  lastBalancesTab: BudgetTab
+  lastTransactionsTab: BudgetTab
   lastSettingsTab: SettingsTab
   lastAdminTab: AdminTab
 
@@ -121,15 +123,15 @@ interface BudgetContextType {
   clearCache: () => void
 }
 
-// ============================================================================
-// DEFAULT CONTEXT VALUE
-// ============================================================================
+// --- DEFAULT CONTEXT VALUE ---
 const defaultContextValue: BudgetContextType = {
   currentUserId: null,
   selectedBudgetId: null,
   currentYear: new Date().getFullYear(),
   currentMonthNumber: new Date().getMonth() + 1,
   lastActiveTab: 'categories',
+  lastBalancesTab: 'categories',
+  lastTransactionsTab: 'income',
   lastSettingsTab: 'categories',
   lastAdminTab: 'budget',
   currentViewingDocument: { type: null },
@@ -160,9 +162,7 @@ const defaultContextValue: BudgetContextType = {
 
 const BudgetContext = createContext<BudgetContextType>(defaultContextValue)
 
-// ============================================================================
-// PROVIDER COMPONENT
-// ============================================================================
+// --- PROVIDER ---
 export function BudgetProvider({ children }: { children: ReactNode }) {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
@@ -171,7 +171,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
-  const [lastActiveTab, setLastActiveTab] = useState<BudgetTab>('categories')
+  const [lastActiveTab, setLastActiveTabState] = useState<BudgetTab>('categories')
+  const [lastBalancesTab, setLastBalancesTab] = useState<BudgetTab>('categories')
+  const [lastTransactionsTab, setLastTransactionsTab] = useState<BudgetTab>('income')
+  const setLastActiveTab = useCallback((tab: BudgetTab) => {
+    setLastActiveTabState(tab)
+    if (tab === 'categories' || tab === 'accounts') setLastBalancesTab(tab)
+    else setLastTransactionsTab(tab)
+  }, [])
   const [lastSettingsTab, setLastSettingsTab] = useState<SettingsTab>('categories')
   const [lastAdminTab, setLastAdminTab] = useState<AdminTab>('budget')
 
@@ -336,22 +343,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     }
   }, [current_user])
 
-  // ==========================================================================
-  // CACHE UTILITIES
-  // ==========================================================================
-  // Clear in-memory cache - should be followed by page reload
-  const clearCache = useCallback(() => {
-    queryClient.clear()
-  }, [])
-  // ==========================================================================
-  // CONTEXT VALUE
-  // ==========================================================================
+  const clearCache = useCallback(() => queryClient.clear(), [])
   const contextValue: BudgetContextType = {
     currentUserId: current_user?.uid || null,
     selectedBudgetId,
     currentYear,
     currentMonthNumber,
     lastActiveTab,
+    lastBalancesTab,
+    lastTransactionsTab,
     lastSettingsTab,
     lastAdminTab,
     currentViewingDocument,
@@ -386,9 +386,6 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     </BudgetContext.Provider>
   )
 }
-// =============================================================================
-// HOOK
-// =============================================================================
 // eslint-disable-next-line react-refresh/only-export-components
 export function useBudget() {
   const context = useContext(BudgetContext)

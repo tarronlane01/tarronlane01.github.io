@@ -1,17 +1,11 @@
 # doing
 
-All text needs to be visible in both light and dark themes. Have common functions to get text and background colors that will work correctly in light and dark themes
-
-- [ ] confirm that the keeping-in-sync works
-
-- [ ] Refactor everything to use the new system
-- [ ] Check through app in light mode
-- [ ] check through app in dark mode
-
+- [ ] Transfers from category to category (no account involved) should auto set to cleared
+- [ ] On the month / transactions tab its not remembering which tab I'm on, when going back and forth between balances. Same issue for balances side of things. It won't remember which balances tab I'm on. Is should remember until the user refreshes the browser.
+- [ ] grant total value on month balances page should be colored red or green depending on balance (grey if zero). Maybe we need to use a different function to format the currency
+- [ ] account flags not using consistent badges (sometimes has type, sometimes doesn't). We should NOT have (TYPE) in the badge.
 
 # Critical
-
-# This Session
 
 Check draft save button on allocations, or have it automatically save on edit (every couple seconds if there's a difference)?
 
@@ -22,6 +16,7 @@ Transfer cleared button not working as intended
 Maybe we take all the totals and balances and never save those to firebase, instead always recalculating them on inital app load, storing them elsewhere for just the app session. That would save us having to do periodic saves and reconcilliations and manage cache for balances and cascading tracking of what needs resaved because the balance is new, right? Any issues in this plan? Don't make any changes yet, just let me know what this plan misses.
 
 # non-critical
+
 
 Click on account or category to edit
 

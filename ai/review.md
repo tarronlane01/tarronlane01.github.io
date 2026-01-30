@@ -11,7 +11,7 @@ When pointed to this file, AI should do the following:
 5. Make sure all errors are shown via the common bottom banner system (abbreviated) with the full error message being shown in the console
 6. Run review checks and fix any issues:
    - Run `bash budget-app/scripts/review-checks.sh` from the repo root (or `bash scripts/review-checks.sh` from the budget-app directory). This runs:
-     - File length (no .ts/.tsx over 400 lines)
+     - File length (no .ts/.tsx over 400 lines) Shorten files by modularizing code, not by stripping comments or useful information.
      - Theme colors (no raw hex/rgba outside `src/constants/colors.ts` and `src/index.css`; every color in constants must have light and dark)
      - Rogue console.log statements (outside allowed files)
      - Deep relative imports (4+ levels - should use path aliases)

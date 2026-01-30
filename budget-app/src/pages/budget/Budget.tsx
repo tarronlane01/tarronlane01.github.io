@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
 import { useBudgetData, useMonthData, useMonthPrefetch, useStaleDataRefresh } from '@hooks'
@@ -49,6 +49,8 @@ function Budget() {
     currentYear,
     currentMonthNumber,
     lastActiveTab,
+    lastBalancesTab,
+    lastTransactionsTab,
     setCurrentYear,
     setCurrentMonthNumber,
     setLastActiveTab,
@@ -95,15 +97,22 @@ function Budget() {
     }
   }, [urlError, searchParams, setSearchParams])
 
-  const [activeTab, setActiveTabLocal] = useState<BudgetTab>(() => {
+  // Derive current tab from URL (same pattern as Admin/Settings)
+  const currentTab: BudgetTab = useMemo(() => {
     const { tab } = parsePathParams(params)
     return tab ?? lastActiveTab
-  })
+  }, [params, lastActiveTab])
 
   const setActiveTab = (tab: BudgetTab) => {
-    setActiveTabLocal(tab)
+    navigate(`/budget/${currentYear}/${currentMonthNumber}/${tab}`)
     setLastActiveTab(tab)
   }
+
+  // Save current tab to context when it changes (same pattern as Admin/Settings)
+  useEffect(() => {
+    const { tab } = parsePathParams(params)
+    if (tab != null) setLastActiveTab(currentTab)
+  }, [currentTab, params, setLastActiveTab])
 
   // Initialize from URL params
   useEffect(() => {
@@ -117,12 +126,12 @@ function Budget() {
   // Sync URL with current state
   useEffect(() => {
     if (!urlInitializedRef.current) return
-    const newPath = `/budget/${currentYear}/${currentMonthNumber}/${activeTab}`
+    const newPath = `/budget/${currentYear}/${currentMonthNumber}/${currentTab}`
     const currentPath = `/budget/${params.year}/${params.month}/${params.tab}`
     if (newPath !== currentPath) {
       navigate(newPath, { replace: true })
     }
-  }, [currentYear, currentMonthNumber, activeTab, navigate, params])
+  }, [currentYear, currentMonthNumber, currentTab, navigate, params])
 
   // Load month data only after budget data AND initial data load are complete
   // This ensures the cache is populated before useMonthData tries to access it
@@ -277,17 +286,19 @@ function Budget() {
       />
 
       <BudgetTabs
-        activeTab={activeTab}
+        activeTab={currentTab}
         setActiveTab={setActiveTab}
+        lastBalancesTab={lastBalancesTab}
+        lastTransactionsTab={lastTransactionsTab}
         allocationsFinalized={currentMonth?.are_allocations_finalized}
       />
 
-      {activeTab === 'income' && <MonthIncome key={`${currentYear}-${currentMonthNumber}`} />}
-      {activeTab === 'categories' && <MonthCategories key={`${currentYear}-${currentMonthNumber}`} />}
-      {activeTab === 'accounts' && <MonthAccounts key={`${currentYear}-${currentMonthNumber}`} />}
-      {activeTab === 'spend' && <MonthSpend key={`${currentYear}-${currentMonthNumber}`} />}
-      {activeTab === 'transfers' && <MonthTransfers key={`${currentYear}-${currentMonthNumber}`} />}
-      {activeTab === 'adjustments' && <MonthAdjustments key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'income' && <MonthIncome key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'categories' && <MonthCategories key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'accounts' && <MonthAccounts key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'spend' && <MonthSpend key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'transfers' && <MonthTransfers key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'adjustments' && <MonthAdjustments key={`${currentYear}-${currentMonthNumber}`} />}
     </>
   )
 }

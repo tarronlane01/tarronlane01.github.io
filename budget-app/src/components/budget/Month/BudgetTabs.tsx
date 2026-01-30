@@ -18,19 +18,17 @@ const TAB_TO_SECTION: Record<BudgetTab, TopLevelSection> = {
   adjustments: 'transactions',
 }
 
-// Default sub-tab for each section
-const SECTION_DEFAULT_TAB: Record<TopLevelSection, BudgetTab> = {
-  balances: 'categories',
-  transactions: 'income',
-}
-
 interface BudgetTabsProps {
   activeTab: BudgetTab
   setActiveTab: (tab: BudgetTab) => void
+  /** Last sub-tab used in Balances section (remembered when switching sections). */
+  lastBalancesTab: BudgetTab
+  /** Last sub-tab used in Transactions section (remembered when switching sections). */
+  lastTransactionsTab: BudgetTab
   allocationsFinalized?: boolean
 }
 
-export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: BudgetTabsProps) {
+export function BudgetTabs({ activeTab, setActiveTab, lastBalancesTab, lastTransactionsTab, allocationsFinalized }: BudgetTabsProps) {
   const activeSection = TAB_TO_SECTION[activeTab]
 
   // Top-level tabs
@@ -58,8 +56,9 @@ export function BudgetTabs({ activeTab, setActiveTab, allocationsFinalized }: Bu
   ], [])
 
   const handleTopTabChange = (sectionId: string) => {
-    // Switch to the default sub-tab for the selected section
-    setActiveTab(SECTION_DEFAULT_TAB[sectionId as TopLevelSection])
+    const section = sectionId as TopLevelSection
+    const remembered = section === 'balances' ? lastBalancesTab : lastTransactionsTab
+    setActiveTab(remembered)
   }
 
   const subTabs = activeSection === 'balances' ? balancesTabs : transactionsTabs
