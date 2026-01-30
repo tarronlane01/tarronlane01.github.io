@@ -27,7 +27,7 @@ export function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
       <AccountBadge
         key="inactive"
         icon="⏸️"
-        label={isFromGroup ? "Inactive (type)" : "Inactive"}
+        label="Inactive"
         variant="warning"
         title={isFromGroup ? `Set by "${group!.name}" account type` : "Account is inactive/archived"}
       />
@@ -41,7 +41,7 @@ export function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
       <AccountBadge
         key="off-budget"
         icon="📊"
-        label={isFromGroup ? "Off Budget (type)" : "Off Budget"}
+        label="Off Budget"
         variant="warning"
         title={isFromGroup ? `Set by "${group!.name}" account type` : "Tracking only - not included in budget"}
       />

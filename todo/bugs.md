@@ -1,7 +1,6 @@
 # doing
 
-- [ ] Transfers from category to category (no account involved) should auto set to cleared
-- [ ] account flags not using consistent badges (sometimes has type, sometimes doesn't). We should NOT have (TYPE) in the badge.
+- [ ] Transfers from category to category (no account involved) should auto set to cleared. We should also allow clearing a transaction by clicking on it without having to click edit first
 
 # Critical
 
