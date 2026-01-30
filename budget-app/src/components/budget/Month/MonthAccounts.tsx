@@ -107,6 +107,12 @@ export function MonthAccounts() {
   // Net change = income + expenses (expenses is negative for money out)
   const netChangeTotal = accountBalanceTotals.income + accountBalanceTotals.expenses
 
+  // Total uncleared (sum of all uncleared balances) for Grand Totals row
+  const totalUncleared = useMemo(() => {
+    if (Object.keys(accountClearedBalances).length === 0) return null
+    return Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
+  }, [accountClearedBalances])
+
   // Shared cell style for data rows
   const cellStyle: React.CSSProperties = {
     padding: '0.6rem 0.5rem',
@@ -185,10 +191,14 @@ export function MonthAccounts() {
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.end) }}>
                 {formatSignedCurrency(accountBalanceTotals.end)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
+              <div style={{
+                ...grandTotalsCellStyle,
+                justifyContent: 'flex-end',
+                color: totalUncleared !== null ? getBalanceColor(totalUncleared) : undefined,
+              }}>
                 {/* Total - sum of all uncleared balances */}
-                {Object.keys(accountClearedBalances).length > 0
-                  ? formatSignedCurrency(Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0))
+                {totalUncleared !== null
+                  ? formatSignedCurrency(totalUncleared)
                   : <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>}
               </div>
               <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>

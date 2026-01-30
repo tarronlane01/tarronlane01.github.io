@@ -1,8 +1,6 @@
 # doing
 
 - [ ] Transfers from category to category (no account involved) should auto set to cleared
-- [ ] On the month / transactions tab its not remembering which tab I'm on, when going back and forth between balances. Same issue for balances side of things. It won't remember which balances tab I'm on. Is should remember until the user refreshes the browser.
-- [ ] grant total value on month balances page should be colored red or green depending on balance (grey if zero). Maybe we need to use a different function to format the currency
 - [ ] account flags not using consistent badges (sometimes has type, sometimes doesn't). We should NOT have (TYPE) in the badge.
 
 # Critical
