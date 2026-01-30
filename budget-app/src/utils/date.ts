@@ -16,6 +16,28 @@ export function getPreviousMonth(year: number, month: number): { year: number; m
 }
 
 /**
+ * Get year and month N months before the given month.
+ * @param year - Current year
+ * @param month - Current month (1-12)
+ * @param monthsBack - Number of months to go back (1 = previous month, 2 = two months ago, etc.)
+ * @returns Year and month for the target month, or null if monthsBack < 1
+ */
+export function getMonthsBack(year: number, month: number, monthsBack: number): { year: number; month: number } | null {
+  if (monthsBack < 1) return null
+  let y = year
+  let m = month
+  for (let i = 0; i < monthsBack; i++) {
+    if (m === 1) {
+      y -= 1
+      m = 12
+    } else {
+      m -= 1
+    }
+  }
+  return { year: y, month: m }
+}
+
+/**
  * Get next month's year and month
  * @param year - Current year
  * @param month - Current month (1-12)

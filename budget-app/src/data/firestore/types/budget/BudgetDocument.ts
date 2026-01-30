@@ -34,6 +34,13 @@ export interface Budget {
    */
   month_map: MonthMap
 
+  /**
+   * Number of months back to use for percentage-based allocation income.
+   * E.g. 1 = use previous month's income; 2 = use income from two months ago.
+   * Default 1. When changed, only non-finalized allocation calculations use the new value.
+   */
+  percentage_income_months_back?: number
+
   created_at?: string
   updated_at?: string
 }

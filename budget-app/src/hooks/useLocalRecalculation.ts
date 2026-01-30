@@ -12,7 +12,7 @@ import { recalculateMonth, extractSnapshotFromMonth, type PreviousMonthSnapshot,
 import { readMonth } from '@data/queries/month'
 import type { MonthDocument } from '@types'
 import type { MonthQueryData } from '@data/queries/month'
-import { getPreviousMonth } from '@utils'
+import { getPreviousMonth, getMonthsBack, roundCurrency } from '@utils'
 
 /**
  * Recalculate a single month locally and update the cache.
@@ -112,6 +112,66 @@ async function getPreviousMonthSnapshot(
 
   // No previous month found - use empty snapshot
   return EMPTY_SNAPSHOT
+}
+
+/**
+ * After changing the budget's "Income reference for % allocations (months back)" setting,
+ * recalculate all cached months locally so unfinalized months immediately show correct
+ * percentage-based allocation values. Uses only cached month data (no Firestore reads).
+ *
+ * @param budgetId - The budget ID
+ * @param monthsBack - New percentage_income_months_back value
+ * @param queryClient - React Query client
+ */
+export async function recalculateCachedMonthsForMonthsBackChange(
+  budgetId: string,
+  monthsBack: number,
+  queryClient: ReturnType<typeof useQueryClient>
+): Promise<void> {
+  const cache = queryClient.getQueryCache()
+  const monthQueries = cache.findAll({
+    predicate: (query) =>
+      query.queryKey[0] === 'month' &&
+      query.queryKey[1] === budgetId &&
+      query.state.status === 'success' &&
+      query.state.data != null,
+  })
+
+  if (monthQueries.length === 0) return
+
+  const entries: Array<{ year: number; month: number; monthDoc: MonthDocument }> = []
+  for (const q of monthQueries) {
+    const key = q.queryKey as readonly [string, string, number, number]
+    const year = key[2]
+    const month = key[3]
+    const data = queryClient.getQueryData<MonthQueryData>(q.queryKey)
+    if (data?.month) entries.push({ year, month, monthDoc: data.month })
+  }
+
+  entries.sort((a, b) => (a.year !== b.year ? a.year - b.year : a.month - b.month))
+  const byKey = new Map<string, MonthDocument>()
+  for (const { year, month, monthDoc } of entries) {
+    byKey.set(`${year}/${month}`, monthDoc)
+  }
+
+  let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
+
+  for (const { year, month, monthDoc } of entries) {
+    const target = getMonthsBack(year, month, monthsBack)
+    const newPreviousMonthIncome = target
+      ? (() => {
+          const targetDoc = byKey.get(`${target.year}/${target.month}`)
+          if (!targetDoc) return 0
+          const income = targetDoc.income || []
+          return roundCurrency(income.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+        })()
+      : 0
+
+    const recalculated = recalculateMonth(monthDoc, prevSnapshot, newPreviousMonthIncome)
+    const monthKey = queryKeys.month(budgetId, year, month)
+    queryClient.setQueryData<MonthQueryData>(monthKey, { month: recalculated })
+    prevSnapshot = extractSnapshotFromMonth(recalculated)
+  }
 }
 
 /**

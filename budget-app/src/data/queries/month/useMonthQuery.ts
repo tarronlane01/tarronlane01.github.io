@@ -20,7 +20,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys, STALE_TIME } from '@data/queryClient'
 import type { MonthDocument, FirestoreData } from '@types'
 import type { MonthQueryData } from './readMonth'
-import type { BudgetData } from '@data/queries/budget/fetchBudget'
+import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
 import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
@@ -40,7 +40,8 @@ async function parseMonthData(
   budgetId: string,
   year: number,
   month: number,
-  queryClient?: QueryClient
+  queryClient?: QueryClient,
+  monthsBack: number = 1
 ): Promise<MonthDocument> {
   const income = data.income || []
   const expenses = data.expenses || []
@@ -49,11 +50,8 @@ async function parseMonthData(
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Calculate previous_month_income from previous month's income array (not stored in Firestore)
-  // Falls back to stored value for backward compatibility during migration
-  const previousMonthIncome = data.previous_month_income !== undefined
-    ? data.previous_month_income as number // Use stored value if present (backward compatibility)
-    : await calculatePreviousMonthIncome(budgetId, year, month, queryClient)
+  // Always compute from income N months back so budget setting "Income reference for % allocations (months back)" is respected
+  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
   
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
@@ -92,7 +90,9 @@ async function parseMonthData(
 export async function readMonthDirect(
   budgetId: string,
   year: number,
-  month: number
+  month: number,
+  queryClient?: QueryClient,
+  monthsBack: number = 1
 ): Promise<MonthDocument | null> {
   const monthDocId = getMonthDocId(budgetId, year, month)
 
@@ -107,7 +107,7 @@ export async function readMonthDirect(
       return null
     }
 
-    return await parseMonthData(data, budgetId, year, month)
+    return await parseMonthData(data, budgetId, year, month, queryClient, monthsBack)
   } catch (error) {
     // Treat permission errors as "not found" - this allows month creation to proceed
     // This handles non-admin users reading non-existent months where the security
@@ -141,17 +141,23 @@ export async function fetchMonth(
   queryClient?: ReturnType<typeof useQueryClient>
 ): Promise<MonthDocument> {
   // CRITICAL: Check React Query cache first to use prefetched data
-  // This prevents duplicate reads when navigating to a prefetched month
+  // Initial load populates cache with months that have previous_month_income = 0 (not computed).
+  // Recompute previous_month_income from current budget setting so cached months show correct % allocations.
   if (queryClient) {
     const monthKey = queryKeys.month(budgetId, year, month)
     const cachedData = queryClient.getQueryData<MonthQueryData>(monthKey)
     if (cachedData?.month) {
-      return cachedData.month
+      const budgetData = await ensureBudgetInCache(budgetId, queryClient)
+      const monthsBack = budgetData.budget.percentage_income_months_back ?? 1 // legacy unmigrated budget only
+      const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
+      return { ...cachedData.month, previous_month_income: previousMonthIncome }
     }
   }
 
-  // Not in cache - read directly from Firestore (no fetchQuery to avoid deadlock)
-  const existingMonth = await readMonthDirect(budgetId, year, month)
+  // Not in cache - ensure budget in cache, then read month
+  const budgetData = queryClient ? await ensureBudgetInCache(budgetId, queryClient) : null
+  const monthsBack = budgetData?.budget.percentage_income_months_back ?? 1 // legacy unmigrated budget only
+  const existingMonth = await readMonthDirect(budgetId, year, month, queryClient, monthsBack)
 
   if (existingMonth) {
     return existingMonth
@@ -160,9 +166,8 @@ export async function fetchMonth(
   // Check if month exists in month_map before creating
   // If queryClient is provided, check cache first (faster)
   let monthExistsInMap = false
-  if (queryClient) {
-    const budgetData = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
-    if (budgetData?.monthMap) {
+  if (queryClient && budgetData) {
+    if (budgetData.monthMap) {
       const monthOrdinal = getYearMonthOrdinal(year, month)
       monthExistsInMap = monthOrdinal in budgetData.monthMap
     }

@@ -65,15 +65,17 @@ export const EMPTY_SNAPSHOT: PreviousMonthSnapshot = {
  * 3. Sets start_balance for accounts from previous month's end_balance
  * 4. Recalculates account income/expenses from transaction arrays
  * 5. Recalculates end_balance = start_balance + net_change (net_change = income + expenses)
- * 6. Sets previous_month_income
+ * 6. Sets previous_month_income (from incomeForPercentageAllocations when provided, else prevSnapshot.totalIncome)
  *
  * @param month - The month document to recalculate
  * @param prevSnapshot - Snapshot of previous month's end balances
+ * @param incomeForPercentageAllocations - Optional. When set (e.g. from budget.percentage_income_months_back), used for percentage-based allocation income instead of prevSnapshot.totalIncome.
  * @returns Recalculated month document (not saved - caller must save)
  */
 export function recalculateMonth(
   month: MonthDocument,
-  prevSnapshot: PreviousMonthSnapshot
+  prevSnapshot: PreviousMonthSnapshot,
+  incomeForPercentageAllocations?: number
 ): MonthDocument {
   // Recalculate totals from transactions (ensures totals match actual transactions)
   const income = month.income || []
@@ -103,11 +105,15 @@ export function recalculateMonth(
     prevSnapshot.accountEndBalances
   )
 
+  const previousMonthIncome = incomeForPercentageAllocations !== undefined
+    ? incomeForPercentageAllocations
+    : prevSnapshot.totalIncome
+
   return {
     ...month,
     total_income: totalIncome,
     total_expenses: totalExpenses,
-    previous_month_income: prevSnapshot.totalIncome,
+    previous_month_income: previousMonthIncome,
     category_balances: categoryBalances,
     account_balances: accountBalances,
     updated_at: new Date().toISOString(),

@@ -1,10 +1,10 @@
 # doing
 
-- [ ] Transfers from category to category (no account involved) should auto set to cleared. We should also allow clearing a transaction by clicking on it without having to click edit first
+- [ ] have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)
 
 # Critical
 
-Check draft save button on allocations, or have it automatically save on edit (every couple seconds if there's a difference)?
+
 
 Transfer cleared button not working as intended
 

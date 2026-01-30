@@ -85,6 +85,7 @@ export { useAdjustmentsToTransfersMigration, type AdjustmentsToTransfersStatus, 
 export { useAccountCategoryValidation, type ValidationStatus, type TransactionViolation } from './useAccountCategoryValidation'
 export { useRemoveTotalFieldsMigration, type RemoveTotalFieldsMigrationStatus, type RemoveTotalFieldsMigrationResult } from './useRemoveTotalFieldsMigration'
 export { useRemovePreviousMonthIncomeMigration, type RemovePreviousMonthIncomeMigrationStatus, type RemovePreviousMonthIncomeMigrationResult } from './useRemovePreviousMonthIncomeMigration'
+export { usePercentageIncomeMonthsBackMigration, type PercentageIncomeMonthsBackMigrationStatus, type PercentageIncomeMonthsBackMigrationResult } from './usePercentageIncomeMonthsBackMigration'
 export { useRecalculateStartBalancesMigration, type RecalculateStartBalancesMigrationStatus, type RecalculateStartBalancesMigrationResult } from './useRecalculateStartBalancesMigration'
 export { useRepairMonthMapMigration, type RepairMonthMapMigrationStatus, type RepairMonthMapMigrationResult } from './useRepairMonthMapMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'

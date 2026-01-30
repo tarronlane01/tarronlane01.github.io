@@ -13,7 +13,7 @@ import Account from './pages/Account'
 import Budget from './pages/budget/Budget'
 import Analytics from './pages/budget/Analytics'
 import MyBudgets from './pages/budget/MyBudgets'
-import { Settings, Accounts, Categories, Users as SettingsUsers } from './pages/budget/settings'
+import { Settings, General, Accounts, Categories, Users as SettingsUsers } from './pages/budget/settings'
 import { Admin, AdminBudget, AdminFeedback, AdminMigration, AdminTests } from './pages/budget/admin'
 import ProtectedRoute from './components/ProtectedRoute'
 import BudgetLayout from './components/BudgetLayout'
@@ -93,7 +93,8 @@ function BudgetAppContent() {
 
             {/* Budget Settings routes */}
             <Route path="settings" element={<Settings />}>
-              <Route index element={<Navigate to="categories" replace />} />
+              <Route index element={<Navigate to="general" replace />} />
+              <Route path="general" element={<General />} />
               <Route path="accounts" element={<Accounts />} />
               <Route path="categories" element={<Categories />} />
               <Route path="users" element={<SettingsUsers />} />

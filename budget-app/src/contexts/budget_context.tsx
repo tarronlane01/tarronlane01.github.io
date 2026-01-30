@@ -63,7 +63,7 @@ export type {
 // ============================================================================
 // Valid tabs for each section
 export type BudgetTab = 'income' | 'categories' | 'accounts' | 'spend' | 'transfers' | 'adjustments'
-export type SettingsTab = 'accounts' | 'categories' | 'users'
+export type SettingsTab = 'general' | 'accounts' | 'categories' | 'users'
 export type AdminTab = 'budget' | 'feedback' | 'migration' | 'tests'
 
 interface BudgetContextType {

@@ -20,6 +20,8 @@ import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 import { calculatePreviousMonthIncome } from './calculatePreviousMonthIncome'
+import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
+import { queryClient } from '@data/queryClient'
 
 /**
  * Parse raw Firestore data into a proper MonthDocument with all fields defaulted.
@@ -34,11 +36,10 @@ async function parseMonthData(data: FirestoreData, budgetId: string, year: numbe
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Calculate previous_month_income from previous month's income array (not stored in Firestore)
-  // Falls back to stored value for backward compatibility during migration
-  const previousMonthIncome = data.previous_month_income !== undefined
-    ? data.previous_month_income as number // Use stored value if present (backward compatibility)
-    : await calculatePreviousMonthIncome(budgetId, year, month)
+  // Always compute from income N months back (ignore any stored value; we never persist it)
+  const budgetData = await ensureBudgetInCache(budgetId, queryClient)
+  const monthsBack = budgetData.budget.percentage_income_months_back ?? 1
+  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
   
   const monthDoc: MonthDocument = {
     budget_id: budgetId,

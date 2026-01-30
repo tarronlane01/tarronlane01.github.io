@@ -11,7 +11,7 @@
 import type { MonthDocument, FirestoreData, CategoryMonthBalance, AccountMonthBalance, MonthMap } from '@types'
 import { isMonthAtOrBeforeWindow } from '@utils/window'
 import { readDocByPath, writeDocByPath, updateDocByPath } from '@firestore'
-import { getMonthDocId, getPreviousMonth, getYearMonthOrdinal } from '@utils'
+import { getMonthDocId, getMonthsBack, getPreviousMonth, getYearMonthOrdinal } from '@utils'
 import { MAX_FUTURE_MONTHS } from '@constants'
 import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
@@ -93,12 +93,13 @@ export async function createMonth(
 
   const nowIso = now.toISOString()
   const monthDocId = getMonthDocId(budgetId, year, month)
+  const percentageIncomeMonthsBack = (budgetData.percentage_income_months_back as number | undefined) ?? 1 // legacy unmigrated budget only
 
   let previousMonthIncome = 0
   let categoryStartBalances: Record<string, number> = {}
   let accountStartBalances: Record<string, number> = {}
 
-  // For months after January, get previous month data
+  // For months after January, get previous month data (for start balances and optionally for percentage income)
   // Check cache first, then use direct Firestore read if not in cache
   // IMPORTANT: Use direct Firestore read (not readMonth) to avoid caching null results.
   // If we cached null for a non-existent previous month, navigating to that month later
@@ -180,7 +181,30 @@ export async function createMonth(
           updated_at: prevData.updated_at,
         }
 
-        previousMonthIncome = prevMonthData.total_income
+        // Percentage-based allocation income: from N months back (per budget setting)
+        if (percentageIncomeMonthsBack === 1) {
+          previousMonthIncome = prevMonthData.total_income
+        } else {
+          const target = getMonthsBack(year, month, percentageIncomeMonthsBack)
+          if (target) {
+            const targetKey = queryKeys.month(budgetId, target.year, target.month)
+            const cachedTarget = queryClient.getQueryData<{ month: MonthDocument }>(targetKey)
+            if (cachedTarget?.month) {
+              previousMonthIncome = (cachedTarget.month.income || []).reduce((sum: number, inc: { amount?: number }) => sum + (inc.amount || 0), 0)
+            } else {
+              try {
+                const targetDocId = getMonthDocId(budgetId, target.year, target.month)
+                const { exists: targetExists, data: targetData } = await readDocByPath<FirestoreData>('months', targetDocId, 'fetching month for percentage income')
+                if (targetExists && targetData?.income) {
+                  previousMonthIncome = (targetData.income as { amount?: number }[]).reduce((sum: number, inc: { amount?: number }) => sum + (inc.amount || 0), 0)
+                }
+              } catch {
+                // Use 0 if we can't read the target month
+              }
+            }
+          }
+        }
+
         const { categoryEndBalances, accountEndBalances } = getEndBalancesFromMonth(prevMonthData)
         categoryStartBalances = categoryEndBalances
         accountStartBalances = accountEndBalances

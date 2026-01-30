@@ -35,7 +35,7 @@ export function getAllMonthOrdinals(monthMap: MonthMap): string[] {
 
 // === FETCH HELPERS ===
 
-export async function fetchMonth(budgetId: string, ordinal: string): Promise<MonthWithId | null> {
+export async function fetchMonth(budgetId: string, ordinal: string, monthsBack: number = 1): Promise<MonthWithId | null> {
   const { year, month } = parseOrdinal(ordinal)
   const monthKey = queryKeys.month(budgetId, year, month)
   
@@ -61,11 +61,8 @@ export async function fetchMonth(budgetId: string, ordinal: string): Promise<Mon
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Calculate previous_month_income from previous month's income array (not stored in Firestore)
-  // Falls back to stored value for backward compatibility during migration
-  const previousMonthIncome = data.previous_month_income !== undefined
-    ? data.previous_month_income as number // Use stored value if present (backward compatibility)
-    : await calculatePreviousMonthIncome(budgetId, year, month)
+  // Always compute from income N months back (ignore any stored value; we never persist it)
+  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, undefined, monthsBack)
   
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
@@ -96,13 +93,14 @@ export async function fetchMonth(budgetId: string, ordinal: string): Promise<Mon
 export async function fetchMonthsByOrdinals(
   budgetId: string,
   ordinals: string[],
-  onFetchProgress?: (fetched: number, total: number) => void
+  onFetchProgress?: (fetched: number, total: number) => void,
+  monthsBack: number = 1
 ): Promise<MonthWithId[]> {
   // Fetch all months in parallel for better performance
   onFetchProgress?.(0, ordinals.length)
 
   const results = await Promise.all(
-    ordinals.map(ordinal => fetchMonth(budgetId, ordinal))
+    ordinals.map(ordinal => fetchMonth(budgetId, ordinal, monthsBack))
   )
 
   onFetchProgress?.(ordinals.length, ordinals.length)

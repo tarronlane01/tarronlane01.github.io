@@ -54,6 +54,7 @@ export function useCreateBudget() {
         ],
         // Initialize month_map (empty for new budgets)
         month_map: {},
+        percentage_income_months_back: 1,
         created_at: now,
         updated_at: now,
       }

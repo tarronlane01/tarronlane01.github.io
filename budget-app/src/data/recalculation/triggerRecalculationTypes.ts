@@ -60,6 +60,7 @@ export interface BudgetDocument {
   category_groups: FirestoreData[]
   // Removed total_available and is_needs_recalculation - calculated/managed locally
   month_map?: FirestoreData
+  percentage_income_months_back?: number
   created_at?: string
   updated_at?: string
 }

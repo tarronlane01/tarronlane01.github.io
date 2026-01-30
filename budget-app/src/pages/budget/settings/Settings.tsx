@@ -5,7 +5,7 @@ import { useBudget, type SettingsTab } from '@contexts/budget_context'
 import { useBudgetData } from '@hooks'
 import { TabNavigation, type Tab, ContentContainer } from '@components/ui'
 
-const VALID_SETTINGS_TABS: SettingsTab[] = ['accounts', 'categories', 'users']
+const VALID_SETTINGS_TABS: SettingsTab[] = ['general', 'accounts', 'categories', 'users']
 
 function Settings() {
   const { addLoadingHold, removeLoadingHold } = useApp()
@@ -48,10 +48,11 @@ function Settings() {
   // Derive current tab from URL path
   const currentTab: SettingsTab = useMemo(() => {
     const path = location.pathname
+    if (path.includes('/settings/general')) return 'general'
     if (path.includes('/settings/accounts')) return 'accounts'
     if (path.includes('/settings/categories')) return 'categories'
     if (path.includes('/settings/users')) return 'users'
-    return 'categories'
+    return 'general'
   }, [location.pathname])
 
   // For permission checks
@@ -66,16 +67,17 @@ function Settings() {
   // Get the saved tab for redirect (with permission checks)
   function getSavedSettingsTab(): SettingsTab {
     // Check if saved tab is valid
-    if (!VALID_SETTINGS_TABS.includes(lastSettingsTab)) return 'categories'
+    if (!VALID_SETTINGS_TABS.includes(lastSettingsTab)) return 'general'
 
     // Check permissions for restricted tabs
-    if (lastSettingsTab === 'users' && !isOwner) return 'categories'
+    if (lastSettingsTab === 'users' && !isOwner) return 'general'
 
     return lastSettingsTab
   }
 
   // Define settings tabs with permission-based visibility
   const settingsTabs: Tab[] = useMemo(() => [
+    { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'accounts', label: 'Accounts', icon: '🏦' },
     { id: 'categories', label: 'Categories', icon: '🏷️' },
     { id: 'users', label: 'Users', icon: '👥', hidden: !isOwner },
@@ -95,8 +97,8 @@ function Settings() {
           Only the budget owner can access this section.
         </p>
         <p style={{ marginTop: '1rem' }}>
-          <Link to="/budget/settings/categories">
-            Go to Categories →
+          <Link to="/budget/settings/general">
+            Go to General →
           </Link>
         </p>
       </div>

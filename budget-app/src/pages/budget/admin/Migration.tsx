@@ -24,6 +24,7 @@ import {
   useAccountCategoryValidation,
   useRemoveTotalFieldsMigration,
   useRemovePreviousMonthIncomeMigration,
+  usePercentageIncomeMonthsBackMigration,
   useRecalculateStartBalancesMigration,
   useRepairMonthMapMigration,
   useDownloadBudget,
@@ -54,6 +55,7 @@ function Migration() {
   // One-time migrations
   const removeTotalFieldsMigration = useRemoveTotalFieldsMigration({ currentUser: current_user })
   const removePreviousMonthIncomeMigration = useRemovePreviousMonthIncomeMigration({ currentUser: current_user })
+  const percentageIncomeMonthsBackMigration = usePercentageIncomeMonthsBackMigration({ currentUser: current_user })
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -78,6 +80,7 @@ function Migration() {
     // One-time migrations
     removeTotalFieldsMigration.isScanning ||
     removePreviousMonthIncomeMigration.isScanning ||
+    percentageIncomeMonthsBackMigration.isScanning ||
     // Maintenance migrations
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
@@ -93,6 +96,7 @@ function Migration() {
     // One-time migrations
     removeTotalFieldsMigration.isRunning ||
     removePreviousMonthIncomeMigration.isRunning ||
+    percentageIncomeMonthsBackMigration.isRunning ||
     // Maintenance migrations
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
@@ -115,6 +119,7 @@ function Migration() {
       // One-time migrations
       removeTotalFieldsMigration.scanStatus(),
       removePreviousMonthIncomeMigration.scanStatus(),
+      percentageIncomeMonthsBackMigration.scanStatus(),
       // Maintenance migrations
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
@@ -195,6 +200,17 @@ function Migration() {
           result: removePreviousMonthIncomeMigration.result,
           scanStatus: removePreviousMonthIncomeMigration.scanStatus,
           runMigration: removePreviousMonthIncomeMigration.runMigration,
+        }}
+        percentageIncomeMonthsBackMigration={{
+          status: percentageIncomeMonthsBackMigration.status,
+          hasData: !!percentageIncomeMonthsBackMigration.status,
+          needsMigration: percentageIncomeMonthsBackMigration.needsMigration,
+          totalItemsToFix: percentageIncomeMonthsBackMigration.totalItemsToFix,
+          isScanning: percentageIncomeMonthsBackMigration.isScanning,
+          isRunning: percentageIncomeMonthsBackMigration.isRunning,
+          result: percentageIncomeMonthsBackMigration.result,
+          scanStatus: percentageIncomeMonthsBackMigration.scanStatus,
+          runMigration: percentageIncomeMonthsBackMigration.runMigration,
         }}
       />
 

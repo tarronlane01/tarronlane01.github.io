@@ -8,7 +8,9 @@
  * by the MonthCategories component when viewing a month that needs it.
  */
 
+import type { QueryClient } from '@tanstack/react-query'
 import { readDocByPath } from '@firestore'
+import { queryKeys, STALE_TIME } from '@data/queryClient'
 import type {
   Budget,
   AccountsMap,
@@ -39,6 +41,7 @@ interface BudgetDocument {
   category_groups: FirestoreData[]
   // Removed total_available and is_needs_recalculation - calculated/managed locally
   month_map?: FirestoreData
+  percentage_income_months_back?: number
   created_at?: string
   updated_at?: string
 }
@@ -219,6 +222,7 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
       category_groups: categoryGroups,
       // Removed total_available and is_needs_recalculation - calculated/managed locally
       month_map: monthMap,
+      percentage_income_months_back: data.percentage_income_months_back,
     },
     accounts,
     accountGroups,
@@ -226,5 +230,25 @@ export async function fetchBudget(budgetId: string): Promise<BudgetData> {
     categoryGroups,
     monthMap,
   }
+}
+
+// ============================================================================
+// BUDGET IN CACHE (for callers that need budget fields like percentage_income_months_back)
+// ============================================================================
+
+/**
+ * Ensure budget is in the React Query cache (fetch if missing or stale).
+ * Use this before reading percentage_income_months_back or other budget fields
+ * so we never default from an empty cache; only legacy unmigrated budgets lack the field.
+ */
+export async function ensureBudgetInCache(
+  budgetId: string,
+  queryClientInstance: QueryClient
+): Promise<BudgetData> {
+  return queryClientInstance.fetchQuery({
+    queryKey: queryKeys.budget(budgetId),
+    queryFn: () => fetchBudget(budgetId),
+    staleTime: STALE_TIME,
+  })
 }
 

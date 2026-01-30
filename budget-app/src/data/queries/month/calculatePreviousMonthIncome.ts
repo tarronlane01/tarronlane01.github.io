@@ -1,58 +1,58 @@
 /**
  * Calculate Previous Month Income
  *
- * Helper to calculate previous_month_income from the previous month's income array.
+ * Helper to calculate income from N months back for percentage-based allocations.
  * Checks cache first, then fetches from Firestore if needed.
  */
 
 import type { MonthQueryData } from './readMonth'
 import { queryKeys } from '@data/queryClient'
-import { getPreviousMonth, roundCurrency } from '@utils'
+import { getMonthsBack, roundCurrency } from '@utils'
 import type { QueryClient } from '@tanstack/react-query'
 
 /**
- * Get previous month's total income.
+ * Get total income from the month that is `monthsBack` months before the given month.
+ * E.g. monthsBack=1 → previous month; monthsBack=2 → two months ago.
  * Checks cache first, then fetches from Firestore if needed.
- * Returns 0 if previous month doesn't exist.
+ * Returns 0 if target month doesn't exist or monthsBack < 1.
  */
 export async function calculatePreviousMonthIncome(
   budgetId: string,
   year: number,
   month: number,
-  queryClient?: QueryClient
+  queryClient?: QueryClient,
+  monthsBack: number = 1
 ): Promise<number> {
-  const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month)
-  const prevMonthKey = queryKeys.month(budgetId, prevYear, prevMonth)
+  const target = getMonthsBack(year, month, monthsBack)
+  if (!target) return 0
+
+  const { year: targetYear, month: targetMonth } = target
+  const targetMonthKey = queryKeys.month(budgetId, targetYear, targetMonth)
 
   // Try cache first
   if (queryClient) {
-    const prevMonthQueryData = queryClient.getQueryData<MonthQueryData>(prevMonthKey)
-    if (prevMonthQueryData?.month) {
-      // Previous month is in cache - calculate from income array
-      const prevIncome = prevMonthQueryData.month.income || []
-      return roundCurrency(prevIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+    const targetMonthQueryData = queryClient.getQueryData<MonthQueryData>(targetMonthKey)
+    if (targetMonthQueryData?.month) {
+      const targetIncome = targetMonthQueryData.month.income || []
+      return roundCurrency(targetIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
     }
   }
 
   // Not in cache - use readMonth which respects cache and staleTime
-  // This ensures we use cached data if available, or fetch fresh data if stale
   if (queryClient) {
     try {
       const { readMonth } = await import('./readMonth')
-      const prevMonthDoc = await readMonth(budgetId, prevYear, prevMonth, {
-        description: `calculating previous_month_income for ${year}/${month}`,
+      const targetMonthDoc = await readMonth(budgetId, targetYear, targetMonth, {
+        description: `calculating income ${monthsBack} month(s) back for ${year}/${month}`,
       })
-      if (prevMonthDoc) {
-        // Calculate from income array
-        const prevIncome = prevMonthDoc.income || []
-        return roundCurrency(prevIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+      if (targetMonthDoc) {
+        const targetIncome = targetMonthDoc.income || []
+        return roundCurrency(targetIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
       }
     } catch (error) {
-      // If we can't fetch previous month, default to 0
-      console.warn(`[calculatePreviousMonthIncome] Could not fetch previous month ${prevYear}/${prevMonth}:`, error)
+      console.warn(`[calculatePreviousMonthIncome] Could not fetch month ${targetYear}/${targetMonth}:`, error)
     }
   }
 
-  // No previous month found - return 0
   return 0
 }

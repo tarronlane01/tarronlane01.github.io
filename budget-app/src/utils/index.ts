@@ -6,7 +6,7 @@
  */
 
 export { getMonthDocId } from './monthDocId'
-export { getPreviousMonth, getNextMonth, getYearMonthOrdinal, formatDate, getDefaultFormDate, parseDateToYearMonth } from './date'
+export { getPreviousMonth, getNextMonth, getMonthsBack, getYearMonthOrdinal, formatDate, getDefaultFormDate, parseDateToYearMonth } from './date'
 export {
   logUserAction,
   trackedChange,

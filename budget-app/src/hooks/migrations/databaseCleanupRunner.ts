@@ -266,13 +266,15 @@ export async function runDatabaseCleanup(): Promise<DatabaseCleanupResult> {
         continue
       }
 
-      // Fix schema issues
+      // Fix schema issues (do not persist calculated fields: total_income, total_expenses, previous_month_income)
       if (monthNeedsDefaults(data)) {
         const fixedMonth = applyMonthDefaults(data, monthDoc.id)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to strip calculated fields before writing
+        const { total_income, total_expenses, previous_month_income, ...monthToWrite } = fixedMonth
         await writeDocByPath(
           'months',
           monthDoc.id,
-          fixedMonth,
+          monthToWrite,
           'database cleanup: saving fixed month'
         )
         monthsFixed++

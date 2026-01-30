@@ -14,7 +14,7 @@ import { fetchBudget } from '@data/queries/budget/fetchBudget'
 import { fetchPayees } from '@data/queries/payees/fetchPayees'
 // eslint-disable-next-line no-restricted-imports
 import { queryCollection } from '@firestore'
-import { getYearMonthOrdinal } from '@utils'
+import { getYearMonthOrdinal, getMonthsBack, roundCurrency } from '@utils'
 import type { MonthDocument, FirestoreData } from '@types'
 import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 
@@ -36,6 +36,7 @@ interface InitialDataLoadResult {
  * Parse raw Firestore month data into typed MonthDocument.
  */
 function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
+  // previous_month_income is not read from Firestore; applyPreviousMonthIncome overwrites it from budget setting
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
@@ -43,7 +44,7 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     month: data.month ?? month,
     income: data.income || [],
     total_income: data.total_income ?? 0,
-    previous_month_income: data.previous_month_income ?? 0,
+    previous_month_income: 0,
     expenses: data.expenses || [],
     total_expenses: data.total_expenses ?? 0,
     transfers: data.transfers || [],
@@ -105,6 +106,30 @@ async function fetchInitialMonths(budgetId: string): Promise<MonthDocument[]> {
 }
 
 /**
+ * Compute previous_month_income for each month using income from N months back (per budget setting).
+ * Uses only the months we already have—no extra Firestore reads.
+ */
+function applyPreviousMonthIncome(
+  months: MonthDocument[],
+  monthsBack: number
+): MonthDocument[] {
+  if (monthsBack < 1) return months
+  const byKey = new Map<string, MonthDocument>()
+  for (const m of months) {
+    byKey.set(`${m.year}/${m.month}`, m)
+  }
+  return months.map(month => {
+    const target = getMonthsBack(month.year, month.month, monthsBack)
+    if (!target) return month
+    const targetMonth = byKey.get(`${target.year}/${target.month}`)
+    if (!targetMonth) return month
+    const income = targetMonth.income || []
+    const value = roundCurrency(income.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+    return { ...month, previous_month_income: value }
+  })
+}
+
+/**
  * Fetch all initial data in parallel.
  */
 async function fetchInitialData(budgetId: string): Promise<InitialDataLoadResult> {
@@ -114,10 +139,13 @@ async function fetchInitialData(budgetId: string): Promise<InitialDataLoadResult
     fetchInitialMonths(budgetId),
   ])
 
+  const monthsBack = budget.budget.percentage_income_months_back ?? 1
+  const monthsWithIncome = applyPreviousMonthIncome(months, monthsBack)
+
   return {
     budget,
     payees,
-    months,
+    months: monthsWithIncome,
   }
 }
 

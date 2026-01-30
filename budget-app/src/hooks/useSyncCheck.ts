@@ -24,6 +24,7 @@ const SYNC_CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
  * Parse month data from Firestore
  */
 function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): MonthDocument {
+  // previous_month_income is never read from Firestore; it will be recomputed when month is read through normal path
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
@@ -31,7 +32,7 @@ function parseMonthData(data: FirestoreData, budgetId: string, year: number, mon
     month: data.month ?? month,
     income: data.income || [],
     total_income: data.total_income ?? 0,
-    previous_month_income: data.previous_month_income ?? 0,
+    previous_month_income: 0,
     expenses: data.expenses || [],
     total_expenses: data.total_expenses ?? 0,
     transfers: data.transfers || [],

@@ -27,8 +27,19 @@ export function BalancesActionButtons({
   onCancel,
   onDelete,
 }: BalancesActionButtonsProps) {
+  const headerButtonStyle: React.CSSProperties = {
+    fontSize: '0.8rem',
+    padding: '0.4em 0.8em',
+    height: 32,
+    minHeight: 32,
+    boxSizing: 'border-box',
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', flexShrink: 0 }}>
       {/* Draft mode buttons (not editing applied) */}
       {isDraftMode && !isEditingAppliedAllocations && (
         <>
@@ -36,7 +47,7 @@ export function BalancesActionButtons({
             actionName="Save Draft Allocations"
             onClick={onSave}
             variant="secondary"
-            style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+            style={headerButtonStyle}
           >
             💾 Save
           </Button>
@@ -44,7 +55,7 @@ export function BalancesActionButtons({
             actionName="Apply Allocations"
             onClick={onApply}
             variant="secondary"
-            style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+            style={headerButtonStyle}
           >
             ✓ Apply
           </Button>
@@ -57,7 +68,7 @@ export function BalancesActionButtons({
           actionName="Edit Allocations"
           onClick={onEdit}
           variant="secondary"
-          style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+          style={headerButtonStyle}
         >
           ✏️ Edit Allocations
         </Button>
@@ -70,7 +81,7 @@ export function BalancesActionButtons({
             actionName="Apply Allocations"
             onClick={onApply}
             variant="secondary"
-            style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+            style={headerButtonStyle}
           >
             ✓ Apply
           </Button>
@@ -78,7 +89,7 @@ export function BalancesActionButtons({
             actionName="Cancel Edit Allocations"
             onClick={onCancel}
             variant="secondary"
-            style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+            style={headerButtonStyle}
           >
             ✕
           </Button>
@@ -86,7 +97,7 @@ export function BalancesActionButtons({
             actionName="Open Delete Allocations Modal"
             onClick={onDelete}
             variant="secondary"
-            style={{ fontSize: '0.8rem', padding: '0.4em 0.8em', color: colors.error }}
+            style={{ ...headerButtonStyle, color: colors.error }}
           >
             🗑️
           </Button>

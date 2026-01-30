@@ -8,9 +8,11 @@
 import { MigrationSection } from '../common'
 import { RemoveTotalFieldsRow } from './RemoveTotalFieldsRow'
 import { RemovePreviousMonthIncomeRow } from './RemovePreviousMonthIncomeRow'
+import { PercentageIncomeMonthsBackRow } from './PercentageIncomeMonthsBackRow'
 
 import type { RemoveTotalFieldsMigrationStatus, RemoveTotalFieldsMigrationResult } from '@hooks/migrations/useRemoveTotalFieldsMigration'
 import type { RemovePreviousMonthIncomeMigrationStatus, RemovePreviousMonthIncomeMigrationResult } from '@hooks/migrations/useRemovePreviousMonthIncomeMigration'
+import type { PercentageIncomeMonthsBackMigrationStatus, PercentageIncomeMonthsBackMigrationResult } from '@hooks/migrations/usePercentageIncomeMonthsBackMigration'
 
 interface OnetimeSectionProps {
   disabled: boolean
@@ -38,6 +40,17 @@ interface OnetimeSectionProps {
     scanStatus: () => void
     runMigration: () => void
   }
+  percentageIncomeMonthsBackMigration: {
+    status: PercentageIncomeMonthsBackMigrationStatus | null
+    hasData: boolean
+    needsMigration: boolean
+    totalItemsToFix: number
+    isScanning: boolean
+    isRunning: boolean
+    result: PercentageIncomeMonthsBackMigrationResult | null
+    scanStatus: () => void
+    runMigration: () => void
+  }
 }
 
 export function OnetimeSection({
@@ -46,11 +59,12 @@ export function OnetimeSection({
   isDownloadingBackup: _isDownloadingBackup,
   removeTotalFieldsMigration,
   removePreviousMonthIncomeMigration,
+  percentageIncomeMonthsBackMigration,
 }: OnetimeSectionProps) {
   // Props onDownloadBackup and isDownloadingBackup are kept for API compatibility but not used
   void _onDownloadBackup
   void _isDownloadingBackup
-  const isAnyRunning = removeTotalFieldsMigration.isRunning || removePreviousMonthIncomeMigration.isRunning
+  const isAnyRunning = removeTotalFieldsMigration.isRunning || removePreviousMonthIncomeMigration.isRunning || percentageIncomeMonthsBackMigration.isRunning
 
   return (
     <>
@@ -86,6 +100,20 @@ export function OnetimeSection({
           result={removePreviousMonthIncomeMigration.result}
           onCheck={removePreviousMonthIncomeMigration.scanStatus}
           onRun={removePreviousMonthIncomeMigration.runMigration}
+          disabled={disabled}
+        />
+
+        {/* Percentage Income Months Back Migration */}
+        <PercentageIncomeMonthsBackRow
+          status={percentageIncomeMonthsBackMigration.status}
+          hasData={!!percentageIncomeMonthsBackMigration.status}
+          needsMigration={percentageIncomeMonthsBackMigration.needsMigration}
+          totalItemsToFix={percentageIncomeMonthsBackMigration.totalItemsToFix}
+          isChecking={percentageIncomeMonthsBackMigration.isScanning}
+          isRunning={percentageIncomeMonthsBackMigration.isRunning}
+          result={percentageIncomeMonthsBackMigration.result}
+          onCheck={percentageIncomeMonthsBackMigration.scanStatus}
+          onRun={percentageIncomeMonthsBackMigration.runMigration}
           disabled={disabled}
         />
       </MigrationSection>

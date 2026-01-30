@@ -189,7 +189,7 @@ export function useInitialBalanceCalculation({
           
           // Calculate forward from the starting point to the first window month
           for (const monthData of monthsToCalculateBackward) {
-            const recalculated = recalculateMonth(monthData, prevSnapshot)
+            const recalculated = recalculateMonth(monthData, prevSnapshot, monthData.previous_month_income)
             prevSnapshot = extractSnapshotFromMonth(recalculated)
             
             // Save this month if it's at/before the first window month
@@ -236,7 +236,8 @@ export function useInitialBalanceCalculation({
           // Recalculate month using previous month's snapshot
           // For the earliest month, this uses its preserved start_balances
           // For subsequent months, this uses the previous month's end_balances
-          const recalculated = recalculateMonth(month, prevSnapshot)
+          // Preserve previous_month_income from initial load (computed from budget's percentage_income_months_back)
+          const recalculated = recalculateMonth(month, prevSnapshot, month.previous_month_income)
           updatedMonths.push(recalculated)
 
           // Extract snapshot for next month (end_balances become next month's start_balances)

@@ -170,6 +170,8 @@ async function executeRecalculation(
     percentComplete: 10,
   })
 
+  const percentageIncomeMonthsBack = budgetData.percentage_income_months_back ?? 1 // legacy unmigrated budget only
+
   const months = await fetchMonthsByOrdinals(budgetId, ordinalsToFetch, (fetched, total) => {
     const fetchPercent = fetched === 0 ? 10 : 30
     onProgress?.({
@@ -180,7 +182,7 @@ async function executeRecalculation(
       totalMonths: estimatedToRecalculate,
       percentComplete: fetchPercent,
     })
-  })
+  }, percentageIncomeMonthsBack)
 
   if (months.length === 0) {
     onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
@@ -214,7 +216,12 @@ async function executeRecalculation(
       percentComplete: Math.round(30 + (monthsRecalculated / totalToRecalculate) * 40),
     })
 
-    const recalculated = recalculateMonth(month, prevSnapshot)
+    // Income for percentage-based allocations: from N months back (per budget setting)
+    const incomeForPercentages = (i - percentageIncomeMonthsBack >= 0)
+      ? (recalculatedMonths[i - percentageIncomeMonthsBack] ?? months[i - percentageIncomeMonthsBack])?.total_income ?? 0
+      : 0
+
+    const recalculated = recalculateMonth(month, prevSnapshot, incomeForPercentages)
     recalculatedMonths.push(recalculated)
 
     prevSnapshot = extractSnapshotFromMonth(recalculated)

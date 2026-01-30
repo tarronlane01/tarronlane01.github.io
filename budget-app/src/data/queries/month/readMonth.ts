@@ -20,6 +20,7 @@ import type { MonthDocument, FirestoreData } from '@types'
 import { readDocByPath } from '@firestore'
 import { getMonthDocId, getYearMonthOrdinal } from '@utils'
 import { queryClient, queryKeys, STALE_TIME } from '@data/queryClient'
+import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
 import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 import { calculatePreviousMonthIncome } from './calculatePreviousMonthIncome'
 
@@ -56,7 +57,8 @@ async function parseMonthData(
   budgetId: string,
   year: number,
   month: number,
-  queryClient?: QueryClient
+  queryClient?: QueryClient,
+  monthsBack: number = 1
 ): Promise<MonthDocument> {
   const income = data.income || []
   const expenses = data.expenses || []
@@ -65,11 +67,8 @@ async function parseMonthData(
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Calculate previous_month_income from previous month's income array (not stored in Firestore)
-  // Falls back to stored value for backward compatibility during migration
-  const previousMonthIncome = data.previous_month_income !== undefined
-    ? data.previous_month_income as number // Use stored value if present (backward compatibility)
-    : await calculatePreviousMonthIncome(budgetId, year, month, queryClient)
+  // Always compute from income N months back so budget setting "Income reference for % allocations (months back)" is respected
+  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
   
   // Parse basic month data
   const monthDoc: MonthDocument = {
@@ -119,6 +118,10 @@ export async function readMonth(
 ): Promise<MonthDocument | null> {
   const monthDocId = getMonthDocId(budgetId, year, month)
 
+  // Ensure budget in cache so we read percentage_income_months_back from it (no default from empty cache)
+  const budgetData = await ensureBudgetInCache(budgetId, queryClient)
+  const monthsBack = budgetData.budget.percentage_income_months_back ?? 1 // legacy unmigrated budget only
+
   // Use React Query's fetchQuery - automatically checks cache and fetches if needed
   // NOTE: fetchQuery does NOT inherit staleTime from queryClient defaults,
   // so we must explicitly pass it to avoid always refetching
@@ -135,7 +138,7 @@ export async function readMonth(
         return null
       }
 
-      const parsedMonth = await parseMonthData(data, budgetId, year, month, queryClient)
+      const parsedMonth = await parseMonthData(data, budgetId, year, month, queryClient, monthsBack)
       return { month: parsedMonth }
     },
     staleTime: STALE_TIME,
