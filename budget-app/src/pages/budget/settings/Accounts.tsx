@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useAccountsPage, useBudgetData, useMonthData, useEnsureBalancesFresh } from '@hooks'
 import { useBudget, useApp } from '@contexts'
 import { calculateAccountClearedBalances } from '@calculations'
+import { isAccountOnBudget } from '@utils/calculations/balances/calculateTotalAvailable'
 import {
   Button,
   formatStatsCurrency,
@@ -18,7 +19,7 @@ import { SettingsAccountGroupRows } from '@components/budget/Accounts/SettingsAc
 
 function Accounts() {
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
-  const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts } = useBudgetData()
+  const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts, getOnBudgetTotal, totalAvailable } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   const {
@@ -64,20 +65,17 @@ function Accounts() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
 
-  // Calculate stats for header
+  // Calculate stats for header: same isAccountOnBudget as calculateTotalAvailable (Avail) and getOnBudgetTotal
   const stats = useMemo(() => {
     const accountList = Object.values(accounts)
     const totalBalance = accountList.reduce((sum, acc) => sum + (acc.balance ?? 0), 0)
 
-    // Calculate on-budget total (accounts in on-budget groups or ungrouped on-budget accounts)
     let onBudgetTotal = 0
     let offBudgetTotal = 0
+    const groupsMap = Object.fromEntries(allSortedGroups.map(g => [g.id, g]))
 
     for (const acc of accountList) {
-      const group = allSortedGroups.find(g => g.id === acc.account_group_id)
-      // Account is on-budget if: its own on_budget is true, OR (on_budget is undefined and group's on_budget is true or undefined)
-      const isOnBudget = acc.on_budget === true || (acc.on_budget === undefined && (group?.on_budget !== false))
-      if (isOnBudget) {
+      if (isAccountOnBudget(acc, groupsMap as Record<string, { on_budget?: boolean | null; is_active?: boolean | null }>)) {
         onBudgetTotal += acc.balance ?? 0
       } else {
         offBudgetTotal += acc.balance ?? 0
@@ -204,8 +202,14 @@ function Accounts() {
                   <span style={{ opacity: 0.6 }}>Total: </span>
                   <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatStatsCurrency(stats.totalBalance)}</span>
                 </span>
-                <span style={{ opacity: 0.5, fontSize: '0.8rem' }}>
-                  Use ▲▼ buttons to reorder accounts.
+                {/* Same getOnBudgetTotal + totalAvailable as allocations worksheet: On-Budget − Allocated = Avail */}
+                <span style={{ marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid var(--border-medium)' }}>
+                  <span style={{ opacity: 0.6 }}>On-Budget: </span>
+                  <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatStatsCurrency(getOnBudgetTotal())}</span>
+                  <span style={{ opacity: 0.6 }}> − Allocated: </span>
+                  <span style={{ fontWeight: 600 }}>{formatStatsCurrency(getOnBudgetTotal() - totalAvailable)}</span>
+                  <span style={{ opacity: 0.6 }}> = Avail: </span>
+                  <span style={{ color: getBalanceColor(totalAvailable), fontWeight: 600 }}>{formatStatsCurrency(totalAvailable)}</span>
                 </span>
               </div>
             </div>

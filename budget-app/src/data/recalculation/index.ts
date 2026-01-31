@@ -48,3 +48,9 @@ export {
   EMPTY_SNAPSHOT,
   type PreviousMonthSnapshot,
 } from './recalculateMonth'
+
+export {
+  recalculateAllBalancesFromCache,
+  getLastRecalcBaseMonthForDebug,
+  type RecalculateAllBalancesOptions,
+} from './recalculateAllBalancesFromCache'

@@ -1,10 +1,22 @@
 # doing
 
-- [ ] have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)
+Have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)
 
 On the month categories page, give a download button that will download all the displayed values into a markdown file, with a markdown table, etc. For easy use to send data elsewhere.
 
-Double check the loading of extra month when editing allocations. Make sure I dont have to pause and load if the needed month is still fresh in cache (not stale)
+Double check the loading of extra month when editing allocations. Make sure I dont have to pause and load if the needed month is still fresh in cache (not stale). It should only trigger the global overlay and fetch from firestore when we don't alreayd have it fresh in cache.
+
+Make sure hidden categories aren ot getting allocations applied when doing the allocaiton worksheet, finalizing, etc. they should basically just be set to zero when applying, not using the default value if they have one.
+
+Combine adjust/transfer into one column on the overview / balance pages
+
+- All time category allocation totals should not go up as we move through unfinalized months. That should only factor in finalized allocations, never drafts.
+
+If a month has an uncleared balance, it and all future moths need to show the breakdown, not just the month that has an uncleared transaction
+
+Don't allow allocating months out of order (always unbroken chain)
+
+If a month is in the future, hide the end, income, spend, transfer, etc
 
 # Critical
 

@@ -275,17 +275,42 @@ async function executeRecalculation(
   })
 
   const finalAccountBalances = prevSnapshot.accountEndBalances
-  
-  // Calculate total category balances (including future allocations) to match what's stored in budget document
-  // The budget document stores total balances (all-time including future), not just current month's end_balance
-  const currentCategoryBalances = prevSnapshot.categoryEndBalances
+
+  // Budget category balances (and thus Avail) must use only finalized months—never unfinalized draft.
+  // Use the latest finalized month's end_balance as the base; if the last recalculated month is
+  // unfinalized (e.g. March with saved draft), its draft would otherwise be written into the budget cache.
+  let snapshotForBudgetCategories = prevSnapshot
+  let categoryBaseYear = currentYear
+  let categoryBaseMonth = currentMonth
+  for (let i = recalculatedMonths.length - 1; i >= 0; i--) {
+    const m = recalculatedMonths[i]
+    if (m.are_allocations_finalized) {
+      snapshotForBudgetCategories = extractSnapshotFromMonth(m)
+      categoryBaseYear = m.year
+      categoryBaseMonth = m.month
+      break
+    }
+  }
+  if (snapshotForBudgetCategories === prevSnapshot && hasStartingMonth && months.length > 0) {
+    // None of the recalculated months were finalized; use the month before the first recalculated
+    snapshotForBudgetCategories = extractSnapshotFromMonth(months[0])
+    categoryBaseYear = months[0].year
+    categoryBaseMonth = months[0].month
+  } else if (snapshotForBudgetCategories === prevSnapshot && !hasStartingMonth && recalculatedMonths.length > 0) {
+    // Recalculated from first month and none finalized; use empty base so only finalized future months count
+    snapshotForBudgetCategories = EMPTY_SNAPSHOT
+    categoryBaseYear = recalculatedMonths[0].year
+    categoryBaseMonth = recalculatedMonths[0].month
+  }
+
+  const currentCategoryBalances = snapshotForBudgetCategories.categoryEndBalances
   const categoryIds = Object.keys(budgetData.categories || {})
   const finalCategoryBalances = await calculateTotalBalances(
     budgetId,
     categoryIds,
     currentCategoryBalances,
-    currentYear,
-    currentMonth
+    categoryBaseYear,
+    categoryBaseMonth
   )
 
   await updateBudgetBalances(

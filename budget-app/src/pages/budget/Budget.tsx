@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
-import { useBudgetData, useMonthData, useMonthPrefetch, useStaleDataRefresh } from '@hooks'
+import { useBudgetData, useMonthData, useMonthPrefetch, useStaleDataRefresh, useEnsureBalancesFresh } from '@hooks'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -67,8 +67,12 @@ function Budget() {
     isLoading: isBudgetLoading,
   } = useBudgetData()
 
-  // Budget data is loaded when not loading (monthMap might be empty if no months exist)
-  const isBudgetDataLoaded = !isBudgetLoading
+  // Budget data is loaded when we have budget in hand (not just !isBudgetLoading, which can be true
+  // before the cache is populated on initial load, causing "Budget not in cache" and no recalc).
+  const isBudgetDataLoaded = !isBudgetLoading && !!currentBudget
+
+  // Single recalc runs when we have budget (chain months, write each month once, write budget once).
+  useEnsureBalancesFresh(isBudgetDataLoaded && !!selectedBudgetId, { alwaysRecalculate: true })
 
   // Track if we're in the middle of a redirect due to month creation error
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -84,6 +88,7 @@ function Budget() {
   }, [isBudgetDataLoaded, initialDataLoadComplete, addLoadingHold, removeLoadingHold])
 
   const urlInitializedRef = useRef(false)
+  const downloadCategoriesRef = useRef<(() => void) | null>(null)
 
   // Handle URL error params
   const urlError = searchParams.get('error')
@@ -283,6 +288,7 @@ function Budget() {
       <MonthNavigation
         onPreviousMonth={handlePreviousMonth}
         onNextMonth={handleNextMonth}
+        onDownloadCategories={currentTab === 'categories' ? () => downloadCategoriesRef.current?.() : undefined}
       />
 
       <BudgetTabs
@@ -294,7 +300,12 @@ function Budget() {
       />
 
       {currentTab === 'income' && <MonthIncome key={`${currentYear}-${currentMonthNumber}`} />}
-      {currentTab === 'categories' && <MonthCategories key={`${currentYear}-${currentMonthNumber}`} />}
+      {currentTab === 'categories' && (
+        <MonthCategories
+          key={`${currentYear}-${currentMonthNumber}`}
+          registerDownloadCategories={(fn) => { downloadCategoriesRef.current = fn }}
+        />
+      )}
       {currentTab === 'accounts' && <MonthAccounts key={`${currentYear}-${currentMonthNumber}`} />}
       {currentTab === 'spend' && <MonthSpend key={`${currentYear}-${currentMonthNumber}`} />}
       {currentTab === 'transfers' && <MonthTransfers key={`${currentYear}-${currentMonthNumber}`} />}

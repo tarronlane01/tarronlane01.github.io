@@ -4,6 +4,14 @@
  * Core function for fetching budget documents from Firestore.
  * Handles parsing raw Firestore data into typed structures.
  *
+ * BUDGET CATEGORY BALANCE: Never persisted, never read from Firestore.
+ * - We set category.balance = 0 here (parseCategories). We never use any balance
+ *   field from the Firestore document, even if present (e.g. from an old client).
+ * - writeBudgetData strips balance before writing, so Firestore is never updated with it.
+ * - The app does not use React Query persistence (no localStorage/sessionStorage for cache).
+ * - So budget category balance exists only in memory (React Query cache) and is cleared
+ *   on full page reload; it is repopulated by recalculateAllBalancesFromCache.
+ *
  * NOTE: This does NOT auto-trigger recalculation. Recalculation is triggered
  * by the MonthCategories component when viewing a month that needs it.
  */
@@ -120,22 +128,22 @@ function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroup
 }
 
 /**
- * Parse raw Firestore categories data into typed CategoriesMap
- * Always uses ungrouped category group ID if not set (never null)
+ * Parse raw Firestore categories data into typed CategoriesMap.
+ * We explicitly never read category.balance from Firestore (ignore if present).
+ * Budget-level balance is computed only in memory by recalculateAllBalancesFromCache.
  */
 function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
   const categories: CategoriesMap = {}
   Object.entries(categoriesData).forEach(([id, category]) => {
+    // Do not use category.balance from Firestore - we never persist it and must not read it
     categories[id] = {
       name: category.name,
       description: category.description,
-      // Always use ungrouped group ID if not set (never null)
       category_group_id: category.category_group_id ?? UNGROUPED_CATEGORY_GROUP_ID,
       sort_order: category.sort_order ?? 0,
       default_monthly_amount: category.default_monthly_amount,
       default_monthly_type: category.default_monthly_type,
-      // Budget-level balance is never stored; always 0 on read. Filled by local recalc.
-      balance: 0,
+      balance: 0, // Always 0 on read; filled by local recalc only
       is_hidden: category.is_hidden ?? false,
     } as Category
   })

@@ -6,7 +6,9 @@
  * 2. If stale or missing, shows loading overlay and refetches them
  * 3. Then recalculates both account and category balances from cache
  * 
- * Use this in settings pages to ensure balances are calculated from fresh cache data.
+ * Use in settings pages (Accounts, Categories) or on the main Budget view (with
+ * alwaysRecalculate: true so we recalc on every load/reload, since fetchBudget
+ * sets category balance to 0 and we need to repopulate from month cache).
  */
 
 import { useEffect, useRef } from 'react'
@@ -14,18 +16,21 @@ import { useBudget } from '@contexts'
 import { useApp } from '@contexts'
 import { ensureMonthsFreshAndRecalculateBalances } from '@data/mutations/month/ensureMonthsFresh'
 
+export interface UseEnsureBalancesFreshOptions {
+  /** When true, always run recalc (e.g. on budget view load after full page reload). Default false for settings pages. */
+  alwaysRecalculate?: boolean
+}
+
 /**
  * Hook to ensure balance calculations use fresh cache data.
- * 
- * This should be called in settings pages (Accounts, Categories) to ensure
- * that when navigating to the page, if cache is stale, it's refreshed before
- * calculating balances.
  * 
  * Only runs once when enabled becomes true (when page loads and data is ready).
  * 
  * @param enabled - Whether to run the check (default: true)
+ * @param options - alwaysRecalculate: set true on the main Budget view so we recalc on every load (budget category balance is 0 after fetch; recalc repopulates it).
  */
-export function useEnsureBalancesFresh(enabled: boolean = true) {
+export function useEnsureBalancesFresh(enabled: boolean = true, options: UseEnsureBalancesFreshOptions = {}) {
+  const { alwaysRecalculate = false } = options
   const { selectedBudgetId } = useBudget()
   const { addLoadingHold, removeLoadingHold } = useApp()
   const hasRunRef = useRef(false)
@@ -38,9 +43,6 @@ export function useEnsureBalancesFresh(enabled: boolean = true) {
 
     let loadingKey: string | null = null
 
-    // Pass alwaysRecalculate: false so we only recalculate if months were actually refetched.
-    // If cache is fresh (just updated by a mutation), skip recalculation to avoid
-    // potentially overwriting correct cache data with values from stale Firestore data.
     ensureMonthsFreshAndRecalculateBalances(
       selectedBudgetId,
       (isLoading, message) => {
@@ -54,14 +56,14 @@ export function useEnsureBalancesFresh(enabled: boolean = true) {
           }
         }
       },
-      false // alwaysRecalculate = false for navigation
+      alwaysRecalculate
     ).catch((error) => {
       console.error('[useEnsureBalancesFresh] Failed to ensure balances fresh:', error)
       if (loadingKey) {
         removeLoadingHold(loadingKey)
       }
     })
-  }, [enabled, selectedBudgetId, addLoadingHold, removeLoadingHold])
+  }, [enabled, selectedBudgetId, alwaysRecalculate, addLoadingHold, removeLoadingHold])
 
   // Reset ref when budget changes so it can run again for new budget
   useEffect(() => {

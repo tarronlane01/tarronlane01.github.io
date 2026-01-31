@@ -23,11 +23,14 @@ import JSZip from 'jszip'
 interface MonthNavigationProps {
   onPreviousMonth: () => void
   onNextMonth: () => void
+  /** Called when user chooses "Download data" from the month menu (categories tab only). */
+  onDownloadCategories?: () => void
 }
 
 export function MonthNavigation({
   onPreviousMonth,
   onNextMonth,
+  onDownloadCategories,
 }: MonthNavigationProps) {
   const { isLoading } = useApp()
   const {
@@ -48,14 +51,14 @@ export function MonthNavigation({
   const maxOrdinal = Number(getYearMonthOrdinal(maxAllowed.year, maxAllowed.month))
   const nextOrdinal = Number(getYearMonthOrdinal(nextMonth.year, nextMonth.month))
   const isNextDisabled = nextOrdinal > maxOrdinal
-  
+
   // For previous month: allow navigation if it exists in month_map
   // This allows navigating to any month in the budget's history, regardless of how far in the past
   // We should NOT allow creating or navigating to past months that aren't in month_map
   const prevOrdinal = getYearMonthOrdinal(prevMonth.year, prevMonth.month)
   const prevMonthExistsInMap = monthMap ? prevOrdinal in monthMap : false
   const isPrevDisabled = !prevMonthExistsInMap
-  
+
   // Keep minAllowed for MonthPicker component (used for display/validation)
   const minAllowed = getEffectiveMinMonth(monthMap || {})
   const minOrdinal = Number(getYearMonthOrdinal(minAllowed.year, minAllowed.month))
@@ -266,6 +269,21 @@ export function MonthNavigation({
             >
               📅 Go to Month
             </button>
+
+            {onDownloadCategories && (
+              <button
+                onClick={() => { onDownloadCategories(); setShowMonthMenu(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  background: 'transparent', border: 'none', borderRadius: '6px',
+                  padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
+                  color: 'inherit', textAlign: 'left', transition: 'background 0.15s',
+                }}
+                title="Download category balances as Markdown"
+              >
+                ⬇ Download data
+              </button>
+            )}
 
             {showMonthPicker && (
               <MonthPicker

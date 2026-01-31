@@ -95,10 +95,10 @@ export function useBudgetData(): UseBudgetDataReturn {
   const isOwner = budget?.owner_id === currentUserId
   const budgetUserIds = useMemo(() => budget?.user_ids || [], [budget?.user_ids])
   const acceptedUserIds = useMemo(() => budget?.accepted_user_ids || [], [budget?.accepted_user_ids])
-  // Calculate total_available on-the-fly (not stored in Firestore)
+  // Avail: total_available on-the-fly from stored data only (not stored in Firestore).
+  // Must never factor in unfinalized draft allocations—only persisted category balances.
   const totalAvailable = useMemo(() => {
     if (!budget) return 0
-    // Use shared calculation function for consistency
     return calculateTotalAvailable(accounts as unknown as FirestoreData, categories as unknown as FirestoreData, accountGroups as unknown as FirestoreData)
   }, [budget, accounts, accountGroups, categories])
   const monthMap = useMemo(() => budgetData?.monthMap || {}, [budgetData?.monthMap])
@@ -170,6 +170,7 @@ export function useBudgetData(): UseBudgetDataReturn {
   // COMPUTED HELPERS
   // ==========================================================================
 
+  // Same isAccountOnBudget logic as calculateTotalAvailable (Avail) and Settings > Accounts On-Budget
   const getOnBudgetTotal = useCallback((): number => {
     return Object.entries(accounts)
       .filter(([, acc]) => isAccountOnBudget(acc, accountGroups as unknown as FirestoreData))

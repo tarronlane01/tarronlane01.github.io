@@ -156,17 +156,17 @@ export function MobileGrandTotals({
         availableAfterApply={availableAfterApply}
         currentDraftTotal={currentDraftTotal}
       />
-      <BalancesActionButtons
-        isDraftMode={false}
-        isEditingAppliedAllocations={false}
-        allocationsFinalized={allocationsFinalized}
-        onSave={onSave}
-        onApply={onApply}
-        onEdit={onEdit}
-        onCancel={onCancel}
-        onDelete={onDelete}
-      />
-    </div>
+        <BalancesActionButtons
+            isDraftMode={false}
+            isEditingAppliedAllocations={false}
+            allocationsFinalized={allocationsFinalized}
+            onSave={onSave}
+            onApply={onApply}
+            onEdit={onEdit}
+            onCancel={onCancel}
+            onDelete={onDelete}
+          />
+      </div>
   )
 }
 

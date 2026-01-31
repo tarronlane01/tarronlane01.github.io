@@ -107,9 +107,9 @@ export async function createMonth(
     // This prevents duplicate reads when previous month is already in cache
     const prevMonthKey = queryKeys.month(budgetId, prevYear, prevMonth)
     const cachedPrevMonth = queryClient.getQueryData<{ month: MonthDocument }>(prevMonthKey)
-    
+
     let prevData: FirestoreData | null = null
-    
+
     if (cachedPrevMonth?.month) {
       // Previous month is in cache - use it
       // Convert MonthDocument back to FirestoreData format for compatibility

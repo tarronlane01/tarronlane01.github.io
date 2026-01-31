@@ -164,7 +164,7 @@ export function useMonthMutationHelpers() {
 
         const monthMap = budgetData.monthMap || {}
         const monthsToSave: Array<{ year: number; month: number }> = []
-        
+
         for (const [ordinal] of Object.entries(monthMap)) {
           if (ordinal >= editedOrdinal && ordinal <= firstWindowOrdinal) {
             const y = parseInt(ordinal.substring(0, 4), 10)

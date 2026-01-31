@@ -38,7 +38,7 @@ export function useCategoryBalances({
 
   // Build balances directly from categories in budget cache.
   // The budget cache is the source of truth - it's updated immediately by mutations
-  // (via recalculateBudgetCategoryBalancesFromCache), so it's always accurate.
+  // (via recalculateAllBalancesFromCache), so it's always accurate.
   // No need for a separate React Query cache that could get stale.
   const categoryBalances = useMemo(() => {
     const balances: Record<string, CategoryBalance> = {}

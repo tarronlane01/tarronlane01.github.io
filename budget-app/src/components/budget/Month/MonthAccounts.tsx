@@ -11,7 +11,7 @@ import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { FinancialAccount } from '@types'
-import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
+import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import { colors } from '@styles/shared'
 import { AccountStatsRow } from './MonthBalances'
@@ -22,6 +22,9 @@ import {
   calculateAccountClearedBalances,
 } from '@calculations'
 
+// Numeric column min width so values align across rows
+const NUM_COL_MIN = '5rem'
+
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
   fontSize: '0.75rem',
@@ -29,8 +32,16 @@ const columnHeaderStyle: React.CSSProperties = {
   opacity: 0.6,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
-  padding: '0.5rem',
+  padding: '0.5rem 0.5rem',
   borderBottom: '2px solid var(--border-medium)',
+}
+
+// Shared style for numeric cells: tabular figures + right-align + intra-cell padding only
+const numericCellStyle: React.CSSProperties = {
+  fontVariantNumeric: 'tabular-nums',
+  whiteSpace: 'nowrap',
+  paddingLeft: '0.5rem',
+  paddingRight: '0.5rem',
 }
 
 // Helper color functions
@@ -129,13 +140,16 @@ export function MonthAccounts() {
     fontWeight: 600,
   }
 
+  // Numeric grand-totals cells: tabular figures so columns line up
+  const grandTotalsNumericStyle = { ...numericCellStyle, justifyContent: 'flex-end' as const }
+
   return (
     <>
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End, Total, Cleared, Uncleared
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr',
+        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End, Total (Cleared/Uncleared in expandable row per account)
+        gridTemplateColumns: isMobile ? '1fr' : `2fr repeat(8, minmax(${NUM_COL_MIN}, 1fr))`,
       }}>
         {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
@@ -150,17 +164,15 @@ export function MonthAccounts() {
           {/* Column headers row - uses grid columns (above stats) */}
           {!isMobile && (
             <>
-              <div style={columnHeaderStyle}>Account</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Start</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Income</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Expenses</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Transfers</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Adjust</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Net Change</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>End</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Total</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Cleared</div>
-              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Uncleared</div>
+              <div style={{ ...columnHeaderStyle, paddingLeft: '0.5rem', paddingRight: '0.5rem' }}>Account</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Start</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Income</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Expenses</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Transfers</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Adjust</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Net Change</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>End</div>
+              <div style={{ ...columnHeaderStyle, ...numericCellStyle, textAlign: 'right' }}>Total</div>
             </>
           )}
 
@@ -170,57 +182,29 @@ export function MonthAccounts() {
               <div style={{ ...grandTotalsCellStyle }}>
                 Grand Totals
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.start) }}>
-                {formatSignedCurrency(accountBalanceTotals.start)}
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getBalanceColor(accountBalanceTotals.start) }}>
+                {formatBalanceCurrency(accountBalanceTotals.start)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getIncomeColor(accountBalanceTotals.income) }}>
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getIncomeColor(accountBalanceTotals.income) }}>
                 +{formatCurrency(accountBalanceTotals.income)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getExpenseColor(accountBalanceTotals.expenses) }}>
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getExpenseColor(accountBalanceTotals.expenses) }}>
                 {formatSignedCurrency(accountBalanceTotals.expenses)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(accountBalanceTotals.transfers) }}>
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getNetChangeColor(accountBalanceTotals.transfers) }}>
                 {formatSignedCurrencyAlways(accountBalanceTotals.transfers)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(accountBalanceTotals.adjustments) }}>
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getNetChangeColor(accountBalanceTotals.adjustments) }}>
                 {formatSignedCurrencyAlways(accountBalanceTotals.adjustments)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getNetChangeColor(netChangeTotal) }}>
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getNetChangeColor(netChangeTotal) }}>
                 {formatSignedCurrencyAlways(netChangeTotal)}
               </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end', color: getBalanceColor(accountBalanceTotals.end) }}>
-                {formatSignedCurrency(accountBalanceTotals.end)}
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: getBalanceColor(accountBalanceTotals.end) }}>
+                {formatBalanceCurrency(accountBalanceTotals.end)}
               </div>
-              <div style={{
-                ...grandTotalsCellStyle,
-                justifyContent: 'flex-end',
-                color: totalUncleared !== null ? getBalanceColor(totalUncleared) : undefined,
-              }}>
-                {/* Total - sum of all uncleared balances */}
-                {totalUncleared !== null
-                  ? formatSignedCurrency(totalUncleared)
-                  : <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>}
-              </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
-                {/* Cleared total - show dash if same as total */}
-                {(() => {
-                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
-                  const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
-                  const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
-                  return Math.abs(unclearedTotal - clearedTotal) < 0.01
-                    ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
-                    : formatSignedCurrency(clearedTotal)
-                })()}
-              </div>
-              <div style={{ ...grandTotalsCellStyle, justifyContent: 'flex-end' }}>
-                {/* Uncleared total (difference) - show dash if same as cleared */}
-                {(() => {
-                  if (Object.keys(accountClearedBalances).length === 0) return <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
-                  const clearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.cleared_balance, 0)
-                  const unclearedTotal = Object.values(accountClearedBalances).reduce((sum, bal) => sum + bal.uncleared_balance, 0)
-                  const difference = unclearedTotal - clearedTotal
-                  return Math.abs(difference) < 0.01 ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span> : formatSignedCurrencyAlways(difference)
-                })()}
+              <div style={{ ...grandTotalsCellStyle, ...grandTotalsNumericStyle, color: totalUncleared !== null ? getBalanceColor(totalUncleared) : undefined }}>
+                {totalUncleared !== null ? formatBalanceCurrency(totalUncleared) : <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>}
               </div>
             </>
           ) : (

@@ -100,6 +100,8 @@ interface BudgetContextType {
   isInitialized: boolean
   needsFirstBudget: boolean
   initialDataLoadComplete: boolean
+  /** True after month caches have been chained (start_balance from prev end_balance). Recalc should run after this so base month end_balance is correct. */
+  initialBalanceCalculationComplete: boolean
 
   // Convenience navigation (just changes identifiers)
   goToPreviousMonth: () => void
@@ -125,39 +127,13 @@ interface BudgetContextType {
 
 // --- DEFAULT CONTEXT VALUE ---
 const defaultContextValue: BudgetContextType = {
-  currentUserId: null,
-  selectedBudgetId: null,
-  currentYear: new Date().getFullYear(),
-  currentMonthNumber: new Date().getMonth() + 1,
-  lastActiveTab: 'categories',
-  lastBalancesTab: 'categories',
-  lastTransactionsTab: 'income',
-  lastSettingsTab: 'categories',
-  lastAdminTab: 'budget',
-  currentViewingDocument: { type: null },
-  setCurrentViewingDocument: () => {},
-  setSelectedBudgetId: () => {},
-  setCurrentYear: () => {},
-  setCurrentMonthNumber: () => {},
-  setLastActiveTab: () => {},
-  setLastSettingsTab: () => {},
-  setLastAdminTab: () => {},
-  pageTitle: 'Budget',
-  setPageTitle: () => {},
-  isInitialized: false,
-  needsFirstBudget: false,
-  initialDataLoadComplete: false,
-  goToPreviousMonth: () => {},
-  goToNextMonth: () => {},
-  pendingInvites: [],
-  hasPendingInvites: false,
-  accessibleBudgets: [],
-  isAdmin: false,
-  isTest: false,
-  loadAccessibleBudgets: async () => {},
-  switchToBudget: () => {},
-  checkBudgetInvite: async () => null,
-  clearCache: () => {},
+  currentUserId: null, selectedBudgetId: null, currentYear: new Date().getFullYear(), currentMonthNumber: new Date().getMonth() + 1,
+  lastActiveTab: 'categories', lastBalancesTab: 'categories', lastTransactionsTab: 'income', lastSettingsTab: 'categories', lastAdminTab: 'budget',
+  currentViewingDocument: { type: null }, setCurrentViewingDocument: () => {}, setSelectedBudgetId: () => {}, setCurrentYear: () => {}, setCurrentMonthNumber: () => {},
+  setLastActiveTab: () => {}, setLastSettingsTab: () => {}, setLastAdminTab: () => {}, pageTitle: 'Budget', setPageTitle: () => {},
+  isInitialized: false, needsFirstBudget: false, initialDataLoadComplete: false, initialBalanceCalculationComplete: false,
+  goToPreviousMonth: () => {}, goToNextMonth: () => {}, pendingInvites: [], hasPendingInvites: false, accessibleBudgets: [],
+  isAdmin: false, isTest: false, loadAccessibleBudgets: async () => {}, switchToBudget: () => {}, checkBudgetInvite: async () => null, clearCache: () => {},
 }
 
 const BudgetContext = createContext<BudgetContextType>(defaultContextValue)
@@ -216,6 +192,8 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   const initialDataLoad = useInitialDataLoad(selectedBudgetId, { enabled: !!selectedBudgetId && isInitialized })
   // Track if initial data load is complete (data loaded AND cache populated)
   const [initialDataLoadComplete, setInitialDataLoadComplete] = useState(false)
+  // Track if initial balance calculation has run (month caches chained so end_balance is correct)
+  const [initialBalanceCalculationComplete, setInitialBalanceCalculationComplete] = useState(false)
 
   // Populate cache with initial data when it loads (set staleTime to 5 minutes)
   useEffect(() => {
@@ -242,13 +220,15 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     enabled: !!selectedBudgetId && isInitialized && initialDataLoadComplete,
     initialDataLoadComplete,
     months: initialDataLoad.data?.months || [],
+    setInitialBalanceCalculationComplete,
   })
 
-  // Reset initialDataLoadComplete when budget changes
+  // Reset initialDataLoadComplete and initialBalanceCalculationComplete when budget changes
   useEffect(() => {
     if (!selectedBudgetId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialDataLoadComplete(false)
+      setInitialBalanceCalculationComplete(false)
     }
   }, [selectedBudgetId])
   // Derive user flags and onboarding state
@@ -367,6 +347,7 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     isInitialized,
     needsFirstBudget,
     initialDataLoadComplete,
+    initialBalanceCalculationComplete,
     goToPreviousMonth,
     goToNextMonth,
     pendingInvites,

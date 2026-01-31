@@ -1,10 +1,14 @@
 /**
  * Calculate total available (Ready to Assign) amount.
- * 
+ *
  * Formula: onBudgetAccountTotal - totalPositiveCategoryBalances
- * 
+ *
  * This is the amount of money available to allocate to categories.
  * Only positive category balances are subtracted (negative balances represent debt/overspending).
+ *
+ * IMPORTANT: This uses only stored/persisted category balances. It must NEVER factor in
+ * unfinalized draft allocations—Avail is always from finalized data so it stays correct
+ * regardless of draft edits on the month categories page.
  */
 
 import type { FirestoreData } from '@types'

@@ -24,6 +24,11 @@ function computeAllocationsMap(
 
   const allocMap: Record<string, string> = {}
   Object.entries(categories).forEach(([catId, cat]) => {
+    // Hidden categories always get zero (no default, no existing)
+    if (cat.is_hidden) {
+      allocMap[catId] = ''
+      return
+    }
     // Skip percentage-based categories - they're auto-calculated
     if (cat.default_monthly_type === 'percentage') {
       return
@@ -103,8 +108,9 @@ export function useAllocationsPage() {
   }, [currentMonth, categories])
 
   // Helper to get allocation amount for a category (handles percentage-based)
-  // Percentage-based allocations are rounded to 2 decimal places
+  // Hidden categories always get 0 (no default, no worksheet value)
   const getAllocationAmount = useCallback((catId: string, cat: Category): number => {
+    if (cat.is_hidden) return 0
     if (cat.default_monthly_type === 'percentage' && cat.default_monthly_amount !== undefined) {
       return roundCurrency((cat.default_monthly_amount / 100) * previousMonthIncome)
     }
@@ -189,6 +195,10 @@ export function useAllocationsPage() {
     if (!currentMonth) return
     const allocMap: Record<string, string> = {}
     Object.entries(categories).forEach(([catId, cat]) => {
+      if (cat.is_hidden) {
+        allocMap[catId] = ''
+        return
+      }
       if (cat.default_monthly_type === 'percentage') return
       const existingBalance = currentMonth.category_balances?.find(cb => cb.category_id === catId)
       if (existingBalance && existingBalance.allocated > 0) {
@@ -225,12 +235,12 @@ export function useAllocationsPage() {
     }
   }, [selectedBudgetId, currentYear, currentMonthNumber, queryClient, addLoadingHold, removeLoadingHold])
 
-  // Build allocations data including percentage-based categories
+  // Build allocations data: visible categories get worksheet/default amount, hidden always 0
   const buildAllocationsData = useCallback((): AllocationData => {
     const allocations: AllocationData = {}
     Object.entries(categories).forEach(([catId, cat]) => {
-      const amount = getAllocationAmount(catId, cat)
-      if (amount > 0) {
+      const amount = cat.is_hidden ? 0 : getAllocationAmount(catId, cat)
+      if (amount > 0 || cat.is_hidden) {
         allocations[catId] = amount
       }
     })
@@ -297,9 +307,13 @@ export function useAllocationsPage() {
           addLoadingHold('allocations-delete', progress.message)
         },
       })
-      // Reset local allocations to defaults after deletion
+      // Reset local allocations to defaults after deletion (hidden stay at zero)
       const allocMap: Record<string, string> = {}
       Object.entries(categories).forEach(([catId, cat]) => {
+        if (cat.is_hidden) {
+          allocMap[catId] = ''
+          return
+        }
         if (cat.default_monthly_type === 'percentage') return
         if (cat.default_monthly_amount !== undefined && cat.default_monthly_amount > 0) {
           allocMap[catId] = cat.default_monthly_amount.toString()
@@ -326,8 +340,9 @@ export function useAllocationsPage() {
     isEditingAppliedAllocations,
     monthLoading,
 
-    // Computed values
+    // Computed values (On-Budget and totalAvailable use same isAccountOnBudget as Settings/calculateTotalAvailable)
     onBudgetTotal,
+    totalAvailable,
     availableNow,
     currentDraftTotal,
     draftChangeAmount,

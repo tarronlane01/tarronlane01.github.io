@@ -4,9 +4,14 @@
  * Recalculates category balances in the budget by walking through all months
  * in the cache. This ensures accuracy even if some local recalculations failed.
  *
+ * IMPORTANT: Only finalized months are used. Unfinalized (draft) allocations—
+ * including saved drafts—must never affect budget category balances or Avail.
+ * We use the latest finalized month's end_balance as the base, not the current
+ * calendar month's end_balance when that month is unfinalized.
+ *
  * This function:
  * 1. Gets all months from cache
- * 2. Calculates total balances (current + future allocations) for each category
+ * 2. Uses only finalized month data for base balances (Step 1) and future months (Step 2)
  * 3. Updates the budget cache with new category balances
  */
 
@@ -62,32 +67,39 @@ export async function recalculateBudgetCategoryBalancesFromCache(
 
   const sortedOrdinals = Object.keys(monthMap).sort()
 
-  // Step 1: Find current month's end_balance from cache
+  let baseOrdinalUsed: string | null = null
+  const futureMonthsAddedAllocationsFrom: string[] = []
+
+  // Step 1: Find end_balance from cache for Avail/All-Time. We must use ONLY finalized months
+  // so that saved-draft (unfinalized) allocations never affect Avail or budget category balances.
   const currentMonthKey = queryKeys.month(budgetId, currentYear, currentMonth)
   const currentMonthData = queryClient.getQueryData<MonthQueryData>(currentMonthKey)
-  
-  if (currentMonthData?.month?.category_balances) {
-    // Use current month's end_balance directly
+  const currentMonthFinalized = currentMonthData?.month?.are_allocations_finalized === true
+
+  if (currentMonthFinalized && currentMonthData?.month?.category_balances) {
+    baseOrdinalUsed = currentOrdinal
+    // Current month is finalized - use its end_balance
     for (const cb of currentMonthData.month.category_balances) {
       if (categoryIds.includes(cb.category_id)) {
         balances[cb.category_id] = cb.end_balance ?? 0
       }
     }
   } else {
-    // Current month not in cache or has no balances - walk backwards to find starting point
+    // Current month unfinalized or missing - use latest finalized month's end_balance
     let foundStart = false
     for (let i = sortedOrdinals.length - 1; i >= 0 && !foundStart; i--) {
       const ordinal = sortedOrdinals[i]
       if (ordinal > currentOrdinal) continue // Skip future months
-      
+
       const { year, month } = parseOrdinal(ordinal)
       const monthKey = queryKeys.month(budgetId, year, month)
       const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
-      
-      if (monthData?.month?.category_balances) {
-        // Found a month with balances - use as starting point
+      const m = monthData?.month
+
+      if (m?.are_allocations_finalized && m.category_balances) {
         foundStart = true
-        for (const cb of monthData.month.category_balances) {
+        baseOrdinalUsed = ordinal
+        for (const cb of m.category_balances) {
           if (categoryIds.includes(cb.category_id)) {
             balances[cb.category_id] = cb.end_balance ?? 0
           }
@@ -177,6 +189,7 @@ export async function recalculateBudgetCategoryBalancesFromCache(
 
     // Add allocations if finalized
     if (m.are_allocations_finalized && m.category_balances) {
+      futureMonthsAddedAllocationsFrom.push(monthOrdinal)
       for (const cb of m.category_balances) {
         if (categoryIds.includes(cb.category_id)) {
           balances[cb.category_id] = (balances[cb.category_id] || 0) + (cb.allocated || 0)
@@ -221,8 +234,87 @@ export async function recalculateBudgetCategoryBalancesFromCache(
     },
   })
 
+  lastBaseOrdinalUsed = baseOrdinalUsed
+  lastFutureMonthsAdded = [...futureMonthsAddedAllocationsFrom]
+
   // Note: We don't save budget-level category balances to Firestore here.
   // Budget-level category.balance fields are also calculated/derived and should
   // be calculated on-the-fly, not stored. Only start_balance for months at/before
   // window should be saved to Firestore.
+}
+
+/** Last base month ordinal used by recalculateBudgetCategoryBalancesFromCache (for debug breakdown). */
+let lastBaseOrdinalUsed: string | null = null
+/** Last future months we added allocations from (for debug breakdown). */
+let lastFutureMonthsAdded: string[] = []
+
+/**
+ * Return the base month and future months used in the last recalc (for debug).
+ * Only set when recalculateBudgetCategoryBalancesFromCache runs.
+ */
+export function getLastRecalcBaseMonthForDebug(): { baseOrdinal: string | null; futureMonthsAdded: string[] } {
+  return { baseOrdinal: lastBaseOrdinalUsed, futureMonthsAdded: lastFutureMonthsAdded }
+}
+
+/**
+ * Return the distinct list of month ordinals (YYYYMM) whose category balances
+ * are rolled up into the budget category balances (and thus into the all-time total).
+ * Used for debugging: call from the categories page to see which months contribute.
+ */
+export function getMonthsContributingToBudgetCategoryBalances(budgetId: string): string[] {
+  const contributing: string[] = []
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  if (!cachedBudget || Object.keys(cachedBudget.categories).length === 0) return contributing
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+  const currentOrdinal = getYearMonthOrdinal(currentYear, currentMonth)
+  const monthMap = cachedBudget.monthMap || {}
+  const sortedOrdinals = Object.keys(monthMap).sort()
+
+  const currentMonthData = queryClient.getQueryData<MonthQueryData>(queryKeys.month(budgetId, currentYear, currentMonth))
+  const currentMonthFinalized = currentMonthData?.month?.are_allocations_finalized === true
+
+  let baseOrdinal: string
+  if (currentMonthFinalized && currentMonthData?.month?.category_balances) {
+    baseOrdinal = currentOrdinal
+  } else {
+    let found = false
+    for (let i = sortedOrdinals.length - 1; i >= 0 && !found; i--) {
+      const ordinal = sortedOrdinals[i]
+      if (ordinal > currentOrdinal) continue
+      const { year, month } = parseOrdinal(ordinal)
+      const monthData = queryClient.getQueryData<MonthQueryData>(queryKeys.month(budgetId, year, month))
+      const m = monthData?.month
+      if (m?.are_allocations_finalized && m.category_balances) {
+        baseOrdinal = ordinal
+        found = true
+      }
+    }
+    if (!found) return contributing
+  }
+  contributing.push(baseOrdinal!)
+
+  const maxFutureOrdinal = getYearMonthOrdinal(
+    currentYear + Math.floor((currentMonth + MAX_FUTURE_MONTHS - 1) / 12),
+    ((currentMonth + MAX_FUTURE_MONTHS - 1) % 12) + 1
+  )
+  let walkYear = currentYear
+  let walkMonth = currentMonth
+  for (let i = 0; i < MAX_FUTURE_MONTHS * 2; i++) {
+    const next = getNextMonth(walkYear, walkMonth)
+    walkYear = next.year
+    walkMonth = next.month
+    const monthOrdinal = getYearMonthOrdinal(walkYear, walkMonth)
+    if (monthOrdinal > maxFutureOrdinal || !(monthOrdinal in monthMap)) break
+    const monthData = queryClient.getQueryData<MonthQueryData>(queryKeys.month(budgetId, walkYear, walkMonth))
+    if (!monthData?.month) break
+    // Only include months we actually add allocations from (finalized); unfinalized months don't contribute
+    if (monthData.month.are_allocations_finalized && monthData.month.category_balances) {
+      contributing.push(monthOrdinal)
+    }
+  }
+
+  return [...new Set(contributing)].sort()
 }
