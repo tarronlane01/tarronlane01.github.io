@@ -79,7 +79,7 @@ export function useAddExpense() {
   const queryClient = useQueryClient()
   const { currentViewingDocument } = useBudget()
   const { saveCurrentDocument } = useBackgroundSave()
-  const { updateMonthCacheAndTrack, recalculateMonthAndCascade, trackChange } = useMonthMutationHelpers()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const mutation = useMutation<AddExpenseResult, Error, AddExpenseParams, MutationContext>({
     // onMutate runs BEFORE mutationFn - this is where we do optimistic updates
@@ -122,7 +122,6 @@ export function useAddExpense() {
         const updatedPayees = await savePayeeIfNew(budgetId, params.payee, cachedPayees)
         if (updatedPayees) {
           queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
-          trackChange({ type: 'payees', budgetId })
         }
       }
 

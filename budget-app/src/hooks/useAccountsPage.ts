@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useBudget } from '@contexts'
-import { useUpdateAccounts, useUpdateAccountGroups } from '@data/mutations/budget'
+import { useUpdateAccounts, useUpdateAccountGroups, useDeleteAccount, useDeleteAccountGroup } from '@data/mutations/budget'
 import { useBudgetData } from './useBudgetData'
 import type { FinancialAccount, AccountsMap, AccountGroup, AccountGroupsMap } from '@types'
 import type { AccountFormData, GroupWithId } from '../components/budget/Accounts/AccountForm'
@@ -29,6 +29,8 @@ export function useAccountsPage() {
   // Mutations - imported directly
   const { updateAccounts } = useUpdateAccounts()
   const { updateAccountGroups } = useUpdateAccountGroups()
+  const { deleteAccount } = useDeleteAccount()
+  const { deleteAccountGroup } = useDeleteAccountGroup()
 
   const [error, setError] = useState<string | null>(null)
 
@@ -42,14 +44,6 @@ export function useAccountsPage() {
     if (!selectedBudgetId) throw new Error('No budget selected')
     await updateAccountGroups.mutateAsync({ budgetId: selectedBudgetId, accountGroups: newGroups })
   }, [selectedBudgetId, updateAccountGroups])
-
-  const saveAccountsAndGroups = useCallback(async (newAccounts: AccountsMap, newGroups: AccountGroupsMap) => {
-    if (!selectedBudgetId) throw new Error('No budget selected')
-    await Promise.all([
-      updateAccounts.mutateAsync({ budgetId: selectedBudgetId, accounts: newAccounts }),
-      updateAccountGroups.mutateAsync({ budgetId: selectedBudgetId, accountGroups: newGroups }),
-    ])
-  }, [selectedBudgetId, updateAccounts, updateAccountGroups])
 
   // Organize accounts by group (excluding hidden)
   const accountsByGroup = useMemo(() => {
@@ -151,12 +145,11 @@ export function useAccountsPage() {
 
   const handleDeleteAccount = useCallback((accountId: string) => {
     if (!confirm('Are you sure you want to delete this account?')) return
-    if (!currentBudget) return
-    const { [accountId]: _removed, ...newAccounts } = accounts
-    void _removed
-    setAccountsOptimistic(newAccounts)
-    saveAccounts(newAccounts).catch(err => setError(err instanceof Error ? err.message : 'Failed to delete account.'))
-  }, [currentBudget, accounts, setAccountsOptimistic, saveAccounts])
+    if (!currentBudget || !selectedBudgetId) return
+    deleteAccount.mutateAsync({ budgetId: selectedBudgetId, accountId }).catch(err =>
+      setError(err instanceof Error ? err.message : 'Failed to delete account.')
+    )
+  }, [currentBudget, selectedBudgetId, deleteAccount])
 
   const handleMoveAccount = useCallback(async (accountId: string, direction: 'up' | 'down') => {
     const account = accounts[accountId]
@@ -200,26 +193,19 @@ export function useAccountsPage() {
   }, [currentBudget, accountGroups, setAccountGroupsOptimistic, saveAccountGroups])
 
   const handleDeleteGroup = useCallback((groupId: string) => {
-    // Prevent deleting the default ungrouped group
     if (groupId === UNGROUPED_ACCOUNT_GROUP_ID) {
       alert('Cannot delete the default Ungrouped account type.')
       return
     }
     if (!confirm('Are you sure you want to delete this account type? Accounts in this type will move to Ungrouped.')) return
-    if (!currentBudget) return
-    const newAccounts: AccountsMap = {}
-    // Move accounts from deleted group to ungrouped group
-    Object.entries(accounts).forEach(([accId, account]) => {
-      newAccounts[accId] = account.account_group_id === groupId
-        ? { ...account, account_group_id: UNGROUPED_ACCOUNT_GROUP_ID }
-        : account
-    })
-    const { [groupId]: _removedGroup, ...newGroups } = accountGroups
-    void _removedGroup
-    setAccountsOptimistic(newAccounts)
-    setAccountGroupsOptimistic(newGroups)
-    saveAccountsAndGroups(newAccounts, newGroups).catch(err => setError(err instanceof Error ? err.message : 'Failed to delete account type.'))
-  }, [currentBudget, accounts, accountGroups, setAccountsOptimistic, setAccountGroupsOptimistic, saveAccountsAndGroups])
+    if (!currentBudget || !selectedBudgetId) return
+    const accountIdsToUngroup = Object.entries(accounts)
+      .filter(([, account]) => (account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID) === groupId)
+      .map(([accId]) => accId)
+    deleteAccountGroup
+      .mutateAsync({ budgetId: selectedBudgetId, groupId, accountIdsToUngroup })
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to delete account type.'))
+  }, [currentBudget, selectedBudgetId, accounts, deleteAccountGroup])
 
   const handleMoveGroup = useCallback(async (groupId: string, direction: 'up' | 'down') => {
     const sortedGroupEntries = Object.entries(accountGroups).sort(([, a], [, b]) => a.sort_order - b.sort_order)

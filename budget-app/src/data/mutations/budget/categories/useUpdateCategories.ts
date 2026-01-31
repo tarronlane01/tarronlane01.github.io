@@ -11,8 +11,8 @@ import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import type { CategoriesMap } from '@types'
 import { useBudget } from '@contexts'
-import { useBackgroundSave } from '@hooks/useBackgroundSave'
 import { useBudgetMutationHelpers } from '../mutationHelpers'
+import { writeBudgetData } from '../writeBudgetData'
 
 // ============================================================================
 // HELPERS
@@ -42,7 +42,6 @@ interface MutationContext {
 export function useUpdateCategories() {
   const queryClient = useQueryClient()
   const { currentViewingDocument } = useBudget()
-  const { saveCurrentDocument } = useBackgroundSave()
   const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<UpdateCategoriesResult, Error, UpdateCategoriesParams, MutationContext>({
@@ -53,8 +52,8 @@ export function useUpdateCategories() {
       await queryClient.cancelQueries({ queryKey })
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
+      const isCurrentDocument = currentViewingDocument.type === 'budget'
 
-      // Optimistically update the cache and track change automatically
       if (previousData) {
         const updatedBudget: BudgetData = {
           ...previousData,
@@ -64,17 +63,28 @@ export function useUpdateCategories() {
             categories,
           },
         }
-        updateBudgetCacheAndTrack(budgetId, updatedBudget)
+        // Update cache so UI shows correct data
+        queryClient.setQueryData<BudgetData>(queryKey, updatedBudget)
+        // Only track change when we're NOT writing here — if we write below, tracking would
+        // cause navigation save to read cache and write again, which can overwrite our write
+        // with stale data if a refetch overwrote the cache in between.
+        if (!isCurrentDocument) {
+          updateBudgetCacheAndTrack(budgetId, updatedBudget)
+        }
       }
 
-      // Save current document immediately if viewing budget settings
-      const isCurrentDocument = currentViewingDocument.type === 'budget'
-
+      // Persist categories immediately when viewing budget settings.
+      // Write the mutation payload directly (not from cache) so we never persist
+      // stale data if a refetch overwrote the cache before save ran.
       if (isCurrentDocument) {
         try {
-          await saveCurrentDocument(budgetId, 'budget')
+          await writeBudgetData({
+            budgetId,
+            updates: { categories },
+            description: 'categories: update (settings)',
+          })
         } catch (error) {
-          console.warn('[useUpdateCategories] Failed to save current document immediately:', error)
+          console.warn('[useUpdateCategories] Failed to save categories immediately:', error)
           // Continue even if immediate save fails - background save will handle it
         }
       }

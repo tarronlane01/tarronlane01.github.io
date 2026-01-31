@@ -25,11 +25,6 @@ export interface CreateMonthOptions {
    * Use only for seed data imports or migrations that need to create historical months.
    */
   bypassDateLimit?: boolean
-  /**
-   * Optional callback to track budget changes for background save.
-   * If provided, the budget month_map update will be tracked for background save.
-   */
-  trackBudgetChange?: (change: { type: 'budget'; budgetId: string }) => void
 }
 
 /**
@@ -301,9 +296,7 @@ export async function createMonth(
   // month_map entries are just empty objects (no flags)
   const updatedMonthMap: MonthMap = { ...existingMonthMap, [monthOrdinal]: {} }
 
-  // Update cache immediately (instant UI feedback)
-  // Track change for background save if callback provided
-  updateCacheWithSingleMonth(budgetId, updatedMonthMap, options?.trackBudgetChange)
+  updateCacheWithSingleMonth(budgetId, updatedMonthMap)
 
   // Write month_map to Firestore immediately (month creation is a special case - we need it persisted)
   // The change is also tracked for background save to ensure sync system picks it up

@@ -7,4 +7,6 @@
 export { useUpdateAccounts } from './useUpdateAccounts'
 export { useUpdateAccountGroups } from './useUpdateAccountGroups'
 export { useUpdateAccountBalance } from './useUpdateAccountBalance'
+export { useDeleteAccount } from './useDeleteAccount'
+export { useDeleteAccountGroup } from './useDeleteAccountGroup'
 

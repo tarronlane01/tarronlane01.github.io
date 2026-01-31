@@ -100,12 +100,10 @@ export function updateCacheWithMonthMap(
 
 /**
  * Update cache for addMonthToMap
- * Optionally tracks the budget change for background save.
  */
 export function updateCacheWithSingleMonth(
   budgetId: string,
-  updatedMonthMap: MonthMap,
-  trackChange?: (change: { type: 'budget'; budgetId: string }) => void
+  updatedMonthMap: MonthMap
 ): void {
   const budgetKey = queryKeys.budget(budgetId)
   const cachedBudget = queryClient.getQueryData<BudgetData>(budgetKey)
@@ -118,11 +116,6 @@ export function updateCacheWithSingleMonth(
         month_map: updatedMonthMap,
       },
     })
-
-    // Track change for background save if callback provided
-    if (trackChange) {
-      trackChange({ type: 'budget', budgetId })
-    }
   }
 }
 
@@ -145,14 +138,12 @@ export function updateCacheWithAllMonths(budgetId: string, updatedMonthMap: Mont
 }
 
 /**
- * Remove a month from the budget's month_map.
- * Updates cache immediately and optionally tracks the budget change for background save.
+ * Remove a month from the budget's month_map. Updates cache immediately.
  */
 export function removeMonthFromMap(
   budgetId: string,
   year: number,
-  month: number,
-  trackChange?: (change: { type: 'budget'; budgetId: string }) => void
+  month: number
 ): MonthMap {
   const monthOrdinal = getYearMonthOrdinal(year, month)
   const budgetKey = queryKeys.budget(budgetId)
@@ -167,7 +158,6 @@ export function removeMonthFromMap(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { [monthOrdinal]: _removed, ...updatedMonthMap } = existingMonthMap
 
-  // Update cache immediately
   queryClient.setQueryData<BudgetData>(budgetKey, {
     ...cachedBudget,
     monthMap: updatedMonthMap,
@@ -176,11 +166,6 @@ export function removeMonthFromMap(
       month_map: updatedMonthMap,
     },
   })
-
-  // Track change for background save if callback provided
-  if (trackChange) {
-    trackChange({ type: 'budget', budgetId })
-  }
 
   return updatedMonthMap
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApp } from '@contexts'
-import { useBudget, useSync } from '@contexts'
+import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { colors } from '@styles/shared'
 import { MONTH_NAMES } from '@constants'
@@ -76,16 +76,13 @@ export function MonthNavigation({
     return Number(currentOrdinal) === maxOrdinalInMap
   })()
 
-  const { trackChange } = useSync()
-
   async function handleDeleteMonth() {
     if (!selectedBudgetId) return
     setIsDeleting(true)
     try {
       const monthDocId = getMonthDocId(selectedBudgetId, currentYear, currentMonthNumber)
 
-      // Remove month from month_map in cache immediately (instant UI feedback)
-      removeMonthFromMap(selectedBudgetId, currentYear, currentMonthNumber, trackChange)
+      removeMonthFromMap(selectedBudgetId, currentYear, currentMonthNumber)
 
       // Delete month document (this is a destructive operation, so we do it immediately)
       // The month_map update will be saved in the background via the sync system

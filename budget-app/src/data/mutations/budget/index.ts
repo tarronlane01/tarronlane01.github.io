@@ -12,12 +12,15 @@ export {
   useUpdateAccounts,
   useUpdateAccountGroups,
   useUpdateAccountBalance,
+  useDeleteAccount,
+  useDeleteAccountGroup,
 } from './accounts'
 
 // Category mutations
 export {
   useUpdateCategories,
   useUpdateCategoryGroups,
+  useDeleteCategory,
 } from './categories'
 
 // Budget rename

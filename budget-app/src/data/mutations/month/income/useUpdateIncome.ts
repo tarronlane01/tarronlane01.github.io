@@ -48,7 +48,7 @@ export function useUpdateIncome() {
   const queryClient = useQueryClient()
   const { currentViewingDocument } = useBudget()
   const { saveCurrentDocument } = useBackgroundSave()
-  const { updateMonthCacheAndTrack, recalculateMonthAndCascade, trackChange } = useMonthMutationHelpers()
+  const { updateMonthCacheAndTrack, recalculateMonthAndCascade } = useMonthMutationHelpers()
 
   const updateIncome = async (
     budgetId: string,
@@ -110,7 +110,6 @@ export function useUpdateIncome() {
       const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
       if (updatedPayees) {
         queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
-        trackChange({ type: 'payees', budgetId })
       }
     }
 

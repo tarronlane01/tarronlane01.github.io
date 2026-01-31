@@ -6,4 +6,5 @@
 
 export { useUpdateCategories } from './useUpdateCategories'
 export { useUpdateCategoryGroups } from './useUpdateCategoryGroups'
+export { useDeleteCategory } from './useDeleteCategory'
 

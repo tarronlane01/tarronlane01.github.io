@@ -2,6 +2,10 @@
 
 - [ ] have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)
 
+On the month categories page, give a download button that will download all the displayed values into a markdown file, with a markdown table, etc. For easy use to send data elsewhere.
+
+Double check the loading of extra month when editing allocations. Make sure I dont have to pause and load if the needed month is still fresh in cache (not stale)
+
 # Critical
 
 Available cash not calculating correctly
@@ -14,6 +18,8 @@ Transfer cleared button not working as intended
 Maybe we take all the totals and balances and never save those to firebase, instead always recalculating them on inital app load, storing them elsewhere for just the app session. That would save us having to do periodic saves and reconcilliations and manage cache for balances and cascading tracking of what needs resaved because the balance is new, right? Any issues in this plan? Don't make any changes yet, just let me know what this plan misses.
 
 # non-critical
+
+Feature: Download page as csv, for easier compare
 
 
 Click on account or category to edit
@@ -35,5 +41,4 @@ Logging out doesn't invalidate all local storage
 Only have expenses change the account balance if "cleared".
 
 Have all pages, including homepage and sql test page, etc, use the same component container for the content tht the budget has, with the same header component so they all behave the same way, with the icon on the left, the ellipse menu on the right, the title in the middle, and all page content staying within the main containe that sets the left and right spacing. Make sure these are all using the same components so that they are forced to have the same behavior and don't have to be separately maintained.
-
 Catch if we ever get a firebase quota error when trying to read/write to firebase, and show that error in the common error banner.

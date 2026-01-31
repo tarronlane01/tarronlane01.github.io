@@ -1,10 +1,8 @@
 /**
  * Mutation Helpers
  *
- * Shared helpers for month mutations to:
- * - Track changes in sync context automatically
- * - Recalculate locally when data changes
- * - Update cache immediately
+ * Shared helpers for month mutations: recalculate locally and update cache.
+ * Data is written on edit; there is no change tracking.
  */
 
 import { queryClient, queryKeys } from '@data/queryClient'
@@ -14,7 +12,6 @@ import type { MonthQueryData } from '@data/queries/month'
 import { getYearMonthOrdinal } from '@utils'
 import type { MonthMap } from '@types'
 import type { BudgetData } from '@data/queries/budget'
-import { useSync } from '@contexts/sync_context'
 import { useApp } from '@contexts'
 import { retotalMonth } from './retotalMonth'
 import { getFirstWindowMonth } from '@utils/window'
@@ -24,19 +21,12 @@ import { ensureMonthsFreshAndRecalculateBalances } from './ensureMonthsFresh'
 
 /**
  * Recalculate the current month and all future months locally.
- * This recalculates months locally when data changes.
- *
- * IMPORTANT: Also tracks all recalculated months for background save.
- * This ensures that when a month is changed, all months from that month onwards
- * (including the edited month itself) are recalculated and saved to Firestore.
- *
- * @internal This is an internal implementation detail. Use recalculateMonthAndCascade instead.
+ * @internal Use recalculateMonthAndCascade instead.
  */
 async function recalculateFutureMonthsLocally(
   budgetId: string,
   year: number,
-  month: number,
-  trackChange?: (change: { type: 'month'; budgetId: string; year: number; month: number }) => void
+  month: number
 ): Promise<void> {
   // Get budget to find all months from the edited month onwards
   const budgetData = queryClient.getQueryData<{ budget: { month_map: MonthMap } }>(
@@ -68,15 +58,9 @@ async function recalculateFutureMonthsLocally(
     return a.month - b.month
   })
 
-  // Recalculate each month in sequence (starting with the edited month) and track changes
   for (const { year: recalcYear, month: recalcMonth } of monthsToRecalculate) {
     try {
       await recalculateMonthLocally(budgetId, recalcYear, recalcMonth, queryClient)
-
-      // Track this month as needing to be saved (it was recalculated)
-      if (trackChange) {
-        trackChange({ type: 'month', budgetId, year: recalcYear, month: recalcMonth })
-      }
     } catch (error) {
       console.warn(
         `[mutationHelpers] Failed to recalculate month ${recalcYear}/${recalcMonth} locally:`,
@@ -107,31 +91,15 @@ async function recalculateFutureMonthsLocally(
  * ```
  */
 export function useMonthMutationHelpers() {
-  const { trackChange } = useSync()
   const { addLoadingHold, removeLoadingHold } = useApp()
 
-  /**
-   * Update month cache and automatically track the change.
-   * This replaces the pattern of:
-   * - queryClient.setQueryData(...)
-   * - trackChange({ type: 'month', ... })
-   */
   const updateMonthCacheAndTrack = (
     budgetId: string,
     year: number,
     month: number,
     monthData: MonthDocument
   ): void => {
-    // Update cache
     queryClient.setQueryData<MonthQueryData>(queryKeys.month(budgetId, year, month), { month: monthData })
-
-    // Automatically track change
-    trackChange({
-      type: 'month',
-      budgetId,
-      year,
-      month,
-    })
   }
 
   /**
@@ -181,8 +149,7 @@ export function useMonthMutationHelpers() {
     const isEditingBeforeWindow = editedOrdinal < firstWindowOrdinal
 
     // Step 3: Fully recalculate the edited month and all future months
-    // This updates start_balance from previous month and ensures cascading is correct
-    await recalculateFutureMonthsLocally(budgetId, year, month, trackChange)
+    await recalculateFutureMonthsLocally(budgetId, year, month)
 
     // Step 4: If editing before window, save start_balance for months at/before window
     if (isEditingBeforeWindow) {
@@ -241,15 +208,11 @@ export function useMonthMutationHelpers() {
     } catch (error) {
       console.warn('[mutationHelpers] Failed to ensure months fresh and recalculate balances:', error)
     }
-
-    // Track budget change (after both account and category balances are updated)
-    trackChange({ type: 'budget', budgetId })
   }
 
   return {
     updateMonthCacheAndTrack,
     recalculateMonthAndCascade,
-    trackChange, // Expose trackChange so mutations can use it for other changes
   }
 }
 

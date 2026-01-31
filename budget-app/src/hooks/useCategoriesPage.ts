@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useBudget } from '@contexts'
-import { useUpdateCategories, useUpdateCategoryGroups } from '@data/mutations/budget'
+import { useUpdateCategories, useUpdateCategoryGroups, useDeleteCategory } from '@data/mutations/budget'
 import type { Category, CategoriesMap, CategoryGroup } from '@types'
 import { useBudgetData } from './useBudgetData'
 import { useCategoryBalances } from './useCategoryBalances'
@@ -49,6 +49,7 @@ export function useCategoriesPage() {
   // Mutations - imported directly
   const { updateCategories } = useUpdateCategories()
   const { updateCategoryGroups } = useUpdateCategoryGroups()
+  const { deleteCategory } = useDeleteCategory()
 
   const [error, setError] = useState<string | null>(null)
 
@@ -176,12 +177,9 @@ export function useCategoriesPage() {
 
   async function handleDeleteCategory(categoryId: string) {
     if (!confirm('Are you sure you want to delete this category?')) return
-    if (!currentBudget) return
+    if (!currentBudget || !selectedBudgetId) return
     try {
-      const { [categoryId]: _removed, ...newCategories } = categories
-      void _removed // Intentionally unused - destructuring to exclude from object
-      setCategoriesOptimistic(newCategories)
-      await saveCategories(newCategories)
+      await deleteCategory.mutateAsync({ budgetId: selectedBudgetId, categoryId })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete category')
     }

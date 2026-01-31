@@ -1,9 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import type { User } from 'firebase/auth'
-import { useQueryClient } from '@tanstack/react-query'
 
-import { AppProvider, useApp, UserContext, BudgetProvider, SyncProvider, useBudget } from '@contexts'
+import { AppProvider, useApp, UserContext, BudgetProvider } from '@contexts'
 import { QueryProvider } from '@data'
 import { useFirebaseAuth, MigrationProgressProvider } from '@hooks'
 import { MigrationProgressModal } from './components/budget/Admin'
@@ -20,7 +19,6 @@ import BudgetLayout from './components/BudgetLayout'
 import { FeedbackButton, Banner, bannerQueue } from './components/ui'
 import { LoadingOverlay } from './components/app/LoadingOverlay'
 import { useBackgroundSave } from './hooks/useBackgroundSave'
-import { useSyncCheck } from './hooks/useSyncCheck'
 import type { type_user_context } from '@types'
 
 const initial_user_context: type_user_context = {
@@ -55,27 +53,9 @@ function GlobalBanner() {
   )
 }
 
-/** Budget app content with sync and save functionality */
+/** Budget app content */
 function BudgetAppContent() {
-  const { selectedBudgetId, isInitialized } = useBudget()
-  const queryClient = useQueryClient()
-
-  // Check if initial data load is complete
-  // Initial data load query key: ['initialDataLoad', budgetId]
-  const initialDataLoadKey = selectedBudgetId ? ['initialDataLoad', selectedBudgetId] : null
-  const initialDataLoadComplete = initialDataLoadKey
-    ? queryClient.getQueryState(initialDataLoadKey)?.status === 'success'
-    : false
-
-  // Background save - only saves current document immediately (no periodic/navigation saves)
-  // Transactions are saved immediately after optimistic updates
   useBackgroundSave()
-
-  // Navigation saves removed - transactions are saved immediately, no need to save on navigation
-  // useNavigationSave() // Removed - transactions save immediately
-
-  // Set up sync check - only after initial load completes (we're already synced on initial load)
-  useSyncCheck(selectedBudgetId, initialDataLoadComplete && isInitialized)
 
   return (
     <>
@@ -155,13 +135,11 @@ function AppContent() {
     <UserContext.Provider value={user_context}>
       <QueryProvider>
         <BudgetProvider>
-          <SyncProvider>
-            <MigrationProgressProvider>
-              <BrowserRouter>
-                <BudgetAppContent />
-              </BrowserRouter>
-            </MigrationProgressProvider>
-          </SyncProvider>
+          <MigrationProgressProvider>
+            <BrowserRouter>
+              <BudgetAppContent />
+            </BrowserRouter>
+          </MigrationProgressProvider>
         </BudgetProvider>
       </QueryProvider>
     </UserContext.Provider>
