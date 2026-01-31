@@ -4,6 +4,7 @@
 
 # Critical
 
+Available cash not calculating correctly
 
 
 Transfer cleared button not working as intended

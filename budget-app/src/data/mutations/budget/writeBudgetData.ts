@@ -82,6 +82,7 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
   const { budgetId, updates, description } = params
 
   // Strip fields that shouldn't be saved to Firestore (calculated/managed locally)
+  // Budget-level account/category balances are computed locally only; never persist them.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove fields
   const { total_available: _total_available, is_needs_recalculation: _is_needs_recalculation, ...updatesWithoutCalculatedFields } = updates as {
     total_available?: number
@@ -89,9 +90,46 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
     [key: string]: unknown
   }
 
+  // Strip balance from accounts and categories if present (never persist budget-level balances)
+  let safeUpdates: FirestoreData = { ...updatesWithoutCalculatedFields }
+  if (safeUpdates.accounts && typeof safeUpdates.accounts === 'object') {
+    const accounts = safeUpdates.accounts as Record<string, Record<string, unknown>>
+    safeUpdates = {
+      ...safeUpdates,
+      accounts: Object.fromEntries(
+        Object.entries(accounts).map(([id, acc]) => {
+          if (acc && typeof acc === 'object') {
+            // Omit balance from payload (balances live on budget, not in accounts update)
+            const { balance: _balanceOmitted, ...accWithoutBalance } = acc as { balance?: number; [key: string]: unknown }
+            void _balanceOmitted
+            return [id, accWithoutBalance]
+          }
+          return [id, acc]
+        })
+      ),
+    }
+  }
+  if (safeUpdates.categories && typeof safeUpdates.categories === 'object') {
+    const categories = safeUpdates.categories as Record<string, Record<string, unknown>>
+    safeUpdates = {
+      ...safeUpdates,
+      categories: Object.fromEntries(
+        Object.entries(categories).map(([id, cat]) => {
+          if (cat && typeof cat === 'object') {
+            // Omit balance from payload (balances live on budget, not in categories update)
+            const { balance: _balanceOmitted, ...catWithoutBalance } = cat as { balance?: number; [key: string]: unknown }
+            void _balanceOmitted
+            return [id, catWithoutBalance]
+          }
+          return [id, cat]
+        })
+      ),
+    }
+  }
+
   // Add timestamp to updates
   const dataToWrite: FirestoreData = {
-    ...updatesWithoutCalculatedFields,
+    ...safeUpdates,
     updated_at: new Date().toISOString(),
   }
 

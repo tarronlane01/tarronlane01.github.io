@@ -67,8 +67,12 @@ async function parseMonthData(
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Always compute from income N months back so budget setting "Income reference for % allocations (months back)" is respected
-  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
+  // Only fetch previous month's income when allocations are not finalized (needed for % allocation display).
+  // When finalized, skip the fetch; use 0. Edit Allocations flow fetches it behind a loading overlay.
+  const areAllocationsFinalized = data.are_allocations_finalized ?? false
+  const previousMonthIncome = areAllocationsFinalized
+    ? 0
+    : await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
   
   // Parse basic month data
   const monthDoc: MonthDocument = {

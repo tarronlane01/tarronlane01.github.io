@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useApp, useBudget } from '@contexts'
 import type { Category, CategoriesMap, MonthDocument } from '@types'
 import { useBudgetData, useMonthData } from './index'
@@ -9,6 +10,9 @@ import {
   type AllocationData,
   type AllocationProgress,
 } from '../data/mutations/month/allocations'
+import { readMonthForEdit } from '@data'
+import { queryKeys } from '@data/queryClient'
+import { bannerQueue } from '@components/ui'
 import { roundCurrency } from '@utils'
 
 // Helper to compute allocations map from month and categories
@@ -39,6 +43,7 @@ function computeAllocationsMap(
 }
 
 export function useAllocationsPage() {
+  const queryClient = useQueryClient()
   const { addLoadingHold, removeLoadingHold } = useApp()
   const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
   const { categories, getOnBudgetTotal, totalAvailable } = useBudgetData()
@@ -69,7 +74,6 @@ export function useAllocationsPage() {
   // Allocations state - initialized from cached data if available
   const [localAllocations, setLocalAllocations] = useState<Record<string, string>>(initialAllocations)
   const [isEditingAppliedAllocations, setIsEditingAppliedAllocations] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // Track which month we've synced to (to avoid re-syncing on every render)
   const syncedMonthRef = useRef<string | null>(null)
@@ -199,6 +203,28 @@ export function useAllocationsPage() {
     setIsEditingAppliedAllocations(false)
   }, [currentMonth, categories])
 
+  // Edit Allocations: fetch month for edit (includes previous_month_income) behind loading overlay, then enter edit mode
+  const handleEditAllocations = useCallback(async () => {
+    if (!selectedBudgetId) return
+    addLoadingHold('allocations-edit', 'Loading allocations...')
+    try {
+      const monthDoc = await readMonthForEdit(
+        selectedBudgetId,
+        currentYear,
+        currentMonthNumber,
+        'Edit Allocations'
+      )
+      const monthKey = queryKeys.month(selectedBudgetId, currentYear, currentMonthNumber)
+      queryClient.setQueryData(monthKey, { month: monthDoc })
+      setIsEditingAppliedAllocations(true)
+    } catch (err) {
+      console.error('[useAllocationsPage] Edit Allocations failed:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to load allocations. See console for details.', autoDismissMs: 0 })
+    } finally {
+      removeLoadingHold('allocations-edit')
+    }
+  }, [selectedBudgetId, currentYear, currentMonthNumber, queryClient, addLoadingHold, removeLoadingHold])
+
   // Build allocations data including percentage-based categories
   const buildAllocationsData = useCallback((): AllocationData => {
     const allocations: AllocationData = {}
@@ -214,7 +240,6 @@ export function useAllocationsPage() {
   // Save allocations to database
   const handleSaveAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
-    setError(null)
     addLoadingHold('allocations-save', 'Saving allocations...')
     try {
       await saveDraftAllocations(
@@ -225,7 +250,8 @@ export function useAllocationsPage() {
       )
       setIsEditingAppliedAllocations(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save allocations')
+      console.error('[useAllocationsPage] Save allocations failed:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to save allocations. See console for details.', autoDismissMs: 0 })
     } finally {
       removeLoadingHold('allocations-save')
     }
@@ -235,7 +261,6 @@ export function useAllocationsPage() {
   // Now triggers immediate recalculation and shows detailed progress
   const handleFinalizeAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
-    setError(null)
     addLoadingHold('allocations-finalize', 'Applying allocations...')
     try {
       await finalizeAllocations({
@@ -250,7 +275,8 @@ export function useAllocationsPage() {
       })
       setIsEditingAppliedAllocations(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to finalize allocations')
+      console.error('[useAllocationsPage] Finalize allocations failed:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to apply allocations. See console for details.', autoDismissMs: 0 })
     } finally {
       removeLoadingHold('allocations-finalize')
     }
@@ -260,7 +286,6 @@ export function useAllocationsPage() {
   // Now triggers immediate recalculation and shows detailed progress
   const handleDeleteAllocations = useCallback(async () => {
     if (!selectedBudgetId) return
-    setError(null)
     addLoadingHold('allocations-delete', 'Deleting allocations...')
     try {
       await deleteAllocations({
@@ -285,7 +310,8 @@ export function useAllocationsPage() {
       setLocalAllocations(allocMap)
       setIsEditingAppliedAllocations(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete allocations')
+      console.error('[useAllocationsPage] Delete allocations failed:', err)
+      bannerQueue.add({ type: 'error', message: 'Failed to delete allocations. See console for details.', autoDismissMs: 0 })
     } finally {
       removeLoadingHold('allocations-delete')
     }
@@ -298,7 +324,6 @@ export function useAllocationsPage() {
     // State
     localAllocations,
     isEditingAppliedAllocations,
-    error,
     monthLoading,
 
     // Computed values
@@ -318,7 +343,7 @@ export function useAllocationsPage() {
     handleSaveAllocations,
     handleFinalizeAllocations,
     handleDeleteAllocations,
+    handleEditAllocations,
     setIsEditingAppliedAllocations,
-    setError,
   }
 }

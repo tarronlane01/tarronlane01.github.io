@@ -71,7 +71,8 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
     accounts[id] = {
       nickname: account.nickname ?? '',
       description: account.description ?? '',
-      balance: account.balance ?? 0,
+      // Budget-level balance is never stored; always 0 on read. Filled by local recalc.
+      balance: 0,
       // Always use ungrouped group ID if not set (never null)
       account_group_id: account.account_group_id ?? UNGROUPED_ACCOUNT_GROUP_ID,
       sort_order: account.sort_order ?? 0,
@@ -133,7 +134,8 @@ function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
       sort_order: category.sort_order ?? 0,
       default_monthly_amount: category.default_monthly_amount,
       default_monthly_type: category.default_monthly_type,
-      balance: category.balance ?? 0,
+      // Budget-level balance is never stored; always 0 on read. Filled by local recalc.
+      balance: 0,
       is_hidden: category.is_hidden ?? false,
     } as Category
   })

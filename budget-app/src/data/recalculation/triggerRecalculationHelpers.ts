@@ -38,7 +38,7 @@ export function getAllMonthOrdinals(monthMap: MonthMap): string[] {
 export async function fetchMonth(budgetId: string, ordinal: string, monthsBack: number = 1): Promise<MonthWithId | null> {
   const { year, month } = parseOrdinal(ordinal)
   const monthKey = queryKeys.month(budgetId, year, month)
-  
+
   // CRITICAL: Check React Query cache first to use cached data
   // This prevents duplicate reads when months are already in cache
   const cachedData = queryClient.getQueryData<{ month: MonthDocument }>(monthKey)
@@ -48,22 +48,22 @@ export async function fetchMonth(budgetId: string, ordinal: string, monthsBack: 
       ...cachedData.month,
     }
   }
-  
+
   // Not in cache - read from Firestore
   const monthDocId = getMonthDocId(budgetId, year, month)
   const { exists, data } = await readDocByPath<FirestoreData>('months', monthDocId, `[recalc] fetching month ${year}/${month}`)
   if (!exists || !data) return null
-  
+
   // Parse month data (converts stored balances to calculated)
   // Calculate totals from arrays (not stored in Firestore - calculated on-the-fly)
   const income = data.income || []
   const expenses = data.expenses || []
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
-  
+
   // Always compute from income N months back (ignore any stored value; we never persist it)
   const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, undefined, monthsBack)
-  
+
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
@@ -83,7 +83,7 @@ export async function fetchMonth(budgetId: string, ordinal: string, monthsBack: 
     updated_at: data.updated_at,
   }
   const calculatedMonth = convertMonthBalancesFromStored(monthDoc)
-  
+
   return {
     id: monthDocId,
     ...calculatedMonth,
@@ -127,7 +127,7 @@ export async function updateBudgetBalances(budgetId: string, accountBalances: Re
   // This prevents duplicate reads when budget is already in cache
   const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   let data: BudgetDocument | null = null
-  
+
   if (cachedBudget?.budget) {
     // Use cached budget data
     data = cachedBudget.budget as unknown as BudgetDocument

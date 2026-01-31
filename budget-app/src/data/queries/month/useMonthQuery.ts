@@ -50,8 +50,12 @@ async function parseMonthData(
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
   
-  // Always compute from income N months back so budget setting "Income reference for % allocations (months back)" is respected
-  const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
+  // Only fetch previous month's income when allocations are not finalized (needed for % allocation display).
+  // When finalized, skip the fetch; use 0. Edit Allocations flow fetches it behind a loading overlay.
+  const areAllocationsFinalized = data.are_allocations_finalized ?? false
+  const previousMonthIncome = areAllocationsFinalized
+    ? 0
+    : await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
   
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
@@ -141,16 +145,19 @@ export async function fetchMonth(
   queryClient?: ReturnType<typeof useQueryClient>
 ): Promise<MonthDocument> {
   // CRITICAL: Check React Query cache first to use prefetched data
-  // Initial load populates cache with months that have previous_month_income = 0 (not computed).
-  // Recompute previous_month_income from current budget setting so cached months show correct % allocations.
+  // Only recompute previous_month_income when allocations are not finalized (needed for % allocation display).
+  // When finalized, return cached month as-is; Edit Allocations fetches it behind a loading overlay.
   if (queryClient) {
     const monthKey = queryKeys.month(budgetId, year, month)
     const cachedData = queryClient.getQueryData<MonthQueryData>(monthKey)
     if (cachedData?.month) {
-      const budgetData = await ensureBudgetInCache(budgetId, queryClient)
-      const monthsBack = budgetData.budget.percentage_income_months_back ?? 1 // legacy unmigrated budget only
-      const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
-      return { ...cachedData.month, previous_month_income: previousMonthIncome }
+      if (!cachedData.month.are_allocations_finalized) {
+        const budgetData = await ensureBudgetInCache(budgetId, queryClient)
+        const monthsBack = budgetData.budget.percentage_income_months_back ?? 1 // legacy unmigrated budget only
+        const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
+        return { ...cachedData.month, previous_month_income: previousMonthIncome }
+      }
+      return cachedData.month
     }
   }
 

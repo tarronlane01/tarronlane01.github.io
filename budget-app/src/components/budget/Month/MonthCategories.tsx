@@ -11,7 +11,7 @@ import { useBudget } from '@contexts'
 import { useBudgetData, useAllocationsPage, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
 import type { CategoryMonthBalance } from '@types'
-import { ErrorAlert, bannerQueue, formatCurrency } from '../../ui'
+import { bannerQueue, formatCurrency } from '../../ui'
 import { UNGROUPED_CATEGORY_GROUP_ID } from '@constants'
 import { DeleteAllocationsModal } from '../Allocations'
 import { CategoryStatsRow, BalancesActionButtons } from './MonthBalances'
@@ -30,11 +30,11 @@ export function MonthCategories() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const {
-    localAllocations, isEditingAppliedAllocations, error, availableNow,
+    localAllocations, isEditingAppliedAllocations, availableNow,
     currentDraftTotal, draftChangeAmount, availableAfterApply, previousMonthIncome,
     currentMonthIncome, allocationsFinalized, getAllocationAmount, handleAllocationChange,
     resetAllocationsToSaved, handleSaveAllocations, handleFinalizeAllocations,
-    setIsEditingAppliedAllocations, setError,
+    handleEditAllocations, setIsEditingAppliedAllocations,
   } = useAllocationsPage()
 
   // Organize categories by group
@@ -114,15 +114,13 @@ export function MonthCategories() {
   const actionButtonHandlers = {
     onSave: handleSaveAllocations,
     onApply: handleFinalizeAllocations,
-    onEdit: () => setIsEditingAppliedAllocations(true),
+    onEdit: handleEditAllocations,
     onCancel: resetAllocationsToSaved,
     onDelete: () => setShowDeleteConfirm(true),
   }
 
   return (
     <>
-      {error && <ErrorAlert message={error} onDismiss={() => setError(null)} />}
-
       {/* CSS Grid container */}
       <div style={{
         display: 'grid',

@@ -31,16 +31,16 @@ import { queryClient } from '@data/queryClient'
 async function parseMonthData(data: FirestoreData, budgetId: string, year: number, month: number): Promise<MonthDocument> {
   const income = data.income || []
   const expenses = data.expenses || []
-  
+
   // Calculate totals from arrays (not stored in Firestore - calculated on-the-fly)
   const totalIncome = income.reduce((sum: number, inc: { amount: number }) => sum + (inc.amount || 0), 0)
   const totalExpenses = expenses.reduce((sum: number, exp: { amount: number }) => sum + (exp.amount || 0), 0)
-  
+
   // Always compute from income N months back (ignore any stored value; we never persist it)
   const budgetData = await ensureBudgetInCache(budgetId, queryClient)
   const monthsBack = budgetData.budget.percentage_income_months_back ?? 1
   const previousMonthIncome = await calculatePreviousMonthIncome(budgetId, year, month, queryClient, monthsBack)
-  
+
   const monthDoc: MonthDocument = {
     budget_id: budgetId,
     year_month_ordinal: data.year_month_ordinal ?? getYearMonthOrdinal(year, month),
