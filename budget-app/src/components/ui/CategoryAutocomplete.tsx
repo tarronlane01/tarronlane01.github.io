@@ -16,6 +16,7 @@ import {
   dropdownContainerStyle,
   suggestionItemStyle,
 } from './autocompleteHelpers'
+import { useAutocompleteDropdown } from './useAutocompleteDropdown'
 import { NO_CATEGORY_ID, NO_CATEGORY_NAME } from '@data/constants'
 
 // Category item uses the shared AutocompleteItem interface
@@ -100,6 +101,43 @@ export function CategoryAutocomplete({
 
   // Group suggestions for display using shared helper
   const groupedSuggestions = groupItemsForDisplay(suggestions)
+  // Flat list in the same order as rendered (by group); use this for selection so idx matches what's highlighted
+  const suggestionsInDisplayOrder = groupedSuggestions.flatMap((g) => g.items)
+
+  function selectCategory(cat: CategoryItem) {
+    onChange(cat.id)
+    setInputValue(cat.id === NO_CATEGORY_ID ? '' : cat.name)
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
+  }
+
+  function selectNoCategory() {
+    onChange(NO_CATEGORY_ID)
+    setInputValue('')
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
+  }
+
+  const { handleKeyDown, hasNavigatedOrTypedRef, highlightedIndexRef, itemRefs } = useAutocompleteDropdown({
+    suggestionsInDisplayOrder,
+    highlightedIndex,
+    setHighlightedIndex,
+    showSuggestions,
+    setShowSuggestions,
+    onSelect: selectCategory,
+    inputRef,
+    onClose: () => {
+      if (value === NO_CATEGORY_ID) {
+        setInputValue('')
+      } else {
+        const selectedCat = value ? categories[value] : null
+        setInputValue(selectedCat?.name || '')
+      }
+    },
+    showNoOption: showNoCategoryOption,
+    onSelectNoOption: selectNoCategory,
+    minIndex: 0,
+  })
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -118,72 +156,14 @@ export function CategoryAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [value, categories])
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (!showSuggestions) {
-        setShowSuggestions(true)
-        setHighlightedIndex(0)
-      } else {
-        setHighlightedIndex(prev => Math.min(prev + 1, suggestions.length - 1))
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.max(prev - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        selectCategory(suggestions[highlightedIndex])
-      }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-      if (value === NO_CATEGORY_ID) {
-        setInputValue('')
-      } else {
-        const selectedCat = value ? categories[value] : null
-        setInputValue(selectedCat?.name || '')
-      }
-    } else if (e.key === 'Tab') {
-      // Only select on Tab if user explicitly navigated with arrow keys
-      // Otherwise just close dropdown and keep current value
-      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        selectCategory(suggestions[highlightedIndex])
-      } else {
-        // Close dropdown and restore input to current selection
-        setShowSuggestions(false)
-        setHighlightedIndex(-1)
-        if (value === NO_CATEGORY_ID) {
-          setInputValue('')
-        } else {
-          const selectedCat = value ? categories[value] : null
-          setInputValue(selectedCat?.name || '')
-        }
-      }
-    }
-  }
-
-  function selectCategory(cat: CategoryItem) {
-    onChange(cat.id)
-    setInputValue(cat.id === NO_CATEGORY_ID ? '' : cat.name)
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-    // Don't refocus - it would trigger handleFocus and reopen the dropdown
-  }
-
-  function selectNoCategory() {
-    onChange(NO_CATEGORY_ID)
-    setInputValue('')
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-  }
-
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
+    hasNavigatedOrTypedRef.current = true
     setInputValue(newValue)
     setShowSuggestions(true)
-    // Smart highlight: empty input → No Category (-1), text entered → first matching suggestion (0)
-    setHighlightedIndex(newValue.trim() ? 0 : -1)
+    const nextIdx = newValue.trim() ? 0 : -1
+    setHighlightedIndex(nextIdx)
+    highlightedIndexRef.current = nextIdx
     if (newValue !== displayValue) {
       // When showNoCategoryOption is enabled AND input is empty, fall back to NO_CATEGORY_ID
       // If input has text but no selection made, keep empty to require user to complete selection
@@ -196,14 +176,11 @@ export function CategoryAutocomplete({
   }
 
   function handleFocus() {
+    hasNavigatedOrTypedRef.current = false
     setShowSuggestions(true)
-    // When No Category is selected OR input is empty (showing placeholder), highlight No Category option (-1)
-    // Otherwise highlight first suggestion
-    if (showNoCategoryOption && (value === NO_CATEGORY_ID || inputValue.trim() === '')) {
-      setHighlightedIndex(-1)
-    } else if (suggestions.length > 0) {
-      setHighlightedIndex(0)
-    }
+    const nextIdx = showNoCategoryOption && (value === NO_CATEGORY_ID || inputValue.trim() === '') ? -1 : (suggestions.length > 0 ? 0 : -1)
+    setHighlightedIndex(nextIdx)
+    highlightedIndexRef.current = nextIdx
   }
 
   // Calculate flat index for keyboard navigation
@@ -236,8 +213,12 @@ export function CategoryAutocomplete({
           {/* Always show No Category option at top when enabled */}
           {showNoCategoryOption && (
             <div
+              ref={(el) => { itemRefs.current[-1] = el }}
               onClick={selectNoCategory}
-              onMouseEnter={() => setHighlightedIndex(-1)}
+              onMouseEnter={() => {
+                setHighlightedIndex(-1)
+                highlightedIndexRef.current = -1
+              }}
               style={{
                 ...suggestionItemStyle,
                 opacity: 0.7,
@@ -271,6 +252,7 @@ export function CategoryAutocomplete({
                 return (
                   <div
                     key={cat.id}
+                    ref={(el) => { itemRefs.current[idx] = el }}
                     onClick={() => selectCategory(cat)}
                     style={{
                       ...suggestionItemStyle,
@@ -280,7 +262,10 @@ export function CategoryAutocomplete({
                         : 'transparent',
                       borderBottom: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
                     }}
-                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(idx)
+                      highlightedIndexRef.current = idx
+                    }}
                   >
                     {cat.name}
                   </div>

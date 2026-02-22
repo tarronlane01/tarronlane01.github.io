@@ -189,3 +189,16 @@ export const suggestionItemStyle: React.CSSProperties = {
   transition: 'background 0.1s',
 }
 
+/** Move focus to next/previous focusable in the same form after Tab was preventDefault'd */
+export function focusNextFocusable(current: HTMLElement | null, shiftKey: boolean): void {
+  if (!current) return
+  const form = current.closest('form')
+  const root = form ?? document
+  const focusables = [...root.querySelectorAll<HTMLElement>('input, select, textarea, button, [tabindex]:not([tabindex="-1"])')].filter(
+    el => el.offsetParent !== null && (el as HTMLInputElement).disabled !== true
+  )
+  const idx = focusables.indexOf(current)
+  const next = shiftKey ? focusables[idx - 1] : focusables[idx + 1]
+  if (next) next.focus()
+}
+

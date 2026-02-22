@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { input as inputStyle, colors } from '@styles/shared'
 import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from './autocompleteHelpers'
+import { useAutocompleteDropdown } from './useAutocompleteDropdown'
 
 interface PayeeAutocompleteProps {
   id?: string
@@ -21,10 +22,7 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Ensure we always have an array (guard against cache shape or undefined when form opens)
   const payeeList = Array.isArray(payees) ? payees : []
-
-  // Get filtered and sorted suggestions
   const suggestions = value.trim()
     ? payeeList
         .map(payee => ({ payee, ...fuzzyMatch(value, payee) }))
@@ -33,6 +31,24 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
         .slice(0, 8)
         .map(item => item.payee)
     : []
+
+  function selectSuggestion(payee: string) {
+    onChange(payee)
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
+    inputRef.current?.focus()
+  }
+
+  const { handleKeyDown, hasNavigatedOrTypedRef, highlightedIndexRef, itemRefs } = useAutocompleteDropdown({
+    suggestionsInDisplayOrder: suggestions,
+    highlightedIndex,
+    setHighlightedIndex,
+    showSuggestions,
+    setShowSuggestions,
+    onSelect: selectSuggestion,
+    inputRef,
+    minIndex: -1,
+  })
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -45,33 +61,6 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (!showSuggestions || suggestions.length === 0) return
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.min(prev + 1, suggestions.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.max(prev - 1, -1))
-    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
-      e.preventDefault()
-      onChange(suggestions[highlightedIndex])
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-    }
-  }
-
-  function selectSuggestion(payee: string) {
-    onChange(payee)
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-    inputRef.current?.focus()
-  }
-
   return (
     <div ref={wrapperRef} style={{ position: 'relative' }}>
       <input
@@ -80,11 +69,16 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
         type="text"
         value={value}
         onChange={(e) => {
+          hasNavigatedOrTypedRef.current = true
           onChange(e.target.value)
           setShowSuggestions(true)
           setHighlightedIndex(-1)
+          highlightedIndexRef.current = -1
         }}
-        onFocus={() => setShowSuggestions(true)}
+        onFocus={() => {
+          hasNavigatedOrTypedRef.current = false
+          setShowSuggestions(true)
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         autoComplete="off"
@@ -96,6 +90,7 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
           {suggestions.map((payee, index) => (
             <div
               key={payee}
+              ref={(el) => { itemRefs.current[index] = el }}
               onClick={() => selectSuggestion(payee)}
               style={{
                 ...suggestionItemStyle,
@@ -106,7 +101,10 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
                   ? '1px solid color-mix(in srgb, currentColor 10%, transparent)'
                   : 'none',
               }}
-              onMouseEnter={() => setHighlightedIndex(index)}
+              onMouseEnter={() => {
+                setHighlightedIndex(index)
+                highlightedIndexRef.current = index
+              }}
             >
               {payee}
             </div>

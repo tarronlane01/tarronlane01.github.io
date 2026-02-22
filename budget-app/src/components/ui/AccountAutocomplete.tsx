@@ -16,6 +16,7 @@ import {
   dropdownContainerStyle,
   suggestionItemStyle,
 } from './autocompleteHelpers'
+import { useAutocompleteDropdown } from './useAutocompleteDropdown'
 import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '@data/constants'
 
 // Account item uses the shared AutocompleteItem interface
@@ -96,6 +97,42 @@ export function AccountAutocomplete({
 
   // Group suggestions for display using shared helper
   const groupedSuggestions = groupItemsForDisplay(suggestions)
+  const suggestionsInDisplayOrder = groupedSuggestions.flatMap((g) => g.items)
+
+  function selectAccount(acc: AccountItem) {
+    onChange(acc.id)
+    setInputValue(acc.id === NO_ACCOUNT_ID ? '' : acc.name)
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
+  }
+
+  function selectNoAccount() {
+    onChange(NO_ACCOUNT_ID)
+    setInputValue('')
+    setShowSuggestions(false)
+    setHighlightedIndex(-1)
+  }
+
+  const { handleKeyDown, hasNavigatedOrTypedRef, highlightedIndexRef, itemRefs } = useAutocompleteDropdown({
+    suggestionsInDisplayOrder,
+    highlightedIndex,
+    setHighlightedIndex,
+    showSuggestions,
+    setShowSuggestions,
+    onSelect: selectAccount,
+    inputRef,
+    onClose: () => {
+      if (value === NO_ACCOUNT_ID) {
+        setInputValue('')
+      } else {
+        const selectedAcc = accounts.find(([accId]) => accId === value)?.[1]
+        setInputValue(selectedAcc?.nickname || '')
+      }
+    },
+    showNoOption: showNoAccountOption,
+    onSelectNoOption: selectNoAccount,
+    minIndex: 0,
+  })
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -114,72 +151,14 @@ export function AccountAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [value, accounts])
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (!showSuggestions) {
-        setShowSuggestions(true)
-        setHighlightedIndex(0)
-      } else {
-        setHighlightedIndex(prev => Math.min(prev + 1, suggestions.length - 1))
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHighlightedIndex(prev => Math.max(prev - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        selectAccount(suggestions[highlightedIndex])
-      }
-    } else if (e.key === 'Escape') {
-      setShowSuggestions(false)
-      setHighlightedIndex(-1)
-      if (value === NO_ACCOUNT_ID) {
-        setInputValue('')
-      } else {
-        const selectedAcc = accounts.find(([accId]) => accId === value)?.[1]
-        setInputValue(selectedAcc?.nickname || '')
-      }
-    } else if (e.key === 'Tab') {
-      // Only select on Tab if user explicitly navigated with arrow keys
-      // Otherwise just close dropdown and keep current value
-      if (showSuggestions && highlightedIndex >= 0 && suggestions[highlightedIndex]) {
-        selectAccount(suggestions[highlightedIndex])
-      } else {
-        // Close dropdown and restore input to current selection
-        setShowSuggestions(false)
-        setHighlightedIndex(-1)
-        if (value === NO_ACCOUNT_ID) {
-          setInputValue('')
-        } else {
-          const selectedAcc = accounts.find(([accId]) => accId === value)?.[1]
-          setInputValue(selectedAcc?.nickname || '')
-        }
-      }
-    }
-  }
-
-  function selectAccount(acc: AccountItem) {
-    onChange(acc.id)
-    setInputValue(acc.id === NO_ACCOUNT_ID ? '' : acc.name)
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-    // Don't refocus - it would trigger handleFocus and reopen the dropdown
-  }
-
-  function selectNoAccount() {
-    onChange(NO_ACCOUNT_ID)
-    setInputValue('')
-    setShowSuggestions(false)
-    setHighlightedIndex(-1)
-  }
-
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const newValue = e.target.value
+    hasNavigatedOrTypedRef.current = true
     setInputValue(newValue)
     setShowSuggestions(true)
-    // Smart highlight: empty input → No Account (-1), text entered → first matching suggestion (0)
-    setHighlightedIndex(newValue.trim() ? 0 : -1)
+    const nextIdx = newValue.trim() ? 0 : -1
+    setHighlightedIndex(nextIdx)
+    highlightedIndexRef.current = nextIdx
     if (newValue !== displayValue) {
       // When showNoAccountOption is enabled AND input is empty, fall back to NO_ACCOUNT_ID
       // If input has text but no selection made, keep empty to require user to complete selection
@@ -192,14 +171,11 @@ export function AccountAutocomplete({
   }
 
   function handleFocus() {
+    hasNavigatedOrTypedRef.current = false
     setShowSuggestions(true)
-    // When No Account is selected OR input is empty (showing placeholder), highlight No Account option (-1)
-    // Otherwise highlight first suggestion
-    if (showNoAccountOption && (value === NO_ACCOUNT_ID || inputValue.trim() === '')) {
-      setHighlightedIndex(-1)
-    } else if (suggestions.length > 0) {
-      setHighlightedIndex(0)
-    }
+    const nextIdx = showNoAccountOption && (value === NO_ACCOUNT_ID || inputValue.trim() === '') ? -1 : (suggestions.length > 0 ? 0 : -1)
+    setHighlightedIndex(nextIdx)
+    highlightedIndexRef.current = nextIdx
   }
 
   // Calculate flat index for keyboard navigation
@@ -232,8 +208,12 @@ export function AccountAutocomplete({
           {/* Always show No Account option at top when enabled */}
           {showNoAccountOption && (
             <div
+              ref={(el) => { itemRefs.current[-1] = el }}
               onClick={selectNoAccount}
-              onMouseEnter={() => setHighlightedIndex(-1)}
+              onMouseEnter={() => {
+                setHighlightedIndex(-1)
+                highlightedIndexRef.current = -1
+              }}
               style={{
                 ...suggestionItemStyle,
                 opacity: 0.7,
@@ -267,6 +247,7 @@ export function AccountAutocomplete({
                 return (
                   <div
                     key={acc.id}
+                    ref={(el) => { itemRefs.current[idx] = el }}
                     onClick={() => selectAccount(acc)}
                     style={{
                       ...suggestionItemStyle,

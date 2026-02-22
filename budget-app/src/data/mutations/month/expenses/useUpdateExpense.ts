@@ -115,7 +115,8 @@ export function useUpdateExpense() {
     // Save payee if new (this still writes immediately since it's just adding to a list)
     // Note: payee changes are tracked separately since they're a different document type
     if (payee?.trim()) {
-      const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      const rawPayees = queryClient.getQueryData<unknown>(queryKeys.payees(budgetId))
+      const cachedPayees = Array.isArray(rawPayees) ? rawPayees : []
       const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
       if (updatedPayees) {
         queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)

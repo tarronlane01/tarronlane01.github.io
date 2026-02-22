@@ -21,9 +21,10 @@ export async function savePayeeIfNew(
   existingPayees: string[]
 ): Promise<string[] | null> {
   const trimmed = payee.trim()
-  if (!trimmed || existingPayees.includes(trimmed)) return null
+  const list = Array.isArray(existingPayees) ? existingPayees : []
+  if (!trimmed || list.includes(trimmed)) return null
 
-  const updatedPayees = [...existingPayees, trimmed].sort((a, b) =>
+  const updatedPayees = [...list, trimmed].sort((a, b) =>
     a.toLowerCase().localeCompare(b.toLowerCase())
   )
 

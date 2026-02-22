@@ -106,7 +106,8 @@ export function useUpdateIncome() {
 
     // Save payee if new (this still writes immediately since it's just adding to a list)
     if (payee?.trim()) {
-      const cachedPayees = queryClient.getQueryData<string[]>(queryKeys.payees(budgetId)) || []
+      const rawPayees = queryClient.getQueryData<unknown>(queryKeys.payees(budgetId))
+      const cachedPayees = Array.isArray(rawPayees) ? rawPayees : []
       const updatedPayees = await savePayeeIfNew(budgetId, payee, cachedPayees)
       if (updatedPayees) {
         queryClient.setQueryData<string[]>(queryKeys.payees(budgetId), updatedPayees)
