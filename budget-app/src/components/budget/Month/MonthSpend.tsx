@@ -44,8 +44,8 @@ export function MonthSpend() {
 
   // Only fetch payees when a form is open (lazy loading)
   const isFormOpen = showAddExpense || editingExpenseId !== null
-  const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen })
-  const payees = payeesQuery.data || []
+  const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen, ensureArray: true })
+  const payees = payeesQuery.data ?? []
 
   // Helper to get effective is_active value considering group overrides
   function getEffectiveActive(account: FinancialAccount): boolean {

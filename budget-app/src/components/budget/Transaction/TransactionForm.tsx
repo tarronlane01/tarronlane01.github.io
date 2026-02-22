@@ -105,12 +105,12 @@ export function TransactionForm({
   const [amount, setAmount] = useState(initialAmount?.toString() || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [cleared, setCleared] = useState(initialData?.cleared || false)
-  // Sign state: true = negative (expense), false = positive (refund/credit)
-  // Default to positive (adjustment adds to balance) unless editing an existing negative amount
+  // Sign state: true = negative (expense), false = positive (refund/credit/income)
+  // When sign toggle is shown (spend form): default to negative (expense). When no toggle (income): amount is positive.
   const [isNegative, setIsNegative] = useState(() => {
     if (!showSignToggle) return true
     if (initialData?.amount !== undefined) return initialData.amount < 0
-    return false // Default to positive (adjustment)
+    return true // Default to negative (expense) for spend form
   })
   // Track if user tried to submit with invalid "both no options" selection
   const [showBothNoWarning, setShowBothNoWarning] = useState(false)

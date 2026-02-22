@@ -28,7 +28,7 @@ export { QueryProvider } from './QueryProvider'
 // ============================================================================
 export { useBudgetQuery, type BudgetData } from './queries/budget'
 export { useMonthQuery, type MonthQueryData } from './queries/month'
-export { usePayeesQuery } from './queries/payees'
+export { usePayeesQuery, type UsePayeesQueryOptions } from './queries/payees'
 export { useUserQuery } from './queries/user'
 export { useAccessibleBudgetsQuery } from './queries/accessibleBudgets'
 export { useFeedbackQuery, type FeedbackItem, type FlattenedFeedbackItem, type FeedbackData } from './queries/feedback'

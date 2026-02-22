@@ -21,9 +21,12 @@ export function PayeeAutocomplete({ id, value, onChange, payees, placeholder = '
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Ensure we always have an array (guard against cache shape or undefined when form opens)
+  const payeeList = Array.isArray(payees) ? payees : []
+
   // Get filtered and sorted suggestions
   const suggestions = value.trim()
-    ? payees
+    ? payeeList
         .map(payee => ({ payee, ...fuzzyMatch(value, payee) }))
         .filter(item => item.match)
         .sort((a, b) => b.score - a.score)

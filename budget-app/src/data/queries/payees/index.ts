@@ -3,5 +3,5 @@
  */
 
 export { fetchPayees } from './fetchPayees'
-export { usePayeesQuery } from './usePayeesQuery'
+export { usePayeesQuery, type UsePayeesQueryOptions } from './usePayeesQuery'
 
