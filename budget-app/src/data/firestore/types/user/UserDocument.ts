@@ -5,6 +5,8 @@ export interface UserDocument {
   uid: string
   email: string | null
   budget_ids: string[]
+  /** Last budget the user had selected; used to restore selection on reload */
+  last_selected_budget_id?: string
   permission_flags?: PermissionFlags
   created_at?: string
   updated_at?: string

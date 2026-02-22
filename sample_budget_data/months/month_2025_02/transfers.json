@@ -1,0 +1,14 @@
+[
+  {
+    "id": "transfer_sample_02_01",
+    "from_account_id": "account_main_checking",
+    "to_account_id": "account_emergency_fund",
+    "from_category_id": "__NO_CATEGORY__",
+    "to_category_id": "__NO_CATEGORY__",
+    "amount": 500,
+    "description": "Monthly emergency fund contribution",
+    "date": "2025-02-15",
+    "cleared": true,
+    "created_at": "2025-02-15T12:00:00.000Z"
+  }
+]

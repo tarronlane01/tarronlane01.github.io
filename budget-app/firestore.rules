@@ -88,6 +88,11 @@ service cloud.firestore {
         return 5;
       }
 
+      // The sample budget ID that all admins can access
+      function isSampleBudget() {
+        return budgetId == 'sample_budget';
+      }
+
       // Helper function to check if user has access via their user document
       function userHasBudgetAccess() {
         return exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -117,7 +122,7 @@ service cloud.firestore {
       }
 
       // Allow read if:
-      // - User is admin, OR
+      // - User is admin (can read any budget, including sample_budget), OR
       // - User has full access (budget in their budget_ids), OR
       // - User is invited (in budget's user_ids) - so they can see invite details
       allow read: if request.auth != null && (isAdmin() || userHasBudgetAccess() || userIsInvited());
@@ -125,6 +130,7 @@ service cloud.firestore {
       // Allow create if user is authenticated and sets themselves as owner (or is admin)
       // Also validate that accepted_user_ids only contains the creator (can't pre-accept other users)
       // Also validate array sizes don't exceed limit
+      // Note: Admins can create the sample_budget without normal ownership rules
       allow create: if request.auth != null && (
                       isAdmin() ||
                       (request.auth.uid == request.resource.data.owner_id
@@ -144,6 +150,7 @@ service cloud.firestore {
       // Allow update if user has full access (or is admin)
       // Only the current owner can change owner_id (ownership transfer)
       // Array sizes must not exceed limit
+      // Note: Admins have full update access to sample_budget
       allow update: if request.auth != null
                     && validateUserArraySizes()
                     && (
@@ -182,6 +189,16 @@ service cloud.firestore {
     // Months collection - stores monthly income/expense data per budget
     // Document ID format: {budgetId}_{year}_{month} (e.g., budget_123_2024_01)
     match /months/{monthId} {
+      // Check if the month belongs to the sample budget
+      function isMonthForSampleBudget() {
+        return resource.data.budget_id == 'sample_budget';
+      }
+
+      // For create, check if creating a month for the sample budget
+      function isNewMonthForSampleBudget() {
+        return request.resource.data.budget_id == 'sample_budget';
+      }
+
       // Helper function to check if user has access to the budget referenced in this month document
       function userHasBudgetAccessForMonth() {
         let budgetId = resource.data.budget_id;
@@ -197,12 +214,15 @@ service cloud.firestore {
       }
 
       // Allow read if user has access to the budget or is admin
+      // Note: Admins can read sample_budget months even without it in their budget_ids
       allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForMonth());
 
       // Allow create if user has access to the budget referenced in the new document
+      // Note: Admins can create months for sample_budget
       allow create: if request.auth != null && (isAdmin() || userHasBudgetAccessForNewMonth());
 
       // Allow update if user has access to the budget (and budget_id cannot be changed)
+      // Note: Admins can update sample_budget months
       allow update: if request.auth != null
                     && (isAdmin() || userHasBudgetAccessForMonth())
                     && request.resource.data.budget_id == resource.data.budget_id;
@@ -214,6 +234,11 @@ service cloud.firestore {
     // Payees collection - stores payee names per budget
     // Document ID is the budget ID (one payees document per budget)
     match /payees/{budgetId} {
+      // Check if this is the sample budget payees document
+      function isSampleBudgetPayees() {
+        return budgetId == 'sample_budget';
+      }
+
       // Helper function to check if user has access to this budget
       function userHasBudgetAccessForPayees() {
         return exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -221,14 +246,17 @@ service cloud.firestore {
       }
 
       // Allow read if user has access to the budget or is admin
+      // Note: Admins can read sample_budget payees
       allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForPayees());
 
       // Allow create if user has access to the budget and budget_id matches document ID
+      // Note: Admins can create payees for sample_budget
       allow create: if request.auth != null
                     && (isAdmin() || userHasBudgetAccessForPayees())
                     && request.resource.data.budget_id == budgetId;
 
       // Allow update if user has access to the budget (and budget_id cannot be changed)
+      // Note: Admins can update sample_budget payees
       allow update: if request.auth != null
                     && (isAdmin() || userHasBudgetAccessForPayees())
                     && request.resource.data.budget_id == resource.data.budget_id;

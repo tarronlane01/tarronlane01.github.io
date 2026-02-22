@@ -50,10 +50,28 @@ export async function batchWriteMonths(
 ): Promise<void> {
   if (updates.length === 0) return
 
+  // [DEBUG] Log what we're about to write
+  console.log(`[DEBUG] batchWriteMonths: Writing ${updates.length} months from ${source}`)
+  if (updates.length > 0) {
+    const first = updates[0]
+    const sampleCat = first.data.category_balances?.[0]
+    const sampleAcc = first.data.account_balances?.[0]
+    const totalAlloc = first.data.category_balances?.reduce((sum, cb) => sum + (cb.allocated || 0), 0) || 0
+    console.log(`[DEBUG]   First month ${first.year}/${first.month} BEFORE convert: cat[0] start=${sampleCat?.start_balance} alloc=${sampleCat?.allocated}, totalAlloc=${totalAlloc}, acc[0] start=${sampleAcc?.start_balance}`)
+  }
+
   // Convert month balances to stored format before writing
   // This ensures only start_balance (for months at/before window) and allocated are saved
   const batchDocs: BatchWriteDoc[] = updates.map(update => {
     const storedMonth = convertMonthBalancesToStored(update.data)
+    
+    // [DEBUG] Log stored format for first month only
+    if (update === updates[0]) {
+      const storedCat = (storedMonth.category_balances as Array<{category_id: string; start_balance: number; allocated: number}>)?.[0]
+      const storedAcc = (storedMonth.account_balances as Array<{account_id: string; start_balance: number}>)?.[0]
+      console.log(`[DEBUG]   First month AFTER convert: cat[0] start=${storedCat?.start_balance} alloc=${storedCat?.allocated}, acc[0] start=${storedAcc?.start_balance}`)
+    }
+    
     return {
       collectionPath: 'months',
       docId: getMonthDocId(update.budgetId, update.year, update.month),

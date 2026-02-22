@@ -1,0 +1,22 @@
+[
+  {
+    "id": "category_group_monthly_bills",
+    "name": "Monthly Bills",
+    "sort_order": 0
+  },
+  {
+    "id": "category_group_savings",
+    "name": "Savings Goals",
+    "sort_order": 1
+  },
+  {
+    "id": "category_group_lifestyle",
+    "name": "Lifestyle",
+    "sort_order": 2
+  },
+  {
+    "id": "ungrouped_categories",
+    "name": "Uncategorized",
+    "sort_order": 3
+  }
+]

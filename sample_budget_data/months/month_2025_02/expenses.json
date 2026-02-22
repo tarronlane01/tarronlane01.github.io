@@ -1,0 +1,222 @@
+[
+  {
+    "id": "expense_sample_02_01",
+    "account_id": "account_main_checking",
+    "payee": "Landlord",
+    "description": "February rent",
+    "amount": -1500,
+    "category_id": "category_rent",
+    "date": "2025-02-01",
+    "cleared": true,
+    "created_at": "2025-02-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_02",
+    "account_id": "account_credit_card",
+    "payee": "Electric Company",
+    "description": "Winter heating",
+    "amount": -142.87,
+    "category_id": "category_utilities",
+    "date": "2025-02-05",
+    "cleared": true,
+    "created_at": "2025-02-05T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_03",
+    "account_id": "account_credit_card",
+    "payee": "Water Utility",
+    "description": "",
+    "amount": -48.22,
+    "category_id": "category_utilities",
+    "date": "2025-02-08",
+    "cleared": true,
+    "created_at": "2025-02-08T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_04",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -134.56,
+    "category_id": "category_groceries",
+    "date": "2025-02-02",
+    "cleared": true,
+    "created_at": "2025-02-02T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_05",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -118.90,
+    "category_id": "category_groceries",
+    "date": "2025-02-09",
+    "cleared": true,
+    "created_at": "2025-02-09T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_06",
+    "account_id": "account_credit_card",
+    "payee": "Costco",
+    "description": "Bulk groceries",
+    "amount": -215.33,
+    "category_id": "category_groceries",
+    "date": "2025-02-15",
+    "cleared": true,
+    "created_at": "2025-02-15T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_07",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -89.45,
+    "category_id": "category_groceries",
+    "date": "2025-02-23",
+    "cleared": true,
+    "created_at": "2025-02-23T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_08",
+    "account_id": "account_credit_card",
+    "payee": "Shell Gas",
+    "description": "",
+    "amount": -55.67,
+    "category_id": "category_transportation",
+    "date": "2025-02-04",
+    "cleared": true,
+    "created_at": "2025-02-04T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_09",
+    "account_id": "account_credit_card",
+    "payee": "Shell Gas",
+    "description": "",
+    "amount": -61.23,
+    "category_id": "category_transportation",
+    "date": "2025-02-18",
+    "cleared": true,
+    "created_at": "2025-02-18T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_10",
+    "account_id": "account_credit_card",
+    "payee": "Netflix",
+    "description": "",
+    "amount": -15.99,
+    "category_id": "category_subscriptions",
+    "date": "2025-02-01",
+    "cleared": true,
+    "created_at": "2025-02-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_11",
+    "account_id": "account_credit_card",
+    "payee": "Spotify",
+    "description": "",
+    "amount": -11.99,
+    "category_id": "category_subscriptions",
+    "date": "2025-02-01",
+    "cleared": true,
+    "created_at": "2025-02-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_12",
+    "account_id": "account_credit_card",
+    "payee": "AT&T",
+    "description": "Phone bill",
+    "amount": -65.00,
+    "category_id": "category_phone_internet",
+    "date": "2025-02-12",
+    "cleared": true,
+    "created_at": "2025-02-12T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_13",
+    "account_id": "account_credit_card",
+    "payee": "Comcast",
+    "description": "Internet",
+    "amount": -55.00,
+    "category_id": "category_phone_internet",
+    "date": "2025-02-15",
+    "cleared": true,
+    "created_at": "2025-02-15T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_14",
+    "account_id": "account_credit_card",
+    "payee": "Movie Theater",
+    "description": "",
+    "amount": -28.00,
+    "category_id": "category_entertainment",
+    "date": "2025-02-14",
+    "cleared": true,
+    "created_at": "2025-02-14T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_15",
+    "account_id": "account_credit_card",
+    "payee": "Local Restaurant",
+    "description": "Valentine's dinner",
+    "amount": -125.45,
+    "category_id": "category_dining_out",
+    "date": "2025-02-14",
+    "cleared": true,
+    "created_at": "2025-02-14T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_16",
+    "account_id": "account_credit_card",
+    "payee": "Coffee Shop",
+    "description": "",
+    "amount": -8.75,
+    "category_id": "category_dining_out",
+    "date": "2025-02-10",
+    "cleared": true,
+    "created_at": "2025-02-10T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_17",
+    "account_id": "account_credit_card",
+    "payee": "Coffee Shop",
+    "description": "",
+    "amount": -15.20,
+    "category_id": "category_dining_out",
+    "date": "2025-02-20",
+    "cleared": true,
+    "created_at": "2025-02-20T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_18",
+    "account_id": "account_credit_card",
+    "payee": "Amazon",
+    "description": "Valentine's gift",
+    "amount": -89.99,
+    "category_id": "category_gifts",
+    "date": "2025-02-10",
+    "cleared": true,
+    "created_at": "2025-02-10T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_19",
+    "account_id": "account_credit_card",
+    "payee": "Target",
+    "description": "Flowers and card",
+    "amount": -45.50,
+    "category_id": "category_gifts",
+    "date": "2025-02-13",
+    "cleared": true,
+    "created_at": "2025-02-13T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_02_20",
+    "account_id": "account_credit_card",
+    "payee": "Amazon",
+    "description": "Headphones",
+    "amount": -49.99,
+    "category_id": "category_personal",
+    "date": "2025-02-22",
+    "cleared": true,
+    "created_at": "2025-02-22T12:00:00.000Z"
+  }
+]

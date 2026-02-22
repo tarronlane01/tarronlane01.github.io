@@ -99,7 +99,7 @@ async function executeRecalculation(
   // This prevents duplicate reads when budget is already in cache
   const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   let budgetData: BudgetDocument | null = null
-  
+
   if (cachedBudget?.budget) {
     // Use cached budget data
     budgetData = cachedBudget.budget as unknown as BudgetDocument
@@ -118,11 +118,11 @@ async function executeRecalculation(
   }
 
   const monthMap = parseMonthMap(budgetData.month_map)
-  
+
   // Step 2: Determine which months to fetch (all months in the window)
   // Since we don't track flags, we recalculate all months in the window when called
   const allOrdinals = getAllMonthOrdinals(monthMap)
-  
+
   // If no months in map, nothing to recalculate
   if (allOrdinals.length === 0) {
     onProgress?.({ phase: 'complete', monthsProcessed: 0, totalMonths: 0, percentComplete: 100 })
@@ -132,7 +132,7 @@ async function executeRecalculation(
   // Step 3: Fetch all months in the map (or use triggering month if specified)
   const triggeringOrdinal = options.triggeringMonthOrdinal
   let ordinalsToFetch: string[]
-  
+
   if (triggeringOrdinal) {
     // Recalculate from triggering month onwards
     const triggeringIndex = allOrdinals.indexOf(triggeringOrdinal)
@@ -144,7 +144,7 @@ async function executeRecalculation(
     // Recalculate all months in the map
     ordinalsToFetch = allOrdinals
   }
-  
+
   const hasStartingMonth = ordinalsToFetch.length > 0 && allOrdinals.indexOf(ordinalsToFetch[0]) > 0
 
   // Filter out months that are too far in the future (beyond MAX_FUTURE_MONTHS)
@@ -156,7 +156,7 @@ async function executeRecalculation(
     currentYear + Math.floor((currentMonth + MAX_FUTURE_MONTHS - 1) / 12),
     ((currentMonth + MAX_FUTURE_MONTHS - 1) % 12) + 1
   )
-  
+
   ordinalsToFetch = ordinalsToFetch.filter(ordinal => ordinal <= maxFutureOrdinal)
 
   const estimatedToRecalculate = hasStartingMonth ? ordinalsToFetch.length - 1 : ordinalsToFetch.length

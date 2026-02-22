@@ -173,8 +173,13 @@ export function CategoryGroupRows({
         const storedBalance = cat.balance ?? 0
         let allTimeBalance: number
         if (isViewingUnfinalizedMonth) {
+          // Proposed ALL-TIME = stored balance + this month's net change
+          // Net change = allocated + spent + transfers + adjustments
           const thisMonthAllocation = isDraftMode ? getAllocationAmount(catId, cat) : (bal.allocated ?? 0)
-          allTimeBalance = storedBalance + thisMonthAllocation
+          const spent = bal.spent ?? 0
+          const transfers = bal.transfers ?? 0
+          const adjustments = bal.adjustments ?? 0
+          allTimeBalance = storedBalance + thisMonthAllocation + spent + transfers + adjustments
         } else {
           allTimeBalance = storedBalance
           if (isDraftMode) {

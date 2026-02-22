@@ -1,14 +1,18 @@
 /**
- * Single balance recalculation from cache.
+ * Recalculate all balances from cache.
  *
- * One process: find base (walk backward from window if needed), chain forward
- * only through months up to and including the latest finalized allocation month.
- * Unfinalized months are not chained (they keep stored start/end). Write each
- * chained month to cache, then add any finalized months after the last chained
- * (from cache) for budget category all-time. So last finalized month's end = all-time.
+ * This function chains month start_balance/end_balance values for months in cache,
+ * then updates budget-level category/account balances from the last finalized month.
  *
- * No separate recalc steps; no coordination between hooks. Call this whenever
- * we need to (re)compute balances (e.g. after initial load, after mutations).
+ * Process:
+ * 1. Find base snapshot (walk backward if earliest loaded month has no start_balance)
+ * 2. Chain forward through finalized months, recalculating start/end balances
+ * 3. Write recalculated months to cache
+ * 4. Update budget cache with ALL-TIME balances from the last finalized month's end_balance
+ *
+ * The UI displays:
+ * - For finalized months: category.balance from budget cache (calculated from last finalized month)
+ * - For unfinalized months: budget balance + current month changes
  */
 
 import { queryClient, queryKeys } from '@data/queryClient'
@@ -16,10 +20,9 @@ import type { BudgetData } from '@data/queries/budget'
 import type { MonthQueryData } from '@data/queries/month'
 import { readMonth } from '@data/queries/month'
 import { recalculateMonth, extractSnapshotFromMonth, EMPTY_SNAPSHOT, type PreviousMonthSnapshot } from './recalculateMonth'
-import { getYearMonthOrdinal, getNextMonth, getPreviousMonth, roundCurrency } from '@utils'
+import { getYearMonthOrdinal, getPreviousMonth, roundCurrency } from '@utils'
 import { isNoCategory, isNoAccount } from '@data/constants'
-import { MAX_FUTURE_MONTHS } from '@constants'
-import type { MonthDocument, AccountsMap, CategoriesMap, MonthMap } from '@types'
+import type { MonthDocument, MonthMap } from '@types'
 
 function parseOrdinal(ordinal: string): { year: number; month: number } {
   return {
@@ -123,13 +126,8 @@ export async function recalculateAllBalancesFromCache(
     return
   }
 
-  const { budget, accounts, categories } = cachedBudget
-  const categoryIds = Object.keys(categories)
+  const { categories } = cachedBudget
   const monthMap: MonthMap = cachedBudget.monthMap || {}
-
-  const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() + 1
 
   // Build all months we have, sorted by date.
   let allMonthsInOrder: MonthDocument[]
@@ -155,22 +153,14 @@ export async function recalculateAllBalancesFromCache(
     return null
   })()
 
+
   const monthsInOrder =
     maxFinalizedOrdinal != null
       ? allMonthsInOrder.filter(m => getYearMonthOrdinal(m.year, m.month) <= maxFinalizedOrdinal)
       : allMonthsInOrder
 
   if (monthsInOrder.length === 0) {
-    const zeroAccounts: AccountsMap = {}
-    const zeroCategories: CategoriesMap = {}
-    for (const [id, acc] of Object.entries(accounts)) zeroAccounts[id] = { ...acc, balance: 0 }
-    for (const [id, cat] of Object.entries(categories)) zeroCategories[id] = { ...cat, balance: 0 }
-    queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-      ...cachedBudget,
-      accounts: zeroAccounts,
-      categories: zeroCategories,
-      budget: { ...budget, accounts: zeroAccounts, categories: zeroCategories },
-    })
+    // No months to chain - just preserve Firestore balances (don't overwrite)
     lastChainedOrdinalUsed = null
     lastFutureMonthsAdded = []
     return
@@ -179,10 +169,8 @@ export async function recalculateAllBalancesFromCache(
   let prevSnapshot = await findBaseSnapshot(budgetId, monthsInOrder)
 
   // Chain forward using only in-memory values; store results in chainedMonths.
-  // Track the last finalized month's snapshot so all-time uses only finalized months (never unfinalized).
   const chainedMonths = new Map<string, MonthDocument>()
   let lastChainedOrdinal: string | null = null
-  let lastFinalizedSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
   let lastFinalizedOrdinal: string | null = null
   for (const month of monthsInOrder) {
     const recalculated = recalculateMonth(month, prevSnapshot, month.previous_month_income)
@@ -191,7 +179,6 @@ export async function recalculateAllBalancesFromCache(
     prevSnapshot = extractSnapshotFromMonth(recalculated)
     lastChainedOrdinal = ordinal
     if (recalculated.are_allocations_finalized) {
-      lastFinalizedSnapshot = prevSnapshot
       lastFinalizedOrdinal = ordinal
     }
   }
@@ -209,58 +196,39 @@ export async function recalculateAllBalancesFromCache(
     queryClient.invalidateQueries({ queryKey: queryKeys.month(budgetId, recalculated.year, recalculated.month) })
   }
 
-  // Budget category all-time: start from the last FINALIZED month's end (never from unfinalized).
-  // That way chaining past unfinalized months cannot add them to all-time.
-  const runningCategory: Record<string, number> = { ...lastFinalizedSnapshot.categoryEndBalances }
-  for (const id of categoryIds) if (runningCategory[id] === undefined) runningCategory[id] = 0
-
-  const maxFutureOrdinal = getYearMonthOrdinal(
-    currentYear + Math.floor((currentMonth + MAX_FUTURE_MONTHS - 1) / 12),
-    ((currentMonth + MAX_FUTURE_MONTHS - 1) % 12) + 1
-  )
-  const afterLastFinalized = lastFinalizedOrdinal ? parseOrdinal(lastFinalizedOrdinal) : { year: currentYear, month: currentMonth }
-  let walkYear = getNextMonth(afterLastFinalized.year, afterLastFinalized.month).year
-  let walkMonth = getNextMonth(afterLastFinalized.year, afterLastFinalized.month).month
-  const futureAdded: string[] = []
-  for (let i = 0; i < MAX_FUTURE_MONTHS * 2; i++) {
-    const ordinal = getYearMonthOrdinal(walkYear, walkMonth)
-    if (ordinal > maxFutureOrdinal || !(ordinal in monthMap)) break
-    const monthData = queryClient.getQueryData<MonthQueryData>(queryKeys.month(budgetId, walkYear, walkMonth))
-    const m = monthData?.month
-    if (!m) break
-    // Only add allocations and expenses from finalized months to all-time.
-    if (m.are_allocations_finalized) {
-      if (m.category_balances) {
-        futureAdded.push(ordinal)
-        for (const cb of m.category_balances) {
-          if (categoryIds.includes(cb.category_id)) runningCategory[cb.category_id] = (runningCategory[cb.category_id] ?? 0) + (cb.allocated ?? 0)
-        }
-      }
-      if (m.expenses) {
-        for (const exp of m.expenses) {
-          if (categoryIds.includes(exp.category_id)) runningCategory[exp.category_id] = (runningCategory[exp.category_id] ?? 0) - exp.amount
+  // Update budget-level category balances from the last finalized month's end_balance.
+  // This is the ALL-TIME balance that the UI displays.
+  if (lastFinalizedOrdinal && chainedMonths.has(lastFinalizedOrdinal)) {
+    const lastFinalizedMonth = chainedMonths.get(lastFinalizedOrdinal)!
+    
+    // Build updated categories with balances from last finalized month
+    const updatedCategories = { ...categories }
+    for (const cb of lastFinalizedMonth.category_balances || []) {
+      if (!isNoCategory(cb.category_id) && updatedCategories[cb.category_id]) {
+        updatedCategories[cb.category_id] = {
+          ...updatedCategories[cb.category_id],
+          balance: roundCurrency(cb.end_balance ?? 0),
         }
       }
     }
-    const next = getNextMonth(walkYear, walkMonth)
-    walkYear = next.year
-    walkMonth = next.month
-  }
-  lastFutureMonthsAdded = futureAdded
 
-  const updatedAccounts: AccountsMap = {}
-  for (const [accId, acc] of Object.entries(accounts)) {
-    updatedAccounts[accId] = { ...acc, balance: roundCurrency(lastFinalizedSnapshot.accountEndBalances[accId] ?? 0) }
-  }
-  const updatedCategories: CategoriesMap = {}
-  for (const [catId, cat] of Object.entries(categories)) {
-    updatedCategories[catId] = { ...cat, balance: roundCurrency(runningCategory[catId] ?? 0) }
-  }
+    // Build updated accounts with balances from last finalized month
+    const updatedAccounts = { ...cachedBudget.accounts }
+    for (const ab of lastFinalizedMonth.account_balances || []) {
+      if (!isNoAccount(ab.account_id) && updatedAccounts[ab.account_id]) {
+        updatedAccounts[ab.account_id] = {
+          ...updatedAccounts[ab.account_id],
+          balance: roundCurrency(ab.end_balance ?? 0),
+        }
+      }
+    }
 
-  queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
-    ...cachedBudget,
-    accounts: updatedAccounts,
-    categories: updatedCategories,
-    budget: { ...budget, accounts: updatedAccounts, categories: updatedCategories },
-  })
+    // Update budget cache with calculated balances
+    queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+      ...cachedBudget,
+      categories: updatedCategories,
+      accounts: updatedAccounts,
+    })
+
+  }
 }

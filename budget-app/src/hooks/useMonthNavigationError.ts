@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { MonthMap } from '@types'
+import { MonthNavigationError } from '@utils'
 
 interface UseMonthNavigationErrorOptions {
   monthError: Error | null
@@ -77,10 +78,23 @@ export function useMonthNavigationError({
       return
     }
 
-    const errorMsg = monthError.message || ''
+    // Check if this is a MonthNavigationError that should redirect
+    // Use static type guard, with fallback to error message patterns
+    const errorMsg = monthError?.message || ''
+    const shouldRedirect = MonthNavigationError.is(monthError) 
+      ? monthError.shouldRedirectToValidMonth
+      : (
+          errorMsg.includes('cannot be created') ||
+          errorMsg.includes('months in the past') ||
+          errorMsg.includes('months in the future') ||
+          errorMsg.includes('does not exist in budget') ||
+          errorMsg.includes('not immediately after') ||
+          errorMsg.includes('not immediately before') ||
+          errorMsg.includes('walk forward one month') ||
+          errorMsg.includes('walk back one month')
+        )
 
-    // Handle any month creation/navigation errors by redirecting to nearest valid month
-    if (errorMsg.includes('Refusing to create month') || errorMsg.includes('months in the')) {
+    if (shouldRedirect) {
       // Determine if we're before or after the valid range
       const currentOrdinal = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
       const earliestOrdinal = `${earliest.year}${String(earliest.month).padStart(2, '0')}`

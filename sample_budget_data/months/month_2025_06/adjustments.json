@@ -1,0 +1,22 @@
+[
+  {
+    "id": "adjustment_sample_06_01",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_personal",
+    "amount": -50,
+    "description": "To vacation for summer trip",
+    "date": "2025-06-10",
+    "cleared": true,
+    "created_at": "2025-06-10T12:00:00.000Z"
+  },
+  {
+    "id": "adjustment_sample_06_02",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_vacation",
+    "amount": 50,
+    "description": "From personal",
+    "date": "2025-06-10",
+    "cleared": true,
+    "created_at": "2025-06-10T12:00:00.000Z"
+  }
+]

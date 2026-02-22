@@ -36,12 +36,29 @@ export function useInitialBalanceCalculation({
 }: UseInitialBalanceCalculationParams) {
   const { addLoadingHold, removeLoadingHold } = useApp()
   const hasCalculatedRef = useRef(false)
+  const lastBudgetIdRef = useRef<string | null>(null)
+  const lastInitialDataLoadCompleteRef = useRef(false)
 
   useEffect(() => {
+    // Reset hasCalculatedRef when budgetId changes (do this FIRST, before any early returns)
+    // This handles direct budget switches (A -> B) where budgetId never becomes null
+    if (budgetId !== lastBudgetIdRef.current) {
+      hasCalculatedRef.current = false
+      lastBudgetIdRef.current = budgetId
+    }
+
+    // Reset hasCalculatedRef when initialDataLoadComplete transitions from false to true
+    // This handles cache clears for the SAME budget (e.g., after updating sample budget)
+    if (initialDataLoadComplete && !lastInitialDataLoadCompleteRef.current) {
+      hasCalculatedRef.current = false
+    }
+    lastInitialDataLoadCompleteRef.current = initialDataLoadComplete
+
     if (!enabled || !budgetId || !initialDataLoadComplete || hasCalculatedRef.current) {
       return
     }
     if (months.length === 0) {
+      // DEBUG: Log when skipping due to no months - remove after fixing bug
       setInitialBalanceCalculationComplete(true)
       return
     }
@@ -101,8 +118,4 @@ export function useInitialBalanceCalculation({
 
     run()
   }, [enabled, budgetId, initialDataLoadComplete, months, addLoadingHold, removeLoadingHold, setInitialBalanceCalculationComplete])
-
-  useEffect(() => {
-    if (!budgetId) hasCalculatedRef.current = false
-  }, [budgetId])
 }

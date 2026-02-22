@@ -23,7 +23,7 @@ import type { MonthQueryData } from './readMonth'
 import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
 import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
-import { getMonthDocId, getYearMonthOrdinal } from '@utils'
+import { getMonthDocId, getYearMonthOrdinal, canCreateMonth, MonthNavigationError } from '@utils'
 import { useBudget } from '@contexts'
 import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 import { calculatePreviousMonthIncome } from './calculatePreviousMonthIncome'
@@ -170,14 +170,13 @@ export async function fetchMonth(
     return existingMonth
   }
 
-  // Check if month exists in month_map before creating
-  // If queryClient is provided, check cache first (faster)
-  let monthExistsInMap = false
-  if (queryClient && budgetData) {
-    if (budgetData.monthMap) {
-      const monthOrdinal = getYearMonthOrdinal(year, month)
-      monthExistsInMap = monthOrdinal in budgetData.monthMap
-    }
+  // Check if we can create this month using centralized rules from @utils/monthCreationRules
+  // Rules: edge months must be within 3 calendar months of today, and you must walk one month at a time
+  
+  let monthMap: Record<string, unknown> | null = null
+  
+  if (queryClient && budgetData && budgetData.monthMap) {
+    monthMap = budgetData.monthMap as Record<string, unknown>
   } else {
     // If not in cache, read budget to check month_map
     const { exists, data } = await readDocByPath<FirestoreData>(
@@ -186,21 +185,24 @@ export async function fetchMonth(
       'checking month_map before creating month'
     )
     if (exists && data?.month_map) {
-      const monthOrdinal = getYearMonthOrdinal(year, month)
-      const monthMap = data.month_map as Record<string, unknown>
-      monthExistsInMap = monthOrdinal in monthMap
+      monthMap = data.month_map as Record<string, unknown>
     }
   }
 
-  // Only create if month exists in month_map
-  // If month_map is empty/missing, allow creation (legacy support for budgets without month_map)
-  if (monthExistsInMap) {
-    // Create new month document with start balances from previous month
+  // Use centralized month creation rules
+  const creationResult = canCreateMonth(year, month, monthMap)
+  
+  if (creationResult.allowed) {
     return createMonth(budgetId, year, month)
   }
 
-  // Month doesn't exist in month_map - throw error instead of creating
-  throw new Error(`Month ${year}/${month} does not exist in budget. Cannot create months that are not in month_map.`)
+  // Month creation not allowed - throw structured error for redirect handling
+  throw new MonthNavigationError(
+    creationResult.error || `Month ${year}/${month} cannot be created.`,
+    year,
+    month,
+    true // shouldRedirectToValidMonth
+  )
 }
 
 /**
@@ -238,6 +240,15 @@ export function useMonthQuery(
     (options?.enabled !== false) &&
     initialDataLoadComplete
 
+  // Check if there's already data or error cached for this query
+  const existingData = queryClient.getQueryData(queryKey)
+  const existingState = queryClient.getQueryState(queryKey)
+  
+  // Force refetch if state is "success" but there's no data (stale state from initialDataLoad)
+  if (existingState?.status === 'success' && !existingData) {
+    queryClient.resetQueries({ queryKey, exact: true })
+  }
+
   return useQuery({
     queryKey,
     queryFn: async (): Promise<MonthQueryData> => {
@@ -250,5 +261,10 @@ export function useMonthQuery(
     // Setting staleTime ensures React Query knows when data is fresh (5 minutes)
     staleTime: STALE_TIME, // 5 minutes - matches queryClient default
     // fetchMonth now checks cache first, so even if queryFn is called, it will use prefetched data
+    // Don't retry MonthNavigationError - retrying won't help and delays error handling
+    retry: (failureCount, error) => {
+      if (MonthNavigationError.is(error)) return false
+      return failureCount < 3
+    },
   })
 }

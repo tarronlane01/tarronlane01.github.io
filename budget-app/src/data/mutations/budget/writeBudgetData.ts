@@ -203,7 +203,7 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
     [key: string]: unknown
   }
 
-  // Strip balance from accounts and categories if present (never persist budget-level balances)
+  // Strip balance from accounts and categories if present (NEVER persist budget-level balances)
   let safeUpdates: FirestoreData = { ...updatesWithoutCalculatedFields }
   if (safeUpdates.accounts && typeof safeUpdates.accounts === 'object') {
     const accounts = safeUpdates.accounts as Record<string, Record<string, unknown>>
@@ -212,7 +212,6 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
       accounts: Object.fromEntries(
         Object.entries(accounts).map(([id, acc]) => {
           if (acc && typeof acc === 'object') {
-            // Omit balance from payload (balances live on budget, not in accounts update)
             const { balance: _balanceOmitted, ...accWithoutBalance } = acc as { balance?: number; [key: string]: unknown }
             void _balanceOmitted
             return [id, accWithoutBalance]
@@ -229,7 +228,6 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
       categories: Object.fromEntries(
         Object.entries(categories).map(([id, cat]) => {
           if (cat && typeof cat === 'object') {
-            // Omit balance from payload (balances live on budget, not in categories update)
             const { balance: _balanceOmitted, ...catWithoutBalance } = cat as { balance?: number; [key: string]: unknown }
             void _balanceOmitted
             return [id, catWithoutBalance]
@@ -250,7 +248,6 @@ export async function writeBudgetData(params: WriteBudgetParams): Promise<void> 
   const cleanedData = cleanForFirestore(dataToWrite)
 
   // Use updateDoc so map fields (categories, accounts) are fully replaced, not deep-merged.
-  // setDoc(merge: true) would keep omitted keys in nested objects; updateDoc replaces each field.
   await updateDocByPath('budgets', budgetId, cleanedData, description)
 
   // Update cache after successful write

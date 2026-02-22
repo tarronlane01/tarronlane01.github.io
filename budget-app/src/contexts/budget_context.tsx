@@ -17,14 +17,12 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import useFirebaseAuth from '@hooks/useFirebaseAuth'
-import {
-  useUserQuery,
-  useAccessibleBudgetsQuery,
-  fetchBudgetInviteStatus,
-} from '@data'
+import { useUserQuery, useAccessibleBudgetsQuery } from '@data'
 import { queryClient, queryKeys } from '@data/queryClient'
 import { useInitialDataLoad } from '@hooks/useInitialDataLoad'
 import { useInitialBalanceCalculation } from '@hooks/useInitialBalanceCalculation'
+import { useBudgetContextInit } from './budgetContextInit'
+import { useBudgetContextCallbacks } from './budgetContextCallbacks'
 
 // Import types from centralized types file
 import type {
@@ -111,6 +109,7 @@ interface BudgetContextType {
   pendingInvites: BudgetInvite[]
   hasPendingInvites: boolean
   accessibleBudgets: BudgetSummary[]
+  isLoadingAccessibleBudgets: boolean
 
   // User flags (from user query - needed for UI conditionals)
   isAdmin: boolean
@@ -123,6 +122,8 @@ interface BudgetContextType {
 
   // Cache utilities
   clearCache: () => void
+  /** Reset initial load state flags - call after clearing caches to trigger re-calculation */
+  resetInitialLoadState: () => void
 }
 
 // --- DEFAULT CONTEXT VALUE ---
@@ -132,21 +133,46 @@ const defaultContextValue: BudgetContextType = {
   currentViewingDocument: { type: null }, setCurrentViewingDocument: () => {}, setSelectedBudgetId: () => {}, setCurrentYear: () => {}, setCurrentMonthNumber: () => {},
   setLastActiveTab: () => {}, setLastSettingsTab: () => {}, setLastAdminTab: () => {}, pageTitle: 'Budget', setPageTitle: () => {},
   isInitialized: false, needsFirstBudget: false, initialDataLoadComplete: false, initialBalanceCalculationComplete: false,
-  goToPreviousMonth: () => {}, goToNextMonth: () => {}, pendingInvites: [], hasPendingInvites: false, accessibleBudgets: [],
-  isAdmin: false, isTest: false, loadAccessibleBudgets: async () => {}, switchToBudget: () => {}, checkBudgetInvite: async () => null, clearCache: () => {},
+  goToPreviousMonth: () => {}, goToNextMonth: () => {}, pendingInvites: [], hasPendingInvites: false, accessibleBudgets: [], isLoadingAccessibleBudgets: false,
+  isAdmin: false, isTest: false, loadAccessibleBudgets: async () => {}, switchToBudget: () => {}, checkBudgetInvite: async () => null, clearCache: () => {}, resetInitialLoadState: () => {},
 }
 
 const BudgetContext = createContext<BudgetContextType>(defaultContextValue)
+
+/**
+ * Parse year/month from URL path on initial load.
+ * Returns current calendar date if not present or invalid.
+ */
+function getInitialYearMonth(): { year: number; month: number } {
+  const now = new Date()
+  const defaultYear = now.getFullYear()
+  const defaultMonth = now.getMonth() + 1
+
+  // Parse /budget/:year/:month from URL
+  const path = typeof window !== 'undefined' ? window.location.pathname : ''
+  const match = path.match(/\/budget\/(\d{4})\/(\d{1,2})/)
+  if (!match) return { year: defaultYear, month: defaultMonth }
+
+  const year = parseInt(match[1], 10)
+  const month = parseInt(match[2], 10)
+
+  // Validate ranges
+  if (year < 2000 || year > 2100) return { year: defaultYear, month: defaultMonth }
+  if (month < 1 || month > 12) return { year: defaultYear, month: defaultMonth }
+
+  return { year, month }
+}
 
 // --- PROVIDER ---
 export function BudgetProvider({ children }: { children: ReactNode }) {
   const firebase_auth_hook = useFirebaseAuth()
   const current_user = firebase_auth_hook.get_current_firebase_user()
 
-  // Selection state - what the user has selected
+  // Selection state - initialize from URL if present
   const [selectedBudgetId, setSelectedBudgetId] = useState<string | null>(null)
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
-  const [currentMonthNumber, setCurrentMonthNumber] = useState(new Date().getMonth() + 1)
+  const initialYearMonth = getInitialYearMonth()
+  const [currentYear, setCurrentYear] = useState(initialYearMonth.year)
+  const [currentMonthNumber, setCurrentMonthNumber] = useState(initialYearMonth.month)
   const [lastActiveTab, setLastActiveTabState] = useState<BudgetTab>('categories')
   const [lastBalancesTab, setLastBalancesTab] = useState<BudgetTab>('categories')
   const [lastTransactionsTab, setLastTransactionsTab] = useState<BudgetTab>('income')
@@ -188,8 +214,11 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     { enabled: !!current_user?.uid && !!userQuery.data && userHasNoBudgets }
   )
 
-  // Initial data load - pre-populate cache with last 3 months, current, all future, budget, payees
-  const initialDataLoad = useInitialDataLoad(selectedBudgetId, { enabled: !!selectedBudgetId && isInitialized })
+  // Initial data load - pre-populate cache with months around the current viewing month
+  const initialDataLoad = useInitialDataLoad(selectedBudgetId, {
+    enabled: !!selectedBudgetId && isInitialized,
+    referenceMonth: { year: currentYear, month: currentMonthNumber },
+  })
   // Track if initial data load is complete (data loaded AND cache populated)
   const [initialDataLoadComplete, setInitialDataLoadComplete] = useState(false)
   // Track if initial balance calculation has run (month caches chained so end_balance is correct)
@@ -198,8 +227,12 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
   // Populate cache with initial data when it loads (set staleTime to 5 minutes)
   useEffect(() => {
     if (!initialDataLoad.data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setInitialDataLoadComplete(false)
+      return
+    }
+
+    // Guard: Don't re-populate cache if already complete for this budget
+    // (prevents overwriting calculated balances when month state changes trigger re-render)
+    if (initialDataLoadComplete) {
       return
     }
 
@@ -211,8 +244,25 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     for (const month of months) {
       queryClient.setQueryData(queryKeys.month(selectedBudgetId!, month.year, month.month), { month }, { updatedAt: now })
     }
+
+    // If the current month (from context) wasn't loaded, update context to the latest loaded month
+    // This handles switching to budgets with different date ranges (e.g., sample budget in 2025)
+    if (months.length > 0) {
+      const currentMonthLoaded = months.some(m => m.year === currentYear && m.month === currentMonthNumber)
+      if (!currentMonthLoaded) {
+        // Sort to find the latest month
+        const sortedMonths = [...months].sort((a, b) =>
+          a.year !== b.year ? b.year - a.year : b.month - a.month
+        )
+        const latestMonth = sortedMonths[0]
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- sync view to loaded month when requested month not in range
+        setCurrentYear(latestMonth.year)
+        setCurrentMonthNumber(latestMonth.month)
+      }
+    }
+
     setInitialDataLoadComplete(true) // Mark initial data load as complete after cache is populated
-  }, [initialDataLoad.data, selectedBudgetId]) // queryClient is stable, no need to include
+  }, [initialDataLoad.data, selectedBudgetId, currentYear, currentMonthNumber, initialDataLoadComplete]) // queryClient is stable, no need to include
 
   // Calculate and sync balances after initial data load (before removing loading overlay)
   useInitialBalanceCalculation({
@@ -231,42 +281,37 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       setInitialBalanceCalculationComplete(false)
     }
   }, [selectedBudgetId])
+
+  useBudgetContextInit({
+    current_user,
+    isInitialized,
+    userQuery,
+    accessibleBudgetsQuery,
+    setSelectedBudgetId,
+    setNeedsFirstBudget,
+    setIsInitialized,
+  })
+
+  const { loadAccessibleBudgets, switchToBudget, checkBudgetInvite } = useBudgetContextCallbacks({
+    selectedBudgetId,
+    current_user,
+    accessibleBudgetsQuery,
+    setInitialDataLoadComplete,
+    setInitialBalanceCalculationComplete,
+    setCurrentYear,
+    setCurrentMonthNumber,
+    setSelectedBudgetId,
+    setNeedsFirstBudget,
+  })
+
   // Derive user flags and onboarding state
   const isAdmin = userQuery.data?.permission_flags?.is_admin === true
   const isTest = userQuery.data?.permission_flags?.is_test === true
   const pendingInvites = accessibleBudgetsQuery.data?.pendingInvites || []
   const accessibleBudgets = accessibleBudgetsQuery.data?.budgets || []
   const hasPendingInvites = pendingInvites.length > 0
-  // ==========================================================================
-  // INITIALIZATION - Auto-select first budget
-  // ==========================================================================
-  useEffect(() => {
-    if (!current_user) return
-    if (isInitialized) return
-    if (userQuery.isLoading) return
+  const isLoadingAccessibleBudgets = accessibleBudgetsQuery.isLoading || accessibleBudgetsQuery.isFetching
 
-    const userData = userQuery.data
-
-    // Still loading
-    if (!userData && !userQuery.isError) return
-
-    // Determine which budget to load (initialization pattern - setState is intentional)
-    if (userData && userData.budget_ids.length > 0) {
-      setSelectedBudgetId(userData.budget_ids[0]) // eslint-disable-line react-hooks/set-state-in-effect
-      setNeedsFirstBudget(false)
-      setIsInitialized(true)
-    } else {
-      if (accessibleBudgetsQuery.isLoading) return
-      const budgetsData = accessibleBudgetsQuery.data
-      setNeedsFirstBudget(!(budgetsData?.pendingInvites && budgetsData.pendingInvites.length > 0))
-      setIsInitialized(true)
-    }
-  }, [current_user, isInitialized, userQuery.data, userQuery.isLoading, userQuery.isError, accessibleBudgetsQuery.data, accessibleBudgetsQuery.isLoading])
-
-  // ==========================================================================
-  // MONTH NAVIGATION - Just changes identifiers
-  // Note: Don't nest setState calls inside updater functions - React Strict Mode can run updaters twice
-  // ==========================================================================
   const goToPreviousMonth = useCallback(() => {
     if (currentMonthNumber === 1) {
       setCurrentYear(y => y - 1)
@@ -284,46 +329,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
       setCurrentMonthNumber(m => m + 1)
     }
   }, [currentMonthNumber])
-  // ==========================================================================
-  // BUDGET MANAGEMENT UTILITIES
-  // ==========================================================================
-  const loadAccessibleBudgets = useCallback(async (options?: { force?: boolean }) => {
-    // If force=true (e.g., after mutations), always refetch. Otherwise, only refetch if we don't have data yet (prevents duplicate queries)
-    if (options?.force || !accessibleBudgetsQuery.data) {
-      await accessibleBudgetsQuery.refetch()
-    }
-  }, [accessibleBudgetsQuery])
-
-  const switchToBudget = useCallback((budgetId: string) => {
-    setSelectedBudgetId(budgetId)
-    setNeedsFirstBudget(false) // If switching to a budget, we clearly don't need to create a first budget
-  }, [])
-
-  const checkBudgetInvite = useCallback(async (budgetId: string): Promise<BudgetInvite | null> => {
-    if (!current_user) return null
-
-    try {
-      const status = await fetchBudgetInviteStatus(budgetId, current_user.uid)
-
-      if (!status) return null
-
-      // Check if user is invited but hasn't accepted
-      if (status.isInvited && !status.hasAccepted) {
-        return {
-          budgetId,
-          budgetName: status.budgetName,
-          ownerEmail: status.ownerEmail,
-        }
-      }
-
-      return null
-    } catch (error) {
-      console.error('[BudgetContext] Error checking budget invite:', error)
-      return null
-    }
-  }, [current_user])
 
   const clearCache = useCallback(() => queryClient.clear(), [])
+
+  const resetInitialLoadState = useCallback(() => {
+    setInitialDataLoadComplete(false)
+    setInitialBalanceCalculationComplete(false)
+  }, [])
+
   const contextValue: BudgetContextType = {
     currentUserId: current_user?.uid || null,
     selectedBudgetId,
@@ -353,12 +366,14 @@ export function BudgetProvider({ children }: { children: ReactNode }) {
     pendingInvites,
     hasPendingInvites,
     accessibleBudgets,
+    isLoadingAccessibleBudgets,
     isAdmin,
     isTest,
     loadAccessibleBudgets,
     switchToBudget,
     checkBudgetInvite,
     clearCache,
+    resetInitialLoadState,
   }
 
   return (

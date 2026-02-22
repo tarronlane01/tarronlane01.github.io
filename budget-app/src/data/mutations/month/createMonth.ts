@@ -17,6 +17,7 @@ import { queryClient, queryKeys } from '@data/queryClient'
 import type { MonthQueryData } from '@data/queries/month/readMonth'
 import { getEndBalancesFromMonth } from '@data/queries/month/getEndBalancesFromMonth'
 import { updateCacheWithSingleMonth } from '@data/recalculation/monthMapHelpers'
+import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
 
 /** Options for createMonth */
 export interface CreateMonthOptions {
@@ -157,7 +158,7 @@ export async function createMonth(
 
     if (prevData) {
         // Parse the previous month data to extract balances
-        const prevMonthData: MonthDocument = {
+        const rawPrevMonthData: MonthDocument = {
           budget_id: budgetId,
           year_month_ordinal: prevData.year_month_ordinal ?? getYearMonthOrdinal(prevYear, prevMonth),
           year: prevData.year ?? prevYear,
@@ -175,6 +176,10 @@ export async function createMonth(
           created_at: prevData.created_at,
           updated_at: prevData.updated_at,
         }
+        
+        // Convert stored balances to calculated balances (computes end_balance from transactions)
+        // This is critical for months outside the calculation window that only have start_balance stored
+        const prevMonthData = convertMonthBalancesFromStored(rawPrevMonthData)
 
         // Percentage-based allocation income: from N months back (per budget setting)
         if (percentageIncomeMonthsBack === 1) {

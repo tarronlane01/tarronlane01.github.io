@@ -13,4 +13,5 @@ export { useInviteUser } from './useInviteUser'
 export { useRevokeUser } from './useRevokeUser'
 export { useSwitchBudget } from './useSwitchBudget'
 export { useCheckInvite } from './useCheckInvite'
+export { writeUserData } from './writeUserData'
 

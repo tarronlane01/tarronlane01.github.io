@@ -35,7 +35,7 @@ function parseOrdinal(ordinal: string): { year: number; month: number } {
  * Recalculate budget category balances from all months in cache and update the cache.
  * This reads directly from the React Query cache (not Firestore) to ensure we use
  * the freshly recalculated month data.
- * 
+ *
  * Assumes all required months are already in cache and fresh.
  */
 export async function recalculateBudgetCategoryBalancesFromCache(
@@ -106,17 +106,17 @@ export async function recalculateBudgetCategoryBalancesFromCache(
         }
       }
     }
-    
+
     // If still no starting point, compute forward from earliest month
     if (!foundStart && sortedOrdinals.length > 0) {
       // Start from zero and compute forward through all months up to current
       for (const ordinal of sortedOrdinals) {
         if (ordinal > currentOrdinal) break
-        
+
         const { year, month } = parseOrdinal(ordinal)
         const monthKey = queryKeys.month(budgetId, year, month)
         const monthData = queryClient.getQueryData<MonthQueryData>(monthKey)
-        
+
         if (monthData?.month) {
           const m = monthData.month
           // Add allocations if finalized

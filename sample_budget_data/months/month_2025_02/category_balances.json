@@ -1,0 +1,72 @@
+[
+  {
+    "category_id": "category_rent",
+    "start_balance": 0,
+    "allocated": 1500
+  },
+  {
+    "category_id": "category_utilities",
+    "start_balance": 84.40,
+    "allocated": 200
+  },
+  {
+    "category_id": "category_groceries",
+    "start_balance": -3.28,
+    "allocated": 500
+  },
+  {
+    "category_id": "category_transportation",
+    "start_balance": 78.93,
+    "allocated": 150
+  },
+  {
+    "category_id": "category_subscriptions",
+    "start_balance": 32.02,
+    "allocated": 50
+  },
+  {
+    "category_id": "category_phone_internet",
+    "start_balance": 0,
+    "allocated": 120
+  },
+  {
+    "category_id": "category_emergency_fund",
+    "start_balance": 3500,
+    "allocated": 500
+  },
+  {
+    "category_id": "category_vacation",
+    "start_balance": 1030,
+    "allocated": 200
+  },
+  {
+    "category_id": "category_car_maintenance",
+    "start_balance": 550,
+    "allocated": 100
+  },
+  {
+    "category_id": "category_entertainment",
+    "start_balance": 92.50,
+    "allocated": 100
+  },
+  {
+    "category_id": "category_dining_out",
+    "start_balance": 65.36,
+    "allocated": 150
+  },
+  {
+    "category_id": "category_personal",
+    "start_balance": 55.01,
+    "allocated": 75
+  },
+  {
+    "category_id": "category_clothing",
+    "start_balance": -24.99,
+    "allocated": 50
+  },
+  {
+    "category_id": "category_gifts",
+    "start_balance": 150,
+    "allocated": 100
+  }
+]

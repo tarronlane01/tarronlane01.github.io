@@ -8,6 +8,17 @@
 export { getMonthDocId } from './monthDocId'
 export { getPreviousMonth, getNextMonth, getMonthsBack, getYearMonthOrdinal, formatDate, getDefaultFormDate, parseDateToYearMonth } from './date'
 export {
+  canCreateMonth,
+  monthExistsInMap,
+  getPrevMonthNavigationState,
+  getNextMonthNavigationState,
+  getCalendarBounds,
+  getMonthMapBounds,
+  MonthNavigationError,
+  type MonthCreationResult,
+  type MonthNavigationState,
+} from './monthCreationRules'
+export {
   logUserAction,
   trackedChange,
   trackedInputChange,

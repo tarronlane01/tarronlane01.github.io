@@ -1,0 +1,178 @@
+[
+  {
+    "id": "expense_sample_03_01",
+    "account_id": "account_main_checking",
+    "payee": "Landlord",
+    "description": "March rent",
+    "amount": -1500,
+    "category_id": "category_rent",
+    "date": "2025-03-01",
+    "cleared": true,
+    "created_at": "2025-03-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_02",
+    "account_id": "account_credit_card",
+    "payee": "Electric Company",
+    "description": "",
+    "amount": -78.45,
+    "category_id": "category_utilities",
+    "date": "2025-03-05",
+    "cleared": true,
+    "created_at": "2025-03-05T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_03",
+    "account_id": "account_credit_card",
+    "payee": "Water Utility",
+    "description": "",
+    "amount": -42.30,
+    "category_id": "category_utilities",
+    "date": "2025-03-08",
+    "cleared": true,
+    "created_at": "2025-03-08T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_04",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -105.67,
+    "category_id": "category_groceries",
+    "date": "2025-03-02",
+    "cleared": true,
+    "created_at": "2025-03-02T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_05",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -98.23,
+    "category_id": "category_groceries",
+    "date": "2025-03-09",
+    "cleared": true,
+    "created_at": "2025-03-09T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_06",
+    "account_id": "account_credit_card",
+    "payee": "Costco",
+    "description": "",
+    "amount": -167.89,
+    "category_id": "category_groceries",
+    "date": "2025-03-16",
+    "cleared": true,
+    "created_at": "2025-03-16T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_07",
+    "account_id": "account_credit_card",
+    "payee": "Grocery Mart",
+    "description": "Weekly groceries",
+    "amount": -92.45,
+    "category_id": "category_groceries",
+    "date": "2025-03-23",
+    "cleared": true,
+    "created_at": "2025-03-23T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_08",
+    "account_id": "account_credit_card",
+    "payee": "Shell Gas",
+    "description": "",
+    "amount": -45.89,
+    "category_id": "category_transportation",
+    "date": "2025-03-06",
+    "cleared": true,
+    "created_at": "2025-03-06T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_09",
+    "account_id": "account_credit_card",
+    "payee": "Shell Gas",
+    "description": "",
+    "amount": -48.32,
+    "category_id": "category_transportation",
+    "date": "2025-03-20",
+    "cleared": true,
+    "created_at": "2025-03-20T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_10",
+    "account_id": "account_credit_card",
+    "payee": "Netflix",
+    "description": "",
+    "amount": -15.99,
+    "category_id": "category_subscriptions",
+    "date": "2025-03-01",
+    "cleared": true,
+    "created_at": "2025-03-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_11",
+    "account_id": "account_credit_card",
+    "payee": "Spotify",
+    "description": "",
+    "amount": -11.99,
+    "category_id": "category_subscriptions",
+    "date": "2025-03-01",
+    "cleared": true,
+    "created_at": "2025-03-01T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_12",
+    "account_id": "account_credit_card",
+    "payee": "AT&T",
+    "description": "Phone bill",
+    "amount": -65.00,
+    "category_id": "category_phone_internet",
+    "date": "2025-03-12",
+    "cleared": true,
+    "created_at": "2025-03-12T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_13",
+    "account_id": "account_credit_card",
+    "payee": "Comcast",
+    "description": "Internet",
+    "amount": -55.00,
+    "category_id": "category_phone_internet",
+    "date": "2025-03-15",
+    "cleared": true,
+    "created_at": "2025-03-15T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_14",
+    "account_id": "account_credit_card",
+    "payee": "Local Restaurant",
+    "description": "Lunch with friend",
+    "amount": -34.50,
+    "category_id": "category_dining_out",
+    "date": "2025-03-08",
+    "cleared": true,
+    "created_at": "2025-03-08T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_15",
+    "account_id": "account_credit_card",
+    "payee": "Coffee Shop",
+    "description": "",
+    "amount": -9.25,
+    "category_id": "category_dining_out",
+    "date": "2025-03-15",
+    "cleared": true,
+    "created_at": "2025-03-15T12:00:00.000Z"
+  },
+  {
+    "id": "expense_sample_03_16",
+    "account_id": "account_credit_card",
+    "payee": "Amazon",
+    "description": "Book",
+    "amount": -18.99,
+    "category_id": "category_personal",
+    "date": "2025-03-10",
+    "cleared": true,
+    "created_at": "2025-03-10T12:00:00.000Z"
+  }
+]

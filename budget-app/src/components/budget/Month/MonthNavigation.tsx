@@ -4,15 +4,13 @@ import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { colors } from '@styles/shared'
 import { MONTH_NAMES } from '@constants'
-import { logUserAction, getYearMonthOrdinal, getMonthDocId } from '@utils'
+import { logUserAction, getYearMonthOrdinal, getMonthDocId, getPrevMonthNavigationState, getNextMonthNavigationState, getCalendarBounds } from '@utils'
 import {
   MonthNavButton,
   MonthPicker,
   DeleteMonthModal,
   getPrevMonth,
-  getNextMonth,
   getEffectiveMinMonth,
-  getMaxAllowedMonth,
 } from './MonthNavigation/index'
 // eslint-disable-next-line no-restricted-imports
 import { deleteDocByPath } from '@firestore'
@@ -44,20 +42,24 @@ export function MonthNavigation({
   const { budget: currentBudget, monthMap } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
-  // Navigation bounds
-  const prevMonth = getPrevMonth(currentYear, currentMonthNumber)
-  const nextMonth = getNextMonth(currentYear, currentMonthNumber)
-  const maxAllowed = getMaxAllowedMonth()
-  const maxOrdinal = Number(getYearMonthOrdinal(maxAllowed.year, maxAllowed.month))
-  const nextOrdinal = Number(getYearMonthOrdinal(nextMonth.year, nextMonth.month))
-  const isNextDisabled = nextOrdinal > maxOrdinal
-
-  // For previous month: allow navigation if it exists in month_map
-  // This allows navigating to any month in the budget's history, regardless of how far in the past
-  // We should NOT allow creating or navigating to past months that aren't in month_map
-  const prevOrdinal = getYearMonthOrdinal(prevMonth.year, prevMonth.month)
-  const prevMonthExistsInMap = monthMap ? prevOrdinal in monthMap : false
-  const isPrevDisabled = !prevMonthExistsInMap
+  // Navigation bounds - use centralized rules from @utils/monthCreationRules
+  const prevNavState = getPrevMonthNavigationState(currentYear, currentMonthNumber, monthMap)
+  const nextNavState = getNextMonthNavigationState(currentYear, currentMonthNumber, monthMap)
+  
+  const isPrevDisabled = !prevNavState.canNavigate
+  const prevDisabledReason = prevNavState.disabledReason ?? ''
+  
+  const isNextDisabled = !nextNavState.canNavigate
+  const nextDisabledReason = nextNavState.disabledReason ?? ''
+  
+  // Get calendar bounds for MonthPicker
+  const calendarBounds = getCalendarBounds()
+  const maxCalendarOrdinal = calendarBounds.maxOrdinal
+  
+  // Compute maxAllowed as a {year, month} object for MonthPicker
+  const maxAllowedYear = Math.floor(calendarBounds.maxOrdinal / 100)
+  const maxAllowedMonth = calendarBounds.maxOrdinal % 100
+  const maxAllowed = { year: maxAllowedYear, month: maxAllowedMonth }
 
   // Keep minAllowed for MonthPicker component (used for display/validation)
   const minAllowed = getEffectiveMinMonth(monthMap || {})
@@ -205,7 +207,7 @@ export function MonthNavigation({
         direction="prev"
         isDisabled={isPrevDisabled}
         isLoading={isLoading}
-        disabledReason={prevMonthExistsInMap ? undefined : "No previous month available in this budget"}
+        disabledReason={prevDisabledReason}
         onNavigate={onPreviousMonth}
       />
 
@@ -292,7 +294,7 @@ export function MonthNavigation({
                 currentYear={currentYear}
                 currentMonthNumber={currentMonthNumber}
                 minOrdinal={minOrdinal}
-                maxOrdinal={maxOrdinal}
+                maxOrdinal={maxCalendarOrdinal}
                 minAllowed={minAllowed}
                 maxAllowed={maxAllowed}
                 monthMap={monthMap}
@@ -339,7 +341,7 @@ export function MonthNavigation({
         direction="next"
         isDisabled={isNextDisabled}
         isLoading={isLoading}
-        disabledReason="Cannot create months more than 3 months into the future"
+        disabledReason={nextDisabledReason}
         onNavigate={onNextMonth}
       />
 

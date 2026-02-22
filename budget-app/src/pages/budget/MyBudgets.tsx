@@ -12,8 +12,8 @@ import { ManualInviteSection, UserIdInfo } from './MyBudgetsManualInvite'
 import { colors } from '@styles/shared'
 
 function MyBudgets() {
-  const { addLoadingHold, removeLoadingHold } = useApp()
-  const { selectedBudgetId, currentUserId, accessibleBudgets, loadAccessibleBudgets, switchToBudget, checkBudgetInvite, isInitialized, setPageTitle, needsFirstBudget } = useBudget()
+  const { addLoadingHold, removeLoadingHold, isLoading: hasActiveLoadingHold } = useApp()
+  const { selectedBudgetId, currentUserId, accessibleBudgets, isLoadingAccessibleBudgets, loadAccessibleBudgets, switchToBudget, checkBudgetInvite, isInitialized, setPageTitle, needsFirstBudget } = useBudget()
   const { requireUserEmail } = useFirebaseAuth()
 
   // Track if we've already loaded budgets this mount (avoid duplicate loads)
@@ -43,7 +43,8 @@ function MyBudgets() {
   useEffect(() => {
     if (isInitialized && !hasLoadedRef.current) {
       hasLoadedRef.current = true
-      loadAccessibleBudgets()
+      // Always force refetch on mount to ensure fresh data (e.g., after sample budget update)
+      loadAccessibleBudgets({ force: true })
     }
   }, [isInitialized, loadAccessibleBudgets])
 
@@ -191,16 +192,18 @@ function MyBudgets() {
   const acceptedBudgets = accessibleBudgets.filter(b => !b.isPending)
   const pendingBudgetsList = accessibleBudgets.filter(b => b.isPending)
 
+  // Add loading hold when data isn't ready - global overlay handles display
   useEffect(() => {
-    if (loading || !isInitialized) {
+    if (loading || !isInitialized || isLoadingAccessibleBudgets) {
       addLoadingHold('my-budgets', 'Loading your budgets...')
     } else {
       removeLoadingHold('my-budgets')
     }
     return () => removeLoadingHold('my-budgets')
-  }, [loading, isInitialized, addLoadingHold, removeLoadingHold])
+  }, [loading, isInitialized, isLoadingAccessibleBudgets, addLoadingHold, removeLoadingHold])
 
-  if (loading || !isInitialized) return null
+  // Don't render content while global loading overlay is active
+  if (hasActiveLoadingHold) return null
 
   // Determine page title and description based on context
   let pageTitle = 'My Budgets'

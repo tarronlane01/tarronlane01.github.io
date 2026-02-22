@@ -153,6 +153,19 @@ export function BudgetCard({
                   Pending
                 </span>
               )}
+              {budget.isSampleBudget && (
+                <span style={{
+                  background: 'color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                  color: 'var(--color-primary)',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '4px',
+                  fontSize: '0.65rem',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                }}>
+                  🎯 Sample
+                </span>
+              )}
               {canEdit && (
                 <button
                   onClick={onStartEdit}
@@ -174,6 +187,11 @@ export function BudgetCard({
             <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>
               {budget.ownerEmail ? `Owner: ${budget.ownerEmail}` : `ID: ${budget.id}`}
             </p>
+            {budget.ownerEmail && (
+              <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.7rem', opacity: 0.4, fontFamily: 'monospace' }}>
+                {budget.id}
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>

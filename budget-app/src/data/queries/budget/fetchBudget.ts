@@ -70,8 +70,8 @@ export interface BudgetData {
 // ============================================================================
 
 /**
- * Parse raw Firestore accounts data into typed AccountsMap
- * Always applies defaults for optional fields to ensure consistent data
+ * Parse raw Firestore accounts data into typed AccountsMap.
+ * Always sets balance to 0 - balances are calculated locally from cached months.
  */
 function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
   const accounts: AccountsMap = {}
@@ -79,8 +79,7 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
     accounts[id] = {
       nickname: account.nickname ?? '',
       description: account.description ?? '',
-      // Budget-level balance is never stored; always 0 on read. Filled by local recalc.
-      balance: 0,
+      balance: 0, // Always 0 - calculated locally by recalculateAllBalancesFromCache
       // Always use ungrouped group ID if not set (never null)
       account_group_id: account.account_group_id ?? UNGROUPED_ACCOUNT_GROUP_ID,
       sort_order: account.sort_order ?? 0,
@@ -97,21 +96,36 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
 
 /**
  * Parse raw Firestore account groups data into typed AccountGroupsMap
+ * Handles both array format (sample budget) and object format (regular budgets)
  * Ensures the default ungrouped group always exists
  */
-function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroupsMap {
+function parseAccountGroups(accountGroupsData: FirestoreData | FirestoreData[] = {}): AccountGroupsMap {
   const groups: AccountGroupsMap = {}
-  Object.entries(accountGroupsData).forEach(([id, group]) => {
-    groups[id] = {
-      name: group.name,
-      sort_order: group.sort_order ?? 0,
-      expected_balance: group.expected_balance ?? 'positive',
-      // Use null for missing override fields (means "use account default")
-      // Firestore doesn't allow undefined, so we use null
-      on_budget: group.on_budget !== undefined ? group.on_budget : null,
-      is_active: group.is_active !== undefined ? group.is_active : null,
-    } as AccountGroup
-  })
+  
+  // Handle array format (sample budget stores as array with id field)
+  if (Array.isArray(accountGroupsData)) {
+    accountGroupsData.forEach((group) => {
+      const id = group.id as string
+      groups[id] = {
+        name: group.name,
+        sort_order: group.sort_order ?? 0,
+        expected_balance: group.expected_balance ?? 'positive',
+        on_budget: group.on_budget !== undefined ? group.on_budget : null,
+        is_active: group.is_active !== undefined ? group.is_active : null,
+      } as AccountGroup
+    })
+  } else {
+    // Handle object format (regular budgets)
+    Object.entries(accountGroupsData).forEach(([id, group]) => {
+      groups[id] = {
+        name: group.name,
+        sort_order: group.sort_order ?? 0,
+        expected_balance: group.expected_balance ?? 'positive',
+        on_budget: group.on_budget !== undefined ? group.on_budget : null,
+        is_active: group.is_active !== undefined ? group.is_active : null,
+      } as AccountGroup
+    })
+  }
 
   // Ensure ungrouped group always exists
   if (!groups[UNGROUPED_ACCOUNT_GROUP_ID]) {
@@ -129,13 +143,11 @@ function parseAccountGroups(accountGroupsData: FirestoreData = {}): AccountGroup
 
 /**
  * Parse raw Firestore categories data into typed CategoriesMap.
- * We explicitly never read category.balance from Firestore (ignore if present).
- * Budget-level balance is computed only in memory by recalculateAllBalancesFromCache.
+ * Always sets balance to 0 - balances are calculated locally from cached months.
  */
 function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
   const categories: CategoriesMap = {}
   Object.entries(categoriesData).forEach(([id, category]) => {
-    // Do not use category.balance from Firestore - we never persist it and must not read it
     categories[id] = {
       name: category.name,
       description: category.description,
@@ -143,7 +155,7 @@ function parseCategories(categoriesData: FirestoreData = {}): CategoriesMap {
       sort_order: category.sort_order ?? 0,
       default_monthly_amount: category.default_monthly_amount,
       default_monthly_type: category.default_monthly_type,
-      balance: 0, // Always 0 on read; filled by local recalc only
+      balance: 0, // Always 0 - calculated locally by recalculateAllBalancesFromCache
       is_hidden: category.is_hidden ?? false,
     } as Category
   })

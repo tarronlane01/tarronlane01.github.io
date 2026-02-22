@@ -94,8 +94,9 @@ export function MonthCategories({ registerDownloadCategories }: MonthCategoriesP
     return map
   }, [currentMonth])
 
-  // Grand all-time: sum of positive category balances for visible categories only.
-  // When viewing an unfinalized month: show "what if just this month were finalized" = last finalized end + this month's allocations only.
+  // Grand all-time: sum of category balances for visible categories only.
+  // When viewing an unfinalized month: show "what if just this month were finalized" = last finalized end + this month's net change.
+  // Net change includes allocations, spent, transfers, and adjustments.
   // When viewing a finalized month: use stored balance (and in draft mode add allocationChange for editing-applied).
   // Avail is always from finalized data only (useBudgetData / calculateTotalAvailable); this does NOT affect Avail.
   const grandAllTime = useMemo(() => {
@@ -105,8 +106,14 @@ export function MonthCategories({ registerDownloadCategories }: MonthCategoriesP
       const storedBalance = cat.balance ?? 0
       let balance: number
       if (isViewingUnfinalizedMonth) {
+        // Proposed ALL-TIME = stored balance + this month's net change
+        // Net change = allocated + spent + transfers + adjustments
         const thisMonthAllocation = isDraftMode ? getAllocationAmount(catId, cat) : (savedAllocations[catId] ?? 0)
-        balance = storedBalance + thisMonthAllocation
+        const bal = liveCategoryBalances[catId]
+        const spent = bal?.spent ?? 0
+        const transfers = bal?.transfers ?? 0
+        const adjustments = bal?.adjustments ?? 0
+        balance = storedBalance + thisMonthAllocation + spent + transfers + adjustments
       } else {
         balance = storedBalance
         if (isDraftMode) {
@@ -115,14 +122,14 @@ export function MonthCategories({ registerDownloadCategories }: MonthCategoriesP
           balance += draftAllocation - savedAllocation
         }
       }
-      return sum + Math.max(0, balance)
+      return sum + balance
     }, 0)
-  }, [categories, isDraftMode, allocationsFinalized, getAllocationAmount, savedAllocations])
+  }, [categories, isDraftMode, allocationsFinalized, getAllocationAmount, savedAllocations, liveCategoryBalances])
 
   // Settings "Allocated" for visible categories only (same scope as grandAllTime / displayed rows)
   const settingsPageAllocated = useMemo(() =>
     Object.values(categories).reduce(
-      (sum, cat) => (cat.is_hidden ? sum : sum + Math.max(0, cat.balance ?? 0)),
+      (sum, cat) => (cat.is_hidden ? sum : sum + (cat.balance ?? 0)),
       0
     ),
     [categories]

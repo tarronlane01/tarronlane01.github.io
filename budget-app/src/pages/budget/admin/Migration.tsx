@@ -25,10 +25,13 @@ import {
   useRemoveTotalFieldsMigration,
   useRemovePreviousMonthIncomeMigration,
   usePercentageIncomeMonthsBackMigration,
+  useRemoveLegacyBalanceFieldsMigration,
   useRecalculateStartBalancesMigration,
   useRepairMonthMapMigration,
   useDownloadBudget,
   useUploadBudget,
+  useUpdateSampleBudget,
+  useBudgetInspector,
 } from '@hooks'
 import { MigrationProgressModal, Spinner } from '../../../components/budget/Admin'
 import { OnetimeSection } from '../../../components/budget/Admin/onetime'
@@ -56,6 +59,7 @@ function Migration() {
   const removeTotalFieldsMigration = useRemoveTotalFieldsMigration({ currentUser: current_user })
   const removePreviousMonthIncomeMigration = useRemovePreviousMonthIncomeMigration({ currentUser: current_user })
   const percentageIncomeMonthsBackMigration = usePercentageIncomeMonthsBackMigration({ currentUser: current_user })
+  const removeLegacyBalanceFieldsMigration = useRemoveLegacyBalanceFieldsMigration({ currentUser: current_user })
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -69,6 +73,8 @@ function Migration() {
   // Utilities
   const budgetDownload = useDownloadBudget({ currentUser: current_user, budgetId: selectedBudgetId })
   const budgetUpload = useUploadBudget({ currentUser: current_user })
+  const updateSampleBudget = useUpdateSampleBudget({ currentUser: current_user })
+  const budgetInspector = useBudgetInspector()
   const deleteAllMonths = useDeleteAllMonths({ currentUser: current_user })
   const deleteSampleUserBudget = useDeleteSampleUserBudget({ currentUser: current_user })
 
@@ -81,6 +87,7 @@ function Migration() {
     removeTotalFieldsMigration.isScanning ||
     removePreviousMonthIncomeMigration.isScanning ||
     percentageIncomeMonthsBackMigration.isScanning ||
+    removeLegacyBalanceFieldsMigration.isScanning ||
     // Maintenance migrations
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
@@ -97,6 +104,7 @@ function Migration() {
     removeTotalFieldsMigration.isRunning ||
     removePreviousMonthIncomeMigration.isRunning ||
     percentageIncomeMonthsBackMigration.isRunning ||
+    removeLegacyBalanceFieldsMigration.isRunning ||
     // Maintenance migrations
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
@@ -107,7 +115,8 @@ function Migration() {
     deleteAllMonths.isDeleting ||
     deleteSampleUserBudget.isDeleting ||
     budgetDownload.isDownloading ||
-    budgetUpload.isUploading
+    budgetUpload.isUploading ||
+    updateSampleBudget.isUpdating
 
   // =========================================================================
   // REFRESH ALL
@@ -120,6 +129,7 @@ function Migration() {
       removeTotalFieldsMigration.scanStatus(),
       removePreviousMonthIncomeMigration.scanStatus(),
       percentageIncomeMonthsBackMigration.scanStatus(),
+      removeLegacyBalanceFieldsMigration.scanStatus(),
       // Maintenance migrations
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
@@ -211,6 +221,17 @@ function Migration() {
           result: percentageIncomeMonthsBackMigration.result,
           scanStatus: percentageIncomeMonthsBackMigration.scanStatus,
           runMigration: percentageIncomeMonthsBackMigration.runMigration,
+        }}
+        removeLegacyBalanceFieldsMigration={{
+          status: removeLegacyBalanceFieldsMigration.status,
+          hasData: !!removeLegacyBalanceFieldsMigration.status,
+          needsMigration: removeLegacyBalanceFieldsMigration.needsMigration,
+          totalItemsToFix: removeLegacyBalanceFieldsMigration.totalItemsToFix,
+          isScanning: removeLegacyBalanceFieldsMigration.isScanning,
+          isRunning: removeLegacyBalanceFieldsMigration.isRunning,
+          result: removeLegacyBalanceFieldsMigration.result,
+          scanStatus: removeLegacyBalanceFieldsMigration.scanStatus,
+          runMigration: removeLegacyBalanceFieldsMigration.runMigration,
         }}
       />
 
@@ -316,6 +337,22 @@ function Migration() {
           uploadResult: budgetUpload.result,
           scanZipFile: budgetUpload.scanZipFile,
           uploadBudget: budgetUpload.uploadBudget,
+        }}
+        updateSampleBudget={{
+          isUpdating: updateSampleBudget.isUpdating,
+          progress: updateSampleBudget.progress,
+          error: updateSampleBudget.error,
+          result: updateSampleBudget.result,
+          updateSampleBudget: updateSampleBudget.updateSampleBudget,
+          reset: updateSampleBudget.reset,
+        }}
+        budgetInspector={{
+          isInspecting: budgetInspector.isInspecting,
+          result: budgetInspector.result,
+          error: budgetInspector.error,
+          inspectBudget: budgetInspector.inspectBudget,
+          downloadResult: budgetInspector.downloadResult,
+          clearResult: budgetInspector.clearResult,
         }}
         deleteAllMonths={{
           status: deleteAllMonths.status,

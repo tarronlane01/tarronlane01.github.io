@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp, useBudget, type BudgetTab } from '@contexts'
 import { useBudgetData, useMonthData, useMonthPrefetch, useStaleDataRefresh, useEnsureBalancesFresh } from '@hooks'
+import { MonthNavigationError } from '@utils'
 import { ErrorAlert } from '../../components/ui'
 import {
   BudgetTabs,
@@ -28,14 +29,6 @@ function parsePathParams(params: { year?: string; month?: string; tab?: string }
   }
 }
 
-/**
- * Get the current month (today's date)
- */
-function getCurrentMonth(): { year: number; month: number } {
-  const now = new Date()
-  return { year: now.getFullYear(), month: now.getMonth() + 1 }
-}
-
 function Budget() {
   const params = useParams<{ year?: string; month?: string; tab?: string }>()
   const navigate = useNavigate()
@@ -60,6 +53,7 @@ function Budget() {
     hasPendingInvites,
     needsFirstBudget,
     initialDataLoadComplete,
+    initialBalanceCalculationComplete,
   } = useBudget()
 
   const {
@@ -71,8 +65,9 @@ function Budget() {
   // before the cache is populated on initial load, causing "Budget not in cache" and no recalc).
   const isBudgetDataLoaded = !isBudgetLoading && !!currentBudget
 
-  // Single recalc runs when we have budget (chain months, write each month once, write budget once).
-  useEnsureBalancesFresh(isBudgetDataLoaded && !!selectedBudgetId, { alwaysRecalculate: true })
+  // Single recalc runs AFTER initial balance calculation completes (so months are already in cache).
+  // This handles re-recalc when navigating back to budget page after settings changes.
+  useEnsureBalancesFresh(isBudgetDataLoaded && !!selectedBudgetId && initialBalanceCalculationComplete, { alwaysRecalculate: true })
 
   // Track if we're in the middle of a redirect due to month creation error
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -168,34 +163,83 @@ function Budget() {
       return
     }
 
-    // Check if this is a "can't create month too far in past" error
-    if (errorMsg.includes('months in the past') || errorMsg.includes('Refusing to create month')) {
-      // Defer state updates to avoid synchronous setState in effect
+    // Handle MonthNavigationError - redirect to valid month in budget
+    // This is the structured way to handle month creation/navigation failures
+    // Use static type guard instead of instanceof (works across module boundaries)
+    if (MonthNavigationError.is(monthError) && monthError.shouldRedirectToValidMonth) {
       queueMicrotask(() => {
-        // Add loading hold during redirect
-        addLoadingHold('month-redirect', 'Redirecting to current month...')
+        const monthMap = currentBudget?.month_map
+        if (!monthMap || Object.keys(monthMap).length === 0) {
+          setError(`Cannot load month ${currentYear}/${currentMonthNumber} - budget has no months.`)
+          return
+        }
+
+        // Find latest month in month_map
+        const ordinals = Object.keys(monthMap).sort()
+        const latestOrdinal = ordinals[ordinals.length - 1]
+        const targetYear = parseInt(latestOrdinal.slice(0, 4), 10)
+        const targetMonth = parseInt(latestOrdinal.slice(4, 6), 10)
+
+        addLoadingHold('month-redirect', 'Redirecting to available month...')
         setIsRedirecting(true)
 
-        // Redirect to current month
-        const { year: nowYear, month: nowMonth } = getCurrentMonth()
+        setError(`Month ${currentYear}/${currentMonthNumber} is outside budget range. Redirected to ${targetYear}/${targetMonth}.`)
+        setCurrentYear(targetYear)
+        setCurrentMonthNumber(targetMonth)
+      })
+      return
+    }
 
-        setError(`Cannot create month ${currentYear}/${currentMonthNumber} - it's too far in the past. Redirected to current month.`)
-        setCurrentYear(nowYear)
-        setCurrentMonthNumber(nowMonth)
+    // Fallback: Check error message patterns for month navigation errors
+    // This handles cases where the type guard fails (e.g., error wrapped by React Query)
+    const isMonthOutOfRange = 
+      errorMsg.includes('cannot be created') ||
+      errorMsg.includes('months in the past') ||
+      errorMsg.includes('months in the future') ||
+      errorMsg.includes('does not exist in budget') ||
+      errorMsg.includes('not immediately after') ||
+      errorMsg.includes('not immediately before') ||
+      errorMsg.includes('walk forward one month') ||
+      errorMsg.includes('walk back one month')
+
+    if (isMonthOutOfRange) {
+      queueMicrotask(() => {
+        const monthMap = currentBudget?.month_map
+        if (!monthMap || Object.keys(monthMap).length === 0) {
+          setError(`Cannot load month ${currentYear}/${currentMonthNumber} - budget has no months.`)
+          return
+        }
+
+        // Find latest month in month_map
+        const ordinals = Object.keys(monthMap).sort()
+        const latestOrdinal = ordinals[ordinals.length - 1]
+        const targetYear = parseInt(latestOrdinal.slice(0, 4), 10)
+        const targetMonth = parseInt(latestOrdinal.slice(4, 6), 10)
+
+        addLoadingHold('month-redirect', 'Redirecting to available month...')
+        setIsRedirecting(true)
+
+        setError(`Month ${currentYear}/${currentMonthNumber} is outside budget range. Redirected to ${targetYear}/${targetMonth}.`)
+        setCurrentYear(targetYear)
+        setCurrentMonthNumber(targetMonth)
       })
     }
-  }, [monthError, isRedirecting, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber, addLoadingHold, setSelectedBudgetId, navigate])
+  }, [monthError, isRedirecting, currentYear, currentMonthNumber, currentBudget, setCurrentYear, setCurrentMonthNumber, addLoadingHold, setSelectedBudgetId, navigate])
 
   // Clear redirect state and loading hold once we've successfully loaded a month after redirect
+  // OR if there's an error after redirect (to avoid getting stuck)
   // Use queueMicrotask to avoid synchronous setState in effect
   useEffect(() => {
-    if (isRedirecting && currentMonth && !isMonthLoading) {
-      queueMicrotask(() => {
-        setIsRedirecting(false)
-        removeLoadingHold('month-redirect')
-      })
+    if (isRedirecting && !isMonthLoading) {
+      // Clear redirect state when month loads OR when there's an error after redirect
+      if (currentMonth || monthError) {
+        queueMicrotask(() => {
+          setIsRedirecting(false)
+          removeLoadingHold('month-redirect')
+        })
+      }
     }
-  }, [isRedirecting, currentMonth, isMonthLoading, removeLoadingHold])
+  }, [isRedirecting, currentMonth, monthError, isMonthLoading, removeLoadingHold])
 
   // Set page title for layout header (useLayoutEffect runs synchronously before paint)
   useLayoutEffect(() => {

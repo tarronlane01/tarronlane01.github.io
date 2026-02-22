@@ -31,7 +31,9 @@ export async function calculatePreviousMonthIncome(
   monthsBack: number = 1
 ): Promise<number> {
   const target = getMonthsBack(year, month, monthsBack)
-  if (!target) return 0
+  if (!target) {
+    return 0
+  }
 
   const { year: targetYear, month: targetMonth } = target
   const targetMonthKey = queryKeys.month(budgetId, targetYear, targetMonth)
@@ -41,7 +43,8 @@ export async function calculatePreviousMonthIncome(
     const targetMonthQueryData = queryClient.getQueryData<MonthQueryData>(targetMonthKey)
     if (targetMonthQueryData?.month) {
       const targetIncome = targetMonthQueryData.month.income || []
-      return roundCurrency(targetIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+      const result = roundCurrency(targetIncome.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+      return result
     }
   }
 
@@ -57,7 +60,8 @@ export async function calculatePreviousMonthIncome(
     )
     if (exists && data?.income) {
       const income = data.income as Array<{ amount?: number }>
-      return roundCurrency(income.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+      const result = roundCurrency(income.reduce((sum, inc) => sum + (inc.amount || 0), 0))
+      return result
     }
   } catch (error) {
     console.warn(`[calculatePreviousMonthIncome] Could not read month ${targetYear}/${targetMonth}:`, error)

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "adjustment_sample_02_01",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_entertainment",
+    "amount": -50,
+    "description": "Move to gifts for Valentine's",
+    "date": "2025-02-08",
+    "cleared": true,
+    "created_at": "2025-02-08T12:00:00.000Z"
+  },
+  {
+    "id": "adjustment_sample_02_02",
+    "account_id": "__NO_ACCOUNT__",
+    "category_id": "category_gifts",
+    "amount": 50,
+    "description": "From entertainment",
+    "date": "2025-02-08",
+    "cleared": true,
+    "created_at": "2025-02-08T12:00:00.000Z"
+  }
+]

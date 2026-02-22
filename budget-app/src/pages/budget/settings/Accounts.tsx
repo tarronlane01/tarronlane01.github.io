@@ -177,11 +177,11 @@ function Accounts() {
             paddingBottom: '0.5rem', // Reduced spacing before column headers
           }}>
             {/* Title + Stats + Buttons row */}
-            <div style={{ 
-              display: 'flex', 
-              flexWrap: 'wrap', 
-              alignItems: 'center', 
-              gap: '0.5rem 1rem', 
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem 1rem',
               fontSize: '0.85rem',
               paddingBottom: '0.5rem', // Spacing above border to separate button
               borderBottom: '1px solid var(--border-medium)', // Border on inner element to respect page container

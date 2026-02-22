@@ -1,0 +1,37 @@
+{
+  "account_group_checking": {
+    "name": "Checking",
+    "expected_balance": "positive",
+    "on_budget": null,
+    "is_active": null,
+    "sort_order": 0
+  },
+  "account_group_savings": {
+    "name": "Savings",
+    "expected_balance": "positive",
+    "on_budget": null,
+    "is_active": null,
+    "sort_order": 1
+  },
+  "account_group_credit_cards": {
+    "name": "Credit Cards",
+    "expected_balance": "negative",
+    "on_budget": null,
+    "is_active": null,
+    "sort_order": 2
+  },
+  "account_group_retirement": {
+    "name": "Retirement",
+    "expected_balance": "positive",
+    "on_budget": false,
+    "is_active": null,
+    "sort_order": 3
+  },
+  "ungrouped_accounts": {
+    "name": "Ungrouped",
+    "expected_balance": "positive",
+    "on_budget": null,
+    "is_active": null,
+    "sort_order": 99
+  }
+}

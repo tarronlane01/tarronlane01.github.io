@@ -119,22 +119,24 @@ export { calculateTotalAvailable } from '@utils/calculations/balances/calculateT
 
 /**
  * Update budget cache with calculated balances and save month_map to Firestore.
- * Balances are calculated on-the-fly and only stored in cache (not saved to Firestore).
- * Only the month_map is saved to Firestore.
+ * Balances are ONLY stored in cache, never persisted to Firestore.
  */
-export async function updateBudgetBalances(budgetId: string, accountBalances: Record<string, number>, categoryBalances: Record<string, number>, monthMap: MonthMap): Promise<void> {
-  // CRITICAL: Check React Query cache first to use cached budget data
-  // This prevents duplicate reads when budget is already in cache
-  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+export async function updateBudgetBalances(
+  budgetId: string,
+  accountBalances: Record<string, number>,
+  categoryBalances: Record<string, number>,
+  monthMap: MonthMap
+): Promise<void> {
+  // Check cache first, fall back to Firestore
   let data: BudgetDocument | null = null
-
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
   if (cachedBudget?.budget) {
-    // Use cached budget data
     data = cachedBudget.budget as unknown as BudgetDocument
   } else {
-    // Not in cache - read from Firestore
     const { exists, data: budgetData } = await readDocByPath<BudgetDocument>('budgets', budgetId, '[recalc] reading budget for cache update')
-    if (!exists || !budgetData) return
+    if (!exists || !budgetData) {
+      return
+    }
     data = budgetData
   }
 
@@ -153,17 +155,17 @@ export async function updateBudgetBalances(budgetId: string, accountBalances: Re
   const { calculateTotalAvailable } = await import('@utils/calculations/balances/calculateTotalAvailable')
   const totalAvailable = calculateTotalAvailable(updatedAccounts, updatedCategories, data.account_groups || {})
 
-  // Only save month_map to Firestore (not balances or flags - those are calculated/managed locally)
+  // Only save month_map to Firestore (balances are never persisted)
   const { writeBudgetData } = await import('@data/mutations/budget/writeBudgetData')
   await writeBudgetData({
     budgetId,
     updates: {
-      month_map: monthMap, // Just save the month_map as-is (no flags to clear)
+      month_map: monthMap,
     },
     description: '[recalc] updating month_map',
   })
 
-  // Update cache with the new balances (not saved to Firestore - calculated on-the-fly)
+  // Update cache with the new balances
   updateBudgetCacheWithBalances(budgetId, updatedAccounts, updatedCategories, totalAvailable, monthMap)
 }
 

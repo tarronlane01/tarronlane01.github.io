@@ -14,4 +14,5 @@ export interface BudgetSummary {
   ownerEmail: string | null
   isOwner: boolean
   isPending: boolean // true if user hasn't accepted yet
+  isSampleBudget?: boolean // true for the shared sample budget (admins only)
 }

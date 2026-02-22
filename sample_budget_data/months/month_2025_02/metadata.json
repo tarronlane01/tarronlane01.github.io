@@ -1,0 +1,25 @@
+{
+  "budget_id": "sample_budget",
+  "year_month_ordinal": "202502",
+  "year": 2025,
+  "month": 2,
+  "are_allocations_finalized": true,
+  "created_at": "2025-02-01T00:00:00.000Z",
+  "updated_at": "2025-02-28T23:59:59.000Z",
+  "allocations": {
+    "category_rent": 1500,
+    "category_utilities": 200,
+    "category_groceries": 500,
+    "category_transportation": 150,
+    "category_subscriptions": 50,
+    "category_phone_internet": 120,
+    "category_emergency_fund": 500,
+    "category_vacation": 200,
+    "category_car_maintenance": 100,
+    "category_entertainment": 100,
+    "category_dining_out": 150,
+    "category_personal": 75,
+    "category_clothing": 50,
+    "category_gifts": 100
+  }
+}

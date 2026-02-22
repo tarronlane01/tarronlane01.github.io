@@ -1,0 +1,142 @@
+{
+  "category_rent": {
+    "name": "Rent",
+    "description": "Monthly apartment rent",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 1500,
+    "balance": 0,
+    "is_hidden": false,
+    "sort_order": 0
+  },
+  "category_utilities": {
+    "name": "Utilities",
+    "description": "Electric, gas, water",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 175,
+    "balance": 50,
+    "is_hidden": false,
+    "sort_order": 1
+  },
+  "category_groceries": {
+    "name": "Groceries",
+    "description": "Food and household supplies",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 500,
+    "balance": 125,
+    "is_hidden": false,
+    "sort_order": 2
+  },
+  "category_transportation": {
+    "name": "Transportation",
+    "description": "Gas, parking, transit",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 150,
+    "balance": 75,
+    "is_hidden": false,
+    "sort_order": 3
+  },
+  "category_subscriptions": {
+    "name": "Subscriptions",
+    "description": "Streaming, software, memberships",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 50,
+    "balance": 0,
+    "is_hidden": false,
+    "sort_order": 4
+  },
+  "category_phone_internet": {
+    "name": "Phone & Internet",
+    "description": "Mobile and home internet",
+    "category_group_id": "category_group_monthly_bills",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 120,
+    "balance": 0,
+    "is_hidden": false,
+    "sort_order": 5
+  },
+  "category_emergency_fund": {
+    "name": "Emergency Fund",
+    "description": "Building 6-month safety net",
+    "category_group_id": "category_group_savings",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 500,
+    "balance": 3000,
+    "is_hidden": false,
+    "sort_order": 0
+  },
+  "category_vacation": {
+    "name": "Vacation",
+    "description": "Travel and trip savings",
+    "category_group_id": "category_group_savings",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 200,
+    "balance": 1200,
+    "is_hidden": false,
+    "sort_order": 1
+  },
+  "category_car_maintenance": {
+    "name": "Car Maintenance",
+    "description": "Oil changes, repairs, tires",
+    "category_group_id": "category_group_savings",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 100,
+    "balance": 450,
+    "is_hidden": false,
+    "sort_order": 2
+  },
+  "category_entertainment": {
+    "name": "Entertainment",
+    "description": "Movies, games, activities",
+    "category_group_id": "category_group_lifestyle",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 100,
+    "balance": 35,
+    "is_hidden": false,
+    "sort_order": 0
+  },
+  "category_dining_out": {
+    "name": "Dining Out",
+    "description": "Restaurants and takeout",
+    "category_group_id": "category_group_lifestyle",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 150,
+    "balance": 45,
+    "is_hidden": false,
+    "sort_order": 1
+  },
+  "category_personal": {
+    "name": "Personal",
+    "description": "Hobbies and personal items",
+    "category_group_id": "category_group_lifestyle",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 75,
+    "balance": 25,
+    "is_hidden": false,
+    "sort_order": 2
+  },
+  "category_clothing": {
+    "name": "Clothing",
+    "description": "Clothes and accessories",
+    "category_group_id": "category_group_lifestyle",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 50,
+    "balance": 100,
+    "is_hidden": false,
+    "sort_order": 3
+  },
+  "category_gifts": {
+    "name": "Gifts",
+    "description": "Birthdays and holidays",
+    "category_group_id": "category_group_lifestyle",
+    "default_monthly_type": "fixed",
+    "default_monthly_amount": 50,
+    "balance": 150,
+    "is_hidden": false,
+    "sort_order": 4
+  }
+}

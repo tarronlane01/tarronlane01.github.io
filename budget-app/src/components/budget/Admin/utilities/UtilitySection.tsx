@@ -10,12 +10,15 @@
 
 import { MigrationSection, BackupPrompt, useBackupPrompt } from '../common'
 import { BudgetDownloadUploadRow } from './BudgetDownloadUploadRow'
+import { UpdateSampleBudgetRow } from './UpdateSampleBudgetRow'
+import { BudgetInspectorRow } from './BudgetInspectorRow'
 import { DeleteMonthsRow } from './DeleteMonthsRow'
 import { DeleteSampleUserRow } from './DeleteSampleUserRow'
 import { CacheInvalidateRow } from './CacheInvalidateRow'
 
 import type { DownloadBudgetProgress } from '@hooks/migrations/useDownloadBudget'
 import type { UploadBudgetProgress, UploadBudgetStatus, UploadBudgetResult } from '@hooks/migrations/useUploadBudget'
+import type { UpdateSampleBudgetProgress, UpdateSampleBudgetResult } from '@hooks/migrations/useUpdateSampleBudget'
 import type {
   DeleteAllMonthsStatus,
   DeleteAllMonthsResult,
@@ -26,6 +29,7 @@ import type {
   DeleteSampleUserBudgetResult,
   DeleteSampleProgress,
 } from '@hooks/migrations/useDeleteSampleUserBudget'
+import type { BudgetInspectorResult } from '@hooks/migrations/useBudgetInspector'
 
 interface UtilitySectionProps {
   disabled: boolean
@@ -46,6 +50,16 @@ interface UtilitySectionProps {
     uploadResult: UploadBudgetResult | null
     scanZipFile: (file: File) => Promise<void>
     uploadBudget: (file: File) => Promise<void>
+  }
+
+  // Update Sample Budget
+  updateSampleBudget: {
+    isUpdating: boolean
+    progress: UpdateSampleBudgetProgress | null
+    error: string | null
+    result: UpdateSampleBudgetResult | null
+    updateSampleBudget: () => Promise<void>
+    reset: () => void
   }
 
   // Delete All Months
@@ -76,6 +90,16 @@ interface UtilitySectionProps {
     deleteSampleUserBudget: () => void
   }
 
+  // Budget Inspector
+  budgetInspector: {
+    isInspecting: boolean
+    result: BudgetInspectorResult | null
+    error: string | null
+    inspectBudget: (budgetId: string) => Promise<BudgetInspectorResult | null>
+    downloadResult: () => void
+    clearResult: () => void
+  }
+
   // Cache invalidation handler
   onClearCache: () => void
 }
@@ -85,6 +109,8 @@ export function UtilitySection({
   onDownloadBackup,
   isDownloadingBackup,
   budgetDownloadUpload,
+  updateSampleBudget,
+  budgetInspector,
   deleteAllMonths,
   deleteSampleUserBudget,
   onClearCache,
@@ -92,6 +118,7 @@ export function UtilitySection({
   const isAnyRunning =
     budgetDownloadUpload.isDownloading ||
     budgetDownloadUpload.isUploading ||
+    updateSampleBudget.isUpdating ||
     deleteAllMonths.isDeleting ||
     deleteSampleUserBudget.isDeleting
 
@@ -110,6 +137,12 @@ export function UtilitySection({
 
   const uploadBackup = useBackupPrompt({
     migrationName: 'Upload Budget',
+    isDestructive: true,
+    onDownloadBackup,
+  })
+
+  const updateSampleBudgetBackup = useBackupPrompt({
+    migrationName: 'Update Sample Budget',
     isDestructive: true,
     onDownloadBackup,
   })
@@ -141,6 +174,32 @@ export function UtilitySection({
               budgetDownloadUpload.uploadBudget(file).catch(err => console.error('Upload failed:', err))
             })
           }}
+          disabled={disabled}
+        />
+
+        {/* Update Sample Budget */}
+        <UpdateSampleBudgetRow
+          isUpdating={updateSampleBudget.isUpdating}
+          progress={updateSampleBudget.progress}
+          error={updateSampleBudget.error}
+          result={updateSampleBudget.result}
+          onUpdate={async () => {
+            updateSampleBudgetBackup.promptBeforeAction(() => {
+              updateSampleBudget.updateSampleBudget().catch(err => console.error('Update sample budget failed:', err))
+            })
+          }}
+          onReset={updateSampleBudget.reset}
+          disabled={disabled}
+        />
+
+        {/* Budget Inspector */}
+        <BudgetInspectorRow
+          isInspecting={budgetInspector.isInspecting}
+          result={budgetInspector.result}
+          error={budgetInspector.error}
+          onInspect={budgetInspector.inspectBudget}
+          onDownload={budgetInspector.downloadResult}
+          onClear={budgetInspector.clearResult}
           disabled={disabled}
         />
 
@@ -200,6 +259,7 @@ export function UtilitySection({
       <BackupPrompt {...deleteMonthsBackup.promptProps} isDownloading={isDownloadingBackup} />
       <BackupPrompt {...deleteSampleBackup.promptProps} isDownloading={isDownloadingBackup} />
       <BackupPrompt {...uploadBackup.promptProps} isDownloading={isDownloadingBackup} />
+      <BackupPrompt {...updateSampleBudgetBackup.promptProps} isDownloading={isDownloadingBackup} />
     </>
   )
 }

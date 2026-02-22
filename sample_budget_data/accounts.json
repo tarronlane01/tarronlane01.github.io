@@ -1,0 +1,67 @@
+{
+  "account_main_checking": {
+    "nickname": "Main Checking",
+    "description": "Primary checking account for daily expenses",
+    "balance": 5000,
+    "account_group_id": "account_group_checking",
+    "on_budget": true,
+    "is_active": true,
+    "is_income_account": true,
+    "is_income_default": true,
+    "is_outgo_account": true,
+    "is_outgo_default": false,
+    "sort_order": 0
+  },
+  "account_emergency_fund": {
+    "nickname": "Emergency Fund",
+    "description": "6-month emergency savings",
+    "balance": 10000,
+    "account_group_id": "account_group_savings",
+    "on_budget": true,
+    "is_active": true,
+    "is_income_account": false,
+    "is_income_default": false,
+    "is_outgo_account": false,
+    "is_outgo_default": false,
+    "sort_order": 0
+  },
+  "account_vacation_fund": {
+    "nickname": "Vacation Fund",
+    "description": "Saving for trips and travel",
+    "balance": 2500,
+    "account_group_id": "account_group_savings",
+    "on_budget": true,
+    "is_active": true,
+    "is_income_account": false,
+    "is_income_default": false,
+    "is_outgo_account": false,
+    "is_outgo_default": false,
+    "sort_order": 1
+  },
+  "account_credit_card": {
+    "nickname": "Rewards Credit Card",
+    "description": "Primary credit card for purchases",
+    "balance": -1200,
+    "account_group_id": "account_group_credit_cards",
+    "on_budget": true,
+    "is_active": true,
+    "is_income_account": false,
+    "is_income_default": false,
+    "is_outgo_account": true,
+    "is_outgo_default": true,
+    "sort_order": 0
+  },
+  "account_401k": {
+    "nickname": "401K Retirement",
+    "description": "Employer retirement account",
+    "balance": 45000,
+    "account_group_id": "account_group_retirement",
+    "on_budget": false,
+    "is_active": true,
+    "is_income_account": false,
+    "is_income_default": false,
+    "is_outgo_account": false,
+    "is_outgo_default": false,
+    "sort_order": 0
+  }
+}

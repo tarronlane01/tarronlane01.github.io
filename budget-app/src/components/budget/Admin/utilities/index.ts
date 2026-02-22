@@ -11,4 +11,7 @@ export { DeleteSampleUserRow } from './DeleteSampleUserRow'
 export { CacheInvalidateRow } from './CacheInvalidateRow'
 export { RestoreFromDiagnosticRow } from './RestoreFromDiagnosticRow'
 export { SeedImportRow } from './SeedImportRow'
+export { SampleBudgetUploadRow } from './SampleBudgetUploadRow'
+export { UpdateSampleBudgetRow } from './UpdateSampleBudgetRow'
+export { BudgetInspectorRow } from './BudgetInspectorRow'
 

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "income_sample_05_01",
+    "account_id": "account_main_checking",
+    "payee": "ABC Corp",
+    "description": "Paycheck",
+    "amount": 2200,
+    "date": "2025-05-15",
+    "cleared": true,
+    "created_at": "2025-05-15T12:00:00.000Z"
+  },
+  {
+    "id": "income_sample_05_02",
+    "account_id": "account_main_checking",
+    "payee": "ABC Corp",
+    "description": "Paycheck",
+    "amount": 2200,
+    "date": "2025-05-30",
+    "cleared": true,
+    "created_at": "2025-05-30T12:00:00.000Z"
+  },
+  {
+    "id": "income_sample_05_03",
+    "account_id": "account_main_checking",
+    "payee": "Side Gig Client",
+    "description": "Logo design",
+    "amount": 475,
+    "date": "2025-05-18",
+    "cleared": true,
+    "created_at": "2025-05-18T12:00:00.000Z"
+  },
+  {
+    "id": "income_sample_05_04",
+    "account_id": "account_emergency_fund",
+    "payee": "Interest",
+    "description": "Savings interest",
+    "amount": 22.50,
+    "date": "2025-05-31",
+    "cleared": true,
+    "created_at": "2025-05-31T12:00:00.000Z"
+  }
+]

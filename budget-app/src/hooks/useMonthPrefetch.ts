@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys, STALE_TIME } from '@data/queryClient'
 import { getNextMonth, getPreviousMonth, getYearMonthOrdinal } from '@utils'
 import { readMonthDirect } from '@data/queries/month/useMonthQuery'
+import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
 import type { MonthQueryData } from '@data/queries/month'
 import type { BudgetData } from '@data/queries/budget/fetchBudget'
 
@@ -58,13 +59,15 @@ export function useMonthPrefetch(
 
       // Only prefetch if month exists in month_map (don't create months during prefetch)
       if (!monthExistsInMap) return
-
       // Prefetch in the background (doesn't block UI)
       queryClient
         .prefetchQuery({
           queryKey: prefetchKey,
           queryFn: async (): Promise<MonthQueryData | null> => {
-            const monthData = await readMonthDirect(budgetId, year, month)
+            // Get monthsBack from budget for correct percentage-based allocation calculation
+            const budgetCacheData = await ensureBudgetInCache(budgetId, queryClient)
+            const monthsBack = budgetCacheData.budget.percentage_income_months_back ?? 1
+            const monthData = await readMonthDirect(budgetId, year, month, queryClient, monthsBack)
             if (!monthData) {
               return null
             }

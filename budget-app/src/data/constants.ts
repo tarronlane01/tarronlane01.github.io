@@ -5,6 +5,28 @@
  */
 
 // =============================================================================
+// SAMPLE BUDGET (shared demo budget for all admin users)
+// =============================================================================
+
+/**
+ * The ID of the shared sample budget that all admin users can access.
+ * This budget:
+ * - Appears in the budget list for all admin users
+ * - Can be uploaded/restored via the admin migration page
+ * - Is ignored when determining if a user needs to create their first budget
+ * - Has its own Firestore rules allowing admin read/write
+ */
+export const SAMPLE_BUDGET_ID = 'sample_budget'
+export const SAMPLE_BUDGET_NAME = 'Sample Budget'
+
+/**
+ * Check if a budget ID is the sample budget
+ */
+export function isSampleBudget(budgetId: string | null | undefined): boolean {
+  return budgetId === SAMPLE_BUDGET_ID
+}
+
+// =============================================================================
 // NO CATEGORY (ghost category for spend without a real category)
 // =============================================================================
 

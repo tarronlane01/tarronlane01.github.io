@@ -1,0 +1,26 @@
+{
+  "updated_at": "2025-06-30T12:00:00.000Z",
+  "budget_id": "sample_budget",
+  "payees": [
+    "ABC Corp",
+    "Side Gig Client",
+    "Amazon",
+    "Costco",
+    "Grocery Mart",
+    "Shell Gas",
+    "Electric Company",
+    "Water Utility",
+    "Netflix",
+    "Spotify",
+    "AT&T",
+    "Comcast",
+    "Target",
+    "Walmart",
+    "Local Restaurant",
+    "Coffee Shop",
+    "Movie Theater",
+    "Landlord",
+    "Auto Shop",
+    "Interest"
+  ]
+}

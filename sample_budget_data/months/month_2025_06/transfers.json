@@ -1,0 +1,14 @@
+[
+  {
+    "id": "transfer_sample_06_01",
+    "from_account_id": "account_main_checking",
+    "to_account_id": "account_vacation_fund",
+    "from_category_id": "__NO_CATEGORY__",
+    "to_category_id": "__NO_CATEGORY__",
+    "amount": 300,
+    "description": "Summer vacation savings",
+    "date": "2025-06-14",
+    "cleared": true,
+    "created_at": "2025-06-14T12:00:00.000Z"
+  }
+]

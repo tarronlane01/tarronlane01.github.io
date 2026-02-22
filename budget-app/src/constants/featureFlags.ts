@@ -10,7 +10,7 @@ export const featureFlags = {
    * Log Firebase read/write operations to the console.
    * Useful for debugging data flow, but can be noisy.
    */
-  logFirebaseOperations: true,
+  logFirebaseOperations: false, // DEBUG: revert to true after fixing bug
 
   /**
    * Include source description in Firebase logs (e.g., "← loading budget").

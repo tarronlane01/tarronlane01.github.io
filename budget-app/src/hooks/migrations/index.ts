@@ -88,10 +88,14 @@ export { useRemovePreviousMonthIncomeMigration, type RemovePreviousMonthIncomeMi
 export { usePercentageIncomeMonthsBackMigration, type PercentageIncomeMonthsBackMigrationStatus, type PercentageIncomeMonthsBackMigrationResult } from './usePercentageIncomeMonthsBackMigration'
 export { useRecalculateStartBalancesMigration, type RecalculateStartBalancesMigrationStatus, type RecalculateStartBalancesMigrationResult } from './useRecalculateStartBalancesMigration'
 export { useRepairMonthMapMigration, type RepairMonthMapMigrationStatus, type RepairMonthMapMigrationResult } from './useRepairMonthMapMigration'
+export { useRemoveLegacyBalanceFieldsMigration, type RemoveLegacyBalanceFieldsMigrationStatus, type RemoveLegacyBalanceFieldsMigrationResult } from './useRemoveLegacyBalanceFieldsMigration'
 export { useDiagnosticDownload, type DownloadProgress } from './useDiagnosticDownload'
+export { useBudgetInspector, type BudgetInspectorResult } from './useBudgetInspector'
 export { useRestoreFromDiagnostic, type RestoreStatus, type RestoreResult } from './useRestoreFromDiagnostic'
 export { useDownloadBudget, type DownloadBudgetProgress } from './useDownloadBudget'
 export { useUploadBudget, type UploadBudgetProgress, type UploadBudgetStatus, type UploadBudgetResult } from './useUploadBudget'
+export { useUploadSampleBudget, type UploadSampleBudgetProgress, type UploadSampleBudgetStatus, type UploadSampleBudgetResult } from './useUploadSampleBudget'
+export { useUpdateSampleBudget, type UpdateSampleBudgetProgress, type UpdateSampleBudgetResult, type UseUpdateSampleBudgetReturn } from './useUpdateSampleBudget'
 
 // Seed data import
 export {

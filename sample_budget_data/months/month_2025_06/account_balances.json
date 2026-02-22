@@ -1,0 +1,22 @@
+[
+  {
+    "account_id": "account_main_checking",
+    "start_balance": 4179.10
+  },
+  {
+    "account_id": "account_emergency_fund",
+    "start_balance": 5589.10
+  },
+  {
+    "account_id": "account_vacation_fund",
+    "start_balance": 1000
+  },
+  {
+    "account_id": "account_credit_card",
+    "start_balance": -2406.23
+  },
+  {
+    "account_id": "account_401k",
+    "start_balance": 17250
+  }
+]

@@ -37,13 +37,71 @@ export async function recalculateAndWriteBudget(
 ): Promise<void> {
   if (months.length === 0) return
 
+  // [DEBUG] Log what months we're recalculating
+  console.log(`[DEBUG] recalculateAndWriteBudget: ${months.length} months for budget ${budgetId}`)
+
   // Step 1: Recalculate all months in order
+  // For the first month, use its own stored start_balances as initial balances
+  // (these represent the initial account/category balances, not 0)
   let prevSnapshot: PreviousMonthSnapshot = EMPTY_SNAPSHOT
   const recalculatedMonths: MonthDocument[] = []
+  let isFirstMonth = true
 
   for (const month of months) {
+    // For first month only: use its own start_balances as initial values
+    // This preserves initial account balances (e.g., from sample budget generation)
+    if (isFirstMonth) {
+      const initialCategoryBalances: Record<string, number> = {}
+      const initialAccountBalances: Record<string, number> = {}
+      
+      // [DEBUG] Log first month's raw balance data
+      const totalAlloc = (month.category_balances || []).reduce((sum, cb) => sum + (cb.allocated || 0), 0)
+      console.log(`[DEBUG] First month ${month.year}/${month.month} raw category_balances (totalAlloc=${totalAlloc}):`, 
+        (month.category_balances || []).slice(0, 3).map(cb => ({
+          id: cb.category_id.slice(0, 10),
+          start: cb.start_balance,
+          alloc: cb.allocated,
+          end: cb.end_balance
+        }))
+      )
+      console.log(`[DEBUG] First month ${month.year}/${month.month} raw account_balances:`,
+        (month.account_balances || []).slice(0, 3).map(ab => ({
+          id: ab.account_id.slice(0, 10),
+          start: ab.start_balance,
+          end: ab.end_balance
+        }))
+      )
+      
+      for (const cb of month.category_balances || []) {
+        if (cb.start_balance !== 0) {
+          initialCategoryBalances[cb.category_id] = cb.start_balance
+        }
+      }
+      for (const ab of month.account_balances || []) {
+        if (ab.start_balance !== 0) {
+          initialAccountBalances[ab.account_id] = ab.start_balance
+        }
+      }
+      
+      // [DEBUG] Log extracted initial balances
+      console.log(`[DEBUG] Extracted initial balances: categories=${Object.keys(initialCategoryBalances).length}, accounts=${Object.keys(initialAccountBalances).length}`)
+      
+      prevSnapshot = {
+        categoryEndBalances: initialCategoryBalances,
+        accountEndBalances: initialAccountBalances,
+        totalIncome: 0,
+      }
+      isFirstMonth = false
+    }
+
     const recalculated = recalculateMonth(month, prevSnapshot)
     recalculatedMonths.push(recalculated)
+    
+    // [DEBUG] Log recalculated month summary
+    const sampleCat = recalculated.category_balances?.[0]
+    const recalcTotalAlloc = recalculated.category_balances?.reduce((sum, cb) => sum + (cb.allocated || 0), 0) || 0
+    console.log(`[DEBUG] After recalc ${month.year}/${month.month}: cat[0] start=${sampleCat?.start_balance} alloc=${sampleCat?.allocated} end=${sampleCat?.end_balance}, totalAlloc=${recalcTotalAlloc}`)
+    
     prevSnapshot = extractSnapshotFromMonth(recalculated)
   }
 
@@ -57,9 +115,31 @@ export async function recalculateAndWriteBudget(
 
   await batchWriteMonths(monthUpdates, source)
 
-  // Step 3: Update budget with final balances
-  const finalAccountBalances = prevSnapshot.accountEndBalances
-  const finalCategoryBalances = prevSnapshot.categoryEndBalances
+  // Step 3: Update budget with balances from the LAST FINALIZED month
+  // Budget-level balance represents the snapshot at end of last finalized month
+  // Find the last finalized month's balances
+  const lastFinalizedMonth = [...recalculatedMonths].reverse().find(m => m.are_allocations_finalized)
+  
+  let finalAccountBalances: Record<string, number>
+  let finalCategoryBalances: Record<string, number>
+  
+  if (lastFinalizedMonth) {
+    // Extract balances from last finalized month
+    finalCategoryBalances = {}
+    for (const cb of lastFinalizedMonth.category_balances || []) {
+      finalCategoryBalances[cb.category_id] = cb.end_balance
+    }
+    finalAccountBalances = {}
+    for (const ab of lastFinalizedMonth.account_balances || []) {
+      finalAccountBalances[ab.account_id] = ab.end_balance
+    }
+    console.log(`[DEBUG] recalculateAndWriteBudget: using last FINALIZED month ${lastFinalizedMonth.year}/${lastFinalizedMonth.month} for balances`)
+  } else {
+    // No finalized months - use the last month's balances
+    finalAccountBalances = prevSnapshot.accountEndBalances
+    finalCategoryBalances = prevSnapshot.categoryEndBalances
+    console.log(`[DEBUG] recalculateAndWriteBudget: no finalized months, using last month for balances`)
+  }
 
   // Read budget to get current month_map and all categories
   const { exists, data } = await readDocByPath<FirestoreData>(
@@ -81,7 +161,8 @@ export async function recalculateAndWriteBudget(
       }
     }
 
-    // Update budget cache with balances (not saved to Firestore - calculated on-the-fly)
+    // Update budget cache with balances and save month_map to Firestore
+    // Note: Balances are NOT persisted to Firestore - always calculated locally
     await updateBudgetBalances(budgetId, finalAccountBalances, allCategoryBalances, monthMap)
   }
 }
