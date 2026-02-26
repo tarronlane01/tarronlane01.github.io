@@ -77,3 +77,5 @@ Add a download month doc on the month dropdown (for admins). Have it download se
 
 **Sample budget create-data and upload**
 Sample budget create-data and upload (replace the seed files) Have files for each doc we'd upload, in folders by doc type, and update the import function to use this structure. Months should be folders with separate docs for the lists of transaction types, to make it easier to find the data I want to edit or review.
+
+Have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)

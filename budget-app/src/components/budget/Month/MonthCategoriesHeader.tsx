@@ -145,7 +145,6 @@ export function MobileGrandTotals({
       borderTop: '2px solid var(--border-strong)',
       borderBottom: '2px solid var(--border-strong)',
     }}>
-      <span style={{ fontWeight: 600 }}>Grand Totals:</span>
       <CategoryStatsRow
         isDraftMode={false}
         isEditingAppliedAllocations={false}

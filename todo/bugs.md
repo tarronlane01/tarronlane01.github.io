@@ -1,7 +1,5 @@
 # doing
 
-Have floating save draft button on the allocations form, that only appears if they have edited things from the default (pinned to the bottom of the display, like the feedback button)
-
 Combine adjust/transfer into one column on the overview / balance pages
 
 If a month has an uncleared balance, it and all future moths need to show the breakdown, not just the month that has an uncleared transaction
