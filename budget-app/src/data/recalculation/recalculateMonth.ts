@@ -39,6 +39,8 @@ export interface PreviousMonthSnapshot {
   categoryEndBalances: Record<string, number>
   /** account_id -> end_balance */
   accountEndBalances: Record<string, number>
+  /** account_id -> cleared end_balance (only cleared transactions) */
+  clearedAccountEndBalances: Record<string, number>
   /** Total income from previous month (for percentage-based allocations) */
   totalIncome: number
 }
@@ -49,6 +51,7 @@ export interface PreviousMonthSnapshot {
 export const EMPTY_SNAPSHOT: PreviousMonthSnapshot = {
   categoryEndBalances: {},
   accountEndBalances: {},
+  clearedAccountEndBalances: {},
   totalIncome: 0,
 }
 
@@ -102,7 +105,8 @@ export function recalculateMonth(
   // Recalculate account balances from all transaction types
   const accountBalances = recalculateAccountBalances(
     month,
-    prevSnapshot.accountEndBalances
+    prevSnapshot.accountEndBalances,
+    prevSnapshot.clearedAccountEndBalances
   )
 
   const previousMonthIncome = incomeForPercentageAllocations !== undefined
@@ -197,7 +201,8 @@ function recalculateCategoryBalances(
  */
 function recalculateAccountBalances(
   month: MonthDocument,
-  prevAccountEndBalances: Record<string, number>
+  prevAccountEndBalances: Record<string, number>,
+  prevClearedAccountEndBalances: Record<string, number>
 ): AccountMonthBalance[] {
   // Collect all account IDs from all transaction types and previous balances (excluding No Account)
   const accountIds = new Set<string>()
@@ -232,8 +237,10 @@ function recalculateAccountBalances(
 
   for (const accountId of accountIds) {
     const startBalance = roundCurrency(prevAccountEndBalances[accountId] ?? 0)
+    const clearedStartBalance = roundCurrency(prevClearedAccountEndBalances[accountId] ?? prevAccountEndBalances[accountId] ?? 0)
 
     // Sum income for this account (round the total)
+    // Income is always considered cleared
     const incomeTotal = roundCurrency((month.income || [])
       .filter(i => i.account_id === accountId)
       .reduce((sum, i) => sum + i.amount, 0))
@@ -243,27 +250,43 @@ function recalculateAccountBalances(
     const expensesTotal = roundCurrency((month.expenses || [])
       .filter(e => e.account_id === accountId)
       .reduce((sum, e) => sum + e.amount, 0))
+    // Cleared expenses: only if explicitly cleared === true (pending until posted)
+    const clearedExpensesTotal = roundCurrency((month.expenses || [])
+      .filter(e => e.account_id === accountId && e.cleared === true)
+      .reduce((sum, e) => sum + e.amount, 0))
 
     // Calculate transfer effects for this account
     // Transfers out (from_account) subtract, transfers in (to_account) add
     const transfersOut = roundCurrency((month.transfers || [])
       .filter(t => t.from_account_id === accountId)
       .reduce((sum, t) => sum - t.amount, 0))
-
     const transfersIn = roundCurrency((month.transfers || [])
       .filter(t => t.to_account_id === accountId)
+      .reduce((sum, t) => sum + t.amount, 0))
+    // Cleared transfers: default to cleared unless explicitly false
+    const clearedTransfersOut = roundCurrency((month.transfers || [])
+      .filter(t => t.from_account_id === accountId && t.cleared !== false)
+      .reduce((sum, t) => sum - t.amount, 0))
+    const clearedTransfersIn = roundCurrency((month.transfers || [])
+      .filter(t => t.to_account_id === accountId && t.cleared !== false)
       .reduce((sum, t) => sum + t.amount, 0))
 
     // Net transfers = transfers in + transfers out (transfersOut is negative)
     const transfersTotal = roundCurrency(transfersIn + transfersOut)
+    const clearedTransfersTotal = roundCurrency(clearedTransfersIn + clearedTransfersOut)
 
     // Calculate adjustment effects for this account
     const adjustmentTotal = roundCurrency((month.adjustments || [])
       .filter(a => a.account_id === accountId)
       .reduce((sum, a) => sum + a.amount, 0))
+    // Cleared adjustments: default to cleared unless explicitly false
+    const clearedAdjustmentTotal = roundCurrency((month.adjustments || [])
+      .filter(a => a.account_id === accountId && a.cleared !== false)
+      .reduce((sum, a) => sum + a.amount, 0))
 
     // Net change includes all transaction types
     const netChange = roundCurrency(incomeTotal + expensesTotal + transfersTotal + adjustmentTotal)
+    const clearedNetChange = roundCurrency(incomeTotal + clearedExpensesTotal + clearedTransfersTotal + clearedAdjustmentTotal)
 
     balances.push({
       account_id: accountId,
@@ -274,6 +297,8 @@ function recalculateAccountBalances(
       adjustments: adjustmentTotal,
       net_change: netChange,
       end_balance: roundCurrency(startBalance + netChange),
+      cleared_start_balance: clearedStartBalance,
+      cleared_end_balance: roundCurrency(clearedStartBalance + clearedNetChange),
     })
   }
 
@@ -291,6 +316,7 @@ function recalculateAccountBalances(
 export function extractSnapshotFromMonth(month: MonthDocument): PreviousMonthSnapshot {
   const categoryEndBalances: Record<string, number> = {}
   const accountEndBalances: Record<string, number> = {}
+  const clearedAccountEndBalances: Record<string, number> = {}
 
   for (const cb of month.category_balances || []) {
     // Skip "No Category" - it doesn't track balances
@@ -302,11 +328,13 @@ export function extractSnapshotFromMonth(month: MonthDocument): PreviousMonthSna
     // Skip the No Account - it doesn't track balances
     if (isNoAccount(ab.account_id)) continue
     accountEndBalances[ab.account_id] = roundCurrency(ab.end_balance)
+    clearedAccountEndBalances[ab.account_id] = roundCurrency(ab.cleared_end_balance ?? ab.end_balance)
   }
 
   return {
     categoryEndBalances,
     accountEndBalances,
+    clearedAccountEndBalances,
     totalIncome: roundCurrency(month.total_income),
   }
 }

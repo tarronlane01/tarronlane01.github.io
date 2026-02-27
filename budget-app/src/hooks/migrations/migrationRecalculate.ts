@@ -89,6 +89,7 @@ export async function recalculateAndWriteBudget(
       prevSnapshot = {
         categoryEndBalances: initialCategoryBalances,
         accountEndBalances: initialAccountBalances,
+        clearedAccountEndBalances: {},
         totalIncome: 0,
       }
       isFirstMonth = false

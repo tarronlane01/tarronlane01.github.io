@@ -144,7 +144,10 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
         const bal = accountBalances[accountId]
         if (!bal) return []
         const clearedBal = accountClearedBalances?.[accountId]
-        const hasUnclearedDetail = !!clearedBal && Math.abs(clearedBal.uncleared_balance - clearedBal.cleared_balance) >= 0.01
+        const hasUnclearedEnd = !!clearedBal && Math.abs(clearedBal.uncleared_balance - clearedBal.cleared_balance) >= 0.01
+        const hasUnclearedStart = !!clearedBal && clearedBal.cleared_start_balance !== undefined
+          && Math.abs(bal.start_balance - clearedBal.cleared_start_balance) >= 0.01
+        const hasUnclearedDetail = hasUnclearedStart || hasUnclearedEnd
         const isExpanded = expandedAccountId === accountId
 
         if (isMobile) {
@@ -155,6 +158,7 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
                 balance={bal}
                 clearedBalance={clearedBal}
                 hasUnclearedDetail={hasUnclearedDetail}
+                hasUnclearedStart={hasUnclearedStart}
               />
             </div>,
           ]
@@ -168,11 +172,12 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
             clearedBalance={clearedBal}
             isEvenRow={index % 2 === 0}
             hasUnclearedDetail={hasUnclearedDetail}
+            hasUnclearedStart={hasUnclearedStart}
             isExpanded={isExpanded}
             onToggleExpand={() => setExpandedAccountId(isExpanded ? null : accountId)}
           />,
           isExpanded && hasUnclearedDetail && clearedBal && (
-            <ExpandedUnclearedRow key={`${accountId}-exp`} clearedBalance={clearedBal} />
+            <ExpandedUnclearedRow key={`${accountId}-exp`} clearedBalance={clearedBal} startBalance={bal.start_balance} hasUnclearedStart={hasUnclearedStart} hasUnclearedEnd={hasUnclearedEnd} />
           ),
         ].filter(Boolean)
       })}
@@ -184,10 +189,17 @@ export function AccountGroupRows({ name, accounts, groupTotals, accountBalances,
 // EXPANDED UNCLEARED ROW - sub-table with Total = Cleared + Uncleared
 // =============================================================================
 
-function ExpandedUnclearedRow({ clearedBalance }: { clearedBalance: AccountClearedBalance }) {
-  const pending = clearedBalance.uncleared_balance - clearedBalance.cleared_balance
-  // Grid: Total | = | Cleared | + | Uncleared (5 columns so equation reads left to right)
-  const gridCols = 'auto auto auto auto auto'
+function ExpandedUnclearedRow({ clearedBalance, startBalance, hasUnclearedStart, hasUnclearedEnd }: {
+  clearedBalance: AccountClearedBalance
+  startBalance: number
+  hasUnclearedStart: boolean
+  hasUnclearedEnd: boolean
+}) {
+  const endPending = clearedBalance.uncleared_balance - clearedBalance.cleared_balance
+  const startPending = startBalance - (clearedBalance.cleared_start_balance ?? startBalance)
+  // Grid: Label | Total | = | Cleared | + | Uncleared (6 columns)
+  const showBothRows = hasUnclearedStart && hasUnclearedEnd
+  const gridCols = showBothRows ? 'auto auto auto auto auto auto' : 'auto auto auto auto auto'
   const headerStyle: React.CSSProperties = {
     fontSize: '0.7rem',
     fontWeight: 600,
@@ -196,6 +208,10 @@ function ExpandedUnclearedRow({ clearedBalance }: { clearedBalance: AccountClear
     letterSpacing: '0.03em',
     padding: '0.25rem 0.5rem',
     textAlign: 'right',
+  }
+  const labelStyle: React.CSSProperties = {
+    ...headerStyle,
+    textAlign: 'left',
   }
   const opStyle: React.CSSProperties = {
     fontSize: '0.85rem',
@@ -221,18 +237,57 @@ function ExpandedUnclearedRow({ clearedBalance }: { clearedBalance: AccountClear
         borderRadius: '6px',
         overflow: 'hidden',
       }}>
-        {/* Row 1: headers and operators */}
+        {/* Header row */}
+        {showBothRows && <div style={{ ...labelStyle, borderBottom: '1px solid var(--border-subtle)' }} />}
         <div style={{ ...headerStyle, borderBottom: '1px solid var(--border-subtle)' }}>Total</div>
         <div style={{ ...opStyle, borderBottom: '1px solid var(--border-subtle)' }}>=</div>
         <div style={{ ...headerStyle, borderBottom: '1px solid var(--border-subtle)' }}>Cleared</div>
         <div style={{ ...opStyle, borderBottom: '1px solid var(--border-subtle)' }}>+</div>
-        <div style={{ ...headerStyle, borderBottom: '1px solid var(--border-subtle)' }}>Uncleared</div>
-        {/* Row 2: values and operators */}
-        <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.uncleared_balance) }}>{formatBalanceCurrency(clearedBalance.uncleared_balance)}</div>
-        <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>=</div>
-        <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.cleared_balance) }}>{formatBalanceCurrency(clearedBalance.cleared_balance)}</div>
-        <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>+</div>
-        <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getNetChangeColor(pending) }}>{formatBalanceCurrency(pending)}</div>
+        <div style={{ ...headerStyle, borderBottom: '1px solid var(--border-subtle)' }}>Pending</div>
+
+        {/* Start row (when both rows shown) */}
+        {hasUnclearedStart && showBothRows && (
+          <>
+            <div style={{ ...labelStyle, borderTop: '1px solid var(--border-subtle)' }}>Start</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(startBalance) }}>{formatBalanceCurrency(startBalance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>=</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.cleared_start_balance ?? startBalance) }}>{formatBalanceCurrency(clearedBalance.cleared_start_balance ?? startBalance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>+</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getNetChangeColor(startPending) }}>{formatBalanceCurrency(startPending)}</div>
+          </>
+        )}
+
+        {/* End/Total row */}
+        {hasUnclearedEnd && showBothRows && (
+          <>
+            <div style={{ ...labelStyle, borderTop: '1px solid var(--border-subtle)' }}>End</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.uncleared_balance) }}>{formatBalanceCurrency(clearedBalance.uncleared_balance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>=</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.cleared_balance) }}>{formatBalanceCurrency(clearedBalance.cleared_balance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>+</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getNetChangeColor(endPending) }}>{formatBalanceCurrency(endPending)}</div>
+          </>
+        )}
+
+        {/* Single row (start-only or end-only) */}
+        {!showBothRows && hasUnclearedStart && (
+          <>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(startBalance) }}>{formatBalanceCurrency(startBalance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>=</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.cleared_start_balance ?? startBalance) }}>{formatBalanceCurrency(clearedBalance.cleared_start_balance ?? startBalance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>+</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getNetChangeColor(startPending) }}>{formatBalanceCurrency(startPending)}</div>
+          </>
+        )}
+        {!showBothRows && hasUnclearedEnd && (
+          <>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.uncleared_balance) }}>{formatBalanceCurrency(clearedBalance.uncleared_balance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>=</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getBalanceColor(clearedBalance.cleared_balance) }}>{formatBalanceCurrency(clearedBalance.cleared_balance)}</div>
+            <div style={{ ...opStyle, borderTop: '1px solid var(--border-subtle)' }}>+</div>
+            <div style={{ ...valueStyle, borderTop: '1px solid var(--border-subtle)', color: getNetChangeColor(endPending) }}>{formatBalanceCurrency(endPending)}</div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -247,13 +302,17 @@ function MobileAccountRow({
   balance,
   clearedBalance,
   hasUnclearedDetail,
+  hasUnclearedStart,
 }: {
   account: FinancialAccount
   balance: AccountMonthBalance
   clearedBalance?: AccountClearedBalance
   hasUnclearedDetail: boolean
+  hasUnclearedStart: boolean
 }) {
   const pending = clearedBalance ? clearedBalance.uncleared_balance - clearedBalance.cleared_balance : 0
+  const startPending = clearedBalance && clearedBalance.cleared_start_balance !== undefined
+    ? balance.start_balance - clearedBalance.cleared_start_balance : 0
   return (
     <div style={{ background: 'color-mix(in srgb, currentColor 5%, transparent)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.25rem' }}>
       <div style={{ marginBottom: '0.5rem' }}>
@@ -285,8 +344,8 @@ function MobileAccountRow({
           )}
         </div>
       </div>
-      {/* Cleared / Uncleared – optional additional lines when there are uncleared balances (same pattern as transfers/allocations) */}
-      {hasUnclearedDetail && clearedBalance && (
+      {/* Start cleared / uncleared – when prior months have uncleared carry-forward */}
+      {hasUnclearedStart && clearedBalance && (
         <div style={{
           marginTop: '0.5rem',
           paddingTop: '0.5rem',
@@ -297,8 +356,26 @@ function MobileAccountRow({
           fontSize: '0.7rem',
           opacity: 0.85,
         }}>
+          <span style={{ fontWeight: 600, opacity: 0.7 }}>Start:</span>
+          <span>Cleared: <span style={{ color: getBalanceColor(clearedBalance.cleared_start_balance ?? balance.start_balance) }}>{formatBalanceCurrency(clearedBalance.cleared_start_balance ?? balance.start_balance)}</span></span>
+          <span>Pending: <span style={{ color: getNetChangeColor(startPending) }}>{formatBalanceCurrency(startPending)}</span></span>
+        </div>
+      )}
+      {/* End cleared / uncleared – when current month has uncleared transactions */}
+      {hasUnclearedDetail && clearedBalance && Math.abs(pending) >= 0.01 && (
+        <div style={{
+          marginTop: '0.5rem',
+          paddingTop: '0.5rem',
+          borderTop: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.5rem 1rem',
+          fontSize: '0.7rem',
+          opacity: 0.85,
+        }}>
+          <span style={{ fontWeight: 600, opacity: 0.7 }}>End:</span>
           <span>Cleared: <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>{formatBalanceCurrency(clearedBalance.cleared_balance)}</span></span>
-          <span>Uncleared: <span style={{ color: getNetChangeColor(pending) }}>{formatBalanceCurrency(pending)}</span></span>
+          <span>Pending: <span style={{ color: getNetChangeColor(pending) }}>{formatBalanceCurrency(pending)}</span></span>
         </div>
       )}
       {(balance.income !== 0 || balance.expenses !== 0 || balance.transfers !== 0 || balance.adjustments !== 0) && (

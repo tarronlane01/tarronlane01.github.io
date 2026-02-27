@@ -36,6 +36,7 @@ export interface AccountGridRowProps {
   clearedBalance?: AccountClearedBalance
   isEvenRow: boolean
   hasUnclearedDetail: boolean
+  hasUnclearedStart: boolean
   isExpanded: boolean
   onToggleExpand: () => void
 }
@@ -46,6 +47,7 @@ export function AccountGridRow({
   clearedBalance,
   isEvenRow,
   hasUnclearedDetail,
+  hasUnclearedStart,
   isExpanded,
   onToggleExpand,
 }: AccountGridRowProps) {
@@ -68,8 +70,22 @@ export function AccountGridRow({
       <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border-subtle)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
       </div>
-      <div style={{ ...numericStyle, color: getBalanceColor(balance.start_balance) }}>
-        {formatBalanceCurrency(balance.start_balance)}
+      <div style={{ ...numericStyle, gap: '0.25rem', color: getBalanceColor(balance.start_balance) }}>
+        <span>{formatBalanceCurrency(balance.start_balance)}</span>
+        {hasUnclearedStart && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
+            title={isExpanded ? 'Hide cleared/uncleared breakdown' : 'Show cleared/uncleared breakdown'}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.5rem', opacity: 0.5,
+              padding: '0.1rem', borderRadius: '2px', transition: 'transform 0.15s',
+              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          >
+            ▼
+          </button>
+        )}
       </div>
       <div style={{ ...numericStyle, color: getIncomeColor(balance.income) }}>
         +{formatCurrency(balance.income)}

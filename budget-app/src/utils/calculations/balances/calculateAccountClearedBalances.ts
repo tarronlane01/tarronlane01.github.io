@@ -9,6 +9,7 @@ export interface AccountClearedBalance {
   account_id: string
   cleared_balance: number  // Balance including only cleared transactions
   uncleared_balance: number // Balance including all transactions (cleared + uncleared)
+  cleared_start_balance?: number // Cleared start balance from prior months (when available)
 }
 
 /**
@@ -47,6 +48,8 @@ export function calculateAccountClearedBalances(
     // Start balance from existing or account's current balance if first month
     // Round to ensure 2 decimal precision
     const startBalance = roundCurrency(existing?.start_balance ?? account.balance)
+    // Use cleared_start_balance when available (carries forward prior-month cleared state)
+    const clearedStartBalance = roundCurrency(existing?.cleared_start_balance ?? startBalance)
 
     // Calculate cleared and uncleared income
     let clearedIncome = 0
@@ -77,19 +80,20 @@ export function calculateAccountClearedBalances(
     }
 
     // Calculate cleared and uncleared transfers
+    // Transfers default to cleared unless explicitly marked false
     let clearedTransfers = 0
     let unclearedTransfers = 0
     if (currentMonth?.transfers) {
       currentMonth.transfers.forEach(t => {
         if (t.to_account_id === accountId) {
           unclearedTransfers += t.amount // Money coming in
-          if (t.cleared === true) {
+          if (t.cleared !== false) {
             clearedTransfers += t.amount
           }
         }
         if (t.from_account_id === accountId) {
           unclearedTransfers -= t.amount // Money going out
-          if (t.cleared === true) {
+          if (t.cleared !== false) {
             clearedTransfers -= t.amount
           }
         }
@@ -97,6 +101,7 @@ export function calculateAccountClearedBalances(
     }
 
     // Calculate cleared and uncleared adjustments
+    // Adjustments default to cleared unless explicitly marked false
     let clearedAdjustments = 0
     let unclearedAdjustments = 0
     if (currentMonth?.adjustments) {
@@ -104,8 +109,8 @@ export function calculateAccountClearedBalances(
         .filter(a => a.account_id === accountId)
         .forEach(a => {
           unclearedAdjustments += a.amount // All adjustments
-          if (a.cleared === true) {
-            clearedAdjustments += a.amount // Only cleared adjustments
+          if (a.cleared !== false) {
+            clearedAdjustments += a.amount // Cleared adjustments (default: cleared)
           }
         })
     }
@@ -116,8 +121,9 @@ export function calculateAccountClearedBalances(
 
     balances[accountId] = {
       account_id: accountId,
-      cleared_balance: roundCurrency(startBalance + clearedNetChange),
+      cleared_balance: roundCurrency(clearedStartBalance + clearedNetChange),
       uncleared_balance: roundCurrency(startBalance + unclearedNetChange),
+      cleared_start_balance: clearedStartBalance,
     }
   })
 

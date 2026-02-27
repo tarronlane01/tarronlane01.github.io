@@ -309,6 +309,8 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '07', account_id: 'account_credit_card', payee: 'Spotify', description: '', amount: -11.99, category_id: 'category_subscriptions', day: 1, cleared: true },
       { idSuffix: '08', account_id: 'account_credit_card', payee: 'AT&T', description: 'Phone bill', amount: -65.00, category_id: 'category_phone_internet', day: 12, cleared: true },
       { idSuffix: '09', account_id: 'account_credit_card', payee: 'Coffee Shop', description: '', amount: -16.75, category_id: 'category_dining_out', day: 8, cleared: true },
+      { idSuffix: '10', account_id: 'account_credit_card', payee: 'Amazon', description: 'Online purchase', amount: -45.99, category_id: 'category_personal', day: 25, cleared: false },
+      { idSuffix: '11', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Dinner out', amount: -38.50, category_id: 'category_dining_out', day: 26, cleared: false },
     ],
     transfers: [],
     adjustments: [],

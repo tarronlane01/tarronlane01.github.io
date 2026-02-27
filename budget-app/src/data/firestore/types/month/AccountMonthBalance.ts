@@ -19,5 +19,7 @@ export interface AccountMonthBalance extends AccountMonthBalanceStored {
   adjustments: number // Net adjustments (positive = add, negative = subtract) - calculated from adjustments
   net_change: number // income + expenses + transfers + adjustments - calculated
   end_balance: number // start + net_change - calculated
+  cleared_start_balance?: number // Start balance counting only cleared transactions from prior months - calculated
+  cleared_end_balance?: number // End balance counting only cleared transactions - calculated
 }
 

@@ -50,15 +50,20 @@ async function findBaseSnapshot(
   if (hasStartBalance(earliest)) {
     const cat: Record<string, number> = {}
     const acc: Record<string, number> = {}
+    const clearedAcc: Record<string, number> = {}
     for (const cb of earliest.category_balances || []) {
       if (!isNoCategory(cb.category_id)) cat[cb.category_id] = roundCurrency(cb.start_balance ?? 0)
     }
     for (const ab of earliest.account_balances || []) {
-      if (!isNoAccount(ab.account_id)) acc[ab.account_id] = roundCurrency(ab.start_balance ?? 0)
+      if (!isNoAccount(ab.account_id)) {
+        acc[ab.account_id] = roundCurrency(ab.start_balance ?? 0)
+        clearedAcc[ab.account_id] = roundCurrency(ab.cleared_start_balance ?? ab.start_balance ?? 0)
+      }
     }
     return {
       categoryEndBalances: cat,
       accountEndBalances: acc,
+      clearedAccountEndBalances: clearedAcc,
       totalIncome: roundCurrency(earliest.previous_month_income ?? 0),
     }
   }
@@ -78,15 +83,20 @@ async function findBaseSnapshot(
     if (hasStartBalance(prevData)) {
       const cat: Record<string, number> = {}
       const acc: Record<string, number> = {}
+      const clearedAcc: Record<string, number> = {}
       for (const cb of prevData.category_balances || []) {
         if (!isNoCategory(cb.category_id)) cat[cb.category_id] = roundCurrency(cb.end_balance ?? 0)
       }
       for (const ab of prevData.account_balances || []) {
-        if (!isNoAccount(ab.account_id)) acc[ab.account_id] = roundCurrency(ab.end_balance ?? 0)
+        if (!isNoAccount(ab.account_id)) {
+          acc[ab.account_id] = roundCurrency(ab.end_balance ?? 0)
+          clearedAcc[ab.account_id] = roundCurrency(ab.cleared_end_balance ?? ab.end_balance ?? 0)
+        }
       }
       return {
         categoryEndBalances: cat,
         accountEndBalances: acc,
+        clearedAccountEndBalances: clearedAcc,
         totalIncome: roundCurrency(prevData.total_income ?? 0),
       }
     }

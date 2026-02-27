@@ -127,6 +127,7 @@ export function RecalculateAllButton({ isDisabled, onCloseMenu }: RecalculateAll
         prevSnapshot = {
           categoryEndBalances: categoryStartBalances,
           accountEndBalances: accountStartBalances,
+          clearedAccountEndBalances: {},
           totalIncome: roundCurrency(earliestMonth.previous_month_income ?? 0),
         }
       }

@@ -1,8 +1,6 @@
 # doing
 
-Combine adjust/transfer into one column on the overview / balance pages
-
-If a month has an uncleared balance, it and all future moths need to show the breakdown, not just the month that has an uncleared transaction
+Going forward in sample budget to April shows all zeros, instead of showing the correct start balances.
 
 Don't allow allocating months out of order (always unbroken chain)
 
