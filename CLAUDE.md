@@ -51,8 +51,23 @@ Components/Pages → Hooks → React Query (queries/mutations) → Firestore ope
 - **Loading:** All initial page content uses global `LoadingOverlay` via `addLoadingHold(id, message)` / `removeLoadingHold(id)`. No per-component loaders.
 - **Errors:** Abbreviated message in bottom banner (via `bannerQueue`), full error in console.
 - **Colors:** Single source of truth in `src/constants/colors.ts`. Every color has `{ light, dark }`. No raw hex/rgba elsewhere (enforced by `check-colors.cjs`).
-- **Recalculation:** Balance recalc engine in `src/data/recalculation/`. Use `triggerRecalculation()` for on-demand updates.
+- **Recalculation:** Balance recalc engine in `src/data/recalculation/`. Use `triggerRecalculation()` for on-demand updates. See "Balance storage and on-the-fly window" below.
 - **Minimize Firestore reads/writes:** Every Firestore operation costs money. Prefer reading from React Query cache (`cachedReads.ts`) over issuing new Firestore fetches. Batch related writes into a single operation when possible. Avoid re-fetching data that's already cached — use query invalidation to trigger refetches only when data has actually changed. When designing new features, consider whether existing cached data can serve the need before adding new reads.
+
+### Balance storage and on-the-fly window
+
+The app uses a rolling window to decide what gets persisted to Firestore vs computed on-the-fly. The window starts `MAX_PAST_MONTHS` (3) months before the current calendar month. See `src/utils/window.ts`.
+
+**How month balances load:**
+1. Months **at or before the window start** (old months): `start_balance` is persisted to Firestore. Their previous month may not be in memory, so the stored value is the source of truth.
+2. Months **after the window start** (recent, current, and future): `start_balance` is NOT persisted (stored as `0`). Balances are computed on-the-fly from the previous month's end balances — either during `createMonth` (for the React Query cache) or during recalculation (`triggerRecalculation`).
+3. Calculated fields (`end_balance`, `net_change`, `income`, `expenses`, `transfers`, `adjustments`, `spent`, `allocated`) are always computed on-the-fly from transaction arrays, never read from Firestore. Converters in `src/data/firestore/converters/monthBalances.ts` handle this when reading from Firestore.
+
+**Rules (must follow when fixing bugs or adding features):**
+- **Never persist `start_balance` to Firestore for months after the window start.** Use `isMonthAtOrBeforeWindow()` to check.
+- **The React Query cache is the source of truth for recent/future month balances**, not Firestore. When creating or updating months after the window, always set correct balances in the cached MonthDocument.
+- **Compute, don't store.** If a balance value can be derived from the previous month + current transactions, compute it on-the-fly rather than saving it. This avoids stale data and keeps the system consistent.
+- Firestore converters (`calculatedToStoredAccountBalance`, `calculatedToStoredCategoryBalance`) enforce the window rule when writing. `createMonth` enforces it separately for initial month creation.
 
 ### Path aliases (defined in tsconfig + vite.config.ts)
 

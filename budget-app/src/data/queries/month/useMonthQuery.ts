@@ -23,9 +23,11 @@ import type { MonthQueryData } from './readMonth'
 import { ensureBudgetInCache } from '@data/queries/budget/fetchBudget'
 import { createMonth } from '@data/mutations/month/createMonth'
 import { readDocByPath } from '@firestore'
-import { getMonthDocId, getYearMonthOrdinal, canCreateMonth, MonthNavigationError } from '@utils'
+import { getMonthDocId, getYearMonthOrdinal, getPreviousMonth, canCreateMonth, MonthNavigationError } from '@utils'
+import { isMonthAfterWindow } from '@utils/window'
 import { useBudget } from '@contexts'
 import { convertMonthBalancesFromStored } from '@data/firestore/converters/monthBalances'
+import { recalculateMonth, extractSnapshotFromMonth } from '@data/recalculation/recalculateMonth'
 import { calculatePreviousMonthIncome } from './calculatePreviousMonthIncome'
 
 /**
@@ -167,6 +169,16 @@ export async function fetchMonth(
   const existingMonth = await readMonthDirect(budgetId, year, month, queryClient, monthsBack)
 
   if (existingMonth) {
+    // For months after the window, start_balance is not persisted in Firestore (stored as 0).
+    // Compute correct balances on-the-fly from the previous month's end balances.
+    if (isMonthAfterWindow(year, month) && queryClient) {
+      const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month)
+      // Recursive: fetches previous month from cache (fast) or Firestore (chains back
+      // until hitting a cached month or one at/before the window with stored balances)
+      const prevMonthData = await fetchMonth(budgetId, prevYear, prevMonth, queryClient)
+      const prevSnapshot = extractSnapshotFromMonth(prevMonthData)
+      return recalculateMonth(existingMonth, prevSnapshot)
+    }
     return existingMonth
   }
 

@@ -154,20 +154,10 @@ export async function recalculateAllBalancesFromCache(
     allMonthsInOrder.sort((a, b) => (a.year !== b.year ? a.year - b.year : a.month - b.month))
   }
 
-  // Chain only up to the latest finalized month. Unfinalized months don't need chained start balances.
-  const maxFinalizedOrdinal: string | null = (() => {
-    for (let i = allMonthsInOrder.length - 1; i >= 0; i--) {
-      const m = allMonthsInOrder[i]
-      if (m.are_allocations_finalized) return getYearMonthOrdinal(m.year, m.month)
-    }
-    return null
-  })()
-
-
-  const monthsInOrder =
-    maxFinalizedOrdinal != null
-      ? allMonthsInOrder.filter(m => getYearMonthOrdinal(m.year, m.month) <= maxFinalizedOrdinal)
-      : allMonthsInOrder
+  // Chain ALL months so every month (including unfinalized) gets correct start_balance
+  // computed on-the-fly from the previous month's end balances.
+  // Budget-level ALL-TIME balances (below) still only use the last finalized month.
+  const monthsInOrder = allMonthsInOrder
 
   if (monthsInOrder.length === 0) {
     // No months to chain - just preserve Firestore balances (don't overwrite)

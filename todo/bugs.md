@@ -1,6 +1,6 @@
 # doing
 
-Going forward in sample budget to April shows all zeros, instead of showing the correct start balances.
+Going forward in sample budget to April shows all zeros, instead of showing the correct start balances. (for account balance)
 
 Don't allow allocating months out of order (always unbroken chain)
 
