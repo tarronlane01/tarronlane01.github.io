@@ -12,7 +12,6 @@ import { input as inputStyle, colors } from '@styles/shared'
 import {
   type AutocompleteItem,
   filterAndSortItems,
-  groupItemsForDisplay,
   dropdownContainerStyle,
   suggestionItemStyle,
 } from './autocompleteHelpers'
@@ -26,14 +25,12 @@ interface AccountAutocompleteProps {
   id?: string
   value: string // accountId
   onChange: (accountId: string) => void
-  accounts: [string, { nickname: string; account_group_id: string | null; sort_order: number; is_hidden?: boolean }][]
+  accounts: [string, { nickname: string; account_group_id: string | null; sort_order: number }][]
   accountGroups: Record<string, { name: string; sort_order: number }>
   placeholder?: string
   required?: boolean
   /** Show the special "No Account" option */
   showNoAccountOption?: boolean
-  /** Include hidden accounts in the list (default: false) */
-  showHiddenAccounts?: boolean
 }
 
 export function AccountAutocomplete({
@@ -45,12 +42,9 @@ export function AccountAutocomplete({
   placeholder = 'Search accounts...',
   required,
   showNoAccountOption = false,
-  showHiddenAccounts = false,
 }: AccountAutocompleteProps) {
-  // Filter out hidden accounts unless showHiddenAccounts is true
-  const visibleAccounts = showHiddenAccounts
-    ? accounts
-    : accounts.filter(([, acc]) => !acc.is_hidden)
+  // Filter out deleted accounts
+  const visibleAccounts = accounts.filter(([, acc]) => !(acc as { is_deleted?: boolean }).is_deleted)
 
   // Build flat list of accounts with group info (excluding No Account - handled separately)
   const accountItems: AccountItem[] = visibleAccounts.map(([accId, acc]) => ({
@@ -95,9 +89,8 @@ export function AccountAutocomplete({
     (item) => [item.name]
   )
 
-  // Group suggestions for display using shared helper
-  const groupedSuggestions = groupItemsForDisplay(suggestions)
-  const suggestionsInDisplayOrder = groupedSuggestions.flatMap((g) => g.items)
+  // Flat suggestion list — already sorted by filterAndSortItems
+  const suggestionsInDisplayOrder = suggestions
 
   function selectAccount(acc: AccountItem) {
     onChange(acc.id)
@@ -227,44 +220,31 @@ export function AccountAutocomplete({
               {NO_ACCOUNT_NAME}
             </div>
           )}
-          {groupedSuggestions.map((group, groupIndex) => (
-            <div key={`group-${groupIndex}`}>
-              {group.groupName && (
-                <div style={{
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  opacity: 0.6,
-                  background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          {suggestionsInDisplayOrder.map((acc) => {
+            const idx = getFlatIndex()
+            return (
+              <div
+                key={acc.id}
+                ref={(el) => { itemRefs.current[idx] = el }}
+                onClick={() => selectAccount(acc)}
+                style={{
+                  ...suggestionItemStyle,
+                  background: idx === highlightedIndex
+                    ? `color-mix(in srgb, ${colors.primary} 20%, transparent)`
+                    : 'transparent',
                   borderBottom: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
-                }}>
-                  {group.groupName}
-                </div>
-              )}
-              {group.items.map((acc) => {
-                const idx = getFlatIndex()
-                return (
-                  <div
-                    key={acc.id}
-                    ref={(el) => { itemRefs.current[idx] = el }}
-                    onClick={() => selectAccount(acc)}
-                    style={{
-                      ...suggestionItemStyle,
-                      paddingLeft: group.groupName ? '1.2rem' : '0.8rem',
-                      background: idx === highlightedIndex
-                        ? `color-mix(in srgb, ${colors.primary} 20%, transparent)`
-                        : 'transparent',
-                      borderBottom: '1px solid color-mix(in srgb, currentColor 10%, transparent)',
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(idx)}
-                  >
-                    {acc.name}
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+                }}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+              >
+                {acc.name}
+                {acc.groupName && (
+                  <span style={{ fontSize: '0.75rem', opacity: 0.5, marginLeft: '0.35rem' }}>
+                    ({acc.groupName})
+                  </span>
+                )}
+              </div>
+            )
+          })}
           {suggestions.length === 0 && inputValue.trim() && !showNoAccountOption && (
             <div style={{ padding: '0.6rem 0.8rem', opacity: 0.6, fontStyle: 'italic' }}>
               No matching accounts

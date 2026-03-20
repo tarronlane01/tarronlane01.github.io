@@ -27,8 +27,8 @@ export function applyAccountDefaults(account: FirestoreData): FinancialAccount {
     is_outgo_account: account.is_outgo_account ?? false,
     is_outgo_default: account.is_outgo_default ?? false,
     on_budget: account.on_budget ?? true,
-    is_active: account.is_active ?? true,
-    is_hidden: account.is_hidden ?? false,
+    is_deleted: account.is_deleted ?? false,
+    deleted_year_month: account.deleted_year_month ?? undefined,
   }
 }
 
@@ -59,7 +59,7 @@ export function applyAccountGroupDefaults(group: FirestoreData): AccountGroup {
     expected_balance: group.expected_balance ?? 'positive',
     // Use null for missing override fields (means "use account default")
     on_budget: group.on_budget !== undefined ? group.on_budget : null,
-    is_active: group.is_active !== undefined ? group.is_active : null,
+    badge_color: group.badge_color ?? 'grey',
   }
 }
 

@@ -1,0 +1,3 @@
+- [ ] Sort regardless of group
+- [ ] how to delete accounts? What happens? Make sure it's safe
+- [ ] Simplified view for off-budget accounts, smaller at bottom

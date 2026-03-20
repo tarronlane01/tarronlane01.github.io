@@ -10,7 +10,7 @@ import { colors } from '@styles/shared'
 import { AdjustmentForm } from '../Adjustments'
 import { AdjustmentGridRow } from './AdjustmentGridRow'
 import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
-import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
+import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, getAccountDisplayName } from '@data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
@@ -45,27 +45,11 @@ export function MonthAdjustments() {
   const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen, ensureArray: true })
   const payees = payeesQuery.data ?? []
 
-  // Helper to get effective is_active value considering group overrides
-  function getEffectiveActive(account: FinancialAccount): boolean {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group && group.is_active !== null) return group.is_active
-    return account.is_active !== false
-  }
-
-  // Helper to get effective on_budget value considering group overrides
-  function getEffectiveOnBudget(account: FinancialAccount): boolean {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group && group.on_budget !== null) return group.on_budget
-    return account.on_budget !== false
-  }
-
   // Account entry type for working with accounts map
   type AccountEntry = [string, FinancialAccount]
 
-  // Filter accounts for adjustment dropdown - all active on-budget accounts
-  const activeOnBudgetAccounts = Object.entries(accounts).filter(
-    ([, a]) => getEffectiveActive(a) && getEffectiveOnBudget(a)
-  ) as AccountEntry[]
+  // All active accounts available for adjustment dropdown
+  const activeAccounts = Object.entries(accounts) as AccountEntry[]
 
   // Handle adjustment operations
   // Note: Mutations handle optimistic cache updates internally
@@ -170,7 +154,7 @@ export function MonthAdjustments() {
                 <Button
                   actionName="Open Add Adjustment Form"
                   onClick={() => setShowAddAdjustment(true)}
-                  disabled={Object.keys(categories).length === 0 && activeOnBudgetAccounts.length === 0}
+                  disabled={Object.keys(categories).length === 0 && activeAccounts.length === 0}
                   disabledReason="Create an account or category first"
                   style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
                 >
@@ -195,7 +179,7 @@ export function MonthAdjustments() {
         </div>
 
         {/* Warning messages - span all columns */}
-        {activeOnBudgetAccounts.length === 0 && Object.keys(categories).length === 0 && (
+        {activeAccounts.length === 0 && Object.keys(categories).length === 0 && (
           <PrerequisiteWarning
             message="You need to create at least one account or category before adding adjustments."
             linkText="Manage accounts"
@@ -207,7 +191,7 @@ export function MonthAdjustments() {
         {showAddAdjustment && (
           <div style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
             <AdjustmentForm
-              accounts={activeOnBudgetAccounts}
+              accounts={activeAccounts}
               accountGroups={accountGroups}
               categories={categories}
               categoryGroups={categoryGroups}
@@ -228,7 +212,7 @@ export function MonthAdjustments() {
             editingAdjustmentId === adjustment.id ? (
               <div key={adjustment.id} style={{ gridColumn: '1 / -1', padding: '0.5rem' }}>
                 <AdjustmentForm
-                  accounts={activeOnBudgetAccounts}
+                  accounts={activeAccounts}
                   accountGroups={accountGroups}
                   categories={categories}
                   categoryGroups={categoryGroups}
@@ -247,7 +231,7 @@ export function MonthAdjustments() {
                 key={adjustment.id}
                 adjustment={adjustment}
                 categoryName={isNoCategory(adjustment.category_id) ? NO_CATEGORY_NAME : (categories[adjustment.category_id]?.name || 'Unknown Category')}
-                accountName={isNoAccount(adjustment.account_id) ? NO_ACCOUNT_NAME : (accounts[adjustment.account_id]?.nickname || 'Unknown Account')}
+                accountName={getAccountDisplayName(adjustment.account_id, accounts)}
                 accountGroupName={
                   isNoAccount(adjustment.account_id) ? undefined : (
                     accounts[adjustment.account_id]?.account_group_id

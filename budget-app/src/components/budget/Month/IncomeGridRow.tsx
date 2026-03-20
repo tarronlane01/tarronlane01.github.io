@@ -77,7 +77,7 @@ export function IncomeGridRow({ income, accountName, accountGroupName, onEdit, o
       gridColumn: '1 / -1',
       background: rowBg,
       display: 'grid',
-      gridTemplateColumns: '5rem 1.5fr 7rem 1fr 6rem 1fr 3rem 4rem', // Match parent grid columns
+      gridTemplateColumns: '5rem 1.5fr 1fr 6rem 1fr 4rem', // Match parent grid columns
     }}>
       {/* Date */}
       <div style={{ ...cellStyle, fontSize: '0.85rem', fontFamily: 'monospace' }}>

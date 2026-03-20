@@ -48,14 +48,14 @@ export function useBackgroundSave() {
     }
 
     const accountsWithoutBalances = Object.fromEntries(
-      Object.entries(budgetData.budget.accounts || {}).map(([id, acc]) => {
+      Object.entries(budgetData.accounts || {}).map(([id, acc]) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
         const { balance: _balance, ...accWithoutBalance } = acc as unknown as { balance?: number; [key: string]: unknown }
         return [id, accWithoutBalance]
       })
     )
     const categoriesWithoutBalances = Object.fromEntries(
-      Object.entries(budgetData.budget.categories || {}).map(([id, cat]) => {
+      Object.entries(budgetData.categories || {}).map(([id, cat]) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Destructuring to remove balance field
         const { balance: _balance, ...catWithoutBalance } = cat as unknown as { balance?: number; [key: string]: unknown }
         return [id, catWithoutBalance]
@@ -71,9 +71,9 @@ export function useBackgroundSave() {
         owner_id: budgetData.budget.owner_id,
         owner_email: budgetData.budget.owner_email,
         accounts: accountsWithoutBalances,
-        account_groups: budgetData.budget.account_groups,
+        account_groups: budgetData.accountGroups,
         categories: categoriesWithoutBalances,
-        category_groups: budgetData.budget.category_groups,
+        category_groups: budgetData.categoryGroups,
         month_map: budgetData.budget.month_map,
       },
       description: `${context}: budget`,

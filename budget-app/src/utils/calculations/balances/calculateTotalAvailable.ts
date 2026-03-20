@@ -15,7 +15,7 @@ import type { FirestoreData } from '@types'
 import { roundCurrency } from '@utils'
 
 /**
- * Determine if an account is effectively on-budget and active.
+ * Determine if an account is effectively on-budget.
  * Checks account group settings first, then falls back to account settings.
  *
  * @param account - The account data
@@ -23,13 +23,12 @@ import { roundCurrency } from '@utils'
  * @returns True if the account should be included in on-budget calculations
  */
 export function isAccountOnBudget(
-  account: { account_group_id?: string; on_budget?: boolean; is_active?: boolean },
+  account: { account_group_id?: string; on_budget?: boolean },
   accountGroups: FirestoreData
 ): boolean {
   const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
   const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
-  const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
-  return effectiveOnBudget && effectiveActive
+  return effectiveOnBudget
 }
 
 /**
@@ -45,9 +44,10 @@ export function calculateTotalAvailable(
   categories: FirestoreData,
   accountGroups: FirestoreData
 ): number {
-  // Sum of on-budget, active account balances
+  // Sum of on-budget account balances (excluding deleted accounts)
   const onBudgetAccountTotal = Object.entries(accounts).reduce((sum, [, account]) => {
-    if (isAccountOnBudget(account as { account_group_id?: string; on_budget?: boolean; is_active?: boolean }, accountGroups)) {
+    if ((account as { is_deleted?: boolean }).is_deleted) return sum
+    if (isAccountOnBudget(account as { account_group_id?: string; on_budget?: boolean }, accountGroups)) {
       return sum + ((account as { balance?: number }).balance ?? 0)
     }
     return sum

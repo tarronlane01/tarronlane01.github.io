@@ -43,6 +43,7 @@ export function clearAllCaches(): void {
   queryClient.removeQueries({ queryKey: ['accessibleBudgets'] })
   queryClient.removeQueries({ queryKey: ['payees'] })
   queryClient.removeQueries({ queryKey: ['user'] })
+  queryClient.removeQueries({ queryKey: ['initialDataLoad'] })
 
   console.log('[Migration] All caches cleared')
 }

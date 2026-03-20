@@ -9,7 +9,7 @@ export interface AccountGroup {
   sort_order: number
   expected_balance: ExpectedBalanceType // 'positive' = warn if negative, 'negative' = warn if positive (e.g. credit cards), 'any' = no warnings
   on_budget: boolean | null // null = use account default, true/false = override for all accounts in this group
-  is_active: boolean | null // null = use account default, true/false = override for all accounts in this group
+  badge_color: string // color key for group badge (e.g. 'blue', 'green', 'grey')
 }
 
 // Map of account group ID to AccountGroup data

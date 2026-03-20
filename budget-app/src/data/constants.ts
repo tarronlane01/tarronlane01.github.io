@@ -70,3 +70,17 @@ export function isNoAccount(accountId: string | null | undefined): boolean {
   return accountId === NO_ACCOUNT_ID
 }
 
+/**
+ * Get display name for an account, appending "(deleted)" for soft-deleted accounts.
+ * Falls back to 'Unknown Account' if the account doesn't exist in the map.
+ */
+export function getAccountDisplayName(
+  accountId: string,
+  accounts: Record<string, { nickname: string; is_deleted?: boolean }>
+): string {
+  if (isNoAccount(accountId)) return NO_ACCOUNT_NAME
+  const account = accounts[accountId]
+  if (!account) return 'Unknown Account'
+  return account.is_deleted ? `${account.nickname} (deleted)` : account.nickname
+}
+

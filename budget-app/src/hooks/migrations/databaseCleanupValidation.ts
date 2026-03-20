@@ -17,8 +17,7 @@ export function accountNeedsDefaults(account: FirestoreData): boolean {
     account.is_income_default === undefined ||
     account.is_outgo_account === undefined ||
     account.is_outgo_default === undefined ||
-    account.on_budget === undefined ||
-    account.is_active === undefined
+    account.on_budget === undefined
   )
 }
 

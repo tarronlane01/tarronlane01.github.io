@@ -18,7 +18,6 @@ export interface SampleAccount {
   initialBalance: number
   account_group_id: string
   on_budget: boolean
-  is_active: boolean
   is_income_account: boolean
   is_income_default: boolean
   is_outgo_account: boolean
@@ -44,7 +43,6 @@ export interface SampleCategoryGroup {
 export interface SampleAccountGroup {
   name: string
   on_budget: null
-  is_active: null
   sort_order: number
 }
 
@@ -60,7 +58,6 @@ export const SAMPLE_ACCOUNTS: Record<string, SampleAccount> = {
     initialBalance: 5000,
     account_group_id: 'account_group_checking',
     on_budget: true,
-    is_active: true,
     is_income_account: true,
     is_income_default: true,
     is_outgo_account: true,
@@ -73,7 +70,6 @@ export const SAMPLE_ACCOUNTS: Record<string, SampleAccount> = {
     initialBalance: 10000,
     account_group_id: 'account_group_savings',
     on_budget: true,
-    is_active: true,
     is_income_account: false,
     is_income_default: false,
     is_outgo_account: false,
@@ -86,7 +82,6 @@ export const SAMPLE_ACCOUNTS: Record<string, SampleAccount> = {
     initialBalance: 2500,
     account_group_id: 'account_group_savings',
     on_budget: true,
-    is_active: true,
     is_income_account: false,
     is_income_default: false,
     is_outgo_account: false,
@@ -99,7 +94,6 @@ export const SAMPLE_ACCOUNTS: Record<string, SampleAccount> = {
     initialBalance: -1200,
     account_group_id: 'account_group_credit_cards',
     on_budget: true,
-    is_active: true,
     is_income_account: false,
     is_income_default: false,
     is_outgo_account: true,
@@ -112,12 +106,35 @@ export const SAMPLE_ACCOUNTS: Record<string, SampleAccount> = {
     initialBalance: 45000,
     account_group_id: 'account_group_retirement',
     on_budget: false,
-    is_active: true,
     is_income_account: false,
     is_income_default: false,
     is_outgo_account: false,
     is_outgo_default: false,
     sort_order: 0,
+  },
+  account_old_checking: {
+    nickname: 'Old Checking',
+    description: 'Old checking account being phased out',
+    initialBalance: 3000,
+    account_group_id: 'account_group_old',
+    on_budget: true,
+    is_income_account: true,
+    is_income_default: false,
+    is_outgo_account: true,
+    is_outgo_default: false,
+    sort_order: 0,
+  },
+  account_old_401k: {
+    nickname: 'Old 401k',
+    description: 'Previous employer retirement account',
+    initialBalance: 25000,
+    account_group_id: 'account_group_old',
+    on_budget: false,
+    is_income_account: false,
+    is_income_default: false,
+    is_outgo_account: false,
+    is_outgo_default: false,
+    sort_order: 1,
   },
 }
 
@@ -141,11 +158,12 @@ export const SAMPLE_CATEGORY_GROUPS: Record<string, SampleCategoryGroup> = {
 }
 
 export const SAMPLE_ACCOUNT_GROUPS: Record<string, SampleAccountGroup> = {
-  account_group_checking: { name: 'Checking', on_budget: null, is_active: null, sort_order: 0 },
-  account_group_savings: { name: 'Savings', on_budget: null, is_active: null, sort_order: 1 },
-  account_group_credit_cards: { name: 'Credit Cards', on_budget: null, is_active: null, sort_order: 2 },
-  account_group_retirement: { name: 'Retirement', on_budget: null, is_active: null, sort_order: 3 },
-  ungrouped_accounts: { name: 'Ungrouped', on_budget: null, is_active: null, sort_order: 999 },
+  account_group_checking: { name: 'Checking', on_budget: null, sort_order: 0 },
+  account_group_savings: { name: 'Savings', on_budget: null, sort_order: 1 },
+  account_group_credit_cards: { name: 'Credit Cards', on_budget: null, sort_order: 2 },
+  account_group_retirement: { name: 'Retirement', on_budget: null, sort_order: 3 },
+  account_group_old: { name: 'Old Accounts', on_budget: null, sort_order: 4 },
+  ungrouped_accounts: { name: 'Ungrouped', on_budget: null, sort_order: 999 },
 }
 
 export const SAMPLE_PAYEES: SamplePayee[] = [
@@ -167,6 +185,7 @@ export const SAMPLE_PAYEES: SamplePayee[] = [
   { name: 'Coffee Shop', category_id: 'category_dining_out' },
   { name: 'Amazon', category_id: 'category_personal' },
   { name: 'Target', category_id: 'category_clothing' },
+  { name: 'Old Employer', category_id: null },
 ]
 
 export { SAMPLE_BUDGET_ID, SAMPLE_BUDGET_NAME }

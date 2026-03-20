@@ -8,45 +8,6 @@ interface GroupOverrideFlagsProps {
 export function GroupOverrideFlags({ group }: GroupOverrideFlagsProps) {
   const flags: React.ReactNode[] = []
 
-  // Show inactive override
-  if (group.is_active === false) {
-    flags.push(
-      <span
-        key="inactive"
-        style={{
-          fontSize: '0.65rem',
-          fontWeight: 500,
-          padding: '0.15rem 0.35rem',
-          borderRadius: '4px',
-          background: `color-mix(in srgb, ${colors.warning} 20%, transparent)`,
-          color: colors.warning,
-          whiteSpace: 'nowrap',
-        }}
-        title="All accounts in this type are inactive"
-      >
-        All Inactive
-      </span>
-    )
-  } else if (group.is_active === true) {
-    flags.push(
-      <span
-        key="active"
-        style={{
-          fontSize: '0.65rem',
-          fontWeight: 500,
-          padding: '0.15rem 0.35rem',
-          borderRadius: '4px',
-          background: `color-mix(in srgb, ${colors.success} 20%, transparent)`,
-          color: colors.success,
-          whiteSpace: 'nowrap',
-        }}
-        title="All accounts in this type are active"
-      >
-        All Active
-      </span>
-    )
-  }
-
   // Show off-budget override
   if (group.on_budget === false) {
     flags.push(

@@ -2,20 +2,30 @@
  * Account Balances View Components
  *
  * Components for displaying account balances by month in the Balances tab.
+ * Renders a flat list sorted by global sort_order with inline group labels.
  */
 
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import type { AccountsMap, AccountGroupsMap, FinancialAccount, AccountMonthBalance } from '@types'
 import { formatCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
-import { sectionHeader } from '@styles/shared'
-import { featureFlags, UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
+import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
+
+// Muted inline group label style
+const groupLabelStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  opacity: 0.5,
+  fontWeight: 400,
+  marginLeft: '0.35rem',
+}
 
 interface AccountBalancesViewProps {
   accounts: AccountsMap
   accountGroups: AccountGroupsMap
   accountBalances: Record<string, AccountMonthBalance>
   isMobile: boolean
+  /** YYYYMM string for the month being viewed — used to filter deleted accounts */
+  viewingYearMonth?: string
 }
 
 export function AccountBalancesView({
@@ -23,34 +33,26 @@ export function AccountBalancesView({
   accountGroups,
   accountBalances,
   isMobile,
+  viewingYearMonth,
 }: AccountBalancesViewProps) {
-  // Sort account groups by sort_order
-  const sortedGroups = useMemo(() => {
-    return Object.entries(accountGroups)
-      .map(([id, group]) => ({ id, ...group }))
-      .sort((a, b) => a.sort_order - b.sort_order)
-  }, [accountGroups])
+  // Filter and sort accounts — deleted accounts show through their deletion month only
+  const sortedAccounts = useMemo(() => {
+    return Object.entries(accounts)
+      .filter(([, acc]) => {
+        if (!acc.is_deleted) return true
+        if (!viewingYearMonth) return false
+        return !!acc.deleted_year_month && viewingYearMonth <= acc.deleted_year_month
+      })
+      .sort((a, b) => a[1].sort_order - b[1].sort_order)
+  }, [accounts, viewingYearMonth])
 
-  // Organize accounts by group
-  const accountsByGroup = useMemo(() => {
-    const result: Record<string, Array<[string, FinancialAccount]>> = {}
-
-    Object.entries(accounts).forEach(([accountId, account]) => {
-        const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
-      if (!result[groupId]) result[groupId] = []
-      result[groupId].push([accountId, account])
-    })
-
-    // Sort accounts within each group by sort_order
-    Object.keys(result).forEach(groupId => {
-      result[groupId].sort((a, b) => a[1].sort_order - b[1].sort_order)
-    })
-
-    return result
-  }, [accounts])
+  function getGroupName(account: FinancialAccount): string | undefined {
+    if (account.account_group_id === UNGROUPED_ACCOUNT_GROUP_ID) return 'Ungrouped'
+    return accountGroups[account.account_group_id]?.name
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
       {Object.keys(accounts).length === 0 && (
         <p style={{ opacity: 0.6, textAlign: 'center', padding: '2rem' }}>
           No accounts yet.{' '}
@@ -60,144 +62,31 @@ export function AccountBalancesView({
         </p>
       )}
 
-      {/* Account Groups */}
-      {sortedGroups.map(group => {
-        const groupAccounts = accountsByGroup[group.id] || []
-        if (groupAccounts.length === 0) return null
+      {sortedAccounts.map(([accountId, account]) => {
+        let bal = accountBalances[accountId]
+        if (!bal) return null
+        // Override end_balance to 0 for deleted accounts in their deletion month
+        if (account.is_deleted && viewingYearMonth && account.deleted_year_month === viewingYearMonth) {
+          bal = { ...bal, end_balance: 0 }
+        }
+        const groupName = getGroupName(account)
 
-        const groupTotals = groupAccounts.reduce((acc, [accountId]) => {
-          const bal = accountBalances[accountId]
-          if (!bal) return acc
-          return {
-            start: acc.start + bal.start_balance,
-            income: acc.income + bal.income,
-            expenses: acc.expenses + bal.expenses,
-            netChange: acc.netChange + bal.net_change,
-            end: acc.end + bal.end_balance,
-          }
-        }, { start: 0, income: 0, expenses: 0, netChange: 0, end: 0 })
-
-        return (
-          <AccountGroupBlock
-            key={group.id}
-            name={group.name}
-            accounts={groupAccounts}
-            groupTotals={groupTotals}
-            accountBalances={accountBalances}
-            isMobile={isMobile}
+        return isMobile ? (
+          <MobileAccountRow
+            key={accountId}
+            account={account}
+            balance={bal}
+            groupName={groupName}
+          />
+        ) : (
+          <DesktopAccountRow
+            key={accountId}
+            account={account}
+            balance={bal}
+            groupName={groupName}
           />
         )
       })}
-
-      {/* Ungrouped Accounts */}
-      {accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]?.length > 0 && (() => {
-        const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]
-        const ungroupedTotals = ungroupedAccounts.reduce((acc, [accountId]) => {
-          const bal = accountBalances[accountId]
-          if (!bal) return acc
-          return {
-            start: acc.start + bal.start_balance,
-            income: acc.income + bal.income,
-            expenses: acc.expenses + bal.expenses,
-            netChange: acc.netChange + bal.net_change,
-            end: acc.end + bal.end_balance,
-          }
-        }, { start: 0, income: 0, expenses: 0, netChange: 0, end: 0 })
-
-        return (
-          <AccountGroupBlock
-            key="ungrouped"
-            name="Ungrouped"
-            accounts={ungroupedAccounts}
-            groupTotals={ungroupedTotals}
-            accountBalances={accountBalances}
-            isMobile={isMobile}
-            isUngrouped
-          />
-        )
-      })()}
-    </div>
-  )
-}
-
-interface AccountGroupBlockProps {
-  name: string
-  accounts: Array<[string, FinancialAccount]>
-  groupTotals: {
-    start: number
-    income: number
-    expenses: number
-    netChange: number
-    end: number
-  }
-  accountBalances: Record<string, AccountMonthBalance>
-  isMobile: boolean
-  isUngrouped?: boolean
-}
-
-function AccountGroupBlock({
-  name,
-  accounts,
-  groupTotals,
-  accountBalances,
-  isMobile,
-  isUngrouped,
-}: AccountGroupBlockProps) {
-  return (
-    <div style={{
-      background: 'color-mix(in srgb, currentColor 5%, transparent)',
-      borderRadius: '12px',
-      padding: '1rem',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '0.75rem',
-        paddingBottom: '0.5rem',
-        borderBottom: '1px solid color-mix(in srgb, currentColor 15%, transparent)',
-      }}>
-        <h3 style={{ ...sectionHeader, margin: 0, opacity: isUngrouped ? 0.7 : 1 }}>
-          {name}
-          <span style={{ marginLeft: '0.5rem', opacity: 0.5, fontWeight: 400, fontSize: '0.9rem' }}>
-            ({accounts.length})
-          </span>
-        </h3>
-        {featureFlags.showGroupTotals && (
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span style={{
-              fontSize: '0.8rem',
-              color: getBalanceColor(groupTotals.netChange),
-            }}>
-              {formatSignedCurrencyAlways(groupTotals.netChange)}
-            </span>
-            <span style={{ fontWeight: 600, color: getBalanceColor(groupTotals.end) }}>
-              {formatCurrency(groupTotals.end)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        {accounts.map(([accountId, account]) => {
-          const bal = accountBalances[accountId]
-          if (!bal) return null
-
-          return isMobile ? (
-            <MobileAccountRow
-              key={accountId}
-              account={account}
-              balance={bal}
-            />
-          ) : (
-            <DesktopAccountRow
-              key={accountId}
-              account={account}
-              balance={bal}
-            />
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -205,9 +94,10 @@ function AccountGroupBlock({
 interface AccountRowProps {
   account: FinancialAccount
   balance: AccountMonthBalance
+  groupName?: string
 }
 
-function MobileAccountRow({ account, balance }: AccountRowProps) {
+function MobileAccountRow({ account, balance, groupName }: AccountRowProps) {
   return (
     <div style={{
       background: 'color-mix(in srgb, currentColor 5%, transparent)',
@@ -217,8 +107,9 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
       {/* Account name row */}
       <div style={{ marginBottom: '0.5rem' }}>
         <span style={{ fontWeight: 500 }}>
-          {account.nickname}
+          {account.nickname}{account.is_deleted && ' (deleted)'}
         </span>
+        {groupName && <span style={groupLabelStyle}>({groupName})</span>}
       </div>
 
       {/* Values in one row */}
@@ -269,7 +160,7 @@ function MobileAccountRow({ account, balance }: AccountRowProps) {
   )
 }
 
-function DesktopAccountRow({ account, balance }: AccountRowProps) {
+function DesktopAccountRow({ account, balance, groupName }: AccountRowProps) {
   return (
     <div style={{
       display: 'flex',
@@ -280,7 +171,8 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
     }}>
       <div style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
         <span style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {account.nickname}
+          {account.nickname}{account.is_deleted && ' (deleted)'}
+          {groupName && <span style={groupLabelStyle}>({groupName})</span>}
         </span>
         {/* Show income/expense breakdown if any */}
         {(balance.income !== 0 || balance.expenses !== 0) && (
@@ -320,4 +212,3 @@ function DesktopAccountRow({ account, balance }: AccountRowProps) {
     </div>
   )
 }
-

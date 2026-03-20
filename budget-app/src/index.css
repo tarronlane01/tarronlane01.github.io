@@ -80,6 +80,16 @@
   --color-error-light: #fca5a5;
   --color-warning-light: #fcd34d;
   --color-success-emerald: #10b981;
+  --badge-grey: #9ca3af;
+  --badge-blue: #60a5fa;
+  --badge-green: #4ade80;
+  --badge-red: #f87171;
+  --badge-orange: #fb923c;
+  --badge-purple: #c084fc;
+  --badge-teal: #2dd4bf;
+  --badge-pink: #f472b6;
+  --badge-yellow: #facc15;
+  --badge-indigo: #818cf8;
 }
 
 html {
@@ -209,6 +219,16 @@ textarea:focus,
     --color-error-light: #fca5a5;
     --color-warning-light: #fcd34d;
     --color-success-emerald: #10b981;
+    --badge-grey: #6b7280;
+    --badge-blue: #3b82f6;
+    --badge-green: #16a34a;
+    --badge-red: #ef4444;
+    --badge-orange: #ea580c;
+    --badge-purple: #9333ea;
+    --badge-teal: #0d9488;
+    --badge-pink: #db2777;
+    --badge-yellow: #ca8a04;
+    --badge-indigo: #4f46e5;
   }
   a:hover {
     color: var(--link-hover);

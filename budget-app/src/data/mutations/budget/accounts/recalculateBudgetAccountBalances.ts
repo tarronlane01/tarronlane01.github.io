@@ -33,8 +33,9 @@ function calculateAccountBalancesFromCache(
 ): Record<string, number> {
   const accountBalances: Record<string, number> = {}
 
-  // Initialize all accounts to 0 (we'll set initial balance from first month)
-  Object.keys(accounts).forEach(accId => {
+  // Initialize all non-deleted accounts to 0 (we'll set initial balance from first month)
+  Object.entries(accounts).forEach(([accId, account]) => {
+    if ((account as { is_deleted?: boolean }).is_deleted) return
     accountBalances[accId] = 0
   })
 

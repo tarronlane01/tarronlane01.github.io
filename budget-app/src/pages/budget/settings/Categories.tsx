@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useCategoriesPage, useBudgetData, useCategoryValidation, useEnsureBalancesFresh } from '@hooks'
-import { useApp } from '@contexts'
+import { useApp, useBudget } from '@contexts'
 import {
   Button,
   CollapsibleSection,
@@ -48,11 +48,12 @@ function Categories() {
 
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
+  const { initialBalanceCalculationComplete } = useBudget()
 
   // Check fetching state BEFORE rendering to avoid flashing empty values
-  const isDataLoading = isBudgetLoading || isLoading || isBudgetFetching || !currentBudget
+  const isDataLoading = isBudgetLoading || isLoading || isBudgetFetching || !currentBudget || !initialBalanceCalculationComplete
   // Ensure months are fresh in cache before calculating balances (refetches if stale)
-  useEnsureBalancesFresh(!isDataLoading && !!currentBudget)
+  useEnsureBalancesFresh(!isDataLoading && !!currentBudget && initialBalanceCalculationComplete, { alwaysRecalculate: true })
   // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
   useEffect(() => {
     if (isDataLoading) {

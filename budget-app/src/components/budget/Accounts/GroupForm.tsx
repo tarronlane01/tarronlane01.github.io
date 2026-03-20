@@ -9,12 +9,13 @@ import {
 } from '../../ui'
 import type { ExpectedBalanceType } from '@types'
 import { ThreeStateCheckbox } from './ThreeStateCheckbox'
+import { GroupColorPicker } from './GroupColorPicker'
 
 export interface GroupFormData {
   name: string
   expected_balance: ExpectedBalanceType
   on_budget?: boolean
-  is_active?: boolean
+  badge_color?: string
 }
 
 interface GroupFormProps {
@@ -25,7 +26,7 @@ interface GroupFormProps {
 }
 
 export function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: GroupFormProps) {
-  const [formData, setFormData] = useState<GroupFormData>(initialData || { name: '', expected_balance: 'positive' })
+  const [formData, setFormData] = useState<GroupFormData>(initialData || { name: '', expected_balance: 'positive', badge_color: 'grey' })
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -58,6 +59,11 @@ export function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: Grou
         </SelectInput>
       </FormField>
 
+      <GroupColorPicker
+        value={formData.badge_color ?? 'grey'}
+        onChange={(colorKey) => setFormData({ ...formData, badge_color: colorKey })}
+      />
+
       {/* Group-level overrides */}
       <div style={{
         padding: '0.75rem',
@@ -70,14 +76,6 @@ export function GroupForm({ initialData, onSubmit, onCancel, submitLabel }: Grou
         <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7 }}>
           Group-Level Overrides <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>(applies to all accounts in this type)</span>
         </p>
-        <ThreeStateCheckbox
-          label="Active status"
-          value={formData.is_active}
-          onChange={(val) => setFormData({ ...formData, is_active: val })}
-          trueLabel="All active"
-          falseLabel="All inactive"
-          undefinedLabel="Per account"
-        />
         <ThreeStateCheckbox
           label="Budget status"
           value={formData.on_budget}

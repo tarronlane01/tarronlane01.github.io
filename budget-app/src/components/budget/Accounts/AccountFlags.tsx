@@ -16,23 +16,7 @@ export function AccountFlags({ account, accountGroups }: AccountFlagsProps) {
     : null
 
   // Effective values (group overrides take precedence)
-  // Check if group exists AND has a non-null override value
-  const effectiveActive = (group && group.is_active !== null) ? group.is_active : (account.is_active !== false)
   const effectiveOnBudget = (group && group.on_budget !== null) ? group.on_budget : (account.on_budget !== false)
-
-  // Inactive flag (most important - show first)
-  if (!effectiveActive) {
-    const isFromGroup = group && group.is_active !== null
-    flags.push(
-      <AccountBadge
-        key="inactive"
-        icon="⏸️"
-        label="Inactive"
-        variant="warning"
-        title={isFromGroup ? `Set by "${group!.name}" account type` : "Account is inactive/archived"}
-      />
-    )
-  }
 
   // Off-budget flag
   if (!effectiveOnBudget) {

@@ -10,7 +10,7 @@ import { colors } from '@styles/shared'
 import { IncomeForm } from '../Income'
 import { IncomeGridRow } from './IncomeGridRow'
 import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
-import { isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
+import { isNoAccount, getAccountDisplayName } from '@data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
@@ -47,13 +47,6 @@ export function MonthIncome() {
   const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen, ensureArray: true })
   const payees = payeesQuery.data ?? []
 
-  // Helper to get effective is_active value considering group overrides
-  function getEffectiveActive(account: FinancialAccount): boolean {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group && group.is_active !== null) return group.is_active
-    return account.is_active !== false
-  }
-
   // Helper to get effective on_budget value considering group overrides
   function getEffectiveOnBudget(account: FinancialAccount): boolean {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
@@ -66,7 +59,7 @@ export function MonthIncome() {
 
   // Filter accounts for income dropdown
   const activeOnBudgetAccounts = Object.entries(accounts).filter(
-    ([, a]) => getEffectiveActive(a) && getEffectiveOnBudget(a)
+    ([, a]) => getEffectiveOnBudget(a)
   ) as AccountEntry[]
   const markedIncomeAccounts = activeOnBudgetAccounts.filter(([, a]) => a.is_income_account)
   const incomeAccounts = markedIncomeAccounts.length > 0 ? markedIncomeAccounts : activeOnBudgetAccounts
@@ -144,7 +137,7 @@ export function MonthIncome() {
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '5rem 1.5fr 2fr 7rem 1.5fr 3rem',
+        gridTemplateColumns: isMobile ? '1fr' : '5rem 1.5fr 1fr 6rem 1fr 4rem',
       }}>
         {/* Sticky wrapper using subgrid on desktop, block on mobile */}
         <div style={{
@@ -276,7 +269,7 @@ export function MonthIncome() {
               <IncomeGridRow
                 key={income.id}
                 income={income}
-                accountName={isNoAccount(income.account_id) ? NO_ACCOUNT_NAME : (accounts[income.account_id]?.nickname || 'Unknown Account')}
+                accountName={getAccountDisplayName(income.account_id, accounts)}
                 accountGroupName={
                   isNoAccount(income.account_id) ? undefined : (
                     accounts[income.account_id]?.account_group_id

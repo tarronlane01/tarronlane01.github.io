@@ -10,6 +10,7 @@ import type { AccountFormData } from './AccountForm'
 import type { AccountsMap } from '@types'
 import { formatSignedCurrency, getBalanceColor } from '../../ui'
 import { AccountFlags } from './AccountFlags'
+import { AccountGroupBadge } from './AccountGroupBadge'
 import { AccountForm } from './AccountForm'
 import { logUserAction } from '@utils'
 import type { AccountClearedBalance } from '@calculations'
@@ -21,6 +22,8 @@ interface SettingsAccountTableRowProps {
   allGroups: GroupWithId[]
   allAccounts: AccountsMap
   clearedBalance?: AccountClearedBalance
+  groupName: string
+  groupColor: string
   onEdit: (accountId: string) => void
   onDelete: (accountId: string) => void
   onMoveUp: () => void
@@ -31,6 +34,7 @@ interface SettingsAccountTableRowProps {
   setEditingAccountId: (id: string | null) => void
   onUpdateAccount: (id: string, data: AccountFormData) => void
   isMobile: boolean
+  isOffBudget?: boolean
 }
 
 export function SettingsAccountTableRow({
@@ -39,6 +43,8 @@ export function SettingsAccountTableRow({
   allGroups,
   allAccounts,
   clearedBalance,
+  groupName,
+  groupColor,
   onEdit,
   onDelete,
   onMoveUp,
@@ -49,6 +55,7 @@ export function SettingsAccountTableRow({
   setEditingAccountId,
   onUpdateAccount,
   isMobile,
+  isOffBudget,
 }: SettingsAccountTableRowProps) {
   // If editing, render form that spans full width
   if (editingAccountId === account.id) {
@@ -63,7 +70,6 @@ export function SettingsAccountTableRow({
             is_outgo_account: account.is_outgo_account,
             is_outgo_default: account.is_outgo_default,
             on_budget: account.on_budget,
-            is_active: account.is_active,
           }}
           onSubmit={(data) => {
             onUpdateAccount(account.id, data)
@@ -91,51 +97,33 @@ export function SettingsAccountTableRow({
   if (isMobile) {
     return (
       <div style={{ gridColumn: '1 / -1' }}>
-        <div
-          style={{
-            background: 'color-mix(in srgb, currentColor 5%, transparent)',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            marginBottom: '0.25rem',
-          }}
-        >
+        <div style={{
+          background: 'color-mix(in srgb, currentColor 5%, transparent)',
+          borderRadius: '8px',
+          padding: '0.75rem',
+          marginBottom: '0.25rem',
+        }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontWeight: 500 }}>{account.nickname}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontWeight: 500 }}>{account.nickname}</span>
+              <AccountGroupBadge groupName={groupName} colorKey={groupColor} />
+            </div>
             <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
               {clearedBalance ? (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Total</span>
-                    <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
-                      {formatSignedCurrency(clearedBalance.uncleared_balance)}
-                    </span>
-                  </div>
-                  {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
-                    <>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
-                        <span style={{ color: getBalanceColor(clearedBalance.cleared_balance) }}>
-                          {formatSignedCurrency(clearedBalance.cleared_balance)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
-                        <span style={{ color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
-                          {formatSignedCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Cleared</span>
-                        <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>Uncleared</span>
-                        <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
-                      </div>
-                    </>
+                  <MobileBalanceColumn label="Total" value={clearedBalance.uncleared_balance} bold />
+                  {!isOffBudget && (
+                    Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+                      <>
+                        <MobileBalanceColumn label="Cleared" value={clearedBalance.cleared_balance} />
+                        <MobileBalanceColumn label="Uncleared" value={clearedBalance.uncleared_balance - clearedBalance.cleared_balance} />
+                      </>
+                    ) : (
+                      <>
+                        <MobileBalanceColumn label="Cleared" />
+                        <MobileBalanceColumn label="Uncleared" />
+                      </>
+                    )
                   )}
                 </>
               ) : (
@@ -150,62 +138,15 @@ export function SettingsAccountTableRow({
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
             <AccountFlags account={account} accountGroups={allGroups} />
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                logUserAction('CLICK', 'Edit Account', { details: account.nickname })
-                onEdit(account.id)
-              }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                opacity: 0.6,
-                fontSize: '0.9rem',
-                padding: '0.25rem',
-              }}
-              title="Edit"
-            >
-              ✏️
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onMoveUp()
-              }}
-              disabled={!canMoveUp}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: canMoveUp ? 'pointer' : 'default',
-                opacity: canMoveUp ? 0.6 : 0.2,
-                fontSize: '0.9rem',
-                padding: '0.25rem',
-              }}
-              title="Move up"
-            >
-              ▲
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onMoveDown()
-              }}
-              disabled={!canMoveDown}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: canMoveDown ? 'pointer' : 'default',
-                opacity: canMoveDown ? 0.6 : 0.2,
-                fontSize: '0.9rem',
-                padding: '0.25rem',
-              }}
-              title="Move down"
-            >
-              ▼
-            </button>
-          </div>
+          <MobileActions
+            accountId={account.id}
+            nickname={account.nickname}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
+            onEdit={onEdit}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+          />
         </div>
       </div>
     )
@@ -226,11 +167,16 @@ export function SettingsAccountTableRow({
       gridColumn: '1 / -1',
       background: rowBg,
       display: 'grid',
-      gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 1fr', // Match parent grid columns
+      gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr 1fr',
     }}>
       {/* Account name */}
       <div style={{ ...cellStyle, fontWeight: 500, overflow: 'hidden', paddingLeft: '1.5rem', borderLeft: '2px solid var(--border-subtle)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.nickname}</span>
+      </div>
+
+      {/* Group badge */}
+      <div style={{ ...cellStyle }}>
+        <AccountGroupBadge groupName={groupName} colorKey={groupColor} />
       </div>
 
       {/* Total balance (uncleared_balance) */}
@@ -243,8 +189,10 @@ export function SettingsAccountTableRow({
           {formatSignedCurrency(account.balance)}
         </div>
       )}
-      {/* Cleared balance - show dash if same as total */}
-      {clearedBalance ? (
+      {/* Cleared balance - dash if off-budget or same as total */}
+      {isOffBudget ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>—</div>
+      ) : clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01
             ? <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
@@ -255,8 +203,10 @@ export function SettingsAccountTableRow({
           {formatSignedCurrency(account.balance)}
         </div>
       )}
-      {/* Uncleared portion (difference) - show dash if same as cleared */}
-      {clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+      {/* Uncleared portion - dash if off-budget or same as cleared */}
+      {isOffBudget ? (
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>—</div>
+      ) : clearedBalance && Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) }}>
           {formatSignedCurrency(clearedBalance.uncleared_balance - clearedBalance.cleared_balance)}
         </div>
@@ -273,62 +223,58 @@ export function SettingsAccountTableRow({
 
       {/* Actions */}
       <div style={{ ...cellStyle, justifyContent: 'flex-end', gap: '0.25rem' }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            logUserAction('CLICK', 'Edit Account', { details: account.nickname })
-            onEdit(account.id)
-          }}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            opacity: 0.6,
-            fontSize: '0.9rem',
-            padding: '0.25rem',
-          }}
-          title="Edit"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onMoveUp()
-          }}
-          disabled={!canMoveUp}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: canMoveUp ? 'pointer' : 'default',
-            opacity: canMoveUp ? 0.6 : 0.2,
-            fontSize: '0.9rem',
-            padding: '0.25rem',
-          }}
-          title="Move up"
-        >
-          ▲
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onMoveDown()
-          }}
-          disabled={!canMoveDown}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: canMoveDown ? 'pointer' : 'default',
-            opacity: canMoveDown ? 0.6 : 0.2,
-            fontSize: '0.9rem',
-            padding: '0.25rem',
-          }}
-          title="Move down"
-        >
-          ▼
-        </button>
+        <ActionButton icon="✏️" title="Edit" onClick={() => { logUserAction('CLICK', 'Edit Account', { details: account.nickname }); onEdit(account.id) }} />
+        <ActionButton icon="▲" title="Move up" onClick={onMoveUp} disabled={!canMoveUp} />
+        <ActionButton icon="▼" title="Move down" onClick={onMoveDown} disabled={!canMoveDown} />
       </div>
     </div>
   )
 }
 
+function ActionButton({ icon, title, onClick, disabled }: { icon: string; title: string; onClick: (e: React.MouseEvent) => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(e) }}
+      disabled={disabled}
+      style={{
+        background: 'transparent',
+        border: 'none',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.2 : 0.6,
+        fontSize: '0.9rem',
+        padding: '0.25rem',
+      }}
+      title={title}
+    >
+      {icon}
+    </button>
+  )
+}
+
+function MobileBalanceColumn({ label, value, bold }: { label: string; value?: number; bold?: boolean }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+      <span style={{ opacity: 0.6, fontSize: '0.7rem' }}>{label}</span>
+      {value !== undefined ? (
+        <span style={{ color: getBalanceColor(value), fontWeight: bold ? 600 : 400 }}>
+          {formatSignedCurrency(value)}
+        </span>
+      ) : (
+        <span style={{ opacity: 0.3, color: 'var(--text-muted)' }}>—</span>
+      )}
+    </div>
+  )
+}
+
+function MobileActions({ accountId, nickname, canMoveUp, canMoveDown, onEdit, onMoveUp, onMoveDown }: {
+  accountId: string; nickname: string; canMoveUp: boolean; canMoveDown: boolean
+  onEdit: (id: string) => void; onMoveUp: () => void; onMoveDown: () => void
+}) {
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+      <ActionButton icon="✏️" title="Edit" onClick={() => { logUserAction('CLICK', 'Edit Account', { details: nickname }); onEdit(accountId) }} />
+      <ActionButton icon="▲" title="Move up" onClick={onMoveUp} disabled={!canMoveUp} />
+      <ActionButton icon="▼" title="Move down" onClick={onMoveDown} disabled={!canMoveDown} />
+    </div>
+  )
+}

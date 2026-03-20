@@ -128,6 +128,26 @@ export async function deleteBudgetAccountKey(
 }
 
 /**
+ * Soft-delete an account by setting is_deleted flag and clearing default flags.
+ * Uses dot-notation to update only the affected fields on the account.
+ */
+export async function softDeleteBudgetAccount(
+  budgetId: string,
+  accountId: string,
+  deletedYearMonth: string,
+  description: string
+): Promise<void> {
+  const payload: FirestoreData = {
+    [`accounts.${accountId}.is_deleted`]: true,
+    [`accounts.${accountId}.deleted_year_month`]: deletedYearMonth,
+    [`accounts.${accountId}.is_income_default`]: false,
+    [`accounts.${accountId}.is_outgo_default`]: false,
+    updated_at: new Date().toISOString(),
+  }
+  await updateDocByPath('budgets', budgetId, payload, description)
+}
+
+/**
  * Remove a single account group from the budget document and move its accounts to ungrouped.
  * Uses Firestore's deleteField() for the group key and dot-notation updates for each account.
  */

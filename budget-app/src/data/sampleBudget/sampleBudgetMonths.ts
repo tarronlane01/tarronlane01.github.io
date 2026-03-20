@@ -66,6 +66,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
       { idSuffix: '03', account_id: 'account_main_checking', payee: 'Side Gig Client', description: 'Freelance work', amount: 450, day: 20, cleared: true },
       { idSuffix: '04', account_id: 'account_emergency_fund', payee: 'Interest', description: 'Savings interest', amount: 12.50, day: 28, cleared: true },
+      { idSuffix: '05', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 350, day: 18, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -87,13 +88,18 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '17', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Lunch', amount: -24.30, category_id: 'category_dining_out', day: 22, cleared: true },
       { idSuffix: '18', account_id: 'account_credit_card', payee: 'Amazon', description: 'Books', amount: -34.99, category_id: 'category_personal', day: 9, cleared: true },
       { idSuffix: '19', account_id: 'account_credit_card', payee: 'Target', description: 'Winter jacket', amount: -79.99, category_id: 'category_clothing', day: 25, cleared: true },
+      { idSuffix: '20', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -45.50, category_id: 'category_groceries', day: 7, cleared: true },
+      { idSuffix: '21', account_id: 'account_old_checking', payee: 'Shell Gas', description: 'Gas', amount: -32.00, category_id: 'category_transportation', day: 14, cleared: true },
     ],
     transfers: [
       { idSuffix: '01', from_account_id: 'account_main_checking', to_account_id: 'account_emergency_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Monthly savings', day: 20 },
       { idSuffix: '02', from_account_id: 'account_main_checking', to_account_id: 'account_vacation_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 100, description: 'Vacation savings', day: 20 },
       { idSuffix: '03', from_account_id: 'account_main_checking', to_account_id: 'account_credit_card', from_category_id: 'no_category', to_category_id: 'no_category', amount: 1200, description: 'Credit card payment', day: 25 },
+      { idSuffix: '04', from_account_id: 'account_old_checking', to_account_id: 'account_main_checking', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Consolidate funds', day: 22 },
     ],
-    adjustments: [],
+    adjustments: [
+      { idSuffix: '01', account_id: 'account_old_401k', category_id: 'category_personal', amount: 650, description: '401k employer match', day: 15 },
+    ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
       { category_id: 'category_utilities', amount: 150 },
@@ -114,6 +120,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 15, cleared: true },
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
       { idSuffix: '03', account_id: 'account_emergency_fund', payee: 'Interest', description: 'Savings interest', amount: 13.25, day: 28, cleared: true },
+      { idSuffix: '04', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 375, day: 16, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -131,13 +138,18 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '13', account_id: 'account_credit_card', payee: 'Comcast', description: 'Internet', amount: -55.00, category_id: 'category_phone_internet', day: 15, cleared: true },
       { idSuffix: '14', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Valentine dinner', amount: -89.50, category_id: 'category_dining_out', day: 14, cleared: true },
       { idSuffix: '15', account_id: 'account_credit_card', payee: 'Coffee Shop', description: '', amount: -15.80, category_id: 'category_dining_out', day: 19, cleared: true },
+      { idSuffix: '16', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -52.30, category_id: 'category_groceries', day: 6, cleared: true },
+      { idSuffix: '17', account_id: 'account_old_checking', payee: 'Shell Gas', description: 'Gas', amount: -28.75, category_id: 'category_transportation', day: 13, cleared: true },
     ],
     transfers: [
       { idSuffix: '01', from_account_id: 'account_main_checking', to_account_id: 'account_emergency_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Monthly savings', day: 20 },
       { idSuffix: '02', from_account_id: 'account_main_checking', to_account_id: 'account_vacation_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 150, description: 'Vacation savings', day: 20 },
       { idSuffix: '03', from_account_id: 'account_main_checking', to_account_id: 'account_credit_card', from_category_id: 'no_category', to_category_id: 'no_category', amount: 1100, description: 'Credit card payment', day: 25 },
+      { idSuffix: '04', from_account_id: 'account_old_checking', to_account_id: 'account_main_checking', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Consolidate funds', day: 22 },
     ],
-    adjustments: [],
+    adjustments: [
+      { idSuffix: '01', account_id: 'account_old_401k', category_id: 'category_personal', amount: 650, description: '401k employer match', day: 15 },
+    ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
       { category_id: 'category_utilities', amount: 150 },
@@ -159,6 +171,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
       { idSuffix: '03', account_id: 'account_main_checking', payee: 'Side Gig Client', description: 'Freelance project', amount: 600, day: 10, cleared: true },
       { idSuffix: '04', account_id: 'account_emergency_fund', payee: 'Interest', description: 'Savings interest', amount: 13.75, day: 28, cleared: true },
+      { idSuffix: '05', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 400, day: 14, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -177,14 +190,18 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '14', account_id: 'account_credit_card', payee: 'Movie Theater', description: 'Movies', amount: -28.00, category_id: 'category_entertainment', day: 22, cleared: true },
       { idSuffix: '15', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Dinner', amount: -54.32, category_id: 'category_dining_out', day: 8, cleared: true },
       { idSuffix: '16', account_id: 'account_credit_card', payee: 'Target', description: 'Spring clothes', amount: -124.99, category_id: 'category_clothing', day: 12, cleared: true },
+      { idSuffix: '17', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -38.90, category_id: 'category_groceries', day: 10, cleared: true },
     ],
     transfers: [
       { idSuffix: '01', from_account_id: 'account_main_checking', to_account_id: 'account_emergency_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 250, description: 'Monthly savings', day: 20 },
       { idSuffix: '02', from_account_id: 'account_main_checking', to_account_id: 'account_vacation_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 150, description: 'Vacation savings', day: 20 },
       // Dec (month -3) payoff: start balance 1469 + CC expenses this month through day 25 (1122) = 2592
       { idSuffix: '03', from_account_id: 'account_main_checking', to_account_id: 'account_credit_card', from_category_id: 'no_category', to_category_id: 'no_category', amount: 2592, description: 'Credit card payoff', day: 25 },
+      { idSuffix: '04', from_account_id: 'account_old_checking', to_account_id: 'account_main_checking', from_category_id: 'no_category', to_category_id: 'no_category', amount: 250, description: 'Consolidate funds', day: 22 },
     ],
-    adjustments: [],
+    adjustments: [
+      { idSuffix: '01', account_id: 'account_old_401k', category_id: 'category_personal', amount: 750, description: '401k contribution + match', day: 15 },
+    ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
       { category_id: 'category_utilities', amount: 150 },
@@ -205,6 +222,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 15, cleared: true },
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
       { idSuffix: '03', account_id: 'account_emergency_fund', payee: 'Interest', description: 'Savings interest', amount: 14.00, day: 28, cleared: true },
+      { idSuffix: '04', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 325, day: 17, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -223,14 +241,18 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '14', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Birthday dinner', amount: -78.90, category_id: 'category_dining_out', day: 18, cleared: true },
       { idSuffix: '15', account_id: 'account_credit_card', payee: 'Coffee Shop', description: '', amount: -18.45, category_id: 'category_dining_out', day: 7, cleared: true },
       { idSuffix: '16', account_id: 'account_credit_card', payee: 'Amazon', description: 'Household items', amount: -45.67, category_id: 'category_personal', day: 14, cleared: true },
+      { idSuffix: '17', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -61.45, category_id: 'category_groceries', day: 8, cleared: true },
+      { idSuffix: '18', account_id: 'account_old_checking', payee: 'Shell Gas', description: 'Gas', amount: -35.20, category_id: 'category_transportation', day: 19, cleared: true },
     ],
     // No credit card payment this month (balance carries)
     transfers: [
       { idSuffix: '01', from_account_id: 'account_main_checking', to_account_id: 'account_emergency_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Monthly savings', day: 20 },
       { idSuffix: '02', from_account_id: 'account_main_checking', to_account_id: 'account_vacation_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 100, description: 'Vacation savings', day: 20 },
+      { idSuffix: '03', from_account_id: 'account_old_checking', to_account_id: 'account_main_checking', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Consolidate funds', day: 22 },
     ],
     adjustments: [
       { idSuffix: '01', account_id: 'account_main_checking', category_id: 'category_personal', amount: -25.00, description: 'Cash withdrawal', day: 22 },
+      { idSuffix: '02', account_id: 'account_old_401k', category_id: 'category_personal', amount: 650, description: '401k employer match', day: 15 },
     ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
@@ -253,6 +275,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
       { idSuffix: '03', account_id: 'account_main_checking', payee: 'Side Gig Client', description: 'Freelance work', amount: 350, day: 12, cleared: true },
       { idSuffix: '04', account_id: 'account_emergency_fund', payee: 'Interest', description: 'Savings interest', amount: 14.50, day: 28, cleared: true },
+      { idSuffix: '05', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 300, day: 18, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -271,13 +294,17 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '14', account_id: 'account_credit_card', payee: 'Movie Theater', description: 'Movies', amount: -35.50, category_id: 'category_entertainment', day: 21, cleared: true },
       { idSuffix: '15', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Dinner', amount: -62.45, category_id: 'category_dining_out', day: 10, cleared: true },
       { idSuffix: '16', account_id: 'account_credit_card', payee: 'Coffee Shop', description: '', amount: -14.25, category_id: 'category_dining_out', day: 19, cleared: true },
+      { idSuffix: '17', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -47.80, category_id: 'category_groceries', day: 9, cleared: true },
     ],
     transfers: [
       { idSuffix: '01', from_account_id: 'account_main_checking', to_account_id: 'account_emergency_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Monthly savings', day: 20 },
       { idSuffix: '02', from_account_id: 'account_main_checking', to_account_id: 'account_vacation_fund', from_category_id: 'no_category', to_category_id: 'no_category', amount: 150, description: 'Vacation savings', day: 20 },
       { idSuffix: '03', from_account_id: 'account_main_checking', to_account_id: 'account_credit_card', from_category_id: 'no_category', to_category_id: 'no_category', amount: 950, description: 'Credit card payment', day: 25 },
+      { idSuffix: '04', from_account_id: 'account_old_checking', to_account_id: 'account_main_checking', from_category_id: 'no_category', to_category_id: 'no_category', amount: 200, description: 'Consolidate funds', day: 22 },
     ],
-    adjustments: [],
+    adjustments: [
+      { idSuffix: '01', account_id: 'account_old_401k', category_id: 'category_personal', amount: 650, description: '401k employer match', day: 15 },
+    ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
       { category_id: 'category_utilities', amount: 150 },
@@ -298,6 +325,7 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
     income: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 15, cleared: true },
       { idSuffix: '02', account_id: 'account_main_checking', payee: 'ABC Corp', description: 'Paycheck', amount: 2200, day: 28, cleared: true },
+      { idSuffix: '03', account_id: 'account_old_checking', payee: 'Old Employer', description: 'Freelance work', amount: 350, day: 16, cleared: true },
     ],
     expenses: [
       { idSuffix: '01', account_id: 'account_main_checking', payee: 'Landlord', description: 'Rent', amount: -1500, category_id: 'category_rent', day: 1, cleared: true },
@@ -311,9 +339,12 @@ export const SAMPLE_MONTH_TEMPLATES: SampleMonthTemplate[] = [
       { idSuffix: '09', account_id: 'account_credit_card', payee: 'Coffee Shop', description: '', amount: -16.75, category_id: 'category_dining_out', day: 8, cleared: true },
       { idSuffix: '10', account_id: 'account_credit_card', payee: 'Amazon', description: 'Online purchase', amount: -45.99, category_id: 'category_personal', day: 25, cleared: false },
       { idSuffix: '11', account_id: 'account_credit_card', payee: 'Local Restaurant', description: 'Dinner out', amount: -38.50, category_id: 'category_dining_out', day: 26, cleared: false },
+      { idSuffix: '12', account_id: 'account_old_checking', payee: 'Grocery Mart', description: 'Groceries', amount: -55.25, category_id: 'category_groceries', day: 5, cleared: true },
     ],
     transfers: [],
-    adjustments: [],
+    adjustments: [
+      { idSuffix: '01', account_id: 'account_old_401k', category_id: 'category_personal', amount: 700, description: '401k employer match', day: 15 },
+    ],
     allocations: [
       { category_id: 'category_rent', amount: 1500 },
       { category_id: 'category_utilities', amount: 150 },

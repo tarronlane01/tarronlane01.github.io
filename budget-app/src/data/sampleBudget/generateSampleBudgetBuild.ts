@@ -32,7 +32,6 @@ export function buildSampleBudgetOutput(months: GeneratedMonth[], timestamp: str
       description: account.description,
       account_group_id: account.account_group_id,
       on_budget: account.on_budget,
-      is_active: account.is_active,
       is_income_account: account.is_income_account,
       is_income_default: account.is_income_default,
       is_outgo_account: account.is_outgo_account,
@@ -52,7 +51,6 @@ export function buildSampleBudgetOutput(months: GeneratedMonth[], timestamp: str
     id,
     name: group.name,
     on_budget: group.on_budget,
-    is_active: group.is_active,
     sort_order: group.sort_order,
   }))
 

@@ -17,7 +17,7 @@ import { fetchPayees } from '@data/queries/payees/fetchPayees'
 import { queryCollection } from '@firestore'
 import { getYearMonthOrdinal, getMonthsBack, roundCurrency } from '@utils'
 import type { MonthDocument, FirestoreData } from '@types'
-import { determineMonthsToLoad } from './initialDataLoadRange'
+import { determineMonthsToLoad, getRangeAroundMonth } from './initialDataLoadRange'
 import { parseMonthData } from './initialDataLoadParse'
 import { ensureLastFinalizedMonthLoaded } from './ensureLastFinalizedMonth'
 
@@ -37,10 +37,10 @@ interface InitialDataLoadResult {
 
 /**
  * Fetch months for initial load.
- * 
+ *
  * Uses smart loading:
- * - If reference month provided (from URL), load around that month ± 1
  * - If months exist in the on-the-fly window (current ± 3), load that window
+ * - If reference month provided (from URL), load around that month ± 1
  * - If no months in window (historical budget), load around the latest month ± 1
  */
 async function fetchInitialMonths(
@@ -134,6 +134,34 @@ async function fetchInitialData(
   // This is needed to calculate ALL-TIME balances correctly
   months = await ensureLastFinalizedMonthLoaded(budgetId, months, budget.monthMap || {})
 
+  // If reference month is outside the loaded window, fetch it ±1 as supplemental
+  if (referenceMonth && months.length > 0) {
+    const refOrdinal = getYearMonthOrdinal(referenceMonth.year, referenceMonth.month)
+    const loadedOrdinals = new Set(months.map(m => getYearMonthOrdinal(m.year, m.month)))
+    if (!loadedOrdinals.has(refOrdinal)) {
+      const refRange = getRangeAroundMonth(referenceMonth.year, referenceMonth.month)
+      const refResult = await queryCollection<FirestoreData>(
+        'months',
+        'useInitialDataLoad: loading reference month',
+        [
+          { field: 'budget_id', op: '==', value: budgetId },
+          { field: 'year_month_ordinal', op: '>=', value: refRange.minOrdinal },
+          { field: 'year_month_ordinal', op: '<=', value: refRange.maxOrdinal },
+        ]
+      )
+      const existingKeys = new Set(months.map(m => `${m.year}/${m.month}`))
+      for (const doc of refResult.docs) {
+        const data = doc.data
+        const y = data.year as number
+        const mo = data.month as number
+        if (!existingKeys.has(`${y}/${mo}`)) {
+          months.push(parseMonthData(data, budgetId, y, mo))
+        }
+      }
+      months.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    }
+  }
+
   const monthsBack = budget.budget.percentage_income_months_back ?? 1
 
   // If we have months and monthsBack > 0, ensure we have the month needed for 
@@ -184,10 +212,10 @@ async function fetchInitialData(
 
 interface UseInitialDataLoadOptions {
   enabled?: boolean
-  /** 
+  /**
    * Reference month to load around (e.g., from URL).
-   * If provided, loads this month ± 1 regardless of on-the-fly window.
-   * If not provided, uses on-the-fly window or budget's latest month.
+   * The on-the-fly window is always loaded first; if the reference month
+   * falls outside it, a supplemental fetch loads it ± 1.
    */
   referenceMonth?: { year: number; month: number }
 }

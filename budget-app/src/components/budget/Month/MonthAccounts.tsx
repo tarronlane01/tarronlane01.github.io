@@ -1,21 +1,22 @@
 /**
  * MonthAccounts - Account balances view
  *
- * Displays account balances for the current month.
+ * Displays account balances for the current month in a flat list.
  * Uses CSS Grid with sticky subgrid header for column alignment.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useBudget } from '@contexts'
 import { useBudgetData, useMonthData } from '@hooks'
 import { useIsMobile } from '@hooks'
-import type { FinancialAccount } from '@types'
 import { formatCurrency, formatBalanceCurrency, formatSignedCurrency, formatSignedCurrencyAlways, getBalanceColor } from '../../ui'
 import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import { colors } from '@styles/shared'
+import { isAccountOnBudget } from '@utils/calculations/balances/calculateTotalAvailable'
+import { AccountSectionDivider } from '@components/budget/Accounts'
 import { AccountStatsRow } from './MonthBalances'
-import { AccountGroupRows } from './AccountGridRows'
+import { AccountGridRow, ExpandedUnclearedRow, MobileAccountRow } from './AccountGridRow'
 import {
   calculateAccountBalances,
   calculateAccountBalanceTotals,
@@ -44,14 +45,12 @@ const numericCellStyle: React.CSSProperties = {
   paddingRight: '0.5rem',
 }
 
-// Helper color functions
 // Helper color functions - consistent: positive=green, negative=red, zero=grey
 function getIncomeColor(value: number): string {
   if (value === 0) return colors.zero
   return value > 0 ? colors.success : colors.error
 }
 
-// Expenses: negative = money out (red), positive = money in (green), zero = grey
 function getExpenseColor(value: number): string {
   if (value === 0) return colors.zero
   return value < 0 ? colors.error : colors.success
@@ -67,45 +66,68 @@ export function MonthAccounts() {
   const { accounts, accountGroups } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
   const isMobile = useIsMobile()
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null)
 
+  const viewingYearMonth = `${currentYear}${String(currentMonthNumber).padStart(2, '0')}`
 
-  // Sort account groups by sort_order
-  const sortedGroups = useMemo(() => {
-    return Object.entries(accountGroups)
-      .map(([id, group]) => ({ id, ...group }))
-      .sort((a, b) => a.sort_order - b.sort_order)
-  }, [accountGroups])
-
-  // Organize accounts by group (excluding hidden accounts)
-  const accountsByGroup = useMemo(() => {
-    const result: Record<string, Array<[string, FinancialAccount]>> = {}
-
-    Object.entries(accounts)
-      .filter(([, account]) => !account.is_hidden) // Exclude hidden accounts
-      .forEach(([accountId, account]) => {
-        const groupId = account.account_group_id || UNGROUPED_ACCOUNT_GROUP_ID
-        if (!result[groupId]) result[groupId] = []
-        result[groupId].push([accountId, account])
+  // Filter accounts for this month — deleted accounts show through their deletion month only
+  const accountsForMonth = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(accounts).filter(([, acc]) => {
+        if (!acc.is_deleted) return true
+        return !!acc.deleted_year_month && viewingYearMonth <= acc.deleted_year_month
       })
+    )
+  }, [accounts, viewingYearMonth])
 
-    // Sort accounts within each group by sort_order
-    Object.keys(result).forEach(groupId => {
-      result[groupId].sort((a, b) => a[1].sort_order - b[1].sort_order)
-    })
+  // Flat sorted accounts for this month, sorted by global sort_order
+  const sortedAccounts = useMemo(() => {
+    return Object.entries(accountsForMonth)
+      .sort((a, b) => a[1].sort_order - b[1].sort_order)
+  }, [accountsForMonth])
 
-    return result
-  }, [accounts])
+  // Split into on-budget, off-budget, deleted
+  const { onBudgetAccounts, offBudgetAccounts, deletedAccounts } = useMemo(() => {
+    const on: typeof sortedAccounts = []
+    const off: typeof sortedAccounts = []
+    const del: typeof sortedAccounts = []
+    for (const entry of sortedAccounts) {
+      const [, acc] = entry
+      if (acc.is_deleted) {
+        del.push(entry)
+      } else if (isAccountOnBudget(acc, accountGroups)) {
+        on.push(entry)
+      } else {
+        off.push(entry)
+      }
+    }
+    return { onBudgetAccounts: on, offBudgetAccounts: off, deletedAccounts: del }
+  }, [sortedAccounts, accountGroups])
 
   // Calculate account balances for this month
-  const accountBalances = useMemo(
-    () => calculateAccountBalances(currentMonth, accounts),
-    [currentMonth, accounts]
+  const rawAccountBalances = useMemo(
+    () => calculateAccountBalances(currentMonth, accountsForMonth),
+    [currentMonth, accountsForMonth]
   )
+
+  // Override end_balance to 0 for deleted accounts in their deletion month
+  const accountBalances = useMemo(() => {
+    const result: typeof rawAccountBalances = {}
+    for (const [id, bal] of Object.entries(rawAccountBalances)) {
+      const acc = accountsForMonth[id]
+      if (acc?.is_deleted && acc.deleted_year_month === viewingYearMonth) {
+        result[id] = { ...bal, end_balance: 0 }
+      } else {
+        result[id] = bal
+      }
+    }
+    return result
+  }, [rawAccountBalances, accountsForMonth, viewingYearMonth])
 
   // Calculate cleared/uncleared balances for this month
   const accountClearedBalances = useMemo(
-    () => calculateAccountClearedBalances(currentMonth, accounts),
-    [currentMonth, accounts]
+    () => calculateAccountClearedBalances(currentMonth, accountsForMonth),
+    [currentMonth, accountsForMonth]
   )
 
   // Calculate account balance totals
@@ -114,7 +136,6 @@ export function MonthAccounts() {
     [accountBalances]
   )
 
-  // Calculate net change total
   // Net change = income + expenses (expenses is negative for money out)
   const netChangeTotal = accountBalanceTotals.income + accountBalanceTotals.expenses
 
@@ -143,12 +164,67 @@ export function MonthAccounts() {
   // Numeric grand-totals cells: tabular figures so columns line up
   const grandTotalsNumericStyle = { ...numericCellStyle, justifyContent: 'flex-end' as const }
 
+  // Look up group name for an account
+  function getGroupName(account: { account_group_id: string }): string | undefined {
+    if (account.account_group_id === UNGROUPED_ACCOUNT_GROUP_ID) return 'Ungrouped'
+    return accountGroups[account.account_group_id]?.name
+  }
+
+  // Render a section of account rows (row striping resets per section)
+  function renderAccountSection(section: typeof sortedAccounts, isOffBudget = false) {
+    return section.flatMap(([accountId, account], index) => {
+      const bal = accountBalances[accountId]
+      if (!bal) return []
+      const clearedBal = accountClearedBalances?.[accountId]
+      const hasUnclearedEnd = !!clearedBal && Math.abs(clearedBal.uncleared_balance - clearedBal.cleared_balance) >= 0.01
+      const hasUnclearedStart = !!clearedBal && clearedBal.cleared_start_balance !== undefined
+        && Math.abs(bal.start_balance - clearedBal.cleared_start_balance) >= 0.01
+      const hasUnclearedDetail = hasUnclearedStart || hasUnclearedEnd
+      const isExpanded = expandedAccountId === accountId
+      const groupName = getGroupName(account)
+
+      if (isMobile) {
+        return [
+          <div key={accountId} style={{ gridColumn: '1 / -1' }}>
+            <MobileAccountRow
+              account={account}
+              balance={bal}
+              clearedBalance={clearedBal}
+              hasUnclearedDetail={hasUnclearedDetail}
+              hasUnclearedStart={hasUnclearedStart}
+              groupName={groupName}
+              isOffBudget={isOffBudget}
+            />
+          </div>,
+        ]
+      }
+
+      return [
+        <AccountGridRow
+          key={accountId}
+          account={account}
+          balance={bal}
+          clearedBalance={clearedBal}
+          isEvenRow={index % 2 === 0}
+          hasUnclearedDetail={hasUnclearedDetail}
+          hasUnclearedStart={hasUnclearedStart}
+          isExpanded={isExpanded}
+          onToggleExpand={() => setExpandedAccountId(isExpanded ? null : accountId)}
+          groupName={groupName}
+          isOffBudget={isOffBudget}
+        />,
+        isExpanded && hasUnclearedDetail && clearedBal && (
+          <ExpandedUnclearedRow key={`${accountId}-exp`} clearedBalance={clearedBal} startBalance={bal.start_balance} hasUnclearedStart={hasUnclearedStart} hasUnclearedEnd={hasUnclearedEnd} />
+        ),
+      ].filter(Boolean)
+    })
+  }
+
   return (
     <>
       {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Start, Income, Expenses, Transfers, Adjustments, Net Change, End, Total (Cleared/Uncleared in expandable row per account)
         gridTemplateColumns: isMobile ? '1fr' : `2fr repeat(8, minmax(${NUM_COL_MIN}, 1fr))`,
       }}>
         {/* Sticky wrapper using subgrid on desktop, block on mobile */}
@@ -236,73 +312,24 @@ export function MonthAccounts() {
           </p>
         )}
 
-        {/* Account Groups */}
-        {sortedGroups.map((group, groupIndex) => {
-          const groupAccounts = accountsByGroup[group.id] || []
-          if (groupAccounts.length === 0) return null
+        {/* On-budget account rows */}
+        {renderAccountSection(onBudgetAccounts)}
 
-          const groupTotals = groupAccounts.reduce((acc, [accountId]) => {
-            const bal = accountBalances[accountId]
-            if (!bal) return acc
-            return {
-              start: acc.start + bal.start_balance,
-              income: acc.income + bal.income,
-              expenses: acc.expenses + bal.expenses,
-              transfers: acc.transfers + bal.transfers,
-              adjustments: acc.adjustments + bal.adjustments,
-              netChange: acc.netChange + bal.net_change,
-              end: acc.end + bal.end_balance,
-            }
-          }, { start: 0, income: 0, expenses: 0, transfers: 0, adjustments: 0, netChange: 0, end: 0 })
+        {/* Off-budget section */}
+        {offBudgetAccounts.length > 0 && (
+          <>
+            <AccountSectionDivider label="Off-Budget" />
+            {renderAccountSection(offBudgetAccounts, true)}
+          </>
+        )}
 
-          return (
-            <AccountGroupRows
-              key={group.id}
-              name={group.name}
-              accounts={groupAccounts}
-              groupTotals={groupTotals}
-              accountBalances={accountBalances}
-              accountClearedBalances={accountClearedBalances}
-              isMobile={isMobile}
-              isFirstGroup={groupIndex === 0}
-            />
-          )
-        })}
-
-        {/* Ungrouped Accounts */}
-        {accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]?.length > 0 && (() => {
-          const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID]
-          const ungroupedTotals = ungroupedAccounts.reduce((acc, [accountId]) => {
-            const bal = accountBalances[accountId]
-            if (!bal) return acc
-            return {
-              start: acc.start + bal.start_balance,
-              income: acc.income + bal.income,
-              expenses: acc.expenses + bal.expenses,
-              transfers: acc.transfers + bal.transfers,
-              adjustments: acc.adjustments + bal.adjustments,
-              netChange: acc.netChange + bal.net_change,
-              end: acc.end + bal.end_balance,
-            }
-          }, { start: 0, income: 0, expenses: 0, transfers: 0, adjustments: 0, netChange: 0, end: 0 })
-
-          // Ungrouped accounts are first only if there are no groups before them
-          const isFirstGroup = sortedGroups.length === 0
-
-          return (
-            <AccountGroupRows
-              key={UNGROUPED_ACCOUNT_GROUP_ID}
-              name="Ungrouped"
-              accounts={ungroupedAccounts}
-              groupTotals={ungroupedTotals}
-              accountBalances={accountBalances}
-              accountClearedBalances={accountClearedBalances}
-              isMobile={isMobile}
-              isUngrouped
-              isFirstGroup={isFirstGroup}
-            />
-          )
-        })()}
+        {/* Deleted section */}
+        {deletedAccounts.length > 0 && (
+          <>
+            <AccountSectionDivider label="Deleted" />
+            {renderAccountSection(deletedAccounts)}
+          </>
+        )}
 
         {/* Bottom padding */}
         <div style={{ gridColumn: '1 / -1', height: '2rem' }} />

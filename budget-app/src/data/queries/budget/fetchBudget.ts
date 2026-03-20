@@ -88,7 +88,8 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
       is_outgo_account: account.is_outgo_account ?? false,
       is_outgo_default: account.is_outgo_default ?? false,
       on_budget: account.on_budget ?? true,
-      is_active: account.is_active ?? true,
+      is_deleted: account.is_deleted ?? false,
+      deleted_year_month: account.deleted_year_month,
     }
   })
   return accounts
@@ -111,7 +112,7 @@ function parseAccountGroups(accountGroupsData: FirestoreData | FirestoreData[] =
         sort_order: group.sort_order ?? 0,
         expected_balance: group.expected_balance ?? 'positive',
         on_budget: group.on_budget !== undefined ? group.on_budget : null,
-        is_active: group.is_active !== undefined ? group.is_active : null,
+        badge_color: group.badge_color ?? 'grey',
       } as AccountGroup
     })
   } else {
@@ -122,7 +123,7 @@ function parseAccountGroups(accountGroupsData: FirestoreData | FirestoreData[] =
         sort_order: group.sort_order ?? 0,
         expected_balance: group.expected_balance ?? 'positive',
         on_budget: group.on_budget !== undefined ? group.on_budget : null,
-        is_active: group.is_active !== undefined ? group.is_active : null,
+        badge_color: group.badge_color ?? 'grey',
       } as AccountGroup
     })
   }
@@ -134,7 +135,7 @@ function parseAccountGroups(accountGroupsData: FirestoreData | FirestoreData[] =
       sort_order: 0,
       expected_balance: 'positive',
       on_budget: null,
-      is_active: null,
+      badge_color: 'grey',
     }
   }
 

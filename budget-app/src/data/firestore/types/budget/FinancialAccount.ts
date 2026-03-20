@@ -9,9 +9,10 @@ export interface FinancialAccount {
   is_outgo_account: boolean
   is_outgo_default: boolean
   on_budget: boolean
-  is_active: boolean
-  /** Hidden accounts are excluded from dropdowns and balance displays, shown in a collapsed section in settings */
-  is_hidden?: boolean
+  /** Soft-deleted accounts are preserved for historical viewing but excluded from current operations */
+  is_deleted?: boolean
+  /** The year-month (YYYYMM) when the account was deleted — used to show account in historical months */
+  deleted_year_month?: string
 }
 
 export type AccountsMap = Record<string, FinancialAccount>

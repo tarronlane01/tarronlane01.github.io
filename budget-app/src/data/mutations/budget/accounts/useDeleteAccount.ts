@@ -1,8 +1,9 @@
 /**
- * Delete Account Mutation
+ * Delete Account Mutation (Soft-Delete)
  *
- * Removes a single account from the budget document using Firestore's deleteField().
- * Only the account key is removed; no other document fields are touched.
+ * Sets is_deleted and deleted_year_month on the account instead of removing the key.
+ * This preserves the account name and historical balance entries for past months.
+ * Also clears default flags so no code tries to use a deleted account as default.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +11,8 @@ import { queryKeys } from '@data/queryClient'
 import type { BudgetData } from '@data/queries/budget'
 import { useBudget } from '@contexts'
 import { useBudgetMutationHelpers } from '../mutationHelpers'
-import { deleteBudgetAccountKey } from '../writeBudgetData'
+import { softDeleteBudgetAccount } from '../writeBudgetData'
+import { getYearMonthOrdinal } from '@utils'
 
 // ============================================================================
 // TYPES
@@ -31,7 +33,7 @@ interface MutationContext {
 
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
-  const { currentViewingDocument } = useBudget()
+  const { currentViewingDocument, currentYear, currentMonthNumber } = useBudget()
   const { updateBudgetCacheAndTrack } = useBudgetMutationHelpers()
 
   const mutation = useMutation<void, Error, DeleteAccountParams, MutationContext>({
@@ -43,16 +45,26 @@ export function useDeleteAccount() {
 
       const previousData = queryClient.getQueryData<BudgetData>(queryKey)
       const isCurrentDocument = currentViewingDocument.type === 'budget'
+      const deletedYearMonth = getYearMonthOrdinal(currentYear, currentMonthNumber)
 
       if (previousData?.accounts && accountId in previousData.accounts) {
-        const { [accountId]: _removed, ...rest } = previousData.accounts
-        void _removed
+        const updatedAccount = {
+          ...previousData.accounts[accountId],
+          is_deleted: true,
+          deleted_year_month: deletedYearMonth,
+          is_income_default: false,
+          is_outgo_default: false,
+        }
+        const updatedAccounts = {
+          ...previousData.accounts,
+          [accountId]: updatedAccount,
+        }
         const updatedBudget: BudgetData = {
           ...previousData,
-          accounts: rest,
+          accounts: updatedAccounts,
           budget: {
             ...previousData.budget,
-            accounts: rest,
+            accounts: updatedAccounts,
           },
         }
         queryClient.setQueryData<BudgetData>(queryKey, updatedBudget)
@@ -63,9 +75,9 @@ export function useDeleteAccount() {
 
       if (isCurrentDocument) {
         try {
-          await deleteBudgetAccountKey(budgetId, accountId, 'accounts: delete (targeted key)')
+          await softDeleteBudgetAccount(budgetId, accountId, deletedYearMonth, 'accounts: soft-delete (set is_deleted flag)')
         } catch (error) {
-          console.warn('[useDeleteAccount] Failed to delete account key:', error)
+          console.warn('[useDeleteAccount] Failed to soft-delete account:', error)
         }
       }
 

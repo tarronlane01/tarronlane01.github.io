@@ -41,7 +41,6 @@ export function useCreateBudget() {
             sort_order: 0,
             expected_balance: 'positive',
             on_budget: null,
-            is_active: null,
           },
         },
         categories: {},

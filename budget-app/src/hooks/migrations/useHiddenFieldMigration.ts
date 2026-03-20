@@ -24,13 +24,12 @@ const ADJUSTMENTS_TO_FIX: AdjustmentFixConfig[] = [
 
 export async function scanHiddenFieldStatus(): Promise<HiddenFieldMigrationStatus> {
   const { budgets, monthsByBudget } = await readAllBudgetsAndMonths('hidden-field-migration-scan')
-  let accountsNeedingField = 0, categoriesNeedingField = 0, adjustmentsToFix = 0, totalMonths = 0
+  const accountsNeedingField = 0; let categoriesNeedingField = 0, adjustmentsToFix = 0, totalMonths = 0
   const adjustmentDetails: HiddenFieldMigrationStatus['adjustmentDetails'] = []
 
   for (const budget of budgets) {
     const budgetData = budget.data
-    const accounts = budgetData.accounts as Record<string, FirestoreData> | undefined
-    if (accounts && typeof accounts === 'object') { for (const account of Object.values(accounts)) { if (account.is_hidden === undefined) accountsNeedingField++ } }
+    // Account is_hidden field has been removed — skip account scan
     const categories = budgetData.categories as Record<string, FirestoreData> | undefined
     if (categories && typeof categories === 'object') { for (const category of Object.values(categories)) { if (category.is_hidden === undefined) categoriesNeedingField++ } }
 
@@ -72,10 +71,7 @@ export async function runHiddenFieldMigration(progress: ProgressReporter): Promi
       const accounts = { ...(budgetData.accounts as Record<string, FinancialAccount> || {}) }
       const categories = { ...(budgetData.categories as Record<string, Category> || {}) }
 
-      // Add is_hidden field to all accounts
-      for (const [accountId, account] of Object.entries(accounts)) {
-        if (account.is_hidden === undefined) { accounts[accountId] = { ...account, is_hidden: false }; result.accountsUpdated++; budgetNeedsUpdate = true }
-      }
+      // Account is_hidden field has been removed — skip account updates
 
       // Add is_hidden field to all categories
       for (const [categoryId, category] of Object.entries(categories)) {
@@ -89,9 +85,9 @@ export async function runHiddenFieldMigration(progress: ProgressReporter): Promi
       if (!alerusAccountId) {
         alerusAccountId = `account_hidden_${Date.now()}_alerus`
         const maxSortOrder = Math.max(0, ...Object.values(accounts).map(a => a.sort_order || 0))
-        accounts[alerusAccountId] = { nickname: alerusAccountName, description: 'Historical 401K account (hidden)', balance: 0, account_group_id: 'ungrouped_accounts', sort_order: maxSortOrder + 1, is_income_account: false, is_income_default: false, is_outgo_account: false, is_outgo_default: false, on_budget: false, is_active: true, is_hidden: true }
+        accounts[alerusAccountId] = { nickname: alerusAccountName, description: 'Historical 401K account', balance: 0, account_group_id: 'ungrouped_accounts', sort_order: maxSortOrder + 1, is_income_account: false, is_income_default: false, is_outgo_account: false, is_outgo_default: false, on_budget: false }
         result.hiddenAccountsCreated++; budgetNeedsUpdate = true
-      } else if (!accounts[alerusAccountId].is_hidden) { accounts[alerusAccountId] = { ...accounts[alerusAccountId], is_hidden: true }; budgetNeedsUpdate = true }
+      } else if (accounts[alerusAccountId].on_budget !== false) { accounts[alerusAccountId] = { ...accounts[alerusAccountId], on_budget: false }; budgetNeedsUpdate = true }
 
       // Create hidden category "House" if needed
       let houseCategoryId: string | null = null

@@ -5,6 +5,5 @@
  */
 
 export { OnetimeSection } from './OnetimeSection'
-export { RemoveTotalFieldsRow } from './RemoveTotalFieldsRow'
-export { RemovePreviousMonthIncomeRow } from './RemovePreviousMonthIncomeRow'
+export { RemoveActiveHiddenFieldsRow } from './RemoveActiveHiddenFieldsRow'
 

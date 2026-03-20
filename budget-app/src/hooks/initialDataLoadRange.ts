@@ -58,7 +58,8 @@ export function getRangeAroundMonth(year: number, month: number): { minOrdinal: 
 
 /**
  * Determine which months to load based on the reference month and budget's month_map.
- * Strategy: reference month ± 1 if in budget; else on-the-fly window if any months; else latest month ± 1.
+ * Strategy: on-the-fly window first (ensures cascade recalc has all months);
+ * then reference month ± 1; then latest month ± 1.
  */
 export function determineMonthsToLoad(
   monthMap: Record<string, unknown>,
@@ -67,15 +68,15 @@ export function determineMonthsToLoad(
   const ordinals = Object.keys(monthMap).sort()
   if (ordinals.length === 0) return null
 
+  const { minOrdinal: windowMin, maxOrdinal: windowMax } = getOnTheFlyWindow()
+  const monthsInWindow = ordinals.filter(o => o >= windowMin && o <= windowMax)
+  if (monthsInWindow.length > 0) return { minOrdinal: windowMin, maxOrdinal: windowMax }
+
   if (referenceMonth) {
     const refRange = getRangeAroundMonth(referenceMonth.year, referenceMonth.month)
     const monthsInRefRange = ordinals.filter(o => o >= refRange.minOrdinal && o <= refRange.maxOrdinal)
     if (monthsInRefRange.length > 0) return refRange
   }
-
-  const { minOrdinal: windowMin, maxOrdinal: windowMax } = getOnTheFlyWindow()
-  const monthsInWindow = ordinals.filter(o => o >= windowMin && o <= windowMax)
-  if (monthsInWindow.length > 0) return { minOrdinal: windowMin, maxOrdinal: windowMax }
 
   const latestOrdinal = ordinals[ordinals.length - 1]
   const latestYear = parseInt(latestOrdinal.substring(0, 4), 10)

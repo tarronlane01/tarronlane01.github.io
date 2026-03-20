@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAccountsPage, useBudgetData, useMonthData, useEnsureBalancesFresh } from '@hooks'
 import { useBudget, useApp } from '@contexts'
 import { calculateAccountClearedBalances } from '@calculations'
@@ -12,20 +12,21 @@ import {
 import { useIsMobile } from '@hooks'
 import { UNGROUPED_ACCOUNT_GROUP_ID } from '@constants'
 import {
-  GroupForm,
-  SettingsHiddenAccounts,
+  AccountForm,
+  AccountSectionDivider,
+  EditGroupsModal,
 } from '@components/budget/Accounts'
-import { SettingsAccountGroupRows } from '@components/budget/Accounts/SettingsAccountGroupRows'
+import { SettingsAccountTableRow } from '@components/budget/Accounts/SettingsAccountTableRow'
 
 function Accounts() {
-  const { selectedBudgetId, currentYear, currentMonthNumber } = useBudget()
+  const { selectedBudgetId, currentYear, currentMonthNumber, initialBalanceCalculationComplete } = useBudget()
   const { isLoading: isBudgetLoading, isFetching: isBudgetFetching, accounts: budgetAccounts, getOnBudgetTotal, totalAvailable } = useBudgetData()
   const { month: currentMonth } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
 
   const {
     accounts,
-    accountsByGroup,
-    hiddenAccounts,
+    accountGroups,
+    sortedFlatAccounts,
     sortedGroups: allSortedGroups,
     currentBudget,
     error,
@@ -33,7 +34,7 @@ function Accounts() {
     handleCreateAccount,
     handleUpdateAccount,
     handleDeleteAccount,
-    handleMoveAccount,
+    handleSwapAccounts,
     handleCreateGroup,
     handleUpdateGroup,
     handleDeleteGroup,
@@ -43,11 +44,8 @@ function Accounts() {
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
 
-  // Check fetching state BEFORE rendering to avoid flashing empty values
-  const isDataLoading = isBudgetLoading || isBudgetFetching || !currentBudget
-  // Ensure months are fresh in cache before calculating balances (refetches if stale)
-  useEnsureBalancesFresh(!isDataLoading && !!currentBudget)
-  // Add loading hold while loading or fetching - keep it up until budget data is fully loaded
+  const isDataLoading = isBudgetLoading || isBudgetFetching || !currentBudget || !initialBalanceCalculationComplete
+  useEnsureBalancesFresh(!isDataLoading && !!currentBudget && initialBalanceCalculationComplete, { alwaysRecalculate: true })
   useEffect(() => {
     if (isDataLoading) {
       addLoadingHold('accounts', 'Loading accounts...')
@@ -59,54 +57,32 @@ function Accounts() {
 
   // Account editing state
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
-  const [createForGroupId, setCreateForGroupId] = useState<string | null>(null)
+  const [showCreateAccount, setShowCreateAccount] = useState(false)
 
-  // Group editing state
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
-  const [showCreateGroupForm, setShowCreateGroupForm] = useState(false)
+  // Group modal state
+  const [showGroupsModal, setShowGroupsModal] = useState(false)
 
-  // Calculate stats for header: same isAccountOnBudget as calculateTotalAvailable (Avail) and getOnBudgetTotal
+  // Stats
   const stats = useMemo(() => {
-    const accountList = Object.values(accounts)
-    const totalBalance = accountList.reduce((sum, acc) => sum + (acc.balance ?? 0), 0)
-
+    const activeAccounts = Object.values(accounts).filter(acc => !acc.is_deleted)
+    const totalBalance = activeAccounts.reduce((sum, acc) => sum + (acc.balance ?? 0), 0)
     let onBudgetTotal = 0
     let offBudgetTotal = 0
     const groupsMap = Object.fromEntries(allSortedGroups.map(g => [g.id, g]))
-
-    for (const acc of accountList) {
-      if (isAccountOnBudget(acc, groupsMap as Record<string, { on_budget?: boolean | null; is_active?: boolean | null }>)) {
+    for (const acc of activeAccounts) {
+      if (isAccountOnBudget(acc, groupsMap)) {
         onBudgetTotal += acc.balance ?? 0
       } else {
         offBudgetTotal += acc.balance ?? 0
       }
     }
-
-    return {
-      count: accountList.length,
-      groupCount: allSortedGroups.filter(g => g.id !== UNGROUPED_ACCOUNT_GROUP_ID).length,
-      totalBalance,
-      onBudgetTotal,
-      offBudgetTotal,
-    }
+    return { totalBalance, onBudgetTotal, offBudgetTotal }
   }, [accounts, allSortedGroups])
 
-  // Filter out ungrouped group from sortedGroups so it appears last
+  // Groups for the modal (exclude ungrouped)
   const sortedGroups = useMemo(() => {
     return allSortedGroups.filter(g => g.id !== UNGROUPED_ACCOUNT_GROUP_ID)
   }, [allSortedGroups])
-
-  // Create ungrouped group object for table display - must be before early return
-  const ungroupedGroup = useMemo(() => ({
-    id: UNGROUPED_ACCOUNT_GROUP_ID,
-    name: 'Ungrouped',
-    sort_order: sortedGroups.length,
-    expected_balance: 'any' as const,
-    on_budget: null,
-    is_active: null,
-  }), [sortedGroups.length])
-
-  const ungroupedAccounts = accountsByGroup[UNGROUPED_ACCOUNT_GROUP_ID] || []
 
   // Calculate cleared balances from current month
   const accountClearedBalances = useMemo(() => {
@@ -114,14 +90,41 @@ function Accounts() {
     return calculateAccountClearedBalances(currentMonth, budgetAccounts)
   }, [currentMonth, budgetAccounts])
 
-  // Column header style - matches month pages
+  // Split accounts into on-budget and off-budget sections
+  const groupsMap = useMemo(() =>
+    Object.fromEntries(allSortedGroups.map(g => [g.id, g])),
+    [allSortedGroups]
+  )
+
+  const { onBudgetAccounts, offBudgetAccounts } = useMemo(() => {
+    const on: typeof sortedFlatAccounts = []
+    const off: typeof sortedFlatAccounts = []
+    for (const account of sortedFlatAccounts) {
+      if (isAccountOnBudget(account, groupsMap)) {
+        on.push(account)
+      } else {
+        off.push(account)
+      }
+    }
+    return { onBudgetAccounts: on, offBudgetAccounts: off }
+  }, [sortedFlatAccounts, groupsMap])
+
+  // Section-aware move: constrain up/down within the same section
+  const handleSectionMove = useCallback((accountId: string, direction: 'up' | 'down', section: typeof sortedFlatAccounts) => {
+    const sectionIdx = section.findIndex(a => a.id === accountId)
+    if (sectionIdx < 0) return
+    const targetIdx = direction === 'up' ? sectionIdx - 1 : sectionIdx + 1
+    if (targetIdx < 0 || targetIdx >= section.length) return
+    handleSwapAccounts(accountId, section[targetIdx].id)
+  }, [handleSwapAccounts])
+
   const columnHeaderStyle: React.CSSProperties = {
     fontSize: '0.75rem',
     fontWeight: 600,
     opacity: 0.6,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    paddingTop: '0.75rem', // More space above to match visual spacing below
+    paddingTop: '0.75rem',
     paddingBottom: '0.5rem',
     paddingLeft: '0.5rem',
     paddingRight: '0.5rem',
@@ -137,36 +140,32 @@ function Accounts() {
         message: 'Failed to update accounts. See console for details.',
         autoDismissMs: 0,
       })
-      // Clear error after showing banner
       setError(null)
     }
   }, [error, setError])
 
-  // Don't render content if data is loading or fetching (cache invalid) - show loading overlay instead
   if (isDataLoading || !currentBudget) {
     return isDataLoading ? null : <p>No budget found. Please log in.</p>
   }
 
   return (
     <div>
-      {/* CSS Grid container - header and content share the same grid */}
       <div style={{
         display: 'grid',
-        // Account, Total, Cleared, Uncleared, Flags, Actions
-        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1.5fr 1fr',
+        gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr 1fr 1.5fr 1fr',
         marginBottom: '1.5rem',
       }}>
-        {/* Sticky wrapper using subgrid - contains both stats header and column headers as subgrid rows */}
+        {/* Sticky header */}
         <div style={{
           gridColumn: '1 / -1',
           position: 'sticky',
-          top: 0, // Sticky at top, stats header will be first row inside
+          top: 0,
           zIndex: 50,
           backgroundColor: 'var(--sticky-header-bg)',
           display: isMobile ? 'block' : 'grid',
           gridTemplateColumns: isMobile ? undefined : 'subgrid',
         }}>
-          {/* First subgrid row: stats header */}
+          {/* Stats header */}
           <div style={{
             gridColumn: '1 / -1',
             marginLeft: 'calc(-1 * var(--page-padding, 2rem))',
@@ -174,17 +173,16 @@ function Accounts() {
             paddingLeft: 'var(--page-padding, 2rem)',
             paddingRight: 'var(--page-padding, 2rem)',
             paddingTop: '0.5rem',
-            paddingBottom: '0.5rem', // Reduced spacing before column headers
+            paddingBottom: '0.5rem',
           }}>
-            {/* Title + Stats + Buttons row */}
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
               gap: '0.5rem 1rem',
               fontSize: '0.85rem',
-              paddingBottom: '0.5rem', // Spacing above border to separate button
-              borderBottom: '1px solid var(--border-medium)', // Border on inner element to respect page container
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid var(--border-medium)',
             }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
                 <span style={{ fontWeight: 600 }}>Accounts:</span>
@@ -202,7 +200,6 @@ function Accounts() {
                   <span style={{ opacity: 0.6 }}>Total: </span>
                   <span style={{ color: getBalanceColor(stats.totalBalance), fontWeight: 600 }}>{formatStatsCurrency(stats.totalBalance)}</span>
                 </span>
-                {/* Same getOnBudgetTotal + totalAvailable as allocations worksheet: On-Budget − Allocated = Avail */}
                 <span style={{ marginLeft: '0.5rem', paddingLeft: '0.5rem', borderLeft: '1px solid var(--border-medium)' }}>
                   <span style={{ opacity: 0.6 }}>On-Budget: </span>
                   <span style={{ color: getBalanceColor(getOnBudgetTotal()), fontWeight: 600 }}>{formatStatsCurrency(getOnBudgetTotal())}</span>
@@ -212,13 +209,33 @@ function Accounts() {
                   <span style={{ color: getBalanceColor(totalAvailable), fontWeight: 600 }}>{formatStatsCurrency(totalAvailable)}</span>
                 </span>
               </div>
+              <Button variant="small" actionName="Open Add Account Form" onClick={() => setShowCreateAccount(true)} disabled={showCreateAccount}>
+                + Account
+              </Button>
             </div>
           </div>
 
-          {/* Second subgrid row: column headers */}
+          {/* Column headers */}
           {!isMobile && (
             <>
               <div style={columnHeaderStyle}>Account</div>
+              <div style={{ ...columnHeaderStyle, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                Group
+                <button
+                  onClick={() => setShowGroupsModal(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    opacity: 0.5,
+                    fontSize: '0.75rem',
+                    padding: '0.1rem',
+                  }}
+                  title="Edit account types"
+                >
+                  ✏️
+                </button>
+              </div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Total</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Cleared</div>
               <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Uncleared</div>
@@ -229,121 +246,106 @@ function Accounts() {
         </div>
 
         {/* Empty state */}
-        {Object.keys(accounts).length === 0 && sortedGroups.length === 0 && (
+        {sortedFlatAccounts.length === 0 && !showCreateAccount && (
           <p style={{ gridColumn: '1 / -1', opacity: 0.7, textAlign: 'center', padding: '2rem' }}>
-            No accounts yet. Create an account type first, then add accounts!
+            No accounts yet. Click "+ Account" to create one!
           </p>
         )}
 
-        {/* Render groups */}
-        {sortedGroups.map((group, groupIndex) => {
-          const groupAccounts = accountsByGroup[group.id] || []
-          if (groupAccounts.length === 0 && editingGroupId !== group.id && createForGroupId !== group.id) return null
+        {/* Create account form */}
+        {showCreateAccount && (
+          <div style={{ gridColumn: '1 / -1', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
+            <AccountForm
+              initialData={{ nickname: '', account_group_id: null }}
+              onSubmit={(data) => { handleCreateAccount(data, data.account_group_id); setShowCreateAccount(false) }}
+              onCancel={() => setShowCreateAccount(false)}
+              submitLabel="Create"
+              accountGroups={allSortedGroups}
+              showGroupSelector={true}
+              showIncomeSettings={true}
+            />
+          </div>
+        )}
 
-          // If editing group, show form outside grid
-          if (editingGroupId === group.id) {
-            return (
-              <div key={group.id} style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
-                <GroupForm
-                  initialData={{
-                    name: group.name,
-                    expected_balance: group.expected_balance || 'positive',
-                    on_budget: group.on_budget ?? undefined,
-                    is_active: group.is_active ?? undefined,
-                  }}
-                  onSubmit={(data) => {
-                    handleUpdateGroup(group.id, data)
-                    setEditingGroupId(null)
-                  }}
-                  onCancel={() => setEditingGroupId(null)}
-                  submitLabel="Save"
-                />
-              </div>
-            )
-          }
-
+        {/* On-budget account list */}
+        {onBudgetAccounts.map((account, idx) => {
+          const group = accountGroups[account.account_group_id]
           return (
-            <SettingsAccountGroupRows
-              key={group.id}
-              group={group}
-              accounts={groupAccounts}
-              allGroups={sortedGroups}
+            <SettingsAccountTableRow
+              key={account.id}
+              account={account}
+              accountIndex={idx}
+              totalAccounts={onBudgetAccounts.length}
+              allGroups={allSortedGroups}
               allAccounts={accounts}
-              accountClearedBalances={accountClearedBalances}
+              clearedBalance={accountClearedBalances?.[account.id]}
+              groupName={group?.name ?? 'Ungrouped'}
+              groupColor={group?.badge_color ?? 'grey'}
+              onEdit={setEditingAccountId}
+              onDelete={handleDeleteAccount}
+              onMoveUp={() => handleSectionMove(account.id, 'up', onBudgetAccounts)}
+              onMoveDown={() => handleSectionMove(account.id, 'down', onBudgetAccounts)}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < onBudgetAccounts.length - 1}
               editingAccountId={editingAccountId}
-              createForGroupId={createForGroupId}
               setEditingAccountId={setEditingAccountId}
-              setCreateForGroupId={setCreateForGroupId}
               onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
-              onDeleteAccount={handleDeleteAccount}
-              onMoveAccount={handleMoveAccount}
-              onCreateAccount={handleCreateAccount}
               isMobile={isMobile}
-              canMoveGroupUp={groupIndex > 0}
-              canMoveGroupDown={groupIndex < sortedGroups.length - 1}
-              onEditGroup={() => setEditingGroupId(group.id)}
-              onDeleteGroup={() => handleDeleteGroup(group.id)}
-              onMoveGroupUp={() => handleMoveGroup(group.id, 'up')}
-              onMoveGroupDown={() => handleMoveGroup(group.id, 'down')}
             />
           )
         })}
 
-        {/* Ungrouped section - always rendered last, after all groups */}
-        {(ungroupedAccounts.length > 0 || createForGroupId === 'ungrouped') && (
-          <SettingsAccountGroupRows
-            group={ungroupedGroup}
-            accounts={ungroupedAccounts}
-            allGroups={sortedGroups}
-            allAccounts={accounts}
-            accountClearedBalances={accountClearedBalances}
-            editingAccountId={editingAccountId}
-            createForGroupId={createForGroupId}
-            setEditingAccountId={setEditingAccountId}
-            setCreateForGroupId={setCreateForGroupId}
-            onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
-            onDeleteAccount={handleDeleteAccount}
-            onMoveAccount={handleMoveAccount}
-            onCreateAccount={handleCreateAccount}
-            isMobile={isMobile}
-            isUngrouped
-            canMoveGroupUp={false}
-            canMoveGroupDown={false}
-            onEditGroup={() => {}} // Ungrouped can't be edited
-            onDeleteGroup={() => {}} // Ungrouped can't be deleted
-            onMoveGroupUp={() => {}}
-            onMoveGroupDown={() => {}}
-          />
+        {/* Off-budget section inside the same grid so columns align */}
+        {offBudgetAccounts.length > 0 && (
+          <>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <AccountSectionDivider label="Off-Budget" />
+            </div>
+            {offBudgetAccounts.map((account, idx) => {
+              const group = accountGroups[account.account_group_id]
+              return (
+                <SettingsAccountTableRow
+                  key={account.id}
+                  account={account}
+                  accountIndex={idx}
+                  totalAccounts={offBudgetAccounts.length}
+                  allGroups={allSortedGroups}
+                  allAccounts={accounts}
+                  clearedBalance={accountClearedBalances?.[account.id]}
+                  groupName={group?.name ?? 'Ungrouped'}
+                  groupColor={group?.badge_color ?? 'grey'}
+                  onEdit={setEditingAccountId}
+                  onDelete={handleDeleteAccount}
+                  onMoveUp={() => handleSectionMove(account.id, 'up', offBudgetAccounts)}
+                  onMoveDown={() => handleSectionMove(account.id, 'down', offBudgetAccounts)}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < offBudgetAccounts.length - 1}
+                  editingAccountId={editingAccountId}
+                  setEditingAccountId={setEditingAccountId}
+                  onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
+                  isMobile={isMobile}
+                  isOffBudget
+                />
+              )
+            })}
+          </>
         )}
 
         <div style={{ gridColumn: '1 / -1', height: '1rem' }} />
       </div>
 
-      {/* Hidden accounts section */}
-      <SettingsHiddenAccounts
-        hiddenAccounts={hiddenAccounts}
-        accounts={accounts}
-        sortedGroups={sortedGroups}
-        editingAccountId={editingAccountId}
-        setEditingAccountId={setEditingAccountId}
-        onUpdateAccount={handleUpdateAccount}
+      {/* Edit Groups Modal */}
+      <EditGroupsModal
+        isOpen={showGroupsModal}
+        onClose={() => setShowGroupsModal(false)}
+        groups={sortedGroups}
+        onCreateGroup={handleCreateGroup}
+        onUpdateGroup={handleUpdateGroup}
+        onDeleteGroup={handleDeleteGroup}
+        onMoveGroup={handleMoveGroup}
       />
-
-      {/* Add Account Type button/form */}
-      {showCreateGroupForm ? (
-        <GroupForm
-          onSubmit={(data) => { handleCreateGroup(data); setShowCreateGroupForm(false) }}
-          onCancel={() => setShowCreateGroupForm(false)}
-          submitLabel="Create Account Type"
-        />
-      ) : (
-        <Button variant="primary-large" actionName="Open Add Account Type Form" onClick={() => setShowCreateGroupForm(true)}>
-          + Add Account Type
-        </Button>
-      )}
     </div>
   )
 }
 
 export default Accounts
-

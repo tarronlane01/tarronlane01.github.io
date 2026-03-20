@@ -104,6 +104,18 @@ export const THEME_COLORS: Record<string, ThemeColorPair> = {
   errorLight: { light: '#fca5a5', dark: '#fca5a5' },
   warningLight: { light: '#fcd34d', dark: '#fcd34d' },
   successEmerald: { light: '#10b981', dark: '#10b981' },
+
+  // Badge colors (muted tones for account group badges)
+  badgeGrey: { light: '#6b7280', dark: '#9ca3af' },
+  badgeBlue: { light: '#3b82f6', dark: '#60a5fa' },
+  badgeGreen: { light: '#16a34a', dark: '#4ade80' },
+  badgeRed: { light: '#ef4444', dark: '#f87171' },
+  badgeOrange: { light: '#ea580c', dark: '#fb923c' },
+  badgePurple: { light: '#9333ea', dark: '#c084fc' },
+  badgeTeal: { light: '#0d9488', dark: '#2dd4bf' },
+  badgePink: { light: '#db2777', dark: '#f472b6' },
+  badgeYellow: { light: '#ca8a04', dark: '#facc15' },
+  badgeIndigo: { light: '#4f46e5', dark: '#818cf8' },
 }
 
 /** CSS variable names (use in style={{ background: 'var(--page-background)' }}) */
@@ -169,4 +181,14 @@ export const COLOR_VARS: Record<keyof typeof THEME_COLORS, string> = {
   errorLight: '--color-error-light',
   warningLight: '--color-warning-light',
   successEmerald: '--color-success-emerald',
+  badgeGrey: '--badge-grey',
+  badgeBlue: '--badge-blue',
+  badgeGreen: '--badge-green',
+  badgeRed: '--badge-red',
+  badgeOrange: '--badge-orange',
+  badgePurple: '--badge-purple',
+  badgeTeal: '--badge-teal',
+  badgePink: '--badge-pink',
+  badgeYellow: '--badge-yellow',
+  badgeIndigo: '--badge-indigo',
 }

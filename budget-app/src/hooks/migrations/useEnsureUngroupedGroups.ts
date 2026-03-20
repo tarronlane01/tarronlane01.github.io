@@ -111,7 +111,6 @@ export async function runEnsureUngroupedGroupsMigration(
           sort_order: 0,
           expected_balance: 'positive',
           on_budget: null,
-          is_active: null,
         },
       }
       needsUpdate = true

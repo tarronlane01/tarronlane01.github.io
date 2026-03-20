@@ -195,6 +195,8 @@ export function SettingsAccountGroupRows({
           allGroups={allGroups}
           allAccounts={allAccounts}
           clearedBalance={accountClearedBalances?.[account.id]}
+          groupName={group.name}
+          groupColor={group.badge_color ?? 'grey'}
           onEdit={setEditingAccountId}
           onDelete={onDeleteAccount}
           onMoveUp={() => onMoveAccount(account.id, 'up')}

@@ -211,6 +211,12 @@ export async function createMonth(
       }
     }
 
+  // Filter out deleted accounts from carry-forward — don't create balance entries for them
+  const budgetAccounts = (budgetData.accounts || {}) as Record<string, { is_deleted?: boolean }>
+  accountStartBalances = Object.fromEntries(
+    Object.entries(accountStartBalances).filter(([accId]) => !budgetAccounts[accId]?.is_deleted)
+  )
+
   // Build category_balances with correct start_balance from previous month
   // Cached version always has the real start_balance for on-the-fly display
   // Firestore version (in docToWrite below) strips start_balance for months after the window

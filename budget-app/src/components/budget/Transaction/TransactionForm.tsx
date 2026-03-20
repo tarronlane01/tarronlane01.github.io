@@ -17,7 +17,9 @@ import {
 import { useScreenWidth } from '@hooks'
 import { colors } from '@styles/shared'
 import { logUserAction } from '@utils'
+import { isAccountOnBudget } from '@calculations'
 import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME, NO_CATEGORY_ID, NO_CATEGORY_NAME } from '@data/constants'
+import type { FirestoreData } from '@types'
 
 export type AccountEntry = [string, FinancialAccount]
 
@@ -115,6 +117,17 @@ export function TransactionForm({
   // Track if user tried to submit with invalid "both no options" selection
   const [showBothNoWarning, setShowBothNoWarning] = useState(false)
 
+  // Auto-set cleared when selecting an off-budget account
+  const handleAccountChange = (newAccountId: string) => {
+    setAccountId(newAccountId)
+    if (showCleared) {
+      const selectedAccount = accounts.find(([id]) => id === newAccountId)?.[1]
+      if (selectedAccount && !isAccountOnBudget(selectedAccount, accountGroups as unknown as FirestoreData)) {
+        setCleared(true)
+      }
+    }
+  }
+
   // Group accounts
   const accountsByGroup: Record<string, AccountEntry[]> = {}
   const ungroupedAccounts: AccountEntry[] = []
@@ -167,7 +180,7 @@ export function TransactionForm({
     <AccountAutocomplete
       id="txn-account"
       value={accountId}
-      onChange={setAccountId}
+      onChange={handleAccountChange}
       accounts={accounts}
       accountGroups={accountGroups}
       placeholder={NO_ACCOUNT_NAME}
@@ -175,7 +188,7 @@ export function TransactionForm({
       showNoAccountOption={true}
     />
   ) : (
-    <SelectInput id="txn-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required style={{ fontSize: '0.85rem', padding: '0.5rem' }}>
+    <SelectInput id="txn-account" value={accountId} onChange={(e) => handleAccountChange(e.target.value)} required style={{ fontSize: '0.85rem', padding: '0.5rem' }}>
       {Object.entries(accountGroups).map(([groupId, group]) => {
         const grpAccounts = accountsByGroup[groupId]
         if (!grpAccounts?.length) return null

@@ -9,7 +9,7 @@ import { colors } from '@styles/shared'
 import { TransferForm } from '../Transfers'
 import { TransferGridRow } from './TransferGridRow'
 import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
-import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, NO_ACCOUNT_NAME } from '@data/constants'
+import { isNoCategory, NO_CATEGORY_NAME, isNoAccount, getAccountDisplayName } from '@data/constants'
 
 // Column header style for the grid
 const columnHeaderStyle: React.CSSProperties = {
@@ -41,13 +41,6 @@ export function MonthTransfers() {
   // Edits here will update the month_map (via writeMonthData) and trigger recalculation
   // will happen when the user navigates to Categories or Accounts tabs.
 
-  // Helper to get effective is_active value considering group overrides
-  function getEffectiveActive(account: FinancialAccount): boolean {
-    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
-    if (group && group.is_active !== null) return group.is_active
-    return account.is_active !== false
-  }
-
   // Helper to get effective on_budget value considering group overrides
   function getEffectiveOnBudget(account: FinancialAccount): boolean {
     const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
@@ -58,9 +51,9 @@ export function MonthTransfers() {
   // Account entry type for working with accounts map
   type AccountEntry = [string, FinancialAccount]
 
-  // Filter accounts for transfer dropdown - all active on-budget accounts
+  // Filter accounts for transfer dropdown - all on-budget accounts
   const activeOnBudgetAccounts = Object.entries(accounts).filter(
-    ([, a]) => getEffectiveActive(a) && getEffectiveOnBudget(a)
+    ([, a]) => getEffectiveOnBudget(a)
   ) as AccountEntry[]
 
   // Handle transfer operations
@@ -272,8 +265,8 @@ export function MonthTransfers() {
                 transfer={transfer}
                 fromCategoryName={isNoCategory(transfer.from_category_id) ? NO_CATEGORY_NAME : (categories[transfer.from_category_id]?.name || 'Unknown')}
                 toCategoryName={isNoCategory(transfer.to_category_id) ? NO_CATEGORY_NAME : (categories[transfer.to_category_id]?.name || 'Unknown')}
-                fromAccountName={isNoAccount(transfer.from_account_id) ? NO_ACCOUNT_NAME : (accounts[transfer.from_account_id]?.nickname || 'Unknown')}
-                toAccountName={isNoAccount(transfer.to_account_id) ? NO_ACCOUNT_NAME : (accounts[transfer.to_account_id]?.nickname || 'Unknown')}
+                fromAccountName={getAccountDisplayName(transfer.from_account_id, accounts)}
+                toAccountName={getAccountDisplayName(transfer.to_account_id, accounts)}
                 fromAccountGroupName={
                   isNoAccount(transfer.from_account_id) ? undefined : (
                     accounts[transfer.from_account_id]?.account_group_id

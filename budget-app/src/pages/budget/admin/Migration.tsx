@@ -22,10 +22,7 @@ import {
   useOrphanedIdCleanup,
   useAdjustmentsToTransfersMigration,
   useAccountCategoryValidation,
-  useRemoveTotalFieldsMigration,
-  useRemovePreviousMonthIncomeMigration,
-  usePercentageIncomeMonthsBackMigration,
-  useRemoveLegacyBalanceFieldsMigration,
+  useRemoveActiveHiddenFieldsMigration,
   useRecalculateStartBalancesMigration,
   useRepairMonthMapMigration,
   useDownloadBudget,
@@ -56,10 +53,7 @@ function Migration() {
   // =========================================================================
 
   // One-time migrations
-  const removeTotalFieldsMigration = useRemoveTotalFieldsMigration({ currentUser: current_user })
-  const removePreviousMonthIncomeMigration = useRemovePreviousMonthIncomeMigration({ currentUser: current_user })
-  const percentageIncomeMonthsBackMigration = usePercentageIncomeMonthsBackMigration({ currentUser: current_user })
-  const removeLegacyBalanceFieldsMigration = useRemoveLegacyBalanceFieldsMigration({ currentUser: current_user })
+  const removeActiveHiddenFieldsMigration = useRemoveActiveHiddenFieldsMigration({ currentUser: current_user })
 
   // Maintenance migrations
   const accountCategoryValidation = useAccountCategoryValidation({ currentUser: current_user })
@@ -84,10 +78,7 @@ function Migration() {
 
   const isAnyScanning =
     // One-time migrations
-    removeTotalFieldsMigration.isScanning ||
-    removePreviousMonthIncomeMigration.isScanning ||
-    percentageIncomeMonthsBackMigration.isScanning ||
-    removeLegacyBalanceFieldsMigration.isScanning ||
+    removeActiveHiddenFieldsMigration.isScanning ||
     // Maintenance migrations
     accountCategoryValidation.isScanning ||
     orphanedIdCleanup.isScanning ||
@@ -101,10 +92,7 @@ function Migration() {
 
   const isAnyRunning =
     // One-time migrations
-    removeTotalFieldsMigration.isRunning ||
-    removePreviousMonthIncomeMigration.isRunning ||
-    percentageIncomeMonthsBackMigration.isRunning ||
-    removeLegacyBalanceFieldsMigration.isRunning ||
+    removeActiveHiddenFieldsMigration.isRunning ||
     // Maintenance migrations
     orphanedIdCleanup.isRunning ||
     expenseToAdjustment.isRunning ||
@@ -126,10 +114,7 @@ function Migration() {
     logUserAction('CLICK', 'Refresh All Migrations')
     await Promise.all([
       // One-time migrations
-      removeTotalFieldsMigration.scanStatus(),
-      removePreviousMonthIncomeMigration.scanStatus(),
-      percentageIncomeMonthsBackMigration.scanStatus(),
-      removeLegacyBalanceFieldsMigration.scanStatus(),
+      removeActiveHiddenFieldsMigration.scanStatus(),
       // Maintenance migrations
       accountCategoryValidation.scan(),
       orphanedIdCleanup.scanStatus(),
@@ -187,52 +172,7 @@ function Migration() {
       {/* One-time Migrations Section */}
       <OnetimeSection
         disabled={!current_user}
-        onDownloadBackup={budgetDownload.downloadBudget}
-        isDownloadingBackup={budgetDownload.isDownloading}
-        removeTotalFieldsMigration={{
-          status: removeTotalFieldsMigration.status,
-          hasData: !!removeTotalFieldsMigration.status,
-          needsMigration: removeTotalFieldsMigration.needsMigration,
-          totalItemsToFix: removeTotalFieldsMigration.totalItemsToFix,
-          isScanning: removeTotalFieldsMigration.isScanning,
-          isRunning: removeTotalFieldsMigration.isRunning,
-          result: removeTotalFieldsMigration.result,
-          scanStatus: removeTotalFieldsMigration.scanStatus,
-          runMigration: removeTotalFieldsMigration.runMigration,
-        }}
-        removePreviousMonthIncomeMigration={{
-          status: removePreviousMonthIncomeMigration.status,
-          hasData: !!removePreviousMonthIncomeMigration.status,
-          needsMigration: removePreviousMonthIncomeMigration.needsMigration,
-          totalItemsToFix: removePreviousMonthIncomeMigration.totalItemsToFix,
-          isScanning: removePreviousMonthIncomeMigration.isScanning,
-          isRunning: removePreviousMonthIncomeMigration.isRunning,
-          result: removePreviousMonthIncomeMigration.result,
-          scanStatus: removePreviousMonthIncomeMigration.scanStatus,
-          runMigration: removePreviousMonthIncomeMigration.runMigration,
-        }}
-        percentageIncomeMonthsBackMigration={{
-          status: percentageIncomeMonthsBackMigration.status,
-          hasData: !!percentageIncomeMonthsBackMigration.status,
-          needsMigration: percentageIncomeMonthsBackMigration.needsMigration,
-          totalItemsToFix: percentageIncomeMonthsBackMigration.totalItemsToFix,
-          isScanning: percentageIncomeMonthsBackMigration.isScanning,
-          isRunning: percentageIncomeMonthsBackMigration.isRunning,
-          result: percentageIncomeMonthsBackMigration.result,
-          scanStatus: percentageIncomeMonthsBackMigration.scanStatus,
-          runMigration: percentageIncomeMonthsBackMigration.runMigration,
-        }}
-        removeLegacyBalanceFieldsMigration={{
-          status: removeLegacyBalanceFieldsMigration.status,
-          hasData: !!removeLegacyBalanceFieldsMigration.status,
-          needsMigration: removeLegacyBalanceFieldsMigration.needsMigration,
-          totalItemsToFix: removeLegacyBalanceFieldsMigration.totalItemsToFix,
-          isScanning: removeLegacyBalanceFieldsMigration.isScanning,
-          isRunning: removeLegacyBalanceFieldsMigration.isRunning,
-          result: removeLegacyBalanceFieldsMigration.result,
-          scanStatus: removeLegacyBalanceFieldsMigration.scanStatus,
-          runMigration: removeLegacyBalanceFieldsMigration.runMigration,
-        }}
+        removeActiveHiddenFieldsMigration={{ ...removeActiveHiddenFieldsMigration, hasData: !!removeActiveHiddenFieldsMigration.status }}
       />
 
       {/* Maintenance Section */}
