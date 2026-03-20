@@ -13,6 +13,8 @@ export interface FinancialAccount {
   is_deleted?: boolean
   /** The year-month (YYYYMM) when the account was deleted — used to show account in historical months */
   deleted_year_month?: string
+  /** The year-month (YYYYMM) when the off-budget balance was last set via the set-balance feature */
+  off_budget_balance_month?: string
 }
 
 export type AccountsMap = Record<string, FinancialAccount>

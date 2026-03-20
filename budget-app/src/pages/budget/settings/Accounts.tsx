@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { useAccountsPage, useBudgetData, useMonthData, useEnsureBalancesFresh } from '@hooks'
+import { useAccountsPage, useBudgetData, useMonthData, useEnsureBalancesFresh, useSetOffBudgetBalance } from '@hooks'
 import { useBudget, useApp } from '@contexts'
 import { calculateAccountClearedBalances } from '@calculations'
 import { isAccountOnBudget } from '@utils/calculations/balances/calculateTotalAvailable'
@@ -43,6 +43,7 @@ function Accounts() {
 
   const isMobile = useIsMobile()
   const { addLoadingHold, removeLoadingHold } = useApp()
+  const { setBalance: setOffBudgetBalance } = useSetOffBudgetBalance()
 
   const isDataLoading = isBudgetLoading || isBudgetFetching || !currentBudget || !initialBalanceCalculationComplete
   useEnsureBalancesFresh(!isDataLoading && !!currentBudget && initialBalanceCalculationComplete, { alwaysRecalculate: true })
@@ -325,6 +326,8 @@ function Accounts() {
                   onUpdateAccount={(id, data) => { handleUpdateAccount(id, data); setEditingAccountId(null) }}
                   isMobile={isMobile}
                   isOffBudget
+                  onSetOffBudgetBalance={setOffBudgetBalance}
+                  offBudgetBalanceMonth={account.off_budget_balance_month}
                 />
               )
             })}

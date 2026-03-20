@@ -12,7 +12,9 @@ import { formatSignedCurrency, getBalanceColor } from '../../ui'
 import { AccountFlags } from './AccountFlags'
 import { AccountGroupBadge } from './AccountGroupBadge'
 import { AccountForm } from './AccountForm'
+import { InlineBalanceEdit, MobileEditableBalance } from './InlineBalanceEdit'
 import { logUserAction } from '@utils'
+import { MONTH_NAMES_SHORT } from '@constants'
 import type { AccountClearedBalance } from '@calculations'
 
 interface SettingsAccountTableRowProps {
@@ -35,6 +37,16 @@ interface SettingsAccountTableRowProps {
   onUpdateAccount: (id: string, data: AccountFormData) => void
   isMobile: boolean
   isOffBudget?: boolean
+  onSetOffBudgetBalance?: (accountId: string, targetBalance: number) => void
+  offBudgetBalanceMonth?: string
+}
+
+/** Format YYYYMM string as "Mar 2026" */
+function formatLastSet(yyyymm: string): string {
+  const year = yyyymm.slice(0, 4)
+  const monthIdx = parseInt(yyyymm.slice(4), 10) - 1
+  if (monthIdx < 0 || monthIdx > 11) return yyyymm
+  return `${MONTH_NAMES_SHORT[monthIdx]} ${year}`
 }
 
 export function SettingsAccountTableRow({
@@ -56,6 +68,8 @@ export function SettingsAccountTableRow({
   onUpdateAccount,
   isMobile,
   isOffBudget,
+  onSetOffBudgetBalance,
+  offBudgetBalanceMonth,
 }: SettingsAccountTableRowProps) {
   // If editing, render form that spans full width
   if (editingAccountId === account.id) {
@@ -93,6 +107,9 @@ export function SettingsAccountTableRow({
     )
   }
 
+  const currentBalance = clearedBalance?.uncleared_balance ?? account.balance
+  const lastSetLabel = offBudgetBalanceMonth ? `Set: ${formatLastSet(offBudgetBalanceMonth)}` : 'Never set'
+
   // Mobile: render card-style row
   if (isMobile) {
     return (
@@ -111,19 +128,27 @@ export function SettingsAccountTableRow({
             <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
               {clearedBalance ? (
                 <>
-                  <MobileBalanceColumn label="Total" value={clearedBalance.uncleared_balance} bold />
-                  {!isOffBudget && (
-                    Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
-                      <>
-                        <MobileBalanceColumn label="Cleared" value={clearedBalance.cleared_balance} />
-                        <MobileBalanceColumn label="Uncleared" value={clearedBalance.uncleared_balance - clearedBalance.cleared_balance} />
-                      </>
-                    ) : (
-                      <>
-                        <MobileBalanceColumn label="Cleared" />
-                        <MobileBalanceColumn label="Uncleared" />
-                      </>
-                    )
+                  {isOffBudget ? (
+                    <MobileEditableBalance
+                      value={clearedBalance.uncleared_balance}
+                      lastSetLabel={lastSetLabel}
+                      onSubmit={onSetOffBudgetBalance ? (v) => onSetOffBudgetBalance(account.id, v) : undefined}
+                    />
+                  ) : (
+                    <>
+                      <MobileBalanceColumn label="Total" value={clearedBalance.uncleared_balance} bold />
+                      {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) >= 0.01 ? (
+                        <>
+                          <MobileBalanceColumn label="Cleared" value={clearedBalance.cleared_balance} />
+                          <MobileBalanceColumn label="Uncleared" value={clearedBalance.uncleared_balance - clearedBalance.cleared_balance} />
+                        </>
+                      ) : (
+                        <>
+                          <MobileBalanceColumn label="Cleared" />
+                          <MobileBalanceColumn label="Uncleared" />
+                        </>
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -179,8 +204,14 @@ export function SettingsAccountTableRow({
         <AccountGroupBadge groupName={groupName} colorKey={groupColor} />
       </div>
 
-      {/* Total balance (uncleared_balance) */}
-      {clearedBalance ? (
+      {/* Total balance — editable for off-budget */}
+      {isOffBudget && onSetOffBudgetBalance ? (
+        <InlineBalanceEdit
+          currentBalance={currentBalance}
+          cellStyle={cellStyle}
+          onSubmit={(v) => onSetOffBudgetBalance(account.id, v)}
+        />
+      ) : clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.uncleared_balance), fontWeight: 600 }}>
           {formatSignedCurrency(clearedBalance.uncleared_balance)}
         </div>
@@ -189,9 +220,11 @@ export function SettingsAccountTableRow({
           {formatSignedCurrency(account.balance)}
         </div>
       )}
-      {/* Cleared balance - dash if off-budget or same as total */}
+      {/* Cleared column — "Last set" for off-budget, else cleared balance */}
       {isOffBudget ? (
-        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.3, color: 'var(--text-muted)' }}>—</div>
+        <div style={{ ...cellStyle, justifyContent: 'flex-end', opacity: 0.5, fontSize: '0.8rem' }}>
+          {lastSetLabel}
+        </div>
       ) : clearedBalance ? (
         <div style={{ ...cellStyle, justifyContent: 'flex-end', color: getBalanceColor(clearedBalance.cleared_balance) }}>
           {Math.abs(clearedBalance.uncleared_balance - clearedBalance.cleared_balance) < 0.01

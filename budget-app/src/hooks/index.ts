@@ -20,6 +20,7 @@ export { useNavigationSave } from './useNavigationSave'
 export { useMonthPrefetch } from './useMonthPrefetch'
 export { useEnsureBalancesFresh } from './useEnsureBalancesFresh'
 export { useStaleDataRefresh } from './useStaleDataRefresh'
+export { useSetOffBudgetBalance } from './useSetOffBudgetBalance'
 
 // Migration hooks
 export {

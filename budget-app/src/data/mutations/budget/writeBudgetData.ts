@@ -192,6 +192,37 @@ export async function deleteBudgetAccountGroupKey(
   }
 }
 
+/**
+ * Update off_budget_balance_month on an account via dot-notation.
+ * Only updates if the new yearMonth >= the currently stored value (no backdating).
+ */
+export async function updateOffBudgetBalanceMonth(
+  budgetId: string,
+  accountId: string,
+  yearMonth: string,
+  description: string
+): Promise<void> {
+  const payload: FirestoreData = {
+    [`accounts.${accountId}.off_budget_balance_month`]: yearMonth,
+    updated_at: new Date().toISOString(),
+  }
+  await updateDocByPath('budgets', budgetId, payload, description)
+
+  // Update budget cache
+  const cachedBudget = queryClient.getQueryData<BudgetData>(queryKeys.budget(budgetId))
+  if (cachedBudget?.accounts?.[accountId]) {
+    const updatedAccounts = {
+      ...cachedBudget.accounts,
+      [accountId]: { ...cachedBudget.accounts[accountId], off_budget_balance_month: yearMonth },
+    }
+    queryClient.setQueryData<BudgetData>(queryKeys.budget(budgetId), {
+      ...cachedBudget,
+      accounts: updatedAccounts,
+      budget: { ...cachedBudget.budget, accounts: updatedAccounts },
+    })
+  }
+}
+
 // ============================================================================
 // WRITE UTILITY (updateDoc)
 // ============================================================================

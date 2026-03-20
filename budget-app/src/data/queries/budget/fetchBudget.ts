@@ -90,6 +90,7 @@ function parseAccounts(accountsData: FirestoreData = {}): AccountsMap {
       on_budget: account.on_budget ?? true,
       is_deleted: account.is_deleted ?? false,
       deleted_year_month: account.deleted_year_month,
+      off_budget_balance_month: account.off_budget_balance_month,
     }
   })
   return accounts
