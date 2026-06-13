@@ -1,0 +1,304 @@
+import { useState } from 'react'
+import { useBudget } from '@budget/contexts'
+import { useBudgetData, useMonthData } from '@budget/hooks'
+import { useIsMobile } from '@hooks'
+import { usePayeesQuery } from '@budget/data'
+import { useAddIncome, useUpdateIncome, useDeleteIncome } from '@budget/data/mutations/month'
+import type { FinancialAccount } from '@budget/types'
+import { Button, PrerequisiteWarning } from '@components/ui'
+import { formatCurrency, getBalanceColor } from '@budget/components/ui'
+import { colors } from '@styles/shared'
+import { IncomeForm } from '../Income'
+import { IncomeGridRow } from './IncomeGridRow'
+import { logUserAction, getDefaultFormDate, parseDateToYearMonth } from '@utils'
+import { isNoAccount, getAccountDisplayName } from '@budget/data/constants'
+
+// Column header style for the grid
+const columnHeaderStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  opacity: 0.6,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  padding: '0.5rem',
+  borderTop: '1px solid var(--border-subtle)',
+}
+
+export function MonthIncome() {
+  const { selectedBudgetId, currentYear, currentMonthNumber, setCurrentYear, setCurrentMonthNumber } = useBudget()
+  const { accounts, accountGroups } = useBudgetData()
+  const { month: currentMonth, isLoading: monthLoading } = useMonthData(selectedBudgetId, currentYear, currentMonthNumber)
+
+  // Income mutations - imported directly
+  const { addIncome } = useAddIncome()
+  const { updateIncome } = useUpdateIncome()
+  const { deleteIncome } = useDeleteIncome()
+
+  const isMobile = useIsMobile()
+  const [error, setError] = useState<string | null>(null)
+  const [showAddIncome, setShowAddIncome] = useState(false)
+  const [editingIncomeId, setEditingIncomeId] = useState<string | null>(null)
+
+  // Note: Recalculation is NOT triggered on this tab since it only shows raw transactions.
+  // Edits here will update the month_map (via writeMonthData) and trigger recalculation
+  // will happen when the user navigates to Categories or Accounts tabs.
+
+  // Only fetch payees when a form is open (lazy loading)
+  const isFormOpen = showAddIncome || editingIncomeId !== null
+  const payeesQuery = usePayeesQuery(selectedBudgetId, { enabled: isFormOpen, ensureArray: true })
+  const payees = payeesQuery.data ?? []
+
+  // Helper to get effective on_budget value considering group overrides
+  function getEffectiveOnBudget(account: FinancialAccount): boolean {
+    const group = account.account_group_id ? accountGroups[account.account_group_id] : undefined
+    if (group && group.on_budget !== null) return group.on_budget
+    return account.on_budget !== false
+  }
+
+  // Account entry type for working with accounts map
+  type AccountEntry = [string, FinancialAccount]
+
+  // Filter accounts for income dropdown
+  const activeOnBudgetAccounts = Object.entries(accounts).filter(
+    ([, a]) => getEffectiveOnBudget(a)
+  ) as AccountEntry[]
+  const markedIncomeAccounts = activeOnBudgetAccounts.filter(([, a]) => a.is_income_account)
+  const incomeAccounts = markedIncomeAccounts.length > 0 ? markedIncomeAccounts : activeOnBudgetAccounts
+  const defaultIncomeAccountEntry = activeOnBudgetAccounts.find(([, a]) => a.is_income_default)
+  const defaultIncomeAccountId = defaultIncomeAccountEntry ? defaultIncomeAccountEntry[0] : undefined
+
+  // Calculate total income for the month
+  const totalMonthlyIncome = currentMonth?.income.reduce((sum, inc) => sum + inc.amount, 0) || 0
+
+  // Handle income operations
+  // Note: Mutations handle optimistic cache updates internally
+  function handleAddIncome(amount: number, accountId: string, date: string, payee?: string, description?: string) {
+    if (!selectedBudgetId) return
+    setError(null)
+    setShowAddIncome(false) // Close form immediately - mutation handles optimistic update
+
+    // Parse the date to determine which month this income belongs to
+    const { year: incomeYear, month: incomeMonth } = parseDateToYearMonth(date)
+
+    // Navigate to target month if different
+    if (incomeYear !== currentYear || incomeMonth !== currentMonthNumber) {
+      setCurrentYear(incomeYear)
+      setCurrentMonthNumber(incomeMonth)
+    }
+
+    // Call mutation directly with explicit params
+    addIncome(selectedBudgetId, incomeYear, incomeMonth, amount, accountId, date, payee, description)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to add income')
+      })
+  }
+
+  function handleUpdateIncome(incomeId: string, amount: number, accountId: string, date: string, payee?: string, description?: string) {
+    if (!selectedBudgetId) return
+    setError(null)
+    setEditingIncomeId(null) // Close form immediately - mutation handles optimistic update
+
+    // Call mutation directly with explicit params
+    updateIncome(selectedBudgetId, currentYear, currentMonthNumber, incomeId, amount, accountId, date, payee, description)
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Failed to update income')
+      })
+  }
+
+  function handleDeleteIncome(incomeId: string) {
+    if (!selectedBudgetId) return
+    if (!confirm('Are you sure you want to delete this income entry?')) return
+    setError(null)
+
+    // Call mutation directly with explicit params
+    deleteIncome(selectedBudgetId, currentYear, currentMonthNumber, incomeId).catch(err => {
+      setError(err instanceof Error ? err.message : 'Failed to delete income')
+    })
+  }
+
+  return (
+    <div style={{
+      opacity: monthLoading ? 0.5 : 1,
+      transition: 'opacity 0.15s ease-out',
+      pointerEvents: monthLoading ? 'none' : 'auto',
+    }}>
+      {error && (
+        <div style={{
+          background: `color-mix(in srgb, ${colors.error} 15%, transparent)`,
+          border: `1px solid ${colors.error}`,
+          borderRadius: '8px',
+          padding: '0.75rem',
+          marginBottom: '1rem',
+          color: colors.error,
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* CSS Grid container - header and content share the same grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '5rem 1.5fr 1fr 6rem 1fr 4rem',
+      }}>
+        {/* Sticky wrapper using subgrid on desktop, block on mobile */}
+        <div style={{
+          gridColumn: '1 / -1',
+          position: 'sticky',
+          top: 0,
+          zIndex: 49,
+          backgroundColor: 'var(--sticky-header-bg)',
+          borderBottom: '1px solid var(--border-medium)',
+          display: isMobile ? 'block' : 'grid',
+          gridTemplateColumns: isMobile ? undefined : 'subgrid',
+        }}>
+          {/* Stats + Button row - spans all columns */}
+          <div style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '0.5rem 1rem',
+            fontSize: '0.85rem',
+            paddingTop: '0.5rem',
+            paddingBottom: '0.5rem',
+          }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', flex: 1, alignItems: 'center' }}>
+              <span style={{ fontWeight: 600 }}>Income:</span>
+              <span style={{ opacity: 0.6, fontSize: '0.8rem' }}>
+                Incoming money that should be factored into income calculations
+              </span>
+              <span>
+                <span style={{ opacity: 0.6 }}>Total: </span>
+                <span style={{ color: getBalanceColor(totalMonthlyIncome), fontWeight: 600 }}>{formatCurrency(totalMonthlyIncome)}</span>
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+              {!showAddIncome && (
+                <Button
+                  actionName="Open Add Income Form"
+                  onClick={() => setShowAddIncome(true)}
+                  disabled={incomeAccounts.length === 0}
+                  disabledReason={
+                    Object.keys(accounts).length === 0
+                      ? "Create an account first"
+                      : "Set up an income account first"
+                  }
+                  style={{ fontSize: '0.8rem', padding: '0.4em 0.8em' }}
+                >
+                  + Add Income
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Column headers - desktop only */}
+          {!isMobile && (
+            <>
+              <div style={columnHeaderStyle}>Date</div>
+              <div style={columnHeaderStyle}>Payee</div>
+              <div style={columnHeaderStyle}>Account</div>
+              <div style={{ ...columnHeaderStyle, textAlign: 'right' }}>Amount</div>
+              <div style={columnHeaderStyle}>Description</div>
+              <div style={columnHeaderStyle}></div>
+            </>
+          )}
+        </div>
+
+        {/* Info note about tithing - spans all columns */}
+        <div style={{
+          gridColumn: '1 / -1',
+          fontSize: '0.8rem',
+          opacity: 0.55,
+          fontStyle: 'italic',
+          padding: '0.5rem 0',
+        }}>
+          💡 All income entries on this page count towards the tithing owed calculation.
+        </div>
+
+        {/* Warning messages - span all columns */}
+        {incomeAccounts.length === 0 && (
+          <PrerequisiteWarning
+            message={
+              Object.keys(accounts).length === 0
+                ? 'You need to create at least one account before adding income.'
+                : 'No accounts are set up for income deposits. Edit an account and enable "Show in income deposit list".'
+            }
+            linkText="Manage accounts"
+            linkTo="/budget/settings/accounts"
+          />
+        )}
+
+        {/* Add Income Form - spans all columns */}
+        {showAddIncome && (
+          <div style={{ gridColumn: '1 / -1', marginBottom: '1rem' }}>
+            <IncomeForm
+              accounts={incomeAccounts}
+              accountGroups={accountGroups}
+              payees={payees}
+              defaultAccountId={defaultIncomeAccountId}
+              defaultDate={getDefaultFormDate(currentYear, currentMonthNumber)}
+              onSubmit={handleAddIncome}
+              onCancel={() => setShowAddIncome(false)}
+              submitLabel="Add Income"
+              isMobile={isMobile}
+            />
+          </div>
+        )}
+
+        {/* Income List - each row uses display: contents */}
+        {currentMonth?.income
+          .slice()
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+          .map((income, index) => (
+            editingIncomeId === income.id ? (
+              <div key={income.id} style={{ gridColumn: '1 / -1', padding: '0.5rem' }}>
+                <IncomeForm
+                  accounts={incomeAccounts}
+                  accountGroups={accountGroups}
+                  payees={payees}
+                  initialData={income}
+                  onSubmit={(amount, accountId, date, payee, description) =>
+                    handleUpdateIncome(income.id, amount, accountId, date, payee, description)
+                  }
+                  onCancel={() => setEditingIncomeId(null)}
+                  onDelete={() => handleDeleteIncome(income.id)}
+                  submitLabel="Save"
+                  isMobile={isMobile}
+                />
+              </div>
+            ) : (
+              <IncomeGridRow
+                key={income.id}
+                income={income}
+                accountName={getAccountDisplayName(income.account_id, accounts)}
+                accountGroupName={
+                  isNoAccount(income.account_id) ? undefined : (
+                    accounts[income.account_id]?.account_group_id
+                      ? accountGroups[accounts[income.account_id]!.account_group_id!]?.name
+                      : undefined
+                  )
+                }
+                onEdit={() => {
+                  logUserAction('CLICK', 'Edit Income', { details: income.payee || `$${income.amount}` })
+                  setEditingIncomeId(income.id)
+                }}
+                onDelete={() => handleDeleteIncome(income.id)}
+                isMobile={isMobile}
+                isEvenRow={index % 2 === 0}
+              />
+            )
+          ))}
+
+        {/* Empty state - spans all columns */}
+        {(!currentMonth?.income || currentMonth.income.length === 0) && !showAddIncome && (
+          <p style={{ gridColumn: '1 / -1', opacity: 0.5, fontSize: '0.9rem', textAlign: 'center', padding: '1.5rem' }}>
+            No income recorded for this month
+          </p>
+        )}
+
+        {/* Bottom padding */}
+        <div style={{ gridColumn: '1 / -1', height: '2rem' }} />
+      </div>
+    </div>
+  )
+}

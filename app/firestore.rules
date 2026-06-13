@@ -1,0 +1,322 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is an admin (via permission_flags.is_admin on their user doc)
+    function isAdmin() {
+      return request.auth != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permission_flags.is_admin == true;
+    }
+
+    // User documents
+    match /users/{userId} {
+      // Users can read their own document, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      // Users can create their own document, but cannot set permission_flags
+      // Admins can create any user document, but also cannot set permission_flags (only via Firebase Console)
+      allow create: if request.auth != null
+                    && !hasPermissionFlags()
+                    && (
+                      isAdmin() ||
+                      (request.auth.uid == userId && request.resource.data.uid == userId)
+                    );
+
+      // Users can update their own document, admins can update any
+      // NOBODY can change permission_flags via Firestore (only via Firebase Console)
+      allow update: if request.auth != null
+                    && !isPermissionFlagsChanging()
+                    && (
+                      // Admin can update anything else
+                      isAdmin() ||
+                      // Regular user can update their own doc
+                      (request.auth.uid == userId && validateBudgetIdsUpdate())
+                    );
+
+      // Users can delete their own document, admins can delete any
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      // Check if permission_flags is being set on create
+      function hasPermissionFlags() {
+        return 'permission_flags' in request.resource.data;
+      }
+
+      // Prevent anyone from changing permission_flags via Firestore
+      // This includes is_admin, is_test, and any other flags
+      // We check each flag individually because map comparison can be unreliable
+      function isPermissionFlagsChanging() {
+        // Get old and new values for each flag (default to null if not set)
+        let oldIsAdmin = resource.data.get('permission_flags', {}).get('is_admin', null);
+        let newIsAdmin = request.resource.data.get('permission_flags', {}).get('is_admin', null);
+
+        let oldIsTest = resource.data.get('permission_flags', {}).get('is_test', null);
+        let newIsTest = request.resource.data.get('permission_flags', {}).get('is_test', null);
+
+        // Block if ANY permission flag is changing
+        return oldIsAdmin != newIsAdmin || oldIsTest != newIsTest;
+      }
+
+      // Helper function to validate budget_ids changes
+      // If adding a new budget_id, user must be in that budget's user_ids (invited)
+      function validateBudgetIdsUpdate() {
+        let oldBudgetIds = resource.data.budget_ids;
+        let newBudgetIds = request.resource.data.budget_ids;
+
+        // Get budgets being added (in new but not in old)
+        let addedBudgets = newBudgetIds.removeAll(oldBudgetIds);
+
+        // If no budgets being added, allow (could be removing or other field changes)
+        // If budgets are being added, each must have this user in its user_ids
+        return addedBudgets.size() == 0 || allBudgetsHaveUserInvited(addedBudgets);
+      }
+
+      // Check if user is invited to all the budgets being added
+      function allBudgetsHaveUserInvited(budgetIds) {
+        // For single budget addition (most common case)
+        return budgetIds.size() == 1
+               && exists(/databases/$(database)/documents/budgets/$(budgetIds[0]))
+               && request.auth.uid in get(/databases/$(database)/documents/budgets/$(budgetIds[0])).data.user_ids;
+      }
+    }
+
+    // Budget documents
+    match /budgets/{budgetId} {
+      // Maximum number of users that can be invited/accepted to a budget
+      function maxBudgetUsers() {
+        return 5;
+      }
+
+      // The sample budget ID that all admins can access
+      function isSampleBudget() {
+        return budgetId == 'sample_budget';
+      }
+
+      // Helper function to check if user has access via their user document
+      function userHasBudgetAccess() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Helper to check if user is invited (in budget's user_ids) - for accepting invites
+      function userIsInvited() {
+        return request.auth.uid in resource.data.user_ids;
+      }
+
+      // Helper to check if user is the current owner
+      function isCurrentOwner() {
+        return request.auth.uid == resource.data.owner_id;
+      }
+
+      // Validate user_ids and accepted_user_ids array sizes
+      function validateUserArraySizes() {
+        let userIds = request.resource.data.get('user_ids', []);
+        let acceptedUserIds = request.resource.data.get('accepted_user_ids', []);
+        return userIds.size() <= maxBudgetUsers() && acceptedUserIds.size() <= maxBudgetUsers();
+      }
+
+      // Check if owner_id is being changed
+      function isOwnerIdChanging() {
+        return request.resource.data.owner_id != resource.data.owner_id;
+      }
+
+      // Allow read if:
+      // - User is admin (can read any budget, including sample_budget), OR
+      // - User has full access (budget in their budget_ids), OR
+      // - User is invited (in budget's user_ids) - so they can see invite details
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccess() || userIsInvited());
+
+      // Allow create if user is authenticated and sets themselves as owner (or is admin)
+      // Also validate that accepted_user_ids only contains the creator (can't pre-accept other users)
+      // Also validate array sizes don't exceed limit
+      // Note: Admins can create the sample_budget without normal ownership rules
+      allow create: if request.auth != null && (
+                      isAdmin() ||
+                      (request.auth.uid == request.resource.data.owner_id
+                       && request.auth.uid in request.resource.data.user_ids
+                       && validateAcceptedUserIdsOnCreate()
+                       && validateUserArraySizes())
+                    );
+
+      // On budget creation, accepted_user_ids must be empty or only contain the creator
+      function validateAcceptedUserIdsOnCreate() {
+        let accepted = request.resource.data.get('accepted_user_ids', []);
+        // Must be empty OR contain only the creator
+        return accepted.size() == 0 ||
+               (accepted.size() == 1 && request.auth.uid in accepted);
+      }
+
+      // Allow update if user has full access (or is admin)
+      // Only the current owner can change owner_id (ownership transfer)
+      // Array sizes must not exceed limit
+      // Note: Admins have full update access to sample_budget
+      allow update: if request.auth != null
+                    && validateUserArraySizes()
+                    && (
+                      isAdmin() ||
+                      (userHasBudgetAccess() && (!isOwnerIdChanging() || isCurrentOwner()))
+                    );
+
+      // Allow delete only by owner (and owner must have access) or admin
+      allow delete: if request.auth != null && (
+                      isAdmin() ||
+                      (userHasBudgetAccess() && request.auth.uid == resource.data.owner_id)
+                    );
+    }
+
+    // Feedback collection
+    match /feedback/{docId} {
+      // Users can only read their own feedback, admins can read all
+      // This prevents information leakage (email addresses, feedback content)
+      allow read: if request.auth != null && (
+                    isAdmin() ||
+                    docId == request.auth.token.email ||
+                    docId == request.auth.uid
+                  );
+
+      // Users can only create/update docs where user_email matches their auth email
+      // Admins can create/update any
+      allow create, update: if request.auth != null && (
+                              isAdmin() ||
+                              request.resource.data.user_email == request.auth.token.email
+                            );
+
+      // Only admins can delete feedback
+      allow delete: if isAdmin();
+    }
+
+    // Months collection - stores monthly income/expense data per budget
+    // Document ID format: {budgetId}_{year}_{month} (e.g., budget_123_2024_01)
+    match /months/{monthId} {
+      // Check if the month belongs to the sample budget
+      function isMonthForSampleBudget() {
+        return resource.data.budget_id == 'sample_budget';
+      }
+
+      // For create, check if creating a month for the sample budget
+      function isNewMonthForSampleBudget() {
+        return request.resource.data.budget_id == 'sample_budget';
+      }
+
+      // Helper function to check if user has access to the budget referenced in this month document
+      function userHasBudgetAccessForMonth() {
+        let budgetId = resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // For create, we need to check the incoming data since resource.data doesn't exist yet
+      function userHasBudgetAccessForNewMonth() {
+        let budgetId = request.resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Allow read if user has access to the budget or is admin
+      // Note: Admins can read sample_budget months even without it in their budget_ids
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForMonth());
+
+      // Allow create if user has access to the budget referenced in the new document
+      // Note: Admins can create months for sample_budget
+      allow create: if request.auth != null && (isAdmin() || userHasBudgetAccessForNewMonth());
+
+      // Allow update if user has access to the budget (and budget_id cannot be changed)
+      // Note: Admins can update sample_budget months
+      allow update: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForMonth())
+                    && request.resource.data.budget_id == resource.data.budget_id;
+
+      // Allow delete if user has access to the budget or is admin
+      allow delete: if request.auth != null && (isAdmin() || userHasBudgetAccessForMonth());
+    }
+
+    // Payees collection - stores payee names per budget
+    // Document ID is the budget ID (one payees document per budget)
+    match /payees/{budgetId} {
+      // Check if this is the sample budget payees document
+      function isSampleBudgetPayees() {
+        return budgetId == 'sample_budget';
+      }
+
+      // Helper function to check if user has access to this budget
+      function userHasBudgetAccessForPayees() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Allow read if user has access to the budget or is admin
+      // Note: Admins can read sample_budget payees
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForPayees());
+
+      // Allow create if user has access to the budget and budget_id matches document ID
+      // Note: Admins can create payees for sample_budget
+      allow create: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForPayees())
+                    && request.resource.data.budget_id == budgetId;
+
+      // Allow update if user has access to the budget (and budget_id cannot be changed)
+      // Note: Admins can update sample_budget payees
+      allow update: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForPayees())
+                    && request.resource.data.budget_id == resource.data.budget_id;
+
+      // Allow delete if user has access to the budget or is admin
+      allow delete: if request.auth != null && (isAdmin() || userHasBudgetAccessForPayees());
+    }
+
+    // Data mappings collection - stores import mappings per budget
+    // Document ID format: {budgetId}_import_data_map
+    // IMPORTANT: Document must contain budget_id field for security validation
+    match /data_mappings/{docId} {
+      // Helper function to check if user has access to this mapping's budget
+      function userHasBudgetAccessForMapping() {
+        let budgetId = resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // For create, check the incoming data since resource.data doesn't exist yet
+      function userHasBudgetAccessForNewMapping() {
+        let budgetId = request.resource.data.budget_id;
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+               && budgetId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.budget_ids;
+      }
+
+      // Allow read if user has access to the budget or is admin
+      allow read: if request.auth != null && (isAdmin() || userHasBudgetAccessForMapping());
+
+      // Allow create if user has access to the budget
+      allow create: if request.auth != null && (isAdmin() || userHasBudgetAccessForNewMapping());
+
+      // Allow update if user has access to the budget (and budget_id cannot be changed)
+      allow update: if request.auth != null
+                    && (isAdmin() || userHasBudgetAccessForMapping())
+                    && request.resource.data.budget_id == resource.data.budget_id;
+
+      // Allow delete if user has access to the budget or is admin
+      allow delete: if request.auth != null && (isAdmin() || userHasBudgetAccessForMapping());
+    }
+
+    // Packing collection - stores packing lists shared among family members
+    // Single document (packing/shared) with all items, tasks, trips, and taxonomies
+    // Access controlled by userIds array on the document
+    match /packing/{docId} {
+      // Allow read if user is in userIds or is admin
+      allow read: if request.auth != null && (
+        isAdmin() || request.auth.uid in resource.data.userIds
+      );
+
+      // Only admins can create the initial document
+      allow create: if request.auth != null && isAdmin();
+
+      // Allow update if user is in userIds or is admin
+      allow update: if request.auth != null && (
+        isAdmin() || request.auth.uid in resource.data.userIds
+      );
+
+      // Only admins can delete
+      allow delete: if request.auth != null && isAdmin();
+    }
+  }
+}

@@ -4,7 +4,7 @@ Help me add minimal, focused console logging so we can:
 
 1. **Identify the issue** – Log the exact values and control flow where the bug manifests (e.g. before/after a suspicious line, inside a condition, at the start of a handler).
 2. **Fit on one screen** – Keep total debug output short enough to fit in a single browser DevTools console view so it can be copied in one go and pasted to the AI.
-3. **Single-focus console** – Clean up other debug output so we only see output related to this bug. Temporarily disable Firebase read/write logging by setting `logFirebaseOperations` to `false` in `budget-app/src/constants/featureFlags.ts` (add a `// DEBUG: revert after fixing bug` comment so it gets turned back on later). Remove or comment out any other existing console logs in the code paths we’re debugging unless they are directly relevant.
+3. **Single-focus console** – Clean up other debug output so we only see output related to this bug. Temporarily disable Firebase read/write logging by setting `logFirebaseOperations` to `false` in `app/src/constants/featureFlags.ts` (add a `// DEBUG: revert after fixing bug` comment so it gets turned back on later). Remove or comment out any other existing console logs in the code paths we’re debugging unless they are directly relevant.
 4. **Pinpoint the cause** – From the output, we should be able to say what is wrong (wrong value, wrong branch, wrong order, missing data, etc.) and then fix it.
 5. **Show cause and effect** – Log **every user action** related to the problem to the console in plain language (e.g. “User clicked ‘Save’ button”, “User selected month March 2025”). This makes it easy to see the sequence of actions that led to the bug.
 6. **Show app intent** – Log in **plain language** everything the app is trying to do (e.g. “Fetching budget for month …”, “Recalculating category balances”, “Saving transaction”). Scanning the console at any time should show what the app is attempting at that moment.
@@ -18,7 +18,7 @@ Help me add minimal, focused console logging so we can:
 - **Avoid re-render spam** – Do not put logs in component bodies, hooks, or other code that runs on every re-render, unless we are specifically debugging re-renders. Prefer logging inside event handlers, effect callbacks (when the effect has meaningful deps), or one-off code paths so the console stays readable.
 - **Structured for copy-paste** – Prefer a few `console.log` lines that print compact, readable lines (e.g. `key: value` or short JSON) rather than deep nested dumps.
 - **Temporary** – Add comments so we know these logs are for debugging and can be removed once the bug is fixed.
-- **Single-focus console** – Before adding new logs, temporarily set `logFirebaseOperations: false` in `budget-app/src/constants/featureFlags.ts` (with a `// DEBUG: revert after fixing bug` comment). Remove or comment out any other `console.log`/warn/error in the code paths we’re debugging so the console only shows output for this bug.
+- **Single-focus console** – Before adding new logs, temporarily set `logFirebaseOperations: false` in `app/src/constants/featureFlags.ts` (with a `// DEBUG: revert after fixing bug` comment). Remove or comment out any other `console.log`/warn/error in the code paths we’re debugging so the console only shows output for this bug.
 
 ## What to produce
 

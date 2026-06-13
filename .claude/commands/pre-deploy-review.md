@@ -8,14 +8,14 @@ Walk through each step below to confirm the change is ready. Fix any issues foun
 4. **Responsive** – Ensure all changes account for desktop vs mobile views.
 5. **Errors** – Ensure all errors are shown via the common bottom banner system (abbreviated), with the full error message in the console.
 6. **Review checks** – Run review checks and fix any issues:
-   - Run `bash budget-app/scripts/review-checks.sh` from the repo root (or `bash scripts/review-checks.sh` from the budget-app directory). It checks:
+   - Run `bash app/scripts/review-checks.sh` from the repo root (or `bash scripts/review-checks.sh` from the app directory). It checks:
      - File length (no .ts/.tsx over 400 lines). Shorten files by modularizing code, not by stripping comments or useful information.
-     - Theme colors (no raw hex/rgba outside `src/constants/colors.ts` and `src/index.css`; every color in constants must have light and dark).
+     - Theme colors (no raw hex/rgba outside `src/shared/constants/colors.ts` and `src/index.css`; every color in constants must have light and dark).
      - Rogue console.log statements (outside allowed files).
      - Deep relative imports (4+ levels – should use path aliases).
      - Imports bypassing barrel files (should use index.ts exports).
    - Fix all violations before proceeding.
 7. **Lint and build** – Ensure lint and build complete successfully with no errors and all warnings resolved:
-   - Run `cd budget-app && npm run lint` to catch ESLint errors and warnings.
-   - Run `cd budget-app && npm run build` to catch anything from the build process that should be addressed.
+   - Run `cd app && npm run lint` to catch ESLint errors and warnings.
+   - Run `cd app && npm run build` to catch anything from the build process that should be addressed.
    - Fix all warnings, even if they weren't introduced in this session. This includes `@typescript-eslint/no-explicit-any` – properly type the code or add eslint-disable comments with justification.

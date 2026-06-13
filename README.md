@@ -5,7 +5,7 @@ A React SPA for tarronlane01.github.io
 ## Development
 
 ```bash
-cd budget-app
+cd app
 npm install
 npm run dev
 ```
@@ -13,7 +13,7 @@ npm run dev
 ## Building for GitHub Pages
 
 ```bash
-cd budget-app
+cd app
 npm run build
 ```
 
@@ -26,11 +26,11 @@ This outputs the built files to `/docs` so GitHub Pages can serve them at `tarro
 To build, commit, and push in one command:
 
 ```bash
-cd budget-app
+cd app
 npm run publish
 ```
 
-Added to `budget-app/package.json`:
+Added to `app/package.json`:
 ```json
 "publish": "npm run build && cd .. && git add -A && (git diff --cached --quiet || git commit -m 'Build and publish') && git push"
 ```
@@ -45,6 +45,6 @@ The app uses the [spa-github-pages](https://github.com/rafgraph/spa-github-pages
 ## Firebase
 
 ```bash
-cd budget-app
+cd app
 npm install firebase
 ```

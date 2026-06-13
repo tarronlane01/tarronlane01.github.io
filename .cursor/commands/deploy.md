@@ -1,13 +1,13 @@
 # Deploy: Publish via script
 
-Deploy by running the publish script from the budget-app directory.
+Deploy by running the publish script from the app directory.
 
 **Requirements:**
 - Use a commit message of **10 words or less** that captures what was done in this thread.
-- Run from the budget-app directory:
+- Run from the app directory:
 
 ```bash
-cd budget-app && ./scripts/publish.sh "your commit message"
+cd app && ./scripts/publish.sh "your commit message"
 ```
 
 The script automatically checks:

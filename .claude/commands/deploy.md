@@ -1,6 +1,6 @@
 # Deploy: Publish via script
 
-Deploy by running the publish script from the budget-app directory.
+Deploy by running the publish script from the app directory.
 
 ## Steps
 
@@ -9,7 +9,7 @@ Deploy by running the publish script from the budget-app directory.
 3. Run the publish script:
 
 ```bash
-cd budget-app && ./scripts/publish.sh "your commit message"
+cd app && ./scripts/publish.sh "your commit message"
 ```
 
 The script automatically runs precommit checks, code quality checks, builds, commits, and pushes. If any step fails, fix the issue and re-run.

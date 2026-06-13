@@ -1,0 +1,4 @@
+- Make sure logic and files is appropriately disributed between individual apps and the shared codebase.
+- Make sure our firebase database rules document is accurate to represent good security
+- Make sure our code is DRY, and things are repeated that should be combined into common functions/modules
+- Proper use of UseEffect, not misused
