@@ -1,7 +1,17 @@
 import { deleteField } from '@firestore'
 import { usePackingMutation } from './usePackingMutation'
+import { generateId } from '@packing/data/packingHelpers'
 import type { PackingDocument } from '@packing/data/types'
 import type { FirestoreData } from '@firestore'
+
+interface LegacyItem {
+  name: string
+  categoryId: string
+  featureIds: string[]
+  personIds: string[]
+  perPerson?: boolean
+  phaseId?: string
+}
 
 interface LegacySection {
   name: string
@@ -129,6 +139,134 @@ export function usePackingMigrations() {
           }
 
           return result as PackingDocument
+        },
+      })
+    },
+
+    migratePersonsToPerPerson: (packing: PackingDocument) => {
+      const items = packing.items as Record<string, LegacyItem>
+      const updates: FirestoreData = {}
+
+      // Build person name → existing feature ID map (case-insensitive)
+      const featureByName: Record<string, string> = {}
+      for (const [fId, feat] of Object.entries(packing.features)) {
+        if (feat) featureByName[feat.name.toLowerCase()] = fId
+      }
+
+      // Track new features to create and person→feature mapping
+      const personToFeature: Record<string, string> = {}
+      const newFeatures: Record<string, { name: string }> = {}
+
+      // 1. Find items with perPerson === false AND personIds.length > 0
+      const affectedItemIds: string[] = []
+      for (const [itemId, item] of Object.entries(items)) {
+        if (item.perPerson === false && item.personIds.length > 0) {
+          affectedItemIds.push(itemId)
+          for (const pId of item.personIds) {
+            if (personToFeature[pId]) continue
+            const personName = packing.persons[pId]?.name
+            if (!personName) continue
+            const existing = featureByName[personName.toLowerCase()]
+            if (existing) {
+              personToFeature[pId] = existing
+            } else {
+              const newId = generateId('fea')
+              personToFeature[pId] = newId
+              featureByName[personName.toLowerCase()] = newId
+              newFeatures[newId] = { name: personName }
+            }
+          }
+        }
+      }
+
+      // 2. Create new features in Firestore
+      for (const [feaId, feat] of Object.entries(newFeatures)) {
+        updates[`features.${feaId}`] = feat
+      }
+
+      // 3. Update affected items: add feature IDs, clear personIds
+      for (const itemId of affectedItemIds) {
+        const item = items[itemId]
+        const mappedFeatureIds = item.personIds
+          .map(pId => personToFeature[pId])
+          .filter(Boolean)
+        const mergedFeatureIds = [...new Set([...item.featureIds, ...mappedFeatureIds])]
+        updates[`items.${itemId}.featureIds`] = mergedFeatureIds
+        updates[`items.${itemId}.personIds`] = []
+      }
+
+      // 4. Update trips that had these persons: add matching feature IDs
+      for (const [tripId, trip] of Object.entries(packing.trips)) {
+        const tripFeatureIds = [...trip.featureIds]
+        let changed = false
+        for (const pId of trip.personIds) {
+          const feaId = personToFeature[pId]
+          if (feaId && !tripFeatureIds.includes(feaId)) {
+            tripFeatureIds.push(feaId)
+            changed = true
+          }
+        }
+        if (changed) {
+          updates[`trips.${tripId}.featureIds`] = tripFeatureIds
+        }
+      }
+
+      // 5. Delete perPerson field from ALL items
+      for (const itemId of Object.keys(items)) {
+        updates[`items.${itemId}.perPerson`] = deleteField()
+      }
+
+      if (Object.keys(updates).length === 0) return
+
+      mutation.mutate({
+        updates,
+        description: 'migrating persons to per-person',
+        optimisticUpdate: (prev) => {
+          const result = { ...prev }
+
+          // Add new features
+          result.features = { ...result.features, ...newFeatures }
+
+          // Update items
+          const newItems = { ...result.items }
+          for (const itemId of affectedItemIds) {
+            const item = items[itemId]
+            const mappedFeatureIds = item.personIds
+              .map(pId => personToFeature[pId])
+              .filter(Boolean)
+            newItems[itemId] = {
+              ...newItems[itemId],
+              featureIds: [...new Set([...item.featureIds, ...mappedFeatureIds])],
+              personIds: [],
+            }
+          }
+          // Remove perPerson from all items in cache
+          for (const itemId of Object.keys(newItems)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+            const { perPerson: _perPerson, ...rest } = newItems[itemId] as any
+            newItems[itemId] = rest
+          }
+          result.items = newItems
+
+          // Update trip featureIds
+          const newTrips = { ...result.trips }
+          for (const [tripId, trip] of Object.entries(packing.trips)) {
+            const tripFeatureIds = [...trip.featureIds]
+            let changed = false
+            for (const pId of trip.personIds) {
+              const feaId = personToFeature[pId]
+              if (feaId && !tripFeatureIds.includes(feaId)) {
+                tripFeatureIds.push(feaId)
+                changed = true
+              }
+            }
+            if (changed) {
+              newTrips[tripId] = { ...newTrips[tripId], featureIds: tripFeatureIds }
+            }
+          }
+          result.trips = newTrips
+
+          return result
         },
       })
     },

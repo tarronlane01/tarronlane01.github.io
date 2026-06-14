@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface PackingFabProps {
   onAddItem: () => void
@@ -8,9 +8,19 @@ interface PackingFabProps {
 
 export function PackingFab({ onAddItem, onAddTask, onAddFeedback }: PackingFabProps) {
   const [expanded, setExpanded] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!expanded) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setExpanded(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [expanded])
 
   return (
-    <div style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 100 }}>
+    <div ref={ref} style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 100 }}>
       {expanded && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <button onClick={() => { onAddItem(); setExpanded(false) }} style={fabOptionStyle}>

@@ -3,34 +3,46 @@ import type { PackingDocument, Task } from '@packing/data/types'
 interface TaskListProps {
   packing: PackingDocument
   filterPhaseId?: string
+  filterFeatureId?: string
+  searchQuery?: string
   onEdit: (id: string, task: Task) => void
   onAdd?: (phaseId: string) => void
 }
 
-export function TaskList({ packing, filterPhaseId, onEdit, onAdd }: TaskListProps) {
+export function TaskList({ packing, filterPhaseId, filterFeatureId, searchQuery, onEdit, onAdd }: TaskListProps) {
   const { phases, features } = packing
 
-  const filteredTasks = filterPhaseId
+  let filteredTasks = filterPhaseId
     ? Object.fromEntries(Object.entries(packing.tasks).filter(([, task]) => {
         if (filterPhaseId === '_unassigned') return !task.phaseId
         return task.phaseId === filterPhaseId
       }))
     : packing.tasks
 
+  if (filterFeatureId) {
+    filteredTasks = Object.fromEntries(Object.entries(filteredTasks).filter(([, task]) =>
+      task.featureIds.includes(filterFeatureId)))
+  }
+
+  const searchFiltered = searchQuery
+    ? Object.fromEntries(Object.entries(filteredTasks).filter(([, task]) =>
+        task.name.toLowerCase().includes(searchQuery.toLowerCase())))
+    : filteredTasks
+
   const sortedPhases = Object.entries(phases)
     .sort(([, a], [, b]) => a.sortOrder - b.sortOrder)
 
-  const unphased = Object.entries(filteredTasks).filter(([, task]) => !task.phaseId || !phases[task.phaseId])
+  const unphased = Object.entries(searchFiltered).filter(([, task]) => !task.phaseId || !phases[task.phaseId])
   const grouped = sortedPhases.map(([phaseId, phase]) => ({
     phaseId,
     phaseName: phase.name,
-    tasks: Object.entries(filteredTasks)
+    tasks: Object.entries(searchFiltered)
       .filter(([, task]) => task.phaseId === phaseId)
       .sort(([, a], [, b]) => a.name.localeCompare(b.name)),
   }))
 
-  if (Object.keys(filteredTasks).length === 0) {
-    const msg = filterPhaseId ? 'No tasks match this phase.' : 'No tasks yet. Add your first task.'
+  if (Object.keys(searchFiltered).length === 0) {
+    const msg = searchQuery ? 'No tasks match your search.' : filterPhaseId ? 'No tasks match this phase.' : 'No tasks yet. Add your first task.'
     return <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{msg}</p>
   }
 

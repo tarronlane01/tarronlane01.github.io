@@ -393,3 +393,8 @@ export const flexColumn: CSSProperties = {
   flexDirection: 'column',
 }
 
+// Small red X overlay for toggle-close buttons (e.g. search icon when active)
+export const searchCloseIndicator: CSSProperties = {
+  position: 'absolute', top: '-0.125rem', right: '-0.125rem',
+  fontSize: '0.55rem', fontWeight: 700, lineHeight: 1, color: colors.error,
+}

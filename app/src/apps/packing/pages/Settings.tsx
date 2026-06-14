@@ -7,10 +7,9 @@ import { usePhaseMutations } from '@packing/data/mutations/phases'
 import { useFeatureMutations } from '@packing/data/mutations/features'
 import { usePersonMutations } from '@packing/data/mutations/persons'
 import { useUserMutations } from '@packing/data/mutations/users'
-import { usePackingMigrations } from '@packing/data/mutations/migrate'
 import { readFeedbackItems, toggleFeedbackDone, deleteFeedbackItem } from '@packing/data/mutations/feedback'
 import type { FeedbackItem } from '@packing/data/mutations/feedback'
-import { TaxonomyList } from '@packing/components/settings'
+import { MigrationPanel, TaxonomyList } from '@packing/components/settings'
 import type { PackingDocument } from '@packing/data/types'
 
 export default function Settings() {
@@ -139,59 +138,15 @@ function PersonsPanel({ packing }: PanelProps) {
   }
 
   return (
-    <CollapsibleSection title="Persons" count={items.length}>
+    <CollapsibleSection title="Per-Person" count={items.length}>
       <TaxonomyList
-        title="Persons"
+        title="Per-Person"
         items={items}
         onAdd={(name) => addPerson(name)}
         onRename={(id, name) => updatePerson(id, name)}
         onDelete={(id) => deletePerson(id)}
         usageCount={usageCount}
       />
-    </CollapsibleSection>
-  )
-}
-
-// --- Migration ---
-
-function MigrationPanel({ packing }: PanelProps) {
-  const { migrateSectionsToPhases } = usePackingMigrations()
-  const [status, setStatus] = useState<'idle' | 'running' | 'done'>('idle')
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasSections = Object.keys((packing as any).sections ?? {}).length > 0
-
-  if (!hasSections && status === 'idle') return null
-
-  const handleMigrate = async () => {
-    setStatus('running')
-    await migrateSectionsToPhases(packing)
-    setStatus('done')
-  }
-
-  return (
-    <CollapsibleSection title="Migration" defaultExpanded>
-      <div>
-        <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-          Convert legacy sections to phases:
-        </p>
-        <ul style={{ fontSize: '0.85rem', margin: '0 0 0.75rem', paddingLeft: '1.5rem' }}>
-          <li>Create a phase for each section</li>
-          <li>Assign phaseId to items based on their category&apos;s section</li>
-          <li>Simplify categories (remove section/sort fields)</li>
-        </ul>
-        {status === 'done' ? (
-          <p style={{ fontSize: '0.9rem', color: 'var(--color-success)' }}>Migration complete.</p>
-        ) : (
-          <Button
-            variant="small"
-            disabled={!hasSections || status === 'running'}
-            onClick={handleMigrate}
-          >
-            {status === 'running' ? 'Running...' : 'Run Migration'}
-          </Button>
-        )}
-      </div>
     </CollapsibleSection>
   )
 }

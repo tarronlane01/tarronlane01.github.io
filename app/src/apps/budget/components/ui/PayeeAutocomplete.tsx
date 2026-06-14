@@ -4,8 +4,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { input as inputStyle, colors } from '@styles/shared'
-import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from './autocompleteHelpers'
-import { useAutocompleteDropdown } from './useAutocompleteDropdown'
+import { fuzzyMatch, dropdownContainerStyle, suggestionItemStyle } from '@components/ui/autocompleteHelpers'
+import { useAutocompleteDropdown } from '@components/ui/useAutocompleteDropdown'
 
 interface PayeeAutocompleteProps {
   id?: string

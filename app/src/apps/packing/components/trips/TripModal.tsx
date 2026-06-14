@@ -62,7 +62,7 @@ export function TripModal({
       )}
 
       {persons.length > 0 && (
-        <FormField label="Persons" htmlFor="trip-persons">
+        <FormField label="Per-Person" htmlFor="trip-persons">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {persons.map(p => (
               <button

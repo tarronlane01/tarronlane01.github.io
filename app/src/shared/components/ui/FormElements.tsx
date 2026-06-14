@@ -66,8 +66,31 @@ export function FormField({ label, htmlFor, children, hint, style }: FormFieldPr
 // TEXT INPUT
 // =============================================================================
 
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input style={inputStyle} {...props} />
+interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
+  onClear?: () => void
+}
+
+export function TextInput({ onClear, style, ...props }: TextInputProps) {
+  const hasValue = typeof props.value === 'string' && props.value.length > 0
+  const showClear = onClear && hasValue
+  return (
+    <div style={{ position: 'relative' }}>
+      <input style={{ ...inputStyle, ...(showClear ? { padding: '0.6rem 2rem 0.6rem 0.8rem' } : {}), ...style }} {...props} />
+      {showClear && (
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); onClear() }}
+          style={{
+            position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            opacity: 0.4, fontSize: '1rem', padding: '0.25rem', lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  )
 }
 
 // =============================================================================

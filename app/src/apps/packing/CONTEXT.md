@@ -7,19 +7,15 @@ A trip planning and packing app for managing what to bring and what to do before
 ### Entities
 
 **Item**:
-A physical thing you bring on a trip. Has a Category, Feature tags, Person tags, and a perPerson flag. Matches a Trip if any of its Features overlap with the Trip's Features (OR logic), or any of its Persons overlap with the Trip's Persons (OR logic). Items with no Features and no Persons match every Trip. Names must be unique (case-insensitive, trimmed).
+A physical thing you bring on a trip. Has a Category, Feature tags, and optional Per-Person tags. Matches a Trip if any of its Features overlap with the Trip's Features (OR logic), or any of its Per-Persons overlap with the Trip's Persons (OR logic). Items with no Features and no Per-Persons match every Trip. An Item with Per-Person tags expands into one checkbox per matching person on the Trip checklist. Names must be unique (case-insensitive, trimmed).
 _Avoid_: gear, supply, thing
-
-**Per-Person Item**:
-An Item with `perPerson: true`. On the packing checklist, expands into one checkbox per matching Person on the Trip (e.g. "Socks (Dad)", "Socks (Mom)"). Contrast with a non-per-person Item, which shows a single checkbox regardless of how many Persons are tagged.
-_Avoid_: individual item, multiplied item
 
 **Task**:
 An action you perform before or during a trip. Has a Phase instead of a Category. Appears as a checklist on a Trip but does not go through the plan/pack workflow. Supports Feature tags in the data model for future filtering, but currently all Tasks appear on every Trip. Names must be unique (case-insensitive, trimmed).
 _Avoid_: to-do, chore, reminder
 
 **Trip**:
-A reusable saved filter configuration, not a one-time event. Defines a set of Features and Persons that determine which Items appear. Persists across uses — reset clears packed state for the next use. Examples: "Wife's family reunion", "Overnight camping", "City Pool".
+A reusable saved filter configuration, not a one-time event. Defines a set of Features and Per-Persons that determine which Items appear. Persists across uses — reset clears packed state for the next use. Examples: "Wife's family reunion", "Overnight camping", "City Pool".
 _Avoid_: outing, vacation, event, trip type, template
 
 ### Taxonomies
@@ -36,9 +32,9 @@ _Avoid_: type, group, kind
 A tag describing a trip characteristic, such as "camping", "water", or "cooking". Items and Trips can have multiple Features. Used to filter which Items are relevant to a Trip. Displayed alphabetically.
 _Avoid_: activity, attribute, tag
 
-**Person**:
-A family member who can be associated with an Item to indicate it should be packed for them. Items can have multiple Persons. Displayed alphabetically.
-_Avoid_: member, traveler, passenger
+**Per-Person**:
+A family member tag on an Item that causes the packing checklist to show one checkbox per matching person on the Trip (e.g., "Socks" becomes "Socks (Dad)", "Socks (Mom)"). Items can have multiple Per-Person tags. Also used for trip matching — an Item's Per-Persons are checked against the Trip's person list. Displayed alphabetically.
+_Avoid_: person, member, traveler, passenger
 
 **Quantity**:
 A per-trip count for an Item, defaulting to 1. Stored in `Trip.quantities` as `{ itemId: count }`. Missing entries mean 1. For per-person Items, the quantity applies per person (e.g., quantity 3 = 3 per person). Quantities persist across Trip resets.
@@ -47,11 +43,11 @@ _Avoid_: amount, count, number
 ### Trip State
 
 **Skipped**:
-An Item or per-person Item entry that matches a Trip's filters but has been dismissed for the current use. Hidden from the packing view in a collapsed "Skipped" section. Resets when the Trip is reset. For per-person Items, skipping is per-person.
+An Item or Per-Person Item entry that matches a Trip's filters but has been dismissed for the current use. Hidden from the packing view in a collapsed "Skipped" section. Resets when the Trip is reset. For Per-Person Items, skipping is per-person.
 _Avoid_: excluded, hidden, removed
 
 **Packed**:
-An Item or per-person Item entry that has been checked off as packed for the current Trip use. Resets when the Trip is reset. For per-person Items, packing is per-person.
+An Item or Per-Person Item entry that has been checked off as packed for the current Trip use. Resets when the Trip is reset. For Per-Person Items, packing is per-person.
 _Avoid_: checked, done, completed
 
 **Phase Done Indicator**:

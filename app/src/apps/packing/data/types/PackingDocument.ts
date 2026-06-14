@@ -39,7 +39,6 @@ export interface Item {
   categoryId: string
   featureIds: string[]
   personIds: string[]
-  perPerson: boolean
   phaseId?: string
 }
 

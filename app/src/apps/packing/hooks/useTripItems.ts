@@ -40,7 +40,7 @@ export function useTripItems(packing: PackingDocument, trip: Trip): {
     const matching = getMatchingItems(packing.items, trip)
 
     const entries: TripItemEntry[] = Object.entries(matching).map(([id, item]) => {
-      const relevantPersonIds = item.perPerson
+      const relevantPersonIds = item.personIds.length > 0
         ? trip.personIds.filter(pId => item.personIds.includes(pId))
         : []
 
@@ -51,11 +51,11 @@ export function useTripItems(packing: PackingDocument, trip: Trip): {
         perPersonSkipped[pId] = trip.skippedPerPerson?.[id]?.[pId] ?? false
       })
 
-      const isPacked = item.perPerson
+      const isPacked = item.personIds.length > 0
         ? relevantPersonIds.length > 0 && relevantPersonIds.every(pId => perPersonPacked[pId])
         : trip.packed[id] ?? false
 
-      const isSkipped = item.perPerson
+      const isSkipped = item.personIds.length > 0
         ? relevantPersonIds.length > 0 && relevantPersonIds.every(pId => perPersonSkipped[pId])
         : trip.skipped[id] ?? false
 

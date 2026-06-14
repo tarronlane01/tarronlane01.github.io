@@ -14,8 +14,8 @@ import {
   filterAndSortItems,
   dropdownContainerStyle,
   suggestionItemStyle,
-} from './autocompleteHelpers'
-import { useAutocompleteDropdown } from './useAutocompleteDropdown'
+} from '@components/ui/autocompleteHelpers'
+import { useAutocompleteDropdown } from '@components/ui/useAutocompleteDropdown'
 import { NO_ACCOUNT_ID, NO_ACCOUNT_NAME } from '@budget/data/constants'
 
 // Account item uses the shared AutocompleteItem interface

@@ -3,34 +3,46 @@ import type { PackingDocument, Item } from '@packing/data/types'
 interface ItemListProps {
   packing: PackingDocument
   filterPhaseId?: string
+  filterFeatureId?: string
+  searchQuery?: string
   onEdit: (id: string, item: Item) => void
   onAdd?: (categoryId: string) => void
 }
 
-export function ItemList({ packing, filterPhaseId, onEdit, onAdd }: ItemListProps) {
+export function ItemList({ packing, filterPhaseId, filterFeatureId, searchQuery, onEdit, onAdd }: ItemListProps) {
   const { categories, features, persons } = packing
 
-  const filteredItems = filterPhaseId
+  let filteredItems = filterPhaseId
     ? Object.fromEntries(Object.entries(packing.items).filter(([, item]) => {
         if (filterPhaseId === '_unassigned') return !item.phaseId
         return item.phaseId === filterPhaseId
       }))
     : packing.items
 
+  if (filterFeatureId) {
+    filteredItems = Object.fromEntries(Object.entries(filteredItems).filter(([, item]) =>
+      item.featureIds.includes(filterFeatureId)))
+  }
+
+  const searchFiltered = searchQuery
+    ? Object.fromEntries(Object.entries(filteredItems).filter(([, item]) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())))
+    : filteredItems
+
   const sortedCategories = Object.entries(categories)
     .sort(([, a], [, b]) => a.name.localeCompare(b.name))
 
-  const uncategorized = Object.entries(filteredItems).filter(([, item]) => !item.categoryId || !categories[item.categoryId])
+  const uncategorized = Object.entries(searchFiltered).filter(([, item]) => !item.categoryId || !categories[item.categoryId])
   const grouped = sortedCategories.map(([catId, cat]) => ({
     catId,
     catName: cat.name,
-    items: Object.entries(filteredItems)
+    items: Object.entries(searchFiltered)
       .filter(([, item]) => item.categoryId === catId)
       .sort(([, a], [, b]) => a.name.localeCompare(b.name)),
   }))
 
-  if (Object.keys(filteredItems).length === 0) {
-    const msg = filterPhaseId ? 'No items match this phase.' : 'No items yet. Add your first item.'
+  if (Object.keys(searchFiltered).length === 0) {
+    const msg = searchQuery ? 'No items match your search.' : filterPhaseId ? 'No items match this phase.' : 'No items yet. Add your first item.'
     return <p style={{ opacity: 0.5, fontSize: '0.9rem' }}>{msg}</p>
   }
 
@@ -100,9 +112,6 @@ function ItemRow({ id, item, features, persons, onEdit }: {
             {tag}
           </span>
         ))}
-        {item.perPerson && (
-          <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>per-person</span>
-        )}
       </div>
     </div>
   )

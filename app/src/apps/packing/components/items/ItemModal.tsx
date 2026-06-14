@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Modal, FormField, TextInput, SelectInput, Checkbox, Button, FormButtonGroup } from '@components/ui'
+import { Modal, FormField, TextInput, SelectInput, Button, FormButtonGroup, Autocomplete } from '@components/ui'
 import { isNameUnique } from '@packing/data'
 import type { Item } from '@packing/data/types'
 
@@ -32,9 +32,6 @@ export function ItemModal({
   const [phaseId, setPhaseId] = useState(initial?.phaseId ?? defaultPhaseId ?? '')
   const [featureIds, setFeatureIds] = useState<string[]>(initial?.featureIds ?? [])
   const [personIds, setPersonIds] = useState<string[]>(initial?.personIds ?? [])
-  const [perPerson, setPerPerson] = useState(initial?.perPerson ?? false)
-  const [showNewCategory, setShowNewCategory] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState('')
   const [showNewPhase, setShowNewPhase] = useState(false)
   const [newPhaseName, setNewPhaseName] = useState('')
   const [showNewFeature, setShowNewFeature] = useState(false)
@@ -52,7 +49,7 @@ export function ItemModal({
 
   const handleSave = () => {
     const item: Item = {
-      name: trimmed, categoryId, featureIds, personIds, perPerson,
+      name: trimmed, categoryId, featureIds, personIds,
       ...(phaseId ? { phaseId } : {}),
     }
     onSave(item, initial?.id)
@@ -69,41 +66,15 @@ export function ItemModal({
       )}
 
       <FormField label="Category" htmlFor="item-category">
-        {showNewCategory ? (
-          <InlineCreate
-            value={newCategoryName}
-            onChange={setNewCategoryName}
-            existingNames={categories.map(c => c.name)}
-            onConfirm={(catName) => {
-              if (onAddCategory) {
-                const newId = onAddCategory(catName)
-                setCategoryId(newId)
-              }
-              setShowNewCategory(false)
-              setNewCategoryName('')
-            }}
-            onCancel={() => { setShowNewCategory(false); setNewCategoryName('') }}
-            placeholder="Category name"
-          />
-        ) : (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ flex: 1 }}>
-              <SelectInput id="item-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">Select category...</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </SelectInput>
-            </div>
-            {onAddCategory && (
-              <button
-                type="button"
-                onClick={() => setShowNewCategory(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '0.25rem' }}
-              >
-                + New
-              </button>
-            )}
-          </div>
-        )}
+        <Autocomplete
+          id="item-category"
+          value={categoryId}
+          onChange={setCategoryId}
+          items={categories}
+          placeholder="Search categories..."
+          required
+          onCreateNew={onAddCategory}
+        />
       </FormField>
 
       <FormField label="Phase (optional)" htmlFor="item-phase">
@@ -177,7 +148,7 @@ export function ItemModal({
         )}
       </FormField>
 
-      <FormField label="Persons" htmlFor="item-persons">
+      <FormField label="Per-Person" htmlFor="item-persons">
         {showNewPerson ? (
           <InlineCreate
             value={newPersonName}
@@ -209,17 +180,6 @@ export function ItemModal({
           </div>
         )}
       </FormField>
-
-      {(personIds.length > 0 || persons.length > 0) && (
-        <div style={{ marginTop: '0.5rem' }}>
-          <Checkbox
-            checked={perPerson}
-            onChange={(e) => setPerPerson(e.target.checked)}
-          >
-            Per-person item (one checkbox per person when packing)
-          </Checkbox>
-        </div>
-      )}
 
       <FormButtonGroup>
         {mode === 'edit' && onDelete && initial && (

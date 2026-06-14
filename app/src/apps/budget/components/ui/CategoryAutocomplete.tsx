@@ -15,8 +15,8 @@ import {
   groupItemsForDisplay,
   dropdownContainerStyle,
   suggestionItemStyle,
-} from './autocompleteHelpers'
-import { useAutocompleteDropdown } from './useAutocompleteDropdown'
+} from '@components/ui/autocompleteHelpers'
+import { useAutocompleteDropdown } from '@components/ui/useAutocompleteDropdown'
 import { NO_CATEGORY_ID, NO_CATEGORY_NAME } from '@budget/data/constants'
 
 // Category item uses the shared AutocompleteItem interface

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Modal, FormButtonGroup } from '@components/ui'
+import { Button, Modal, FormButtonGroup, TextInput } from '@components/ui'
 import { usePacking } from '@packing/contexts'
 import { usePackingQuery } from '@packing/data/queries'
 import { useTripMutations } from '@packing/data/mutations/trips'
@@ -16,6 +16,7 @@ import { TaskModal } from '@packing/components/tasks'
 import { useTaskMutations } from '@packing/data/mutations/tasks'
 import { createEmptyPackingDocument } from '@packing/data/types'
 import type { Item, Task, Trip } from '@packing/data/types'
+import { iconButton, searchCloseIndicator } from '@styles/shared'
 
 const EMPTY_TRIP: Trip = {
   name: '', featureIds: [], personIds: [], quantities: {},
@@ -39,6 +40,13 @@ export default function TripDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const handleSearchToggle = () => {
+    if (showSearch) { setSearchQuery(''); setShowSearch(false) }
+    else { setShowSearch(true) }
+  }
 
   const safePacking = packing ?? createEmptyPackingDocument([])
   const trip = packing && tripId ? packing.trips[tripId] ?? null : null
@@ -89,9 +97,25 @@ export default function TripDetail() {
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+        <button style={{ ...iconButton, position: 'relative' }} onClick={handleSearchToggle} title="Search">
+          🔍
+          {showSearch && <span style={searchCloseIndicator}>✕</span>}
+        </button>
         <Button variant="small" onClick={() => setShowResetConfirm(true)}>Reset</Button>
         <Button variant="small" onClick={() => setShowDeleteConfirm(true)}>Delete Trip</Button>
       </div>
+
+      {showSearch && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <TextInput
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder="Search items and tasks..."
+            autoFocus
+          />
+        </div>
+      )}
 
       <PackingChecklist
         tripId={tripId}
@@ -99,6 +123,7 @@ export default function TripDetail() {
         itemPhases={itemPhases}
         taskPhases={taskPhases}
         skippedItems={skippedItems}
+        searchQuery={searchQuery || undefined}
         onEditItem={setEditingItemId}
         onEditTask={setEditingTaskId}
       />

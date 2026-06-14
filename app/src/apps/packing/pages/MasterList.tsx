@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TabNavigation, Button, SelectInput } from '@components/ui'
+import { TabNavigation, Button, SelectInput, TextInput } from '@components/ui'
 import { usePacking } from '@packing/contexts'
 import { usePackingQuery } from '@packing/data/queries'
 import { useItemMutations } from '@packing/data/mutations/items'
@@ -13,6 +13,7 @@ import { ItemModal } from '@packing/components/items'
 import { TaskList } from '@packing/components/tasks'
 import { TaskModal } from '@packing/components/tasks'
 import type { Item, Task } from '@packing/data/types'
+import { iconButton, searchCloseIndicator } from '@styles/shared'
 
 const tabs = [
   { id: 'items', label: 'Items' },
@@ -31,6 +32,7 @@ export default function MasterList() {
 
   const [activeTab, setActiveTab] = useState('items')
   const [filterPhaseId, setFilterPhaseId] = useState('')
+  const [filterFeatureId, setFilterFeatureId] = useState('')
   const [showItemModal, setShowItemModal] = useState(false)
   const [editingItem, setEditingItem] = useState<(Item & { id: string }) | null>(null)
   const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>()
@@ -38,7 +40,14 @@ export default function MasterList() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [editingTask, setEditingTask] = useState<(Task & { id: string }) | null>(null)
   const [defaultTaskPhaseId, setDefaultTaskPhaseId] = useState<string | undefined>()
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   useEffect(() => { setPageTitle('Master List') }, [setPageTitle])
+
+  const handleSearchToggle = () => {
+    if (showSearch) { setSearchQuery(''); setShowSearch(false) }
+    else { setShowSearch(true) }
+  }
 
   if (!packing) {
     return <p style={{ opacity: 0.6 }}>{isFetched ? 'Set up packing from the Trips page first.' : 'Loading...'}</p>
@@ -76,13 +85,23 @@ export default function MasterList() {
       <TabNavigation tabs={tabs} activeTab={activeTab} mode="button" onTabChange={setActiveTab} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.75rem 0', gap: '0.5rem' }}>
-        <div style={{ flex: 1, maxWidth: '12rem' }}>
+        <div style={{ flex: 1, maxWidth: '10rem' }}>
           <SelectInput value={filterPhaseId} onChange={(e) => setFilterPhaseId(e.target.value)}>
             <option value="">All phases</option>
             <option value="_unassigned">Unassigned</option>
             {sortedPhases.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </SelectInput>
         </div>
+        <div style={{ flex: 1, maxWidth: '10rem' }}>
+          <SelectInput value={filterFeatureId} onChange={(e) => setFilterFeatureId(e.target.value)}>
+            <option value="">All features</option>
+            {sortedFeatures.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </SelectInput>
+        </div>
+        <button style={{ ...iconButton, position: 'relative' }} onClick={handleSearchToggle} title="Search">
+          🔍
+          {showSearch && <span style={searchCloseIndicator}>✕</span>}
+        </button>
         <Button
           variant="small"
           onClick={() => activeTab === 'items' ? setShowItemModal(true) : setShowTaskModal(true)}
@@ -91,11 +110,23 @@ export default function MasterList() {
         </Button>
       </div>
 
+      {showSearch && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <TextInput
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder={`Search ${activeTab === 'items' ? 'items' : 'tasks'}...`}
+            autoFocus
+          />
+        </div>
+      )}
+
       {activeTab === 'items' && (
-        <ItemList packing={packing} filterPhaseId={filterPhaseId} onEdit={(id, item) => setEditingItem({ ...item, id })} onAdd={(catId) => { setDefaultCategoryId(catId); setShowItemModal(true) }} />
+        <ItemList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, item) => setEditingItem({ ...item, id })} onAdd={(catId) => { setDefaultCategoryId(catId); setShowItemModal(true) }} />
       )}
       {activeTab === 'tasks' && (
-        <TaskList packing={packing} filterPhaseId={filterPhaseId} onEdit={(id, task) => setEditingTask({ ...task, id })} onAdd={(phId) => { setDefaultTaskPhaseId(phId); setShowTaskModal(true) }} />
+        <TaskList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, task) => setEditingTask({ ...task, id })} onAdd={(phId) => { setDefaultTaskPhaseId(phId); setShowTaskModal(true) }} />
       )}
 
       {(showItemModal || editingItem) && (

@@ -10,12 +10,13 @@ interface PackingChecklistProps {
   itemPhases: ItemPhaseGroup[]
   taskPhases: PhaseGroup[]
   skippedItems: TripItemEntry[]
+  searchQuery?: string
   onEditItem?: (id: string) => void
   onEditTask?: (id: string) => void
 }
 
 export function PackingChecklist({
-  tripId, packing, itemPhases, taskPhases, skippedItems, onEditItem, onEditTask,
+  tripId, packing, itemPhases, taskPhases, skippedItems, searchQuery, onEditItem, onEditTask,
 }: PackingChecklistProps) {
   const actions = usePackingActions()
 
@@ -34,9 +35,24 @@ export function PackingChecklist({
     return { phaseId, name, sortOrder, itemGroups: itemPhase?.groups ?? [], taskGroups: taskPhase ? [taskPhase] : [], allDone }
   }).sort((a, b) => a.sortOrder - b.sortOrder)
 
+  const q = searchQuery?.toLowerCase() ?? ''
+  const displayPhases = searchQuery ? mergedPhases.map(phase => ({
+    ...phase,
+    itemGroups: phase.itemGroups
+      .map(g => ({ ...g, items: g.items.filter(e => e.item.name.toLowerCase().includes(q)) }))
+      .filter(g => g.items.length > 0),
+    taskGroups: phase.taskGroups
+      .map(g => ({ ...g, tasks: g.tasks.filter(e => e.task.name.toLowerCase().includes(q)) }))
+      .filter(g => g.tasks.length > 0),
+  })).filter(p => p.itemGroups.length > 0 || p.taskGroups.length > 0) : mergedPhases
+
+  const filteredSkippedItems = searchQuery
+    ? skippedItems.filter(e => e.item.name.toLowerCase().includes(q))
+    : skippedItems
+
   return (
     <div>
-      {mergedPhases.map(phase => (
+      {displayPhases.map(phase => (
         <CollapsibleSection
           key={phase.phaseId}
           title={`${phase.name}${phase.allDone ? ' ✓' : ''}`}
@@ -65,8 +81,14 @@ export function PackingChecklist({
         </CollapsibleSection>
       ))}
 
-      {skippedItems.length > 0 && (
-        <SkippedSection tripId={tripId} skippedItems={skippedItems} packing={packing} actions={actions} />
+      {filteredSkippedItems.length > 0 && (
+        <SkippedSection
+          tripId={tripId}
+          skippedItems={filteredSkippedItems}
+          packing={packing}
+          actions={actions}
+          forceExpanded={!!searchQuery && filteredSkippedItems.length > 0}
+        />
       )}
     </div>
   )
@@ -83,7 +105,7 @@ function ChecklistItemRow({ tripId, entry, packing, actions, onEdit }: {
 }) {
   const qtyLabel = entry.quantity > 1 ? ` (x${entry.quantity})` : ''
 
-  if (entry.item.perPerson && entry.relevantPersonIds.length > 0) {
+  if (entry.relevantPersonIds.length > 0) {
     return (
       <div style={{ padding: '0.25rem 0', borderBottom: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -178,28 +200,30 @@ function ChecklistTaskRow({ tripId, entry, actions, onEdit }: {
 
 // --- Skipped Section ---
 
-function SkippedSection({ tripId, skippedItems, packing, actions }: {
+function SkippedSection({ tripId, skippedItems, packing, actions, forceExpanded }: {
   tripId: string
   skippedItems: TripItemEntry[]
   packing: PackingDocument
   actions: ReturnType<typeof usePackingActions>
+  forceExpanded?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
+  const isOpen = forceExpanded || expanded
 
   return (
     <div style={{ marginTop: '2rem' }}>
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setExpanded(!isOpen)}
         style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize: '0.85rem', padding: 0 }}
       >
-        {expanded ? '▼' : '▶'} Skipped ({skippedItems.length})
+        {isOpen ? '▼' : '▶'} Skipped ({skippedItems.length})
       </button>
-      {expanded && (
+      {isOpen && (
         <div style={{ paddingLeft: '0.5rem', marginTop: '0.25rem' }}>
           {skippedItems.map(entry => (
             <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0', minHeight: '2.5rem', opacity: 0.6 }}>
               <span style={{ flex: 1, minWidth: 0 }}>{entry.item.name}</span>
-              {entry.item.perPerson ? (
+              {entry.relevantPersonIds.length > 0 ? (
                 entry.relevantPersonIds.map(pId => (
                   <button key={pId} onClick={() => actions.toggleSkippedPerPerson(tripId, entry.id, pId, false)}
                     style={skipActionStyle}>

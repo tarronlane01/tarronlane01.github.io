@@ -64,7 +64,10 @@ export function TaxonomyList({
               </button>
             </div>
           )}
-          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {item.name}
+            {usageCount && <span style={{ opacity: 0.4, fontSize: '0.8rem', marginLeft: '0.375rem' }}>({usageCount(item.id)})</span>}
+          </span>
           <button
             onClick={() => setEditingItem(item)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, padding: '0.375rem', fontSize: '1.1rem' }}

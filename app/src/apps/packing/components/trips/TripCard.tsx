@@ -18,7 +18,7 @@ export function TripCard({ tripId, trip, packing, onEdit }: TripCardProps) {
   const totalTasks = Object.keys(matchingTasks).length
 
   const packedCount = Object.entries(matchingItems).filter(([id, item]) => {
-    if (item.perPerson) {
+    if (item.personIds.length > 0) {
       const relevantPersons = trip.personIds.filter(pId => item.personIds.includes(pId))
       return relevantPersons.length > 0 && relevantPersons.every(pId =>
         trip.packedPerPerson?.[id]?.[pId] || trip.skippedPerPerson?.[id]?.[pId]
