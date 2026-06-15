@@ -36,9 +36,8 @@ export function getMatchingItems(
   for (const [id, item] of Object.entries(items)) {
     const hasNoTags = item.featureIds.length === 0 && item.personIds.length === 0
     const featureMatch = item.featureIds.some((fId) => trip.featureIds.includes(fId))
-    const personMatch = item.personIds.some((pId) => trip.personIds.includes(pId))
 
-    if (hasNoTags || featureMatch || personMatch) {
+    if (hasNoTags || featureMatch || item.personIds.length > 0) {
       result[id] = item
     }
   }

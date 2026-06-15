@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TabNavigation, Button, SelectInput, TextInput } from '@components/ui'
+import { TabNavigation, Button, SelectInput, TextInput, Modal, FormField, FormButtonGroup } from '@components/ui'
 import { usePacking } from '@packing/contexts'
 import { usePackingQuery } from '@packing/data/queries'
 import { useItemMutations } from '@packing/data/mutations/items'
@@ -35,13 +35,11 @@ export default function MasterList() {
   const [filterFeatureId, setFilterFeatureId] = useState('')
   const [showItemModal, setShowItemModal] = useState(false)
   const [editingItem, setEditingItem] = useState<(Item & { id: string }) | null>(null)
-  const [defaultCategoryId, setDefaultCategoryId] = useState<string | undefined>()
-  const [defaultPhaseId, setDefaultPhaseId] = useState<string | undefined>()
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [editingTask, setEditingTask] = useState<(Task & { id: string }) | null>(null)
-  const [defaultTaskPhaseId, setDefaultTaskPhaseId] = useState<string | undefined>()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showFilterModal, setShowFilterModal] = useState(false)
   useEffect(() => { setPageTitle('Master List') }, [setPageTitle])
 
   const handleSearchToggle = () => {
@@ -84,30 +82,19 @@ export default function MasterList() {
     <div>
       <TabNavigation tabs={tabs} activeTab={activeTab} mode="button" onTabChange={setActiveTab} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0.75rem 0', gap: '0.5rem' }}>
-        <div style={{ flex: 1, maxWidth: '10rem' }}>
-          <SelectInput value={filterPhaseId} onChange={(e) => setFilterPhaseId(e.target.value)}>
-            <option value="">All phases</option>
-            <option value="_unassigned">Unassigned</option>
-            {sortedPhases.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </SelectInput>
-        </div>
-        <div style={{ flex: 1, maxWidth: '10rem' }}>
-          <SelectInput value={filterFeatureId} onChange={(e) => setFilterFeatureId(e.target.value)}>
-            <option value="">All features</option>
-            {sortedFeatures.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </SelectInput>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', margin: '0.75rem 0', gap: '0.5rem' }}>
+        <button style={{ ...iconButton, position: 'relative' }} onClick={() => setShowFilterModal(true)} title="Filter">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <line x1="2" y1="4" x2="14" y2="4" /><circle cx="5" cy="4" r="1.5" fill="currentColor" />
+            <line x1="2" y1="8" x2="14" y2="8" /><circle cx="10" cy="8" r="1.5" fill="currentColor" />
+            <line x1="2" y1="12" x2="14" y2="12" /><circle cx="7" cy="12" r="1.5" fill="currentColor" />
+          </svg>
+          {(filterPhaseId || filterFeatureId) && <span style={searchCloseIndicator}>✕</span>}
+        </button>
         <button style={{ ...iconButton, position: 'relative' }} onClick={handleSearchToggle} title="Search">
           🔍
           {showSearch && <span style={searchCloseIndicator}>✕</span>}
         </button>
-        <Button
-          variant="small"
-          onClick={() => activeTab === 'items' ? setShowItemModal(true) : setShowTaskModal(true)}
-        >
-          + Add {activeTab === 'items' ? 'Item' : 'Task'}
-        </Button>
       </div>
 
       {showSearch && (
@@ -123,10 +110,10 @@ export default function MasterList() {
       )}
 
       {activeTab === 'items' && (
-        <ItemList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, item) => setEditingItem({ ...item, id })} onAdd={(catId) => { setDefaultCategoryId(catId); setShowItemModal(true) }} />
+        <ItemList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, item) => setEditingItem({ ...item, id })} />
       )}
       {activeTab === 'tasks' && (
-        <TaskList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, task) => setEditingTask({ ...task, id })} onAdd={(phId) => { setDefaultTaskPhaseId(phId); setShowTaskModal(true) }} />
+        <TaskList packing={packing} filterPhaseId={filterPhaseId} filterFeatureId={filterFeatureId} searchQuery={searchQuery || undefined} onEdit={(id, task) => setEditingTask({ ...task, id })} />
       )}
 
       {(showItemModal || editingItem) && (
@@ -140,13 +127,12 @@ export default function MasterList() {
           persons={sortedPersons}
           onSave={handleItemSave}
           onDelete={deleteItem}
-          onClose={() => { setShowItemModal(false); setEditingItem(null); setDefaultCategoryId(undefined); setDefaultPhaseId(undefined) }}
+          onClose={() => { setShowItemModal(false); setEditingItem(null) }}
           onAddCategory={addCategory}
           onAddPhase={addPhase}
           onAddFeature={addFeature}
           onAddPerson={addPerson}
-          defaultCategoryId={defaultCategoryId}
-          defaultPhaseId={defaultPhaseId ?? packing.defaultPhaseId}
+          defaultPhaseId={packing.defaultPhaseId}
         />
       )}
 
@@ -159,10 +145,33 @@ export default function MasterList() {
           features={sortedFeatures}
           onSave={handleTaskSave}
           onDelete={deleteTask}
-          onClose={() => { setShowTaskModal(false); setEditingTask(null); setDefaultTaskPhaseId(undefined) }}
+          onClose={() => { setShowTaskModal(false); setEditingTask(null) }}
           onAddPhase={addPhase}
-          defaultPhaseId={defaultTaskPhaseId}
         />
+      )}
+
+      {showFilterModal && (
+        <Modal isOpen onClose={() => setShowFilterModal(false)} title="Filters">
+          <FormField label="Phase" htmlFor="filter-phase">
+            <SelectInput id="filter-phase" value={filterPhaseId} onChange={(e) => setFilterPhaseId(e.target.value)}>
+              <option value="">All phases</option>
+              <option value="_unassigned">Unassigned</option>
+              {sortedPhases.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </SelectInput>
+          </FormField>
+          <FormField label="Feature" htmlFor="filter-feature">
+            <SelectInput id="filter-feature" value={filterFeatureId} onChange={(e) => setFilterFeatureId(e.target.value)}>
+              <option value="">All features</option>
+              {sortedFeatures.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </SelectInput>
+          </FormField>
+          <FormButtonGroup>
+            {(filterPhaseId || filterFeatureId) && (
+              <Button variant="secondary" onClick={() => { setFilterPhaseId(''); setFilterFeatureId('') }}>Clear All</Button>
+            )}
+            <Button variant="primary" onClick={() => setShowFilterModal(false)}>Done</Button>
+          </FormButtonGroup>
+        </Modal>
       )}
 
     </div>

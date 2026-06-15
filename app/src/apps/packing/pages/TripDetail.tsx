@@ -19,8 +19,10 @@ import type { Item, Task, Trip } from '@packing/data/types'
 import { iconButton, searchCloseIndicator } from '@styles/shared'
 
 const EMPTY_TRIP: Trip = {
-  name: '', featureIds: [], personIds: [], quantities: {},
-  packed: {}, packedPerPerson: {}, skipped: {}, skippedPerPerson: {}, tasksCompleted: {},
+  name: '', featureIds: [], quantities: {},
+  packed: {}, packedPerPerson: {}, skipped: {}, skippedPerPerson: {},
+  permanentlySkipped: {}, permanentlySkippedPerPerson: {},
+  tasksCompleted: {}, tasksSkipped: {}, tasksPermanentlySkipped: {},
 }
 
 export default function TripDetail() {
@@ -53,7 +55,7 @@ export default function TripDetail() {
   const safeTrip = trip ?? EMPTY_TRIP
 
   const { phases: itemPhases, skippedItems } = useTripItems(safePacking, safeTrip)
-  const taskPhases = useTripTasks(safePacking, safeTrip)
+  const { phases: taskPhases, skippedTasks } = useTripTasks(safePacking, safeTrip)
 
   useEffect(() => {
     setPageTitle(trip?.name ?? 'Trip')
@@ -123,6 +125,7 @@ export default function TripDetail() {
         itemPhases={itemPhases}
         taskPhases={taskPhases}
         skippedItems={skippedItems}
+        skippedTasks={skippedTasks}
         searchQuery={searchQuery || undefined}
         onEditItem={setEditingItemId}
         onEditTask={setEditingTaskId}

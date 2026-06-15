@@ -54,10 +54,6 @@ export default function Trips() {
     .map(([id, f]) => ({ id, name: f.name }))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const sortedPersons = Object.entries(packing.persons)
-    .map(([id, p]) => ({ id, name: p.name }))
-    .sort((a, b) => a.name.localeCompare(b.name))
-
   const tripNames = Object.values(packing.trips).map(t => t.name)
   const tripEntries = Object.entries(packing.trips).sort(([, a], [, b]) => a.name.localeCompare(b.name))
 
@@ -82,8 +78,7 @@ export default function Trips() {
           mode="add"
           existingNames={tripNames}
           features={sortedFeatures}
-          persons={sortedPersons}
-          onSave={(name, featureIds, personIds) => addTrip(name, featureIds, personIds)}
+          onSave={(name, featureIds) => addTrip(name, featureIds)}
           onClose={() => setShowAddModal(false)}
         />
       )}
@@ -93,11 +88,9 @@ export default function Trips() {
           mode="edit"
           initialName={editingTrip.trip.name}
           initialFeatureIds={editingTrip.trip.featureIds}
-          initialPersonIds={editingTrip.trip.personIds}
           existingNames={tripNames}
           features={sortedFeatures}
-          persons={sortedPersons}
-          onSave={(name, featureIds, personIds) => updateTrip(editingTrip.id, name, featureIds, personIds)}
+          onSave={(name, featureIds) => updateTrip(editingTrip.id, name, featureIds)}
           onClose={() => setEditingTrip(null)}
         />
       )}

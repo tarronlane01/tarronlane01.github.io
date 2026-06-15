@@ -115,7 +115,12 @@ export function ItemModal({
         )}
       </FormField>
 
-      <FormField label="Features" htmlFor="item-features">
+      <FormField label="Features" htmlFor="item-features" labelAction={
+        onAddFeature && !showNewFeature ? <NewButton onClick={() => setShowNewFeature(true)} /> : undefined
+      }>
+        {featureIds.length === 0 && !showNewFeature && (
+          <p style={{ margin: '0 0 0.25rem', fontSize: '0.75rem', opacity: 0.45 }}>No features — appears on all trips</p>
+        )}
         {showNewFeature ? (
           <InlineCreate
             value={newFeatureName}
@@ -133,22 +138,13 @@ export function ItemModal({
             placeholder="Feature name"
           />
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <TagSelector items={features} selected={featureIds} onToggle={(id) => toggleTag(id, featureIds, setFeatureIds)} />
-            {onAddFeature && (
-              <button
-                type="button"
-                onClick={() => setShowNewFeature(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '0.25rem' }}
-              >
-                + New
-              </button>
-            )}
-          </div>
+          <TagSelector items={features} selected={featureIds} onToggle={(id) => toggleTag(id, featureIds, setFeatureIds)} />
         )}
       </FormField>
 
-      <FormField label="Per-Person" htmlFor="item-persons">
+      <FormField label="Per-Person" htmlFor="item-persons" labelAction={
+        onAddPerson && !showNewPerson ? <NewButton onClick={() => setShowNewPerson(true)} /> : undefined
+      }>
         {showNewPerson ? (
           <InlineCreate
             value={newPersonName}
@@ -166,18 +162,7 @@ export function ItemModal({
             placeholder="Person name"
           />
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <TagSelector items={persons} selected={personIds} onToggle={(id) => toggleTag(id, personIds, setPersonIds)} />
-            {onAddPerson && (
-              <button
-                type="button"
-                onClick={() => setShowNewPerson(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '0.25rem' }}
-              >
-                + New
-              </button>
-            )}
-          </div>
+          <TagSelector items={persons} selected={personIds} onToggle={(id) => toggleTag(id, personIds, setPersonIds)} />
         )}
       </FormField>
 
@@ -220,6 +205,15 @@ function TagSelector({ items, selected, onToggle }: {
         </button>
       ))}
     </div>
+  )
+}
+
+function NewButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', fontSize: '0.85rem', whiteSpace: 'nowrap', padding: '0.25rem' }}>
+      + New
+    </button>
   )
 }
 

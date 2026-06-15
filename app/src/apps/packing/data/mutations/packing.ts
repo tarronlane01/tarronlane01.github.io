@@ -79,6 +79,69 @@ export function usePackingActions() {
       })
     },
 
+    togglePermanentlySkipped: (tripId: string, itemId: string, skipped: boolean) => {
+      mutation.mutate({
+        updates: { [`trips.${tripId}.permanentlySkipped.${itemId}`]: skipped ? true : deleteField() },
+        description: `${skipped ? 'permanently skipping' : 'unskipping'} item "${itemId}"`,
+        optimisticUpdate: (prev) => {
+          const trip = prev.trips[tripId]
+          const newSkipped = { ...(trip.permanentlySkipped ?? {}) }
+          if (skipped) { newSkipped[itemId] = true } else { delete newSkipped[itemId] }
+          return { ...prev, trips: { ...prev.trips, [tripId]: { ...trip, permanentlySkipped: newSkipped } } }
+        },
+      })
+    },
+
+    togglePermanentlySkippedPerPerson: (tripId: string, itemId: string, personId: string, skipped: boolean) => {
+      mutation.mutate({
+        updates: {
+          [`trips.${tripId}.permanentlySkippedPerPerson.${itemId}.${personId}`]: skipped ? true : deleteField(),
+        },
+        description: `${skipped ? 'permanently skipping' : 'unskipping'} item "${itemId}" for person "${personId}"`,
+        optimisticUpdate: (prev) => {
+          const trip = prev.trips[tripId]
+          const itemMap = { ...(trip.permanentlySkippedPerPerson?.[itemId] ?? {}) }
+          if (skipped) { itemMap[personId] = true } else { delete itemMap[personId] }
+          return {
+            ...prev,
+            trips: {
+              ...prev.trips,
+              [tripId]: {
+                ...trip,
+                permanentlySkippedPerPerson: { ...(trip.permanentlySkippedPerPerson ?? {}), [itemId]: itemMap },
+              },
+            },
+          }
+        },
+      })
+    },
+
+    toggleTaskSkipped: (tripId: string, taskId: string, skipped: boolean) => {
+      mutation.mutate({
+        updates: { [`trips.${tripId}.tasksSkipped.${taskId}`]: skipped ? true : deleteField() },
+        description: `${skipped ? 'skipping' : 'unskipping'} task "${taskId}"`,
+        optimisticUpdate: (prev) => {
+          const trip = prev.trips[tripId]
+          const newSkipped = { ...(trip.tasksSkipped ?? {}) }
+          if (skipped) { newSkipped[taskId] = true } else { delete newSkipped[taskId] }
+          return { ...prev, trips: { ...prev.trips, [tripId]: { ...trip, tasksSkipped: newSkipped } } }
+        },
+      })
+    },
+
+    toggleTaskPermanentlySkipped: (tripId: string, taskId: string, skipped: boolean) => {
+      mutation.mutate({
+        updates: { [`trips.${tripId}.tasksPermanentlySkipped.${taskId}`]: skipped ? true : deleteField() },
+        description: `${skipped ? 'permanently skipping' : 'unskipping'} task "${taskId}"`,
+        optimisticUpdate: (prev) => {
+          const trip = prev.trips[tripId]
+          const newSkipped = { ...(trip.tasksPermanentlySkipped ?? {}) }
+          if (skipped) { newSkipped[taskId] = true } else { delete newSkipped[taskId] }
+          return { ...prev, trips: { ...prev.trips, [tripId]: { ...trip, tasksPermanentlySkipped: newSkipped } } }
+        },
+      })
+    },
+
     toggleTaskCompleted: (tripId: string, taskId: string, completed: boolean) => {
       mutation.mutate({
         updates: { [`trips.${tripId}.tasksCompleted.${taskId}`]: completed ? true : deleteField() },

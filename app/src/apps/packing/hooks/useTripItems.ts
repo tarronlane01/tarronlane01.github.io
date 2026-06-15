@@ -7,10 +7,14 @@ export interface TripItemEntry {
   item: Item
   isPacked: boolean
   isSkipped: boolean
+  /** True if this item is permanently skipped (survives reset) */
+  isPermanentlySkipped: boolean
   /** For per-person items: packed state per person on this trip */
   perPersonPacked: Record<string, boolean>
   /** For per-person items: skipped state per person on this trip */
   perPersonSkipped: Record<string, boolean>
+  /** For per-person items: permanently skipped state per person */
+  perPersonPermanentlySkipped: Record<string, boolean>
   /** Persons relevant to this item on this trip */
   relevantPersonIds: string[]
   /** Per-trip quantity, defaults to 1 */
@@ -40,28 +44,34 @@ export function useTripItems(packing: PackingDocument, trip: Trip): {
     const matching = getMatchingItems(packing.items, trip)
 
     const entries: TripItemEntry[] = Object.entries(matching).map(([id, item]) => {
-      const relevantPersonIds = item.personIds.length > 0
-        ? trip.personIds.filter(pId => item.personIds.includes(pId))
-        : []
+      const relevantPersonIds = [...item.personIds]
 
       const perPersonPacked: Record<string, boolean> = {}
       const perPersonSkipped: Record<string, boolean> = {}
+      const perPersonPermanentlySkipped: Record<string, boolean> = {}
       relevantPersonIds.forEach(pId => {
         perPersonPacked[pId] = trip.packedPerPerson?.[id]?.[pId] ?? false
-        perPersonSkipped[pId] = trip.skippedPerPerson?.[id]?.[pId] ?? false
+        perPersonSkipped[pId] =
+          (trip.skippedPerPerson?.[id]?.[pId] ?? false) ||
+          (trip.permanentlySkippedPerPerson?.[id]?.[pId] ?? false)
+        perPersonPermanentlySkipped[pId] = trip.permanentlySkippedPerPerson?.[id]?.[pId] ?? false
       })
 
       const isPacked = item.personIds.length > 0
         ? relevantPersonIds.length > 0 && relevantPersonIds.every(pId => perPersonPacked[pId])
         : trip.packed[id] ?? false
 
+      const isPermanentlySkipped = item.personIds.length > 0
+        ? relevantPersonIds.length > 0 && relevantPersonIds.every(pId => perPersonPermanentlySkipped[pId])
+        : trip.permanentlySkipped?.[id] ?? false
+
       const isSkipped = item.personIds.length > 0
         ? relevantPersonIds.length > 0 && relevantPersonIds.every(pId => perPersonSkipped[pId])
-        : trip.skipped[id] ?? false
+        : (trip.skipped[id] ?? false) || isPermanentlySkipped
 
       const quantity = trip.quantities?.[id] ?? 1
 
-      return { id, item, isPacked, isSkipped, perPersonPacked, perPersonSkipped, relevantPersonIds, quantity }
+      return { id, item, isPacked, isSkipped, isPermanentlySkipped, perPersonPacked, perPersonSkipped, perPersonPermanentlySkipped, relevantPersonIds, quantity }
     })
 
     const skippedItems = entries.filter(e => e.isSkipped)

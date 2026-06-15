@@ -13,6 +13,12 @@ interface LegacyItem {
   phaseId?: string
 }
 
+interface LegacyTrip {
+  name: string
+  featureIds: string[]
+  personIds?: string[]
+}
+
 interface LegacySection {
   name: string
   sortOrder: number
@@ -196,10 +202,11 @@ export function usePackingMigrations() {
       }
 
       // 4. Update trips that had these persons: add matching feature IDs
-      for (const [tripId, trip] of Object.entries(packing.trips)) {
+      const trips = packing.trips as unknown as Record<string, LegacyTrip>
+      for (const [tripId, trip] of Object.entries(trips)) {
         const tripFeatureIds = [...trip.featureIds]
         let changed = false
-        for (const pId of trip.personIds) {
+        for (const pId of (trip.personIds ?? [])) {
           const feaId = personToFeature[pId]
           if (feaId && !tripFeatureIds.includes(feaId)) {
             tripFeatureIds.push(feaId)
@@ -250,10 +257,10 @@ export function usePackingMigrations() {
 
           // Update trip featureIds
           const newTrips = { ...result.trips }
-          for (const [tripId, trip] of Object.entries(packing.trips)) {
+          for (const [tripId, trip] of Object.entries(trips)) {
             const tripFeatureIds = [...trip.featureIds]
             let changed = false
-            for (const pId of trip.personIds) {
+            for (const pId of (trip.personIds ?? [])) {
               const feaId = personToFeature[pId]
               if (feaId && !tripFeatureIds.includes(feaId)) {
                 tripFeatureIds.push(feaId)
@@ -267,6 +274,31 @@ export function usePackingMigrations() {
           result.trips = newTrips
 
           return result
+        },
+      })
+    },
+
+    migrateRemoveTripPersonIds: (packing: PackingDocument) => {
+      const trips = packing.trips as unknown as Record<string, LegacyTrip>
+      const updates: FirestoreData = {}
+
+      for (const tripId of Object.keys(trips)) {
+        updates[`trips.${tripId}.personIds`] = deleteField()
+      }
+
+      if (Object.keys(updates).length === 0) return
+
+      mutation.mutate({
+        updates,
+        description: 'removing personIds from trips',
+        optimisticUpdate: (prev) => {
+          const newTrips = { ...prev.trips }
+          for (const tripId of Object.keys(newTrips)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+            const { personIds: _personIds, ...rest } = newTrips[tripId] as any
+            newTrips[tripId] = rest
+          }
+          return { ...prev, trips: newTrips }
         },
       })
     },

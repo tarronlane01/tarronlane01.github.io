@@ -57,10 +57,6 @@ function stripPersonFromAll(prev: PackingDocument, personId: string): PackingDoc
   for (const [id, trip] of Object.entries(trips)) {
     const updates: Partial<typeof trip> = {}
 
-    if (trip.personIds.includes(personId)) {
-      updates.personIds = trip.personIds.filter(p => p !== personId)
-    }
-
     // Clean per-person packed/skipped state
     const packedPerPerson = cleanPerPersonMap(trip.packedPerPerson, personId)
     if (packedPerPerson) updates.packedPerPerson = packedPerPerson

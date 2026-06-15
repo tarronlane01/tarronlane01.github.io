@@ -6,6 +6,8 @@ export interface TripTaskEntry {
   id: string
   task: Task
   isCompleted: boolean
+  isSkipped: boolean
+  isPermanentlySkipped: boolean
 }
 
 export interface PhaseGroup {
@@ -16,15 +18,21 @@ export interface PhaseGroup {
   allDone: boolean
 }
 
-export function useTripTasks(packing: PackingDocument, trip: Trip): PhaseGroup[] {
+export function useTripTasks(packing: PackingDocument, trip: Trip): {
+  phases: PhaseGroup[]
+  skippedTasks: TripTaskEntry[]
+} {
   return useMemo(() => {
     const matching = getMatchingTasks(packing.tasks)
 
-    const entries: TripTaskEntry[] = Object.entries(matching).map(([id, task]) => ({
-      id,
-      task,
-      isCompleted: trip.tasksCompleted[id] ?? false,
-    }))
+    const entries: TripTaskEntry[] = Object.entries(matching).map(([id, task]) => {
+      const isPermanentlySkipped = trip.tasksPermanentlySkipped?.[id] ?? false
+      const isSkipped = (trip.tasksSkipped?.[id] ?? false) || isPermanentlySkipped
+      return { id, task, isCompleted: trip.tasksCompleted[id] ?? false, isSkipped, isPermanentlySkipped }
+    })
+
+    const skippedTasks = entries.filter(e => e.isSkipped)
+    const activeEntries = entries.filter(e => !e.isSkipped)
 
     // Resolve effective phaseId: use task's phase if valid, else default, else unassigned
     const resolvePhaseId = (taskPhaseId?: string): string => {
@@ -35,7 +43,7 @@ export function useTripTasks(packing: PackingDocument, trip: Trip): PhaseGroup[]
 
     // Group by phase
     const phaseMap = new Map<string, TripTaskEntry[]>()
-    for (const entry of entries) {
+    for (const entry of activeEntries) {
       const phaseId = resolvePhaseId(entry.task.phaseId)
       if (!phaseMap.has(phaseId)) phaseMap.set(phaseId, [])
       phaseMap.get(phaseId)!.push(entry)
@@ -55,6 +63,6 @@ export function useTripTasks(packing: PackingDocument, trip: Trip): PhaseGroup[]
 
     phaseGroups.sort((a, b) => a.sortOrder - b.sortOrder)
 
-    return phaseGroups
+    return { phases: phaseGroups, skippedTasks }
   }, [packing, trip])
 }

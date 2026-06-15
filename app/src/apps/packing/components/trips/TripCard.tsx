@@ -14,23 +14,33 @@ export function TripCard({ tripId, trip, packing, onEdit }: TripCardProps) {
   const matchingItems = getMatchingItems(packing.items, trip)
   const matchingTasks = getMatchingTasks(packing.tasks)
 
-  const totalItems = Object.keys(matchingItems).length
-  const totalTasks = Object.keys(matchingTasks).length
-
-  const packedCount = Object.entries(matchingItems).filter(([id, item]) => {
+  // Permanently skipped items excluded from total; temp skipped count as done
+  const itemEntries = Object.entries(matchingItems)
+  const permSkippedItemCount = itemEntries.filter(([id, item]) => {
     if (item.personIds.length > 0) {
-      const relevantPersons = trip.personIds.filter(pId => item.personIds.includes(pId))
-      return relevantPersons.length > 0 && relevantPersons.every(pId =>
-        trip.packedPerPerson?.[id]?.[pId] || trip.skippedPerPerson?.[id]?.[pId]
+      return item.personIds.every(pId => trip.permanentlySkippedPerPerson?.[id]?.[pId])
+    }
+    return trip.permanentlySkipped?.[id]
+  }).length
+  const totalItems = itemEntries.length - permSkippedItemCount
+
+  const packedCount = itemEntries.filter(([id, item]) => {
+    if (item.personIds.length > 0) {
+      return item.personIds.every(pId =>
+        trip.packedPerPerson?.[id]?.[pId] || trip.skippedPerPerson?.[id]?.[pId] || trip.permanentlySkippedPerPerson?.[id]?.[pId]
       )
     }
-    return trip.packed[id] || trip.skipped[id]
-  }).length
+    return trip.packed[id] || trip.skipped[id] || trip.permanentlySkipped?.[id]
+  }).length - permSkippedItemCount
 
-  const completedTasks = Object.keys(matchingTasks).filter(id => trip.tasksCompleted[id]).length
+  const taskIds = Object.keys(matchingTasks)
+  const permSkippedTaskCount = taskIds.filter(id => trip.tasksPermanentlySkipped?.[id]).length
+  const totalTasks = taskIds.length - permSkippedTaskCount
+  const completedTasks = taskIds.filter(id =>
+    trip.tasksCompleted[id] || trip.tasksSkipped?.[id] || trip.tasksPermanentlySkipped?.[id]
+  ).length - permSkippedTaskCount
 
   const featureNames = trip.featureIds.map(fId => packing.features[fId]?.name).filter(Boolean)
-  const personNames = trip.personIds.map(pId => packing.persons[pId]?.name).filter(Boolean)
 
   return (
     <div
@@ -55,11 +65,6 @@ export function TripCard({ tripId, trip, packing, onEdit }: TripCardProps) {
 
       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
         {featureNames.map(name => (
-          <span key={name} style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', borderRadius: '0.75rem', background: 'var(--bg-secondary)' }}>
-            {name}
-          </span>
-        ))}
-        {personNames.map(name => (
           <span key={name} style={{ fontSize: '0.75rem', padding: '0.125rem 0.375rem', borderRadius: '0.75rem', background: 'var(--bg-secondary)' }}>
             {name}
           </span>

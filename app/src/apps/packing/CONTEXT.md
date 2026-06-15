@@ -11,11 +11,11 @@ A physical thing you bring on a trip. Has a Category, Feature tags, and optional
 _Avoid_: gear, supply, thing
 
 **Task**:
-An action you perform before or during a trip. Has a Phase instead of a Category. Appears as a checklist on a Trip but does not go through the plan/pack workflow. Supports Feature tags in the data model for future filtering, but currently all Tasks appear on every Trip. Names must be unique (case-insensitive, trimmed).
+An action you perform before or during a trip. Has a Phase instead of a Category. Appears as a checklist on a Trip but does not go through the plan/pack workflow. Supports Feature tags in the data model for future filtering, but currently all Tasks appear on every Trip. Can be skipped (temporary or permanent) like Items, but has no Per-Person dimension. Names must be unique (case-insensitive, trimmed).
 _Avoid_: to-do, chore, reminder
 
 **Trip**:
-A reusable saved filter configuration, not a one-time event. Defines a set of Features and Per-Persons that determine which Items appear. Persists across uses — reset clears packed state for the next use. Examples: "Wife's family reunion", "Overnight camping", "City Pool".
+A reusable saved filter configuration, not a one-time event. Defines a set of Features that determine which Items appear. Persists across uses — reset clears packed state and temporary skips, but preserves permanent skips and quantities. Examples: "Wife's family reunion", "Overnight camping", "City Pool".
 _Avoid_: outing, vacation, event, trip type, template
 
 ### Taxonomies
@@ -42,9 +42,13 @@ _Avoid_: amount, count, number
 
 ### Trip State
 
-**Skipped**:
-An Item or Per-Person Item entry that matches a Trip's filters but has been dismissed for the current use. Hidden from the packing view in a collapsed "Skipped" section. Resets when the Trip is reset. For Per-Person Items, skipping is per-person.
+**Skipped (temporary)**:
+An Item, Per-Person entry, or Task dismissed for the current Trip use. For Items: stored in `Trip.skipped` / `Trip.skippedPerPerson`. For Tasks: stored in `Trip.tasksSkipped`. Cleared when the Trip is reset. Shown in the "Skipped (this session)" group within the Skipped section. Counts as done in Trip card progress but remains in the total.
 _Avoid_: excluded, hidden, removed
+
+**Always Skipped (permanent)**:
+An Item, Per-Person entry, or Task permanently dismissed for a Trip. For Items: stored in `Trip.permanentlySkipped` / `Trip.permanentlySkippedPerPerson`. For Tasks: stored in `Trip.tasksPermanentlySkipped`. Survives Trip resets. Shown in the "Always skipped" group within the Skipped section. Unskipping moves the entry back to the main checklist with no confirmation required. Excluded from the Trip card total entirely.
+_Avoid_: excluded, hidden, blocked, disabled
 
 **Packed**:
 An Item or Per-Person Item entry that has been checked off as packed for the current Trip use. Resets when the Trip is reset. For Per-Person Items, packing is per-person.

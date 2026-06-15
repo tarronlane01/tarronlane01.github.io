@@ -88,6 +88,9 @@ export function TaskModal({
 
       {features.length > 0 && (
         <FormField label="Features" htmlFor="task-features">
+          {featureIds.length === 0 && (
+            <p style={{ margin: '0 0 0.25rem', fontSize: '0.75rem', opacity: 0.45 }}>No features — appears on all trips</p>
+          )}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {features.map(f => (
               <button

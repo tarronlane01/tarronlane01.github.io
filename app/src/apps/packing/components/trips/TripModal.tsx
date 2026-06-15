@@ -6,21 +6,18 @@ interface TripModalProps {
   mode: 'add' | 'edit'
   initialName?: string
   initialFeatureIds?: string[]
-  initialPersonIds?: string[]
   existingNames: string[]
   features: { id: string; name: string }[]
-  persons: { id: string; name: string }[]
-  onSave: (name: string, featureIds: string[], personIds: string[]) => void
+  onSave: (name: string, featureIds: string[]) => void
   onClose: () => void
 }
 
 export function TripModal({
-  mode, initialName, initialFeatureIds, initialPersonIds,
-  existingNames, features, persons, onSave, onClose,
+  mode, initialName, initialFeatureIds,
+  existingNames, features, onSave, onClose,
 }: TripModalProps) {
   const [name, setName] = useState(initialName ?? '')
   const [featureIds, setFeatureIds] = useState<string[]>(initialFeatureIds ?? [])
-  const [personIds, setPersonIds] = useState<string[]>(initialPersonIds ?? [])
 
   const trimmed = name.trim()
   const isUnique = isNameUnique(trimmed, existingNames, initialName)
@@ -61,31 +58,9 @@ export function TripModal({
         </FormField>
       )}
 
-      {persons.length > 0 && (
-        <FormField label="Per-Person" htmlFor="trip-persons">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {persons.map(p => (
-              <button
-                key={p.id}
-                onClick={() => toggleTag(p.id, personIds, setPersonIds)}
-                style={{
-                  padding: '0.4rem 0.75rem', borderRadius: '1rem',
-                  border: '1px solid var(--border-subtle)',
-                  background: personIds.includes(p.id) ? 'var(--color-primary)' : 'transparent',
-                  color: personIds.includes(p.id) ? 'white' : 'inherit',
-                  cursor: 'pointer', fontSize: '0.9rem', minHeight: '2.25rem',
-                }}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </FormField>
-      )}
-
       <FormButtonGroup>
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" disabled={!canSave} onClick={() => { onSave(trimmed, featureIds, personIds); onClose() }}>
+        <Button variant="primary" disabled={!canSave} onClick={() => { onSave(trimmed, featureIds); onClose() }}>
           {mode === 'add' ? 'Add' : 'Save'}
         </Button>
       </FormButtonGroup>

@@ -7,14 +7,15 @@ export function useTripMutations() {
   const mutation = usePackingMutation()
 
   return {
-    addTrip: (name: string, featureIds: string[], personIds: string[]) => {
+    addTrip: (name: string, featureIds: string[]) => {
       const id = generateId('trp')
       const trip: Trip = {
-        name, featureIds, personIds,
+        name, featureIds,
         quantities: {},
         packed: {}, packedPerPerson: {},
         skipped: {}, skippedPerPerson: {},
-        tasksCompleted: {},
+        permanentlySkipped: {}, permanentlySkippedPerPerson: {},
+        tasksCompleted: {}, tasksSkipped: {}, tasksPermanentlySkipped: {},
       }
       mutation.mutate({
         updates: { [`trips.${id}`]: trip },
@@ -27,19 +28,18 @@ export function useTripMutations() {
       return id
     },
 
-    updateTrip: (id: string, name: string, featureIds: string[], personIds: string[]) => {
+    updateTrip: (id: string, name: string, featureIds: string[]) => {
       mutation.mutate({
         updates: {
           [`trips.${id}.name`]: name,
           [`trips.${id}.featureIds`]: featureIds,
-          [`trips.${id}.personIds`]: personIds,
         },
         description: `updating trip "${name}"`,
         optimisticUpdate: (prev) => ({
           ...prev,
           trips: {
             ...prev.trips,
-            [id]: { ...prev.trips[id], name, featureIds, personIds },
+            [id]: { ...prev.trips[id], name, featureIds },
           },
         }),
       })
@@ -64,6 +64,7 @@ export function useTripMutations() {
           [`trips.${id}.skipped`]: {},
           [`trips.${id}.skippedPerPerson`]: {},
           [`trips.${id}.tasksCompleted`]: {},
+          [`trips.${id}.tasksSkipped`]: {},
         },
         description: `resetting trip "${id}"`,
         optimisticUpdate: (prev) => ({
@@ -74,7 +75,7 @@ export function useTripMutations() {
               ...prev.trips[id],
               packed: {}, packedPerPerson: {},
               skipped: {}, skippedPerPerson: {},
-              tasksCompleted: {},
+              tasksCompleted: {}, tasksSkipped: {},
             },
           },
         }),

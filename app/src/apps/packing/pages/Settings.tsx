@@ -46,7 +46,7 @@ function CategoriesPanel({ packing }: PanelProps) {
     Object.values(packing.items).filter(i => i.categoryId === categoryId).length
 
   return (
-    <CollapsibleSection title="Categories" count={items.length} defaultExpanded>
+    <CollapsibleSection title="Categories" count={items.length}>
       <TaxonomyList
         title="Categories"
         items={items}
@@ -131,11 +131,8 @@ function PersonsPanel({ packing }: PanelProps) {
   const { addPerson, updatePerson, deletePerson } = usePersonMutations()
   const items = toAlpha(packing.persons)
 
-  const usageCount = (personId: string) => {
-    const itemCount = Object.values(packing.items).filter(i => i.personIds.includes(personId)).length
-    const tripCount = Object.values(packing.trips).filter(t => t.personIds.includes(personId)).length
-    return itemCount + tripCount
-  }
+  const usageCount = (personId: string) =>
+    Object.values(packing.items).filter(i => i.personIds.includes(personId)).length
 
   return (
     <CollapsibleSection title="Per-Person" count={items.length}>

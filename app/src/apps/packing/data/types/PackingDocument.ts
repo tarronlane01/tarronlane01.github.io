@@ -53,7 +53,6 @@ export interface Task {
 export interface Trip {
   name: string
   featureIds: string[]
-  personIds: string[]
   /** Per-trip item quantity: { itemId: count }. Missing entries default to 1. */
   quantities: Record<string, number>
   /** Regular item packed state: { itemId: true } */
@@ -64,8 +63,16 @@ export interface Trip {
   skipped: Record<string, boolean>
   /** Per-person item skipped state: { itemId: { personId: true } } */
   skippedPerPerson: Record<string, Record<string, boolean>>
+  /** Permanently skipped items (survive trip reset): { itemId: true } */
+  permanentlySkipped: Record<string, boolean>
+  /** Permanently skipped per-person (survive trip reset): { itemId: { personId: true } } */
+  permanentlySkippedPerPerson: Record<string, Record<string, boolean>>
   /** Task completed state: { taskId: true } */
   tasksCompleted: Record<string, boolean>
+  /** Task skipped state (temporary): { taskId: true } */
+  tasksSkipped: Record<string, boolean>
+  /** Task permanently skipped state (survives reset): { taskId: true } */
+  tasksPermanentlySkipped: Record<string, boolean>
 }
 
 /** Empty document for first-time initialization */

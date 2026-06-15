@@ -43,15 +43,19 @@ interface FormFieldProps {
   htmlFor: string
   children: ReactNode
   hint?: ReactNode
+  labelAction?: ReactNode
   style?: React.CSSProperties
 }
 
-export function FormField({ label, htmlFor, children, hint, style }: FormFieldProps) {
+export function FormField({ label, htmlFor, children, hint, labelAction, style }: FormFieldProps) {
   return (
     <div style={{ ...formGroup, ...style }}>
-      <label htmlFor={htmlFor} style={labelStyle}>
-        {label}
-      </label>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <label htmlFor={htmlFor} style={labelStyle}>
+          {label}
+        </label>
+        {labelAction}
+      </div>
       {children}
       {hint && (
         <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', opacity: 0.6 }}>

@@ -8,16 +8,21 @@ interface MigrationPanelProps {
 }
 
 export function MigrationPanel({ packing }: MigrationPanelProps) {
-  const { migrateSectionsToPhases, migratePersonsToPerPerson } = usePackingMigrations()
+  const { migrateSectionsToPhases, migratePersonsToPerPerson, migrateRemoveTripPersonIds } = usePackingMigrations()
   const [sectionStatus, setSectionStatus] = useState<'idle' | 'running' | 'done'>('idle')
   const [perPersonStatus, setPerPersonStatus] = useState<'idle' | 'running' | 'done'>('idle')
+  const [tripPersonStatus, setTripPersonStatus] = useState<'idle' | 'running' | 'done'>('idle')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hasSections = Object.keys((packing as any).sections ?? {}).length > 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hasPerPersonField = Object.values(packing.items).some((item: any) => 'perPerson' in item)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hasTripPersonIds = Object.values(packing.trips).some((trip: any) => 'personIds' in trip)
 
-  if (!hasSections && !hasPerPersonField && sectionStatus === 'idle' && perPersonStatus === 'idle') return null
+  const hasAny = hasSections || hasPerPersonField || hasTripPersonIds
+  const anyRunning = sectionStatus !== 'idle' || perPersonStatus !== 'idle' || tripPersonStatus !== 'idle'
+  if (!hasAny && !anyRunning) return null
 
   return (
     <CollapsibleSection title="Migration" defaultExpanded>
@@ -63,6 +68,24 @@ export function MigrationPanel({ packing }: MigrationPanelProps) {
               onClick={async () => { setPerPersonStatus('running'); await migratePersonsToPerPerson(packing); setPerPersonStatus('done') }}
             >
               {perPersonStatus === 'running' ? 'Running...' : 'Run Per-Person Migration'}
+            </Button>
+          )}
+        </div>
+      )}
+      {(hasTripPersonIds || tripPersonStatus !== 'idle') && (
+        <div>
+          <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+            Remove personIds from all trips (persons are now global):
+          </p>
+          {tripPersonStatus === 'done' ? (
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-success)' }}>Migration complete.</p>
+          ) : (
+            <Button
+              variant="small"
+              disabled={!hasTripPersonIds || tripPersonStatus === 'running'}
+              onClick={async () => { setTripPersonStatus('running'); await migrateRemoveTripPersonIds(packing); setTripPersonStatus('done') }}
+            >
+              {tripPersonStatus === 'running' ? 'Running...' : 'Run Trip PersonIds Cleanup'}
             </Button>
           )}
         </div>
