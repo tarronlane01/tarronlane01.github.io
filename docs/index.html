@@ -29,36 +29,15 @@
       }(window.location))
     </script>
     <!-- End Single Page Apps for GitHub Pages -->
-    <!-- PWA: inject app-specific manifest and theme color based on current route -->
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#646cff">
     <script type="text/javascript">
-      (function() {
-        var path = window.location.pathname;
-        var manifest, themeColor;
-        if (path === '/budget' || path.indexOf('/budget/') === 0) {
-          manifest = '/manifest-budget.json';
-          themeColor = '#5458e3';
-        } else if (path === '/packing' || path.indexOf('/packing/') === 0) {
-          manifest = '/manifest-packing.json';
-          themeColor = '#059669';
-        }
-        if (manifest) {
-          var link = document.createElement('link');
-          link.rel = 'manifest';
-          link.href = manifest;
-          document.head.appendChild(link);
-        }
-        if (themeColor) {
-          var meta = document.createElement('meta');
-          meta.name = 'theme-color';
-          meta.content = themeColor;
-          document.head.appendChild(meta);
-        }
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js');
-          });
-        }
-      })();
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
     </script>
     <script type="module" crossorigin src="/assets/index-DmTUtC7O.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BUJCOCs9.css">

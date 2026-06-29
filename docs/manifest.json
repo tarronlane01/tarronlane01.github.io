@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "Budget & Packing",
+  "short_name": "Apps",
+  "description": "Budget tracker and trip packing lists",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#646cff",
+  "background_color": "#242424",
+  "icons": [
+    {
+      "src": "/combo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Budget",
+      "short_name": "Budget",
+      "description": "Open budget tracker",
+      "url": "/budget",
+      "icons": [{ "src": "/budget-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Packing",
+      "short_name": "Packing",
+      "description": "Open packing lists",
+      "url": "/packing",
+      "icons": [{ "src": "/packing-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
